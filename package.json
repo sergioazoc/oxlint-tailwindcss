@@ -1,0 +1,74 @@
+{
+  "name": "oxlint-tailwindcss",
+  "version": "0.1.0",
+  "description": "Tailwind CSS linting rules for oxlint",
+  "keywords": [
+    "css",
+    "linter",
+    "oxlint",
+    "plugin",
+    "tailwind",
+    "tailwindcss"
+  ],
+  "homepage": "https://github.com/sergioazoc/oxlint-plugin-tailwindcss#readme",
+  "bugs": {
+    "url": "https://github.com/sergioazoc/oxlint-plugin-tailwindcss/issues"
+  },
+  "license": "MIT",
+  "author": "Sergio Azocar",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sergioazoc/oxlint-plugin-tailwindcss.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt .",
+    "typecheck": "tsgo --noEmit",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@tailwindcss/node": "^4.2.1",
+    "tailwindcss": "^4.2.1"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "^1.55.0",
+    "@types/node": "^25.5.0",
+    "@typescript/native-preview": "7.0.0-dev.20260311.1",
+    "oxfmt": "^0.38.0",
+    "oxlint": "^1.55.0",
+    "tsdown": "^0.21.2",
+    "vitest": "^4.1.0"
+  },
+  "peerDependencies": {
+    "@oxlint/plugins": ">=1.43.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

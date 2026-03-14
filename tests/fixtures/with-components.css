@@ -1,0 +1,11 @@
+@import 'tailwindcss';
+@layer components {
+  .btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+  }
+  .card {
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+  }
+}
