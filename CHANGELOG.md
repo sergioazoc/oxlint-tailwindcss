@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 (2026-03-14)
+
+- **no-contradicting-variants**: Fix false positives for variants that target different elements — pseudo-elements (`after:`, `before:`, `file:`, `placeholder:`), child/descendant selectors (`*:`, `**:`), and arbitrary selectors (`[&>svg]:`, `[&_div]:`).
+- Remove unused `tailwind-api.ts` module.
+
 ## 0.1.1 (2026-03-14)
 
 - Renamed package from `oxlint-plugin-tailwindcss` to `oxlint-tailwindcss`.

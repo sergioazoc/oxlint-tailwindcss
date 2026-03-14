@@ -1,6 +1,6 @@
 {
   "name": "oxlint-tailwindcss",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Tailwind CSS linting rules for oxlint",
   "keywords": [
     "css",

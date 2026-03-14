@@ -78,10 +78,7 @@ To override auto-detection, pass `entryPoint` as an option:
 ```jsonc
 {
   "rules": {
-    "tailwindcss/no-unknown-classes": [
-      "error",
-      { "entryPoint": "src/app.css" },
-    ],
+    "tailwindcss/no-unknown-classes": ["error", { "entryPoint": "src/app.css" }],
   },
 }
 ```
@@ -303,9 +300,15 @@ Detects variant-prefixed classes that are redundant because the base class alrea
 
 // ✅ OK — no base class, both are conditional
 <div className="hover:flex dark:flex" />
+
+// ✅ OK — pseudo-elements and child selectors target different elements
+<div className="absolute after:absolute" />
+<div className="shrink-0 [&>svg]:shrink-0" />
+<div className="bg-transparent file:bg-transparent" />
+<div className="flex *:data-[slot=value]:flex" />
 ```
 
-Only reports when the **exact same utility** exists both as base and with a variant.
+Only reports when the **exact same utility** exists both as base and with a conditional variant (e.g. `hover:`, `dark:`, `focus:`). Variants that change the selector target — pseudo-elements (`after:`, `before:`, `file:`, `placeholder:`), child/descendant selectors (`*:`, `**:`), and arbitrary selectors (`[&>svg]:`) — are not considered contradictions.
 
 **No options.** **No autofix.**
 

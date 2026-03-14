@@ -10,6 +10,32 @@ import {
 import { splitClasses } from '../utils/class-splitter'
 import { extractVariants, extractUtility } from '../utils/class-parser'
 
+// Variants that change the selector target (pseudo-elements, children, descendants)
+// These are NOT conditions on the same element, so they can't contradict a base class.
+const TARGET_CHANGING_VARIANTS = new Set([
+  'after',
+  'before',
+  'file',
+  'placeholder',
+  'marker',
+  'backdrop',
+  'selection',
+  'first-line',
+  'first-letter',
+])
+
+function changesTarget(variant: string): boolean {
+  // Pseudo-element variants
+  if (TARGET_CHANGING_VARIANTS.has(variant)) return true
+  // Child (*:) and descendant (**:) selectors
+  if (variant === '*' || variant === '**') return true
+  // Arbitrary selectors: [&>svg], [&_div], etc.
+  if (variant.startsWith('[') && variant.endsWith(']')) return true
+  // Compound child selectors: *:data-[slot=...], etc.
+  if (variant.startsWith('*:')) return true
+  return false
+}
+
 export const noContradictingVariants = defineRule({
   meta: {
     type: 'suggestion',
@@ -41,6 +67,9 @@ export const noContradictingVariants = defineRule({
         for (const cls of classes) {
           const variants = extractVariants(cls)
           if (variants.length === 0) continue
+
+          // Skip if any variant changes the selector target
+          if (variants.some(changesTarget)) continue
 
           const utility = extractUtility(cls)
           // Only report if the exact same utility exists as a base class
