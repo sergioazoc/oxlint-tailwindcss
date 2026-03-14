@@ -41,5 +41,19 @@ ruleTester.run('enforce-shorthand', enforceShorthand, {
       errors: [{ messageId: 'shorthand' }],
       output: '<div className="size-full" />',
     },
+    // Template literal: preserve trailing space before expression
+    {
+      code: '<div className={`h-3 w-3 ${iconClassName}`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'shorthand' }],
+      output: '<div className={`size-3 ${iconClassName}`} />',
+    },
+    // Template literal: preserve leading space after expression
+    {
+      code: '<div className={`${base} h-4 w-4`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'shorthand' }],
+      output: '<div className={`${base} size-4`} />',
+    },
   ],
 })

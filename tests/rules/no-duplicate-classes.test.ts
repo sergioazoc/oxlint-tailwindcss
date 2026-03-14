@@ -115,5 +115,19 @@ ruleTester.run('no-duplicate-classes', noDuplicateClasses, {
       errors: [{ messageId: 'duplicate' }],
       output: 'const className = "flex items-center"',
     },
+    // Template literal: preserve trailing space before expression
+    {
+      code: '<div className={`flex flex items-center ${x}`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'duplicate' }],
+      output: '<div className={`flex items-center ${x}`} />',
+    },
+    // Template literal: preserve leading space after expression
+    {
+      code: '<div className={`${base} flex flex`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'duplicate' }],
+      output: '<div className={`${base} flex`} />',
+    },
   ],
 })

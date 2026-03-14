@@ -5,6 +5,7 @@ import {
   extractFromTaggedTemplate,
   extractFromVariableDeclarator,
   DEFAULT_EXTRACTOR_CONFIG,
+  preserveSpaces,
   type ClassLocation,
 } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
@@ -97,7 +98,7 @@ export const enforceConsistentVariableSyntax = defineRule({
               messageId,
               data: { className: cls, replacement },
               fix(fixer) {
-                return fixer.replaceTextRange(loc.range, fixedValue)
+                return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
               },
             })
           } else {

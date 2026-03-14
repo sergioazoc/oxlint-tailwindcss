@@ -32,5 +32,19 @@ ruleTester.run('enforce-canonical', enforceCanonical, {
       errors: [{ messageId: 'nonCanonical' }],
       output: '<div className="flex mt-0" />',
     },
+    // Template literal: preserve trailing space before expression
+    {
+      code: '<div className={`flex -m-0 ${x}`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'nonCanonical' }],
+      output: '<div className={`flex m-0 ${x}`} />',
+    },
+    // Template literal: preserve leading space after expression
+    {
+      code: '<div className={`${base} -m-0`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'nonCanonical' }],
+      output: '<div className={`${base} m-0`} />',
+    },
   ],
 })

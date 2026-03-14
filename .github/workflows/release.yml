@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
+      contents: write
       id-token: write
 
     steps:
@@ -43,3 +43,11 @@ jobs:
         run: pnpm publish --no-git-checks --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        run: |
+          VERSION="v$(node -p 'require("./package.json").version')"
+          BODY=$(awk "/^## ${VERSION#v} /{found=1; next} /^## /{found=0} found" CHANGELOG.md)
+          gh release create "$VERSION" --title "$VERSION" --notes "$BODY" --target "$GITHUB_SHA"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

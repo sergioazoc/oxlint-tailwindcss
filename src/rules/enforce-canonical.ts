@@ -5,6 +5,7 @@ import {
   extractFromTaggedTemplate,
   extractFromVariableDeclarator,
   DEFAULT_EXTRACTOR_CONFIG,
+  preserveSpaces,
   type ClassLocation,
 } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
@@ -59,7 +60,7 @@ export const enforceCanonical = defineRule({
               messageId: 'nonCanonical',
               data: { className: cls, canonical },
               fix(fixer) {
-                return fixer.replaceTextRange(loc.range, fixedValue)
+                return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
               },
             })
           } else {

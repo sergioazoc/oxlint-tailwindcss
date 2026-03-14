@@ -5,6 +5,7 @@ import {
   extractFromTaggedTemplate,
   extractFromVariableDeclarator,
   DEFAULT_EXTRACTOR_CONFIG,
+  preserveSpaces,
   type ClassLocation,
 } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
@@ -105,7 +106,7 @@ export const enforceShorthand = defineRule({
                   replacement: rule.replacement,
                 },
                 fix(fixer) {
-                  return fixer.replaceTextRange(loc.range, remaining.join(' '))
+                  return fixer.replaceTextRange(loc.range, preserveSpaces(loc, remaining.join(' ')))
                 },
               })
             }

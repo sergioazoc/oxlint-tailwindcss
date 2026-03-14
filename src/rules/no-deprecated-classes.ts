@@ -5,6 +5,7 @@ import {
   extractFromTaggedTemplate,
   extractFromVariableDeclarator,
   DEFAULT_EXTRACTOR_CONFIG,
+  preserveSpaces,
   type ClassLocation,
 } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
@@ -73,7 +74,7 @@ export const noDeprecatedClasses = defineRule({
             data: { className: cls, replacement: fullReplacement },
             fix(fixer) {
               const fixed = loc.value.replace(cls, fullReplacement)
-              return fixer.replaceTextRange(loc.range, fixed)
+              return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixed))
             },
           })
         }

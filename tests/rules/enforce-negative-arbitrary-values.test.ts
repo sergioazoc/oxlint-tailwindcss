@@ -32,5 +32,19 @@ ruleTester.run('enforce-negative-arbitrary-values', enforceNegativeArbitraryValu
       errors: [{ messageId: 'moveNegative' }],
       output: '<div className="hover:mt-[-8px]" />',
     },
+    // Template literal: preserve trailing space before expression
+    {
+      code: '<div className={`flex -top-[5px] ${x}`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'moveNegative' }],
+      output: '<div className={`flex top-[-5px] ${x}`} />',
+    },
+    // Template literal: preserve leading space after expression
+    {
+      code: '<div className={`${base} -top-[5px]`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'moveNegative' }],
+      output: '<div className={`${base} top-[-5px]`} />',
+    },
   ],
 })

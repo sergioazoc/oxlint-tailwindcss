@@ -41,6 +41,20 @@ describe('consistent-variant-order (static fallback)', () => {
         errors: [{ messageId: 'wrongOrder' }],
         output: '<div className="md:focus:bg-blue-500" />',
       },
+      // Template literal: preserve trailing space before expression
+      {
+        code: '<div className={`hover:sm:flex ${x}`} />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'wrongOrder' }],
+        output: '<div className={`sm:hover:flex ${x}`} />',
+      },
+      // Template literal: preserve leading space after expression
+      {
+        code: '<div className={`${base} hover:sm:flex`} />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'wrongOrder' }],
+        output: '<div className={`${base} sm:hover:flex`} />',
+      },
     ],
   })
 

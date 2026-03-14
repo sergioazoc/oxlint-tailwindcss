@@ -30,6 +30,20 @@ ruleTester.run('enforce-consistent-important-position', enforceConsistentImporta
       errors: [{ messageId: 'usePrefix' }, { messageId: 'usePrefix' }],
       output: '<div className="!font-bold !text-red" />',
     },
+    // Template literal: preserve trailing space before expression
+    {
+      code: '<div className={`flex font-bold! ${x}`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'usePrefix' }],
+      output: '<div className={`flex !font-bold ${x}`} />',
+    },
+    // Template literal: preserve leading space after expression
+    {
+      code: '<div className={`${base} font-bold!`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'usePrefix' }],
+      output: '<div className={`${base} !font-bold`} />',
+    },
   ],
 })
 

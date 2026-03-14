@@ -38,5 +38,19 @@ ruleTester.run('no-unnecessary-arbitrary-value', noUnnecessaryArbitraryValue, {
       errors: [{ messageId: 'unnecessaryArbitrary' }],
       output: '<div className="hover:h-auto" />',
     },
+    // Template literal: preserve trailing space before expression
+    {
+      code: '<div className={`flex h-[auto] ${x}`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'unnecessaryArbitrary' }],
+      output: '<div className={`flex h-auto ${x}`} />',
+    },
+    // Template literal: preserve leading space after expression
+    {
+      code: '<div className={`${base} h-[auto]`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'unnecessaryArbitrary' }],
+      output: '<div className={`${base} h-auto`} />',
+    },
   ],
 })

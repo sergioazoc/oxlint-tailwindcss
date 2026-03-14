@@ -5,6 +5,7 @@ import {
   extractFromTaggedTemplate,
   extractFromVariableDeclarator,
   DEFAULT_EXTRACTOR_CONFIG,
+  preserveSpaces,
   type ClassLocation,
 } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
@@ -130,7 +131,7 @@ export const enforceSortOrder = defineRule({
           node: loc.node,
           messageId: 'unsorted',
           fix(fixer) {
-            return fixer.replaceTextRange(loc.range, sortedNames.join(' '))
+            return fixer.replaceTextRange(loc.range, preserveSpaces(loc, sortedNames.join(' ')))
           },
         })
       }

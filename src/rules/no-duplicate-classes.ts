@@ -5,6 +5,7 @@ import {
   extractFromTaggedTemplate,
   extractFromVariableDeclarator,
   DEFAULT_EXTRACTOR_CONFIG,
+  preserveSpaces,
   type ClassLocation,
 } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
@@ -46,7 +47,7 @@ export const noDuplicateClasses = defineRule({
               messageId: 'duplicate',
               data: { className: dup },
               fix(fixer) {
-                return fixer.replaceTextRange(loc.range, fixed)
+                return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixed))
               },
             })
           }

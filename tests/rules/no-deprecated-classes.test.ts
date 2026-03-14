@@ -73,5 +73,21 @@ ruleTester.run('no-deprecated-classes', noDeprecatedClasses, {
       errors: [{ messageId: 'deprecated' }],
       output: '<div className="hover:grow" />',
     },
+    // Template literal: preserve trailing space before expression
+    {
+      code: '<div className={`flex flex-grow ${x}`} />',
+      filename: 'test.tsx',
+      options: [{ entryPoint: ENTRY_POINT }],
+      errors: [{ messageId: 'deprecated' }],
+      output: '<div className={`flex grow ${x}`} />',
+    },
+    // Template literal: preserve leading space after expression
+    {
+      code: '<div className={`${base} flex-grow`} />',
+      filename: 'test.tsx',
+      options: [{ entryPoint: ENTRY_POINT }],
+      errors: [{ messageId: 'deprecated' }],
+      output: '<div className={`${base} grow`} />',
+    },
   ],
 })

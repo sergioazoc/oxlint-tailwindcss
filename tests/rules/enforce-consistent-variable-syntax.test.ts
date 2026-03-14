@@ -47,6 +47,20 @@ ruleTester.run('enforce-consistent-variable-syntax', enforceConsistentVariableSy
       errors: [{ messageId: 'useShorthand' }],
       output: '<div className="dark:hover:text-(--color)" />',
     },
+    // Template literal: preserve trailing space before expression
+    {
+      code: '<div className={`bg-[var(--primary)] ${x}`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'useShorthand' }],
+      output: '<div className={`bg-(--primary) ${x}`} />',
+    },
+    // Template literal: preserve leading space after expression
+    {
+      code: '<div className={`${base} bg-[var(--primary)]`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'useShorthand' }],
+      output: '<div className={`${base} bg-(--primary)`} />',
+    },
   ],
 })
 

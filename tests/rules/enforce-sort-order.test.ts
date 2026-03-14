@@ -34,6 +34,20 @@ ruleTester.run('enforce-sort-order', enforceSortOrder, {
       errors: [{ messageId: 'unsorted' }],
       output: '<div className="flex items-center p-4" />',
     },
+    // Template literal: preserve trailing space before expression
+    {
+      code: '<div className={`text-red-500 flex ${x}`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'unsorted' }],
+      output: '<div className={`flex text-red-500 ${x}`} />',
+    },
+    // Template literal: preserve leading space after expression
+    {
+      code: '<div className={`${base} text-red-500 flex`} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'unsorted' }],
+      output: '<div className={`${base} flex text-red-500`} />',
+    },
   ],
 })
 

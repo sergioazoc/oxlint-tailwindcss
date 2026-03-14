@@ -10,6 +10,16 @@ export interface ClassLocation {
   preserveTrailingSpace?: boolean
 }
 
+/**
+ * Preserves leading/trailing spaces in fixed class strings for template literals.
+ * Without this, `h-3 w-3 ${x}` fixed to `size-3${x}` would break classes.
+ */
+export function preserveSpaces(loc: ClassLocation, fixed: string): string {
+  if (loc.preserveLeadingSpace && !fixed.startsWith(' ')) fixed = ` ${fixed}`
+  if (loc.preserveTrailingSpace && !fixed.endsWith(' ')) fixed = `${fixed} `
+  return fixed
+}
+
 export interface ExtractorConfig {
   attributes: string[]
   callees: string[]
