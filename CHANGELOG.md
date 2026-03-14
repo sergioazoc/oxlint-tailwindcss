@@ -1,8 +1,12 @@
 # Changelog
 
+## 0.1.1 (2026-03-14)
+
+- Renamed package from `oxlint-plugin-tailwindcss` to `oxlint-tailwindcss`.
+
 ## 0.1.0 (2026-03-13)
 
-Initial release with 20 Tailwind CSS v4 linting rules for oxlint.
+Initial release with 21 Tailwind CSS v4 linting rules for oxlint.
 
 ### Correctness Rules
 
@@ -23,6 +27,7 @@ Initial release with 20 Tailwind CSS v4 linting rules for oxlint.
 - **enforce-negative-arbitrary-values** — Moves negative outside brackets inside: `-top-[5px]` → `top-[-5px]`. Auto-fix.
 - **enforce-consistent-variable-syntax** — Enforces v4 shorthand `bg-(--var)` or explicit `bg-[var(--var)]`. Auto-fix.
 - **consistent-variant-order** — Enforces variant order: responsive before state (`hover:sm:flex` → `sm:hover:flex`). Auto-fix.
+- **no-unnecessary-arbitrary-value** — Replaces arbitrary values with named equivalents when available (`h-[auto]` → `h-auto`). Auto-fix.
 
 ### Complexity Rules
 
