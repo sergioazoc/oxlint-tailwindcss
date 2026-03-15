@@ -101,10 +101,10 @@ function extractComponentClasses(cssPath, baseDir) {
       let sm;
       while ((sm = selRe.exec(block)) !== null) result.push(sm[1]);
     }
-    // Also scan top-level class selectors (for CSS files without @layer)
-    const topLevelRe = /^\\s*\\.([\\w-]+)\\s*[{,]/gm;
-    let tl;
-    while ((tl = topLevelRe.exec(content)) !== null) result.push(tl[1]);
+    // Scan all class selectors anywhere in the file (.class-name)
+    const classSelRe = /\\.([a-zA-Z_][\\w-]*)/g;
+    let cs;
+    while ((cs = classSelRe.exec(content)) !== null) result.push(cs[1]);
   }
   return [...new Set(result)];
 }
@@ -153,10 +153,14 @@ async function main() {
   // Marker classes: group/peer don't produce CSS but enable group-hover:/peer-checked: variants
   const allVariants = ds.getVariants();
   for (const v of allVariants) {
-    if (v.name.startsWith('group-')) { validClasses.push('group'); validSet.add('group'); break; }
+    if (v.name === 'group' || v.name.startsWith('group-')) {
+      validClasses.push('group'); validSet.add('group'); break;
+    }
   }
   for (const v of allVariants) {
-    if (v.name.startsWith('peer-')) { validClasses.push('peer'); validSet.add('peer'); break; }
+    if (v.name === 'peer' || v.name.startsWith('peer-')) {
+      validClasses.push('peer'); validSet.add('peer'); break;
+    }
   }
 
   // Named groups/peers: group/name, peer/name — the /name part is user-defined
@@ -248,7 +252,7 @@ main().catch(e => { process.stderr.write(e.message); process.exit(1); });
 const CACHE_DIR = join(tmpdir(), 'oxlint-tailwindcss')
 
 // Bump this when precompute logic changes to invalidate disk cache
-const CACHE_VERSION = 6
+const CACHE_VERSION = 7
 
 function getCachePath(cssPath: string, mtime: number): string {
   const hash = createHash('md5').update(`v${CACHE_VERSION}:${cssPath}:${mtime}`).digest('hex')
