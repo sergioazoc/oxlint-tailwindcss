@@ -22,6 +22,8 @@ ruleTester.run('no-conflicting-classes', noConflictingClasses, {
     // Gradient utilities are complementary, not conflicting
     { code: '<div className="from-white to-transparent" />', filename: 'test.tsx' },
     { code: '<div className="from-blue-500 via-purple-500 to-pink-500" />', filename: 'test.tsx' },
+    // divide-* targets children (> * + *), border-* targets the element itself
+    { code: '<div className="divide-border border-input" />', filename: 'test.tsx' },
   ],
   invalid: [
     {

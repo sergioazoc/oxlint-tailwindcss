@@ -67,10 +67,21 @@ export const noConflictingClasses = defineRule({
 
           // Gradient utilities (from-*, via-*, to-*) are complementary, not conflicting
           const gradientRe = /^(?:from|via|to)-/
-          function areGradientPair(a: string, b: string): boolean {
-            const ua = extractUtility(a)
-            const ub = extractUtility(b)
-            return gradientRe.test(ua) && gradientRe.test(ub)
+          // divide-* targets child elements (> * + *), not the element itself
+          const divideRe = /^divide-/
+          const borderRe = /^border(?:-[trblxyse])?-/
+
+          function shouldSkipPair(a: string, b: string): boolean {
+            let ua = extractUtility(a)
+            let ub = extractUtility(b)
+            if (ua.startsWith('!')) ua = ua.slice(1)
+            if (ub.startsWith('!')) ub = ub.slice(1)
+            // Gradient pairs are complementary
+            if (gradientRe.test(ua) && gradientRe.test(ub)) return true
+            // divide-* vs border-* target different elements
+            if ((divideRe.test(ua) && borderRe.test(ub)) || (divideRe.test(ub) && borderRe.test(ua)))
+              return true
+            return false
           }
 
           // Detect conflicts
@@ -82,8 +93,8 @@ export const noConflictingClasses = defineRule({
               const classB = variantClasses[j]
               const propsB = propsMap.get(classB) ?? []
 
-              // Skip gradient pairs — from-*, via-*, to-* are complementary
-              if (areGradientPair(classA, classB)) continue
+              // Skip pairs that share CSS properties but target different elements/roles
+              if (shouldSkipPair(classA, classB)) continue
 
               const overlap = propsA.filter((p) => propsB.includes(p))
               if (overlap.length > 0) {
