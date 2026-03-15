@@ -11,6 +11,7 @@ import { splitClasses } from '../utils/class-splitter'
 import { findBestSuggestion } from '../utils/levenshtein'
 import { createLazyLoader } from '../design-system/loader'
 import { safeOptions } from '../types'
+import { DEPRECATED_MAP } from './no-deprecated-classes'
 
 interface Options {
   entryPoint?: string
@@ -85,6 +86,9 @@ export const noUnknownClasses = defineRule({
 
           const stripped = stripModifiers(cls)
           if (cache.isValid(stripped)) continue
+
+          // Don't report deprecated classes — no-deprecated-classes handles those
+          if (DEPRECATED_MAP[stripped]) continue
 
           const suggestion = findBestSuggestion(stripped, cache.validClasses)
 

@@ -106,6 +106,18 @@ async function main() {
     }
   }
 
+  // Marker classes: group/peer don't produce CSS but enable group-hover:/peer-checked: variants
+  const allVariants = ds.getVariants();
+  for (const v of allVariants) {
+    if (v.name.startsWith('group-')) { validClasses.push('group'); validSet.add('group'); break; }
+  }
+  for (const v of allVariants) {
+    if (v.name.startsWith('peer-')) { validClasses.push('peer'); validSet.add('peer'); break; }
+  }
+
+  // Named groups/peers: group/name, peer/name — the /name part is user-defined
+  // These are validated by the variant system, not by candidatesToCss
+
   // Canonical forms (only store diffs)
   // NOTE: canonicalizeCandidates deduplicates, so we must call it one class at a time
   const canonical = {};
@@ -192,7 +204,7 @@ main().catch(e => { process.stderr.write(e.message); process.exit(1); });
 const CACHE_DIR = join(tmpdir(), 'oxlint-tailwindcss')
 
 // Bump this when precompute logic changes to invalidate disk cache
-const CACHE_VERSION = 4
+const CACHE_VERSION = 5
 
 function getCachePath(cssPath: string, mtime: number): string {
   const hash = createHash('md5').update(`v${CACHE_VERSION}:${cssPath}:${mtime}`).digest('hex')

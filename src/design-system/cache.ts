@@ -114,11 +114,17 @@ export class DesignSystemCache {
     const { bare } = stripImportant(utility)
     if (bare !== utility && this.validitySet.has(bare)) return true
 
-    // Opacity modifier: bg-black/80 → validate bg-black
+    // Slash modifier: bg-black/80 (opacity), aspect-3/2 (ratio), w-1/2 (fraction)
     const slashIdx = bare.lastIndexOf('/')
     if (slashIdx > 0) {
       const base = bare.slice(0, slashIdx)
+      // Base is a known valid class: bg-black/80 → bg-black valid
       if (this.validitySet.has(base)) return true
+      // Base has a known prefix + numeric value: aspect-3/2 → prefix "aspect" known + "3" numeric
+      if (/^(.+)-(\d+\.?\d*)$/.test(base)) {
+        const dashIdx = base.lastIndexOf('-')
+        if (dashIdx > 0 && this.getKnownPrefixes().has(base.slice(0, dashIdx))) return true
+      }
     }
 
     // Dynamic numeric values: w-45, min-h-17.5, gap-13, etc.
@@ -128,8 +134,9 @@ export class DesignSystemCache {
       return true
     }
 
-    // Arbitrary values (bracket syntax) are considered valid
+    // Arbitrary values: bracket syntax [200px] or variable shorthand (--var)
     if (hasArbitraryValue(className)) return true
+    if (bare.includes('(') && bare.includes(')')) return true
 
     return false
   }
