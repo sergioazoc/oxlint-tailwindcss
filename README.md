@@ -1,6 +1,6 @@
 # oxlint-tailwindcss
 
-21 Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). Built for Tailwind CSS v4 with zero-config auto-detection, typo suggestions, and autofixes.
+22 Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). Built for Tailwind CSS v4 with zero-config auto-detection, typo suggestions, and autofixes.
 
 ## Highlights
 
@@ -10,7 +10,7 @@
 - **Typo suggestions** — `itms-center` → "Did you mean `items-center`?"
 - **Conflict detection** — Shows exactly which CSS properties conflict and which class wins.
 - **Lightweight** — Only 2 runtime dependencies: `@tailwindcss/node` and `tailwindcss`.
-- **21 rules** — Correctness, style, complexity, and restriction rules with autofixes where possible.
+- **22 rules** — Correctness, style, complexity, and restriction rules with autofixes where possible.
 - **Variable detection** — Lints variables named `className`, `classes`, `style` automatically.
 - **Component class support** — Recognizes `@layer components { .btn {} }` in your CSS.
 
@@ -41,6 +41,7 @@ Add the plugin to your `.oxlintrc.json`:
     "tailwindcss/enforce-sort-order": "warn",
     "tailwindcss/enforce-shorthand": "warn",
     "tailwindcss/enforce-logical": "off",
+    "tailwindcss/enforce-physical": "off",
     "tailwindcss/enforce-consistent-important-position": "warn",
     "tailwindcss/enforce-negative-arbitrary-values": "warn",
     "tailwindcss/enforce-consistent-variable-syntax": "warn",
@@ -401,6 +402,24 @@ Converts physical properties to logical ones for LTR/RTL support.
 Also converts `border-l/r`, `rounded-l/r/tl/tr/bl/br`, and `scroll-ml/mr/pl/pr` to their logical equivalents.
 
 **Autofix:** Replaces with logical equivalent.
+
+---
+
+#### `enforce-physical`
+
+The inverse of `enforce-logical`. Converts logical properties back to physical ones for consistency in LTR-only projects.
+
+```tsx
+// ❌ Bad → ✅ Fixed
+"ms-4"    → "ml-4"
+"me-4"    → "mr-4"
+"ps-4"    → "pl-4"
+"pe-4"    → "pr-4"
+"start-0" → "left-0"
+"end-0"   → "right-0"
+```
+
+**Autofix:** Replaces with physical equivalent.
 
 ---
 

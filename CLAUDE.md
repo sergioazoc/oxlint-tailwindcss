@@ -16,7 +16,7 @@ Run a single test file: `pnpm vitest run tests/rules/no-duplicate-classes.test.t
 
 ## Architecture
 
-oxlint plugin with 21 Tailwind CSS v4 linting rules. Uses `@oxlint/plugins`' `createOnce` API (runs once per lint session; returned visitors run on every matching AST node).
+oxlint plugin with 22 Tailwind CSS v4 linting rules. Uses `@oxlint/plugins`' `createOnce` API (runs once per lint session; returned visitors run on every matching AST node).
 
 Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is async, but `createOnce` is sync. Solved with `execFileSync` child process (`sync-loader.ts`) that pre-computes all data as JSON. Runs ONCE at plugin init, cached by path+mtime.
 

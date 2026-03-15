@@ -8,6 +8,7 @@ import { enforceCanonical } from './rules/enforce-canonical'
 import { enforceSortOrder } from './rules/enforce-sort-order'
 import { enforceShorthand } from './rules/enforce-shorthand'
 import { enforceLogical } from './rules/enforce-logical'
+import { enforcePhysical } from './rules/enforce-physical'
 import { maxClassCount } from './rules/max-class-count'
 import { noRestrictedClasses } from './rules/no-restricted-classes'
 import { noArbitraryValue } from './rules/no-arbitrary-value'
@@ -33,6 +34,7 @@ const plugin = definePlugin({
     'enforce-sort-order': enforceSortOrder,
     'enforce-shorthand': enforceShorthand,
     'enforce-logical': enforceLogical,
+    'enforce-physical': enforcePhysical,
     'max-class-count': maxClassCount,
     'no-restricted-classes': noRestrictedClasses,
     'no-arbitrary-value': noArbitraryValue,
