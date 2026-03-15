@@ -10,6 +10,7 @@
 - **Disk cache** — Design system precomputed data is cached to disk. Subsequent loads are ~10x faster.
 - **Expanded auto-detection** — 81 candidate paths (9 directories × 9 filenames).
 - **Fix opacity modifier false positives** — Classes like `bg-black/80`, `text-white/90` were incorrectly reported as unknown.
+- **Fix `no-conflicting-classes` false positives** — Filter out `@property` descriptors (`syntax`, `inherits`, `initial-value`) from CSS property extraction. These were incorrectly shared across unrelated utilities, causing false conflicts like `shadow-lg` vs `ease-in-out`.
 - Centralized `stripImportant()` in design system cache for consistent `!` handling.
 - 484 tests (up from 344).
 

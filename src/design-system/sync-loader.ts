@@ -95,8 +95,9 @@ async function main() {
     if (val !== null) order[name] = val.toString();
   }
 
-  // CSS properties per class
+  // CSS properties per class — extract only from the class rule block, skip @property descriptors
   const cssProps = {};
+  const atPropertyDescriptors = new Set(['syntax', 'inherits', 'initial-value']);
   const propRegex = /^\\s+([\\w-]+)\\s*:/gm;
   for (let i = 0; i < classNames.length; i++) {
     if (cssResults[i]) {
@@ -104,7 +105,7 @@ async function main() {
       let match;
       propRegex.lastIndex = 0;
       while ((match = propRegex.exec(cssResults[i])) !== null) {
-        props.push(match[1]);
+        if (!atPropertyDescriptors.has(match[1])) props.push(match[1]);
       }
       if (props.length > 0) cssProps[classNames[i]] = props;
     }
@@ -162,8 +163,11 @@ main().catch(e => { process.stderr.write(e.message); process.exit(1); });
 
 const CACHE_DIR = join(tmpdir(), 'oxlint-tailwindcss')
 
+// Bump this when precompute logic changes to invalidate disk cache
+const CACHE_VERSION = 2
+
 function getCachePath(cssPath: string, mtime: number): string {
-  const hash = createHash('md5').update(`${cssPath}:${mtime}`).digest('hex')
+  const hash = createHash('md5').update(`v${CACHE_VERSION}:${cssPath}:${mtime}`).digest('hex')
   return join(CACHE_DIR, `${hash}.json`)
 }
 
