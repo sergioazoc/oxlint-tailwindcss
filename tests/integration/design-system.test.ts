@@ -72,6 +72,13 @@ describe('Design System Integration', () => {
     expect(cache.isValid('fake-45')).toBe(false)
   })
 
+  it('validates screen breakpoint classes', () => {
+    const { cache } = result!
+    expect(cache.isValid('max-w-screen-lg')).toBe(true)
+    expect(cache.isValid('max-w-screen-sm')).toBe(true)
+    expect(cache.isValid('max-w-screen-xl')).toBe(true)
+  })
+
   it('validates bare utility classes', () => {
     const { cache } = result!
     // Base forms like rounded, shadow — getClassList() may only list rounded-sm/lg

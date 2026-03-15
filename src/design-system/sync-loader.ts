@@ -78,6 +78,34 @@ async function main() {
   const cssResults = ds.candidatesToCss(classNames);
   const validClasses = classNames.filter((_, i) => cssResults[i] != null);
 
+  // Expand validity: generate extra candidates not in getClassList() but valid in v4.
+  // getClassList() misses dynamic numeric values, bare utilities, screen-* breakpoints, etc.
+  const extraCandidates = new Set();
+  const knownPrefixes = new Set();
+  for (const cls of validClasses) {
+    const dash = cls.lastIndexOf('-');
+    if (dash > 0) knownPrefixes.add(cls.slice(0, dash));
+  }
+  // screen-{breakpoint} variants (max-w-screen-lg, etc.)
+  const breakpoints = ['sm', 'md', 'lg', 'xl', '2xl'];
+  for (const prefix of knownPrefixes) {
+    for (const bp of breakpoints) {
+      extraCandidates.add(prefix + '-screen-' + bp);
+    }
+  }
+  // Bare utilities (rounded, shadow, blur, etc.) — prefix without value
+  for (const prefix of knownPrefixes) {
+    extraCandidates.add(prefix);
+  }
+  // Filter out already-known classes
+  const newCandidates = [...extraCandidates].filter(c => !validClasses.includes(c));
+  if (newCandidates.length > 0) {
+    const extraResults = ds.candidatesToCss(newCandidates);
+    for (let i = 0; i < newCandidates.length; i++) {
+      if (extraResults[i] != null) validClasses.push(newCandidates[i]);
+    }
+  }
+
   // Canonical forms (only store diffs)
   // NOTE: canonicalizeCandidates deduplicates, so we must call it one class at a time
   const canonical = {};
@@ -164,7 +192,7 @@ main().catch(e => { process.stderr.write(e.message); process.exit(1); });
 const CACHE_DIR = join(tmpdir(), 'oxlint-tailwindcss')
 
 // Bump this when precompute logic changes to invalidate disk cache
-const CACHE_VERSION = 2
+const CACHE_VERSION = 3
 
 function getCachePath(cssPath: string, mtime: number): string {
   const hash = createHash('md5').update(`v${CACHE_VERSION}:${cssPath}:${mtime}`).digest('hex')
