@@ -31,6 +31,9 @@ ruleTester.run('no-unknown-classes', noUnknownClasses, {
     // Suffix ! (Tailwind CSS v4 important syntax)
     { code: '<div className="flex!" />', filename: 'test.tsx' },
     { code: '<div className="items-center!" />', filename: 'test.tsx' },
+    // Opacity modifiers
+    { code: '<div className="bg-black/80" />', filename: 'test.tsx' },
+    { code: '<div className="bg-blue-500/50 text-white/90" />', filename: 'test.tsx' },
   ],
   invalid: [
     {

@@ -36,11 +36,7 @@ ruleTester.run('no-conflicting-classes', noConflictingClasses, {
     {
       code: '<div className="text-red-500 text-blue-500 text-green-500" />',
       filename: 'test.tsx',
-      errors: [
-        { messageId: 'conflict' },
-        { messageId: 'conflict' },
-        { messageId: 'conflict' },
-      ],
+      errors: [{ messageId: 'conflict' }, { messageId: 'conflict' }, { messageId: 'conflict' }],
     },
     // Same variant conflict
     {

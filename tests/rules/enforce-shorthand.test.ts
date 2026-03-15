@@ -14,7 +14,10 @@ ruleTester.run('enforce-shorthand', enforceShorthand, {
     // Partial axes with different values
     { code: '<div className="mt-2 mb-4" />', filename: 'test.tsx' },
     // Same variant on all axes — rule does not handle variants, so this is valid
-    { code: '<div className="hover:mt-2 hover:mr-2 hover:mb-2 hover:ml-2" />', filename: 'test.tsx' },
+    {
+      code: '<div className="hover:mt-2 hover:mr-2 hover:mb-2 hover:ml-2" />',
+      filename: 'test.tsx',
+    },
   ],
   invalid: [
     {

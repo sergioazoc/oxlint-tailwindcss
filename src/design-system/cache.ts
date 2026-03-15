@@ -98,6 +98,13 @@ export class DesignSystemCache {
     const utility = extractUtility(className)
     if (utility !== className && this.validitySet.has(utility)) return true
 
+    // Opacity modifier: bg-black/80 → validate bg-black
+    const slashIdx = utility.lastIndexOf('/')
+    if (slashIdx > 0) {
+      const base = utility.slice(0, slashIdx)
+      if (this.validitySet.has(base)) return true
+    }
+
     // Arbitrary values (bracket syntax) are considered valid
     if (hasArbitraryValue(className)) return true
 

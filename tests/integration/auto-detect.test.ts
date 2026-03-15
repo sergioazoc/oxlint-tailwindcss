@@ -83,9 +83,7 @@ describe('Auto-detect entry point', () => {
     createFile('apps/dashboard/app/tailwind.css', '@import "tailwindcss";')
     createFile('apps/dashboard/src/components/Button.tsx', '')
 
-    const result = autoDetectEntryPoint(
-      join(TMP, 'apps/dashboard/src/components/Button.tsx'),
-    )
+    const result = autoDetectEntryPoint(join(TMP, 'apps/dashboard/src/components/Button.tsx'))
     expect(result).toBe(join(TMP, 'apps/dashboard/app/tailwind.css'))
   })
 

@@ -49,6 +49,16 @@ describe('Design System Integration', () => {
     expect(cache.isValid('[&>svg]:w-4')).toBe(true)
   })
 
+  it('validates opacity modifiers', () => {
+    const { cache } = result!
+    expect(cache.isValid('bg-black/80')).toBe(true)
+    expect(cache.isValid('bg-blue-500/50')).toBe(true)
+    expect(cache.isValid('text-white/90')).toBe(true)
+    expect(cache.isValid('hover:bg-black/80')).toBe(true)
+    // Invalid base class with opacity is still invalid
+    expect(cache.isValid('bg-fakecolor/80')).toBe(false)
+  })
+
   it('rejects made-up classes', () => {
     const { cache } = result!
     expect(cache.isValid('itms-center')).toBe(false)

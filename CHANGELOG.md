@@ -9,8 +9,9 @@
 - **`settings.tailwindcss.entryPoint`** — Configure the entry point once in `.oxlintrc.json` settings instead of repeating it per rule.
 - **Disk cache** — Design system precomputed data is cached to disk. Subsequent loads are ~10x faster.
 - **Expanded auto-detection** — 81 candidate paths (9 directories × 9 filenames).
+- **Fix opacity modifier false positives** — Classes like `bg-black/80`, `text-white/90` were incorrectly reported as unknown.
 - Centralized `stripImportant()` in design system cache for consistent `!` handling.
-- 481 tests (up from 344).
+- 484 tests (up from 344).
 
 ## 0.1.4 (2026-03-14)
 
