@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
 import { RuleTester } from 'oxlint/plugins-dev'
-import { noDeprecatedClasses } from '../../src/rules/no-deprecated-classes'
+import { noDeprecatedClasses, DEPRECATED_MAP } from '../../src/rules/no-deprecated-classes'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 
@@ -30,41 +30,14 @@ ruleTester.run('no-deprecated-classes', noDeprecatedClasses, {
     },
   ],
   invalid: [
-    {
-      code: '<div className="flex-grow" />',
+    // Generated from DEPRECATED_MAP — every entry is covered
+    ...Object.entries(DEPRECATED_MAP).map(([deprecated, replacement]) => ({
+      code: `<div className="${deprecated}" />`,
       filename: 'test.tsx',
       options: [{ entryPoint: ENTRY_POINT }],
-      errors: [{ messageId: 'deprecated' }],
-      output: '<div className="grow" />',
-    },
-    {
-      code: '<div className="flex-shrink" />',
-      filename: 'test.tsx',
-      options: [{ entryPoint: ENTRY_POINT }],
-      errors: [{ messageId: 'deprecated' }],
-      output: '<div className="shrink" />',
-    },
-    {
-      code: '<div className="flex-grow-0" />',
-      filename: 'test.tsx',
-      options: [{ entryPoint: ENTRY_POINT }],
-      errors: [{ messageId: 'deprecated' }],
-      output: '<div className="grow-0" />',
-    },
-    {
-      code: '<div className="overflow-ellipsis" />',
-      filename: 'test.tsx',
-      options: [{ entryPoint: ENTRY_POINT }],
-      errors: [{ messageId: 'deprecated' }],
-      output: '<div className="text-ellipsis" />',
-    },
-    {
-      code: '<div className="decoration-slice" />',
-      filename: 'test.tsx',
-      options: [{ entryPoint: ENTRY_POINT }],
-      errors: [{ messageId: 'deprecated' }],
-      output: '<div className="box-decoration-slice" />',
-    },
+      errors: [{ messageId: 'deprecated' as const }],
+      output: `<div className="${replacement}" />`,
+    })),
     // With variant
     {
       code: '<div className="hover:flex-grow" />',

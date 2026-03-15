@@ -64,16 +64,35 @@ The plugin auto-detects your Tailwind CSS entry point. No configuration needed i
 The plugin searches for a CSS file containing a Tailwind import signal (`@import "tailwindcss"`, `@import 'tailwindcss'`, `@import tailwindcss`, `@tailwind base`) in these locations, walking upward from the linted file:
 
 ```
-src/app.css        src/globals.css      src/global.css
-src/style.css      src/styles.css       src/index.css
-app.css            main.css             globals.css
-style.css          styles/globals.css   app/globals.css
-assets/css/tailwind.css
+src/{name}.css       {name}.css            app/{name}.css
+styles/{name}.css    style/{name}.css      css/{name}.css
+assets/{name}.css    assets/css/{name}.css  resources/css/{name}.css
 ```
+
+Where `{name}` is one of: `app`, `globals`, `global`, `style`, `styles`, `index`, `main`, `tailwind`, `tailwindcss`.
 
 The search is monorepo-aware — it stops at `package.json` boundaries so each package resolves its own Tailwind config.
 
-To override auto-detection, pass `entryPoint` as an option:
+If auto-detection doesn't find your CSS file, set `entryPoint` once in `settings`:
+
+```jsonc
+{
+  "jsPlugins": ["oxlint-tailwindcss"],
+  "settings": {
+    "tailwindcss": {
+      "entryPoint": "app/tailwind.css",
+    },
+  },
+  "rules": {
+    "tailwindcss/no-unknown-classes": "error",
+    // ...
+  },
+}
+```
+
+The design system is loaded once and shared across all rules.
+
+You can also override per rule if needed:
 
 ```jsonc
 {
@@ -82,6 +101,10 @@ To override auto-detection, pass `entryPoint` as an option:
   },
 }
 ```
+
+Resolution order: rule option > `settings.tailwindcss.entryPoint` > auto-detect.
+
+If no entry point is found (neither configured nor auto-detected), rules that require the design system (`no-unknown-classes`, `no-conflicting-classes`, `no-deprecated-classes`, `enforce-canonical`, `enforce-sort-order`, `no-unnecessary-arbitrary-value`, `consistent-variant-order`) are silently disabled. All other rules work without it.
 
 ## Supported patterns
 
@@ -98,18 +121,10 @@ The plugin extracts Tailwind classes from:
 // Ternaries
 <div className={active ? "bg-blue-500" : "bg-gray-200"} />
 
-// Utility functions
+// Utility functions (cn, clsx, cx, cva, twMerge, twJoin, classnames, ctl, cc, clb, cnb, objstr)
 cn("flex items-center", condition && "hidden")
 clsx("flex", { "bg-red-500": isError })
 twMerge("p-4", "p-2")
-cx("flex", "items-center")
-classnames("flex", "items-center")
-ctl("flex items-center")
-twJoin("flex", "items-center")
-cc("flex", "items-center")
-clb("flex", "items-center")
-cnb("flex", "items-center")
-objstr({ "flex": true, "items-center": true })
 
 // cva() — full extraction: base, variants, compoundVariants
 cva("flex items-center", {
@@ -164,7 +179,6 @@ Reports classes not recognized by Tailwind CSS. Includes typo suggestions.
 
 | Option           | Type       | Description                           |
 | ---------------- | ---------- | ------------------------------------- |
-| `entryPoint`     | `string`   | Path to Tailwind CSS entry file       |
 | `allowlist`      | `string[]` | Custom classes to allow               |
 | `ignorePrefixes` | `string[]` | Prefixes to ignore (e.g. `["data-"]`) |
 
@@ -203,12 +217,6 @@ Detects classes that set the same CSS property. Reports which property conflicts
 ```
 
 > **Note:** Shorthand vs longhand conflicts (e.g., `p-4` vs `px-2`) are not currently detected. See [Known limitations](#known-limitations).
-
-**Options:**
-
-| Option       | Type     | Description                     |
-| ------------ | -------- | ------------------------------- |
-| `entryPoint` | `string` | Path to Tailwind CSS entry file |
 
 **Requires design system.** No autofix.
 
@@ -294,21 +302,14 @@ Detects variant-prefixed classes that are redundant because the base class alrea
 <div className="flex dark:flex" />
 <div className="hidden hover:hidden" />
 
-// ✅ OK — different values, not contradicting
+// ✅ OK — different values, both conditional, or different selector targets
 <div className="text-white dark:text-black" />
-<div className="bg-white hover:bg-blue-500" />
-
-// ✅ OK — no base class, both are conditional
 <div className="hover:flex dark:flex" />
-
-// ✅ OK — pseudo-elements and child selectors target different elements
 <div className="absolute after:absolute" />
 <div className="shrink-0 [&>svg]:shrink-0" />
-<div className="bg-transparent file:bg-transparent" />
-<div className="flex *:data-[slot=value]:flex" />
 ```
 
-Only reports when the **exact same utility** exists both as base and with a conditional variant (e.g. `hover:`, `dark:`, `focus:`). Variants that change the selector target — pseudo-elements (`after:`, `before:`, `file:`, `placeholder:`), child/descendant selectors (`*:`, `**:`), and arbitrary selectors (`[&>svg]:`) — are not considered contradictions.
+Only flags when the exact same utility exists both as base and with a conditional variant. Variants that change the selector target (pseudo-elements, child/descendant selectors, arbitrary selectors) are not flagged.
 
 **No options.** **No autofix.**
 
@@ -326,12 +327,6 @@ Suggests the canonical form of a class when a shorter equivalent exists. Only kn
 "-mt-0"  → "mt-0"
 "-p-0"   → "p-0"
 ```
-
-**Options:**
-
-| Option       | Type     | Description                     |
-| ------------ | -------- | ------------------------------- |
-| `entryPoint` | `string` | Path to Tailwind CSS entry file |
 
 **Requires design system.** **Autofix:** Replaces with canonical form.
 
@@ -361,10 +356,9 @@ In `strict` mode, classes are grouped by variant prefix, sorted within each grou
 
 **Options:**
 
-| Option       | Type                      | Default     | Description                     |
-| ------------ | ------------------------- | ----------- | ------------------------------- |
-| `entryPoint` | `string`                  |             | Path to Tailwind CSS entry file |
-| `mode`       | `"default"` \| `"strict"` | `"default"` | Sort mode                       |
+| Option | Type                      | Default     | Description |
+| ------ | ------------------------- | ----------- | ----------- |
+| `mode` | `"default"` \| `"strict"` | `"default"` | Sort mode   |
 
 **Requires design system.** **Autofix:** Reorders classes.
 
@@ -404,22 +398,7 @@ Converts physical properties to logical ones for LTR/RTL support.
 "right-0" → "end-0"
 ```
 
-Full mapping:
-
-| Physical                    | Logical                     |
-| --------------------------- | --------------------------- |
-| `ml`                        | `ms`                        |
-| `mr`                        | `me`                        |
-| `pl`                        | `ps`                        |
-| `pr`                        | `pe`                        |
-| `left`                      | `start`                     |
-| `right`                     | `end`                       |
-| `border-l` / `border-r`     | `border-s` / `border-e`     |
-| `rounded-l` / `rounded-r`   | `rounded-s` / `rounded-e`   |
-| `rounded-tl` / `rounded-tr` | `rounded-ss` / `rounded-se` |
-| `rounded-bl` / `rounded-br` | `rounded-es` / `rounded-ee` |
-| `scroll-ml` / `scroll-mr`   | `scroll-ms` / `scroll-me`   |
-| `scroll-pl` / `scroll-pr`   | `scroll-ps` / `scroll-pe`   |
+Also converts `border-l/r`, `rounded-l/r/tl/tr/bl/br`, and `scroll-ml/mr/pl/pr` to their logical equivalents.
 
 **Autofix:** Replaces with logical equivalent.
 
@@ -506,18 +485,13 @@ Does NOT convert complex expressions — only simple `var(--name)` wrappers:
 
 Enforces a consistent order for variant prefixes.
 
-When a Tailwind CSS design system is available, the variant order is automatically derived from the design system (via `getVariants()`). Without a design system, a sensible static default is used: responsive → feature queries → color scheme → container queries → group/peer → interactive states → form states → structural → pseudo elements → direction.
-
-A user-specified `order` option always takes the highest priority, overriding both the design system and the static default.
-
-Only checks classes with 2+ variants. Single-variant classes are always valid.
+Uses the design system's variant order when available, falls back to a sensible static default. Only checks classes with 2+ variants.
 
 **Options:**
 
-| Option       | Type       | Default                     | Description                     |
-| ------------ | ---------- | --------------------------- | ------------------------------- |
-| `entryPoint` | `string`   | (auto-detected)             | Path to Tailwind CSS entry file |
-| `order`      | `string[]` | (DS order or builtin order) | Custom variant priority list    |
+| Option  | Type       | Default                     | Description                  |
+| ------- | ---------- | --------------------------- | ---------------------------- |
+| `order` | `string[]` | (DS order or builtin order) | Custom variant priority list |
 
 **Optionally uses design system.** **Autofix:** Reorders variants.
 
@@ -570,7 +544,7 @@ Warns when a class string exceeds the configured print width or classes-per-line
 | `printWidth`     | `number` | `80`    | Max class string length |
 | `classesPerLine` | `number` |         | Max classes per line    |
 
-**Partial autofix:** When `classesPerLine` is set and the class string is inside a template literal, autofixes by splitting into lines. String literals report without autofix.
+**Autofix:** Only for `classesPerLine` with template literals.
 
 ---
 
@@ -639,7 +613,7 @@ Flags hardcoded color values in arbitrary brackets. Encourages use of design tok
 <div className="tracking-[0.5em]" />
 ```
 
-Detects hex, rgb/rgba, hsl/hsla, oklch, oklab, lch, lab, hwb, and `color()` values inside `[...]` on these utility prefixes: `bg-`, `text-`, `border-` (including directional: `-t`, `-b`, `-l`, `-r`, `-s`, `-e`, `-x`, `-y`), `outline-`, `ring-`, `ring-offset-`, `shadow-`, `accent-`, `caret-`, `fill-`, `stroke-`, `decoration-`, `divide-`, `placeholder-`, `from-`, `via-`, `to-`.
+Detects hex, rgb/rgba, hsl/hsla, oklch, oklab, and other color function values inside `[...]` on color-related utility prefixes (`bg-`, `text-`, `border-`, `ring-`, `shadow-`, `fill-`, `stroke-`, etc.).
 
 **Options:**
 
@@ -664,12 +638,6 @@ Detects arbitrary values that have a named Tailwind equivalent. The arbitrary fo
 "w-[200px]"
 "bg-[#custom]"
 ```
-
-**Options:**
-
-| Option       | Type     | Description                     |
-| ------------ | -------- | ------------------------------- |
-| `entryPoint` | `string` | Path to Tailwind CSS entry file |
 
 **Requires design system.** **Autofix:** Replaces with named class.
 

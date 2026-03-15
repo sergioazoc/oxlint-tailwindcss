@@ -25,7 +25,8 @@ DS-dependent rules: `no-unknown-classes`, `no-conflicting-classes`, `no-deprecat
 ## Key Constraints
 
 - **Options timing**: `entryPoint` is the only option read at `createOnce()` top level. ALL other options must be read lazily inside `check()` via `safeOptions()` — they're null in `createOnce()`.
-- **`safeOptions()`**: Uses try/catch for backwards compat with oxlint <1.31.0. Always use it instead of accessing `context.options` directly.
+- **`safeOptions()` / `safeSettings()`**: Uses try/catch for backwards compat with oxlint <1.31.0. Always use these instead of accessing `context.options` or `context.settings` directly — both throw in `createOnce()`.
+- **Entry point resolution**: rule option `entryPoint` > `settings.tailwindcss.entryPoint` > auto-detect.
 - **Graceful degradation**: If the design system can't load, return `{}` from `createOnce()`. Never crash.
 - **`canonicalizeCandidates()`**: Deduplicates results — must be called one class at a time, NOT in batch.
 - **`getClassList()` gaps**: Some valid classes (`grow-1`, `border-1`) are missing from the list. Arbitrary values handled by heuristic.

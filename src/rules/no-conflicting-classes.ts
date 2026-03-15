@@ -10,7 +10,7 @@ import {
 import { splitClasses } from '../utils/class-splitter'
 import { extractUtility, getVariantPrefix } from '../utils/class-parser'
 import { getLoadedDesignSystem } from '../design-system/loader'
-import { safeOptions } from '../types'
+import { safeOptions, safeSettings } from '../types'
 
 export const noConflictingClasses = defineRule({
   meta: {
@@ -34,7 +34,7 @@ export const noConflictingClasses = defineRule({
   },
   createOnce(context) {
     const options = safeOptions<{ entryPoint?: string }>(context)
-    const result = getLoadedDesignSystem(options?.entryPoint)
+    const result = getLoadedDesignSystem(options?.entryPoint, safeSettings(context))
     if (!result) return {}
 
     const { cache } = result

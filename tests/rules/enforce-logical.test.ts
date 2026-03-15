@@ -1,5 +1,5 @@
 import { RuleTester } from 'oxlint/plugins-dev'
-import { enforceLogical } from '../../src/rules/enforce-logical'
+import { enforceLogical, PHYSICAL_TO_LOGICAL } from '../../src/rules/enforce-logical'
 
 const ruleTester = new RuleTester()
 
@@ -12,53 +12,22 @@ ruleTester.run('enforce-logical', enforceLogical, {
     { code: '<div className="flex items-center" />', filename: 'test.tsx' },
   ],
   invalid: [
-    {
-      code: '<div className="ml-4" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'useLogical' }],
-      output: '<div className="ms-4" />',
-    },
-    {
-      code: '<div className="mr-4" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'useLogical' }],
-      output: '<div className="me-4" />',
-    },
-    {
-      code: '<div className="pl-4" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'useLogical' }],
-      output: '<div className="ps-4" />',
-    },
-    {
-      code: '<div className="pr-4" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'useLogical' }],
-      output: '<div className="pe-4" />',
-    },
-    {
-      code: '<div className="left-0" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'useLogical' }],
-      output: '<div className="start-0" />',
-    },
-    {
-      code: '<div className="right-0" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'useLogical' }],
-      output: '<div className="end-0" />',
-    },
+    // Generated from PHYSICAL_TO_LOGICAL — every entry is covered
+    ...Object.entries(PHYSICAL_TO_LOGICAL).map(([physical, logical]) => {
+      const suffix = physical.includes('left') || physical.includes('right') ? '-0' : '-4'
+      return {
+        code: `<div className="${physical}${suffix}" />`,
+        filename: 'test.tsx',
+        errors: [{ messageId: 'useLogical' as const }],
+        output: `<div className="${logical}${suffix}" />`,
+      }
+    }),
+    // With variant
     {
       code: '<div className="hover:ml-4" />',
       filename: 'test.tsx',
       errors: [{ messageId: 'useLogical' }],
       output: '<div className="hover:ms-4" />',
-    },
-    {
-      code: '<div className="border-l-2" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'useLogical' }],
-      output: '<div className="border-s-2" />',
     },
     // Multiple physical properties in same string
     {

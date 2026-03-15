@@ -9,7 +9,10 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { dirname, resolve } from 'node:path'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
 
 export interface PrecomputedData {
   /** All valid class names (candidatesToCss returned non-null) */
@@ -157,10 +160,29 @@ async function main() {
 main().catch(e => { process.stderr.write(e.message); process.exit(1); });
 `
 
+const CACHE_DIR = join(tmpdir(), 'oxlint-tailwindcss')
+
+function getCachePath(cssPath: string, mtime: number): string {
+  const hash = createHash('md5').update(`${cssPath}:${mtime}`).digest('hex')
+  return join(CACHE_DIR, `${hash}.json`)
+}
+
 export function loadDesignSystemSync(cssPath: string): PrecomputedData | null {
   const resolvedPath = resolve(cssPath)
 
   try {
+    const mtime = statSync(resolvedPath).mtimeMs
+    const cachePath = getCachePath(resolvedPath, mtime)
+
+    // Try disk cache first
+    if (existsSync(cachePath)) {
+      try {
+        return JSON.parse(readFileSync(cachePath, 'utf-8')) as PrecomputedData
+      } catch {
+        // Cache corrupted, fall through to full load
+      }
+    }
+
     const stdout = execFileSync(process.execPath, ['-e', PRECOMPUTE_SCRIPT], {
       encoding: 'utf-8',
       timeout: 30_000,
@@ -168,6 +190,14 @@ export function loadDesignSystemSync(cssPath: string): PrecomputedData | null {
       env: { ...process.env, TAILWIND_CSS_PATH: resolvedPath },
       cwd: dirname(resolvedPath),
     })
+
+    // Write to disk cache for other threads/future runs
+    try {
+      mkdirSync(CACHE_DIR, { recursive: true })
+      writeFileSync(cachePath, stdout)
+    } catch {
+      // Non-fatal — cache is optional
+    }
 
     return JSON.parse(stdout) as PrecomputedData
   } catch (error) {

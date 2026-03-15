@@ -12,7 +12,7 @@ import { splitClasses } from '../utils/class-splitter'
 import { splitUtilityAndVariant } from '../utils/class-parser'
 
 // Mapping of physical properties to logical ones
-const PHYSICAL_TO_LOGICAL: Record<string, string> = {
+export const PHYSICAL_TO_LOGICAL: Record<string, string> = {
   ml: 'ms',
   mr: 'me',
   pl: 'ps',

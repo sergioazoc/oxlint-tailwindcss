@@ -10,7 +10,7 @@ import {
 } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import { extractVariants, extractUtility } from '../utils/class-parser'
-import { safeOptions } from '../types'
+import { safeOptions, safeSettings } from '../types'
 import { getLoadedDesignSystem } from '../design-system/loader'
 
 interface Options {
@@ -127,7 +127,7 @@ export const consistentVariantOrder = defineRule({
   },
   createOnce(context) {
     // Try to load the design system for dynamic variant ordering
-    const dsResult = getLoadedDesignSystem()
+    const dsResult = getLoadedDesignSystem(undefined, safeSettings(context))
     const dsCache = dsResult?.cache ?? null
 
     interface CompiledConfig {

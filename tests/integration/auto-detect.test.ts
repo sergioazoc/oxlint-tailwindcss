@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { resolve, join } from 'node:path'
-import { autoDetectEntryPoint } from '../../src/design-system/auto-detect'
+import {
+  autoDetectEntryPoint,
+  CANDIDATE_DIRS,
+  CANDIDATE_NAMES,
+} from '../../src/design-system/auto-detect'
 
 const TMP = resolve(__dirname, '../.tmp-autodetect')
 
@@ -66,5 +70,18 @@ describe('Auto-detect entry point', () => {
 
     const result = autoDetectEntryPoint(join(TMP, 'src/app.tsx'))
     expect(result).toBe(join(TMP, 'src/index.css'))
+  })
+
+  const allCandidates = CANDIDATE_DIRS.flatMap((dir) =>
+    CANDIDATE_NAMES.map((name) => (dir === '.' ? `${name}.css` : `${dir}/${name}.css`)),
+  )
+
+  it.each(allCandidates)('finds %s', (candidatePath) => {
+    createFile('package.json', '{}')
+    createFile(candidatePath, '@import "tailwindcss";')
+    createFile('src/components/Button.tsx', '')
+
+    const result = autoDetectEntryPoint(join(TMP, 'src/components/Button.tsx'))
+    expect(result).toBe(join(TMP, candidatePath))
   })
 })

@@ -11,7 +11,7 @@ import {
 import { splitClasses } from '../utils/class-splitter'
 import { splitUtilityAndVariant } from '../utils/class-parser'
 import { getLoadedDesignSystem } from '../design-system/loader'
-import { safeOptions } from '../types'
+import { safeOptions, safeSettings } from '../types'
 
 interface Options {
   entryPoint?: string
@@ -42,7 +42,7 @@ export const enforceSortOrder = defineRule({
   },
   createOnce(context) {
     const options = safeOptions<Options>(context)
-    const result = getLoadedDesignSystem(options?.entryPoint)
+    const result = getLoadedDesignSystem(options?.entryPoint, safeSettings(context))
     if (!result) return {}
 
     const { cache } = result

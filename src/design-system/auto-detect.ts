@@ -1,21 +1,32 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
-const CANDIDATE_PATHS = [
-  'src/app.css',
-  'src/globals.css',
-  'src/global.css',
-  'src/style.css',
-  'src/styles.css',
-  'src/index.css',
-  'app.css',
-  'main.css',
-  'globals.css',
-  'style.css',
-  'styles/globals.css',
-  'app/globals.css',
-  'assets/css/tailwind.css',
+export const CANDIDATE_DIRS = [
+  'src',
+  '.',
+  'app',
+  'styles',
+  'style',
+  'css',
+  'assets',
+  'assets/css',
+  'resources/css',
 ]
+export const CANDIDATE_NAMES = [
+  'app',
+  'globals',
+  'global',
+  'style',
+  'styles',
+  'index',
+  'main',
+  'tailwind',
+  'tailwindcss',
+]
+
+const CANDIDATE_PATHS = CANDIDATE_DIRS.flatMap((dir) =>
+  CANDIDATE_NAMES.map((name) => (dir === '.' ? `${name}.css` : `${dir}/${name}.css`)),
+)
 
 const TAILWIND_SIGNALS = [
   '@import "tailwindcss"',

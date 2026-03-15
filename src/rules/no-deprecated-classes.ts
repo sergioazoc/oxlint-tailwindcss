@@ -11,10 +11,10 @@ import {
 import { splitClasses } from '../utils/class-splitter'
 import { splitUtilityAndVariant } from '../utils/class-parser'
 import { getLoadedDesignSystem } from '../design-system/loader'
-import { safeOptions } from '../types'
+import { safeOptions, safeSettings } from '../types'
 
 // Mapping of deprecated classes in TW v4 to their replacements
-const DEPRECATED_MAP: Record<string, string> = {
+export const DEPRECATED_MAP: Record<string, string> = {
   'flex-grow': 'grow',
   'flex-grow-0': 'grow-0',
   'flex-shrink': 'shrink',
@@ -46,7 +46,7 @@ export const noDeprecatedClasses = defineRule({
   },
   createOnce(context) {
     const options = safeOptions<{ entryPoint?: string }>(context)
-    const result = getLoadedDesignSystem(options?.entryPoint)
+    const result = getLoadedDesignSystem(options?.entryPoint, safeSettings(context))
 
     function check(locations: ClassLocation[]) {
       for (const loc of locations) {

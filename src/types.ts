@@ -25,3 +25,19 @@ export function safeOptions<T = Record<string, unknown>>(context: {
     return undefined
   }
 }
+
+/**
+ * Safely read context.settings.
+ *
+ * Like `safeOptions`, `context.settings` may not be accessible in `createOnce()`.
+ * The try/catch handles that gracefully.
+ */
+export function safeSettings(context: {
+  settings?: Readonly<Record<string, unknown>>
+}): Readonly<Record<string, unknown>> | undefined {
+  try {
+    return context.settings ?? undefined
+  } catch {
+    return undefined
+  }
+}
