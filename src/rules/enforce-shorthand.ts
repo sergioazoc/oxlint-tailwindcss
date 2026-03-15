@@ -47,10 +47,11 @@ function createShorthandRules(value: string): ShorthandRule[] {
       parts: [`pl-${value}`, `pr-${value}`],
       replacement: `px-${value}`,
     },
-    {
-      parts: [`w-${value}`, `h-${value}`],
-      replacement: `size-${value}`,
-    },
+    // w-* + h-* → size-* only when both produce the same CSS value
+    // Exclude 'screen' (w-screen=100vw, h-screen=100vh — different units)
+    ...(value !== 'screen'
+      ? [{ parts: [`w-${value}`, `h-${value}`], replacement: `size-${value}` }]
+      : []),
     {
       parts: [
         `rounded-tl-${value}`,

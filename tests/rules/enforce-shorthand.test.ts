@@ -9,6 +9,8 @@ ruleTester.run('enforce-shorthand', enforceShorthand, {
     { code: '<div className="p-4 flex" />', filename: 'test.tsx' },
     { code: '<div className="mt-2 mr-4" />', filename: 'test.tsx' },
     { code: '<div className="size-full" />', filename: 'test.tsx' },
+    // w-screen + h-screen should NOT merge to size-screen (different CSS units)
+    { code: '<div className="w-screen h-screen" />', filename: 'test.tsx' },
     // Shorthand with different variants should NOT be merged
     { code: '<div className="hover:mt-2 focus:mb-2" />', filename: 'test.tsx' },
     // Partial axes with different values
