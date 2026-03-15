@@ -12,6 +12,9 @@ import { splitClasses } from '../utils/class-splitter'
 
 const VALUE_RE = /^(?:m[trbl]|p[trbl]|[wh]|rounded-t[lr]|rounded-b[lr]|min-[wh]|max-[wh])-(.+)$/
 
+// Values where w-X + h-X should NOT merge to size-X (different CSS units per axis)
+const INVALID_SIZE_VALUES = new Set(['screen', 'dvw', 'dvh', 'svw', 'svh', 'lvw', 'lvh'])
+
 interface ShorthandRule {
   parts: string[]
   replacement: string
@@ -48,8 +51,8 @@ function createShorthandRules(value: string): ShorthandRule[] {
       replacement: `px-${value}`,
     },
     // w-* + h-* → size-* only when both produce the same CSS value
-    // Exclude 'screen' (w-screen=100vw, h-screen=100vh — different units)
-    ...(value !== 'screen'
+    // Exclude viewport units where w/h use different axes (vw vs vh)
+    ...(!INVALID_SIZE_VALUES.has(value)
       ? [{ parts: [`w-${value}`, `h-${value}`], replacement: `size-${value}` }]
       : []),
     {
