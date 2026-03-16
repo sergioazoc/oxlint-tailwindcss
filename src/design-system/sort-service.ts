@@ -111,6 +111,8 @@ function ensureService(cssPath: string): boolean {
       workerData: { sharedBuffer, cssPath },
     })
 
+    worker.unref()
+
     worker.on('error', () => {
       available = false
       worker = null

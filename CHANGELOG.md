@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.7 (2026-03-16)
+
+- **Fix sort service keeping process alive** — Add `worker.unref()` so the worker thread doesn't prevent Node.js from exiting naturally after linting completes.
+
 ## 0.1.6 (2026-03-16)
 
 - **Add `enforce-physical` rule** — Inverse of `enforce-logical`. Converts logical properties (`ms-4`, `start-0`) to physical ones (`ml-4`, `left-0`). Autofix. 22 rules total.

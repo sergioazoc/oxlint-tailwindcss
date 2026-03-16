@@ -98,10 +98,7 @@ You can also override per rule if needed:
 ```jsonc
 {
   "rules": {
-    "tailwindcss/no-unknown-classes": [
-      "error",
-      { "entryPoint": "src/app.css" },
-    ],
+    "tailwindcss/no-unknown-classes": ["error", { "entryPoint": "src/app.css" }],
   },
 }
 ```
