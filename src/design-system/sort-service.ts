@@ -13,7 +13,6 @@
  */
 
 import { Worker } from 'node:worker_threads'
-import { dirname } from 'node:path'
 
 // SharedArrayBuffer layout:
 //   [0] Int32  — requestSignal  (0=idle, 1=has_request)
