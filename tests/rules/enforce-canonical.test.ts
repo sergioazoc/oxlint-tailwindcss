@@ -18,6 +18,9 @@ ruleTester.run('enforce-canonical', enforceCanonical, {
     { code: '<div className="flex items-center" />', filename: 'test.tsx' },
     { code: '<div className="bg-blue-500 p-4" />', filename: 'test.tsx' },
     { code: '<div className="m-0" />', filename: 'test.tsx' },
+    // Important modifier: position is not enforce-canonical's concern
+    { code: '<div className="!rounded-lg" />', filename: 'test.tsx' },
+    { code: '<div className="rounded-lg!" />', filename: 'test.tsx' },
   ],
   invalid: [
     {
@@ -46,12 +49,19 @@ ruleTester.run('enforce-canonical', enforceCanonical, {
       errors: [{ messageId: 'nonCanonical' }],
       output: '<div className={`${base} m-0`} />',
     },
-    // Important modifier with non-canonical class
+    // Important prefix preserved when bare class is canonicalized
     {
       code: '<div className="!-m-0" />',
       filename: 'test.tsx',
       errors: [{ messageId: 'nonCanonical' }],
       output: '<div className="!m-0" />',
+    },
+    // Important suffix preserved when bare class is canonicalized
+    {
+      code: '<div className="-m-0!" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'nonCanonical' }],
+      output: '<div className="m-0!" />',
     },
   ],
 })

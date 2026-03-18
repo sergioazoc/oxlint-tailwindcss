@@ -21,6 +21,9 @@ interface Options {
 // Default variant ordering: responsive → features → color scheme → container →
 // group/peer → interactive states → form states → content → pseudo elements
 const DEFAULT_VARIANT_ORDER = [
+  // Child/descendant selectors (Tailwind v4)
+  '*',
+  '**',
   // Responsive
   'sm',
   'md',
@@ -172,7 +175,6 @@ export const consistentVariantOrder = defineRule({
         if (dsPriority !== null) return dsPriority
       }
 
-      if (variant.startsWith('[')) return -1
       return fallbackPriority
     }
 

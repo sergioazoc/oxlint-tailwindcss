@@ -428,13 +428,13 @@ The inverse of `enforce-logical`. Converts logical properties back to physical o
 Enforces a consistent position for the `!` (important) modifier — either prefix or suffix.
 
 ```tsx
-// ❌ Bad (default: prefix)
-<div className="font-bold!" />
-<div className="hover:text-red!" />
-
-// ✅ Fixed
+// ❌ Bad (default: suffix — Tailwind v4 canonical form)
 <div className="!font-bold" />
 <div className="hover:!text-red" />
+
+// ✅ Fixed
+<div className="font-bold!" />
+<div className="hover:text-red!" />
 ```
 
 Handles variants correctly — the `!` is placed on the utility, not the variant prefix.
@@ -443,7 +443,9 @@ Handles variants correctly — the `!` is placed on the utility, not the variant
 
 | Option     | Type                     | Default    | Description                     |
 | ---------- | ------------------------ | ---------- | ------------------------------- |
-| `position` | `"prefix"` \| `"suffix"` | `"prefix"` | Where to place the `!` modifier |
+| `position` | `"prefix"` \| `"suffix"` | `"suffix"` | Where to place the `!` modifier |
+
+> **Note:** The default is `"suffix"` to match Tailwind CSS v4's canonical form. The prefix form (`!flex`) is deprecated in v4. Using `"prefix"` may conflict with `enforce-canonical`, which also normalizes `!` to the suffix position.
 
 **Autofix:** Moves `!` to the correct position.
 

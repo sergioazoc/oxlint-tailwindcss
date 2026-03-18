@@ -21,7 +21,7 @@ export const enforceConsistentImportantPosition = defineRule({
     type: 'suggestion',
     docs: {
       description:
-        'Enforce consistent position of the important (!) modifier in Tailwind CSS classes',
+        'Enforce consistent position of the important (!) modifier. Default: suffix (Tailwind v4 canonical form). Note: using "prefix" may conflict with enforce-canonical which normalizes to suffix.',
     },
     fixable: 'code',
     schema: [
@@ -43,7 +43,7 @@ export const enforceConsistentImportantPosition = defineRule({
     function getPosition(): 'prefix' | 'suffix' {
       if (_position === null) {
         const options = safeOptions<Options>(context)
-        _position = options?.position ?? 'prefix'
+        _position = options?.position ?? 'suffix'
       }
       return _position
     }

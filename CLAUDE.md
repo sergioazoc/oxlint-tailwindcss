@@ -25,6 +25,19 @@ Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is 
 
 DS-dependent rules: `no-unknown-classes`, `no-conflicting-classes`, `no-deprecated-classes`, `enforce-canonical`, `enforce-sort-order`, `no-unnecessary-arbitrary-value`. `consistent-variant-order` optionally uses DS.
 
+## Extraction System
+
+`extractors.ts` is the shared class-detection layer used by all 22 rules. Every rule delegates to the same extractors via `DEFAULT_EXTRACTOR_CONFIG`:
+
+- **Attributes**: `className`, `class` (JSX)
+- **Callees** (13): `cn`, `clsx`, `cva`, `twMerge`, `tv`, `cx`, `classnames`, `ctl`, `twJoin`, `cc`, `clb`, `cnb`, `objstr`
+- **Tags**: `tw` (tagged template literals: `` tw`bg-red-500` ``)
+- **Variable patterns**: identifiers matching `/^classNames?$/`, `/^classes$/`, `/^styles?$/`
+- **Deep extraction**: `cva()` understands `variants`, `compoundVariants`, ignores `defaultVariants`. `tv()` understands `base`, `slots`, `variants` (with slot sub-objects), `compoundVariants`, `compoundSlots`.
+- **Expressions**: ternaries (`cond ? "a" : "b"`), logical (`flag && "a"`), object keys (`cn({ "bg-red-500": cond })`), template literals with leading/trailing space preservation across expressions.
+
+AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `VariableDeclarator`. All rules follow the same pattern — call `extractFrom*()`, then run rule logic on the returned `ClassLocation[]`.
+
 ## Key Constraints
 
 - **Lazy DS loading**: `context.settings` and `context.filename` throw in `createOnce()`. DS-dependent rules use `createLazyLoader(context)` which defers loading to the first visitor call where full context is available. Auto-detect uses `context.filename` to walk up from the linted file.

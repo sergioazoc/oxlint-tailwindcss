@@ -21,6 +21,11 @@ describe('consistent-variant-order (static fallback)', () => {
       { code: '<div className="sm:hover:flex" />', filename: 'test.tsx' },
       { code: '<div className="md:focus:bg-blue-500" />', filename: 'test.tsx' },
       { code: '<div className="dark:hover:text-white" />', filename: 'test.tsx' },
+      // Child/descendant selectors with arbitrary variants must preserve order
+      { code: '<div className="*:[a]:underline" />', filename: 'test.tsx' },
+      { code: '<div className="**:[div]:flex" />', filename: 'test.tsx' },
+      { code: '<div className="*:[svg:not([class*=size-])]:size-6" />', filename: 'test.tsx' },
+      { code: '<div className="*:[img:first-child]:rounded-t-sm" />', filename: 'test.tsx' },
     ],
     invalid: [
       {
@@ -98,6 +103,9 @@ describe('consistent-variant-order (design system)', () => {
       { code: '<div className="hover:dark:text-white" />', filename: 'test.tsx' },
       { code: '<div className="focus:md:bg-blue-500" />', filename: 'test.tsx' },
       { code: '<div className="hover:flex" />', filename: 'test.tsx' },
+      // Child/descendant selectors with arbitrary variants must preserve order (DS)
+      { code: '<div className="*:[a]:underline" />', filename: 'test.tsx' },
+      { code: '<div className="**:[[cmdk-group-heading]]:px-2" />', filename: 'test.tsx' },
     ],
     invalid: [
       {

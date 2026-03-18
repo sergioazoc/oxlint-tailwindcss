@@ -86,9 +86,12 @@ export class DesignSystemCache {
     if (important) {
       const canonicalBare = this.canonicalMap.get(bare)
       if (canonicalBare !== undefined) {
-        const prefix = className.slice(0, className.length - utility.length)
-        // Always output prefix form for canonical
-        return prefix + '!' + canonicalBare
+        const variantPrefix = className.slice(0, className.length - utility.length)
+        // Preserve the user's ! position — enforce-consistent-important-position handles normalization
+        const isPrefix = utility.startsWith('!')
+        return isPrefix
+          ? variantPrefix + '!' + canonicalBare
+          : variantPrefix + canonicalBare + '!'
       }
     }
 

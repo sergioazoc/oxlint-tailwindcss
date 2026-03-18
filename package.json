@@ -1,6 +1,6 @@
 {
   "name": "oxlint-tailwindcss",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Tailwind CSS linting rules for oxlint",
   "keywords": [
     "css",
@@ -53,16 +53,16 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
-    "@tailwindcss/node": "^4.2.1",
-    "tailwindcss": "^4.2.1"
+    "@tailwindcss/node": "^4.2.2",
+    "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
-    "@oxlint/plugins": "^1.55.0",
+    "@oxlint/plugins": "^1.56.0",
     "@types/node": "^25.5.0",
-    "@typescript/native-preview": "7.0.0-dev.20260311.1",
-    "oxfmt": "^0.38.0",
-    "oxlint": "^1.55.0",
-    "tsdown": "^0.21.2",
+    "@typescript/native-preview": "7.0.0-dev.20260318.1",
+    "oxfmt": "^0.41.0",
+    "oxlint": "^1.56.0",
+    "tsdown": "^0.21.4",
     "vitest": "^4.1.0"
   },
   "peerDependencies": {
