@@ -30,10 +30,7 @@ export const COMPOSITION_PAIRS: readonly (readonly [RegExp, RegExp])[] = [
   [/^animate-in$/, /^(?:fade|spin|zoom|blur)-in(?:-|$)|^slide-in-from-/], // animate-in sets enter defaults, *-in modifiers override one each
   [/^animate-out$/, /^(?:fade|spin|zoom|blur)-out(?:-|$)|^slide-out-to-/], // animate-out sets exit defaults, *-out modifiers override one each
   // mask-composite mode + mask gradient compose; two composite modes don't match this pair and still conflict on mask-composite
-  [
-    /^mask-(?:add|subtract|intersect|exclude)$/,
-    /^-?mask-(?:linear|radial|conic|[trblxy])-/,
-  ],
+  [/^mask-(?:add|subtract|intersect|exclude)$/, /^-?mask-(?:linear|radial|conic|[trblxy])-/],
 ]
 
 function stripImportant(utility: string): string {
