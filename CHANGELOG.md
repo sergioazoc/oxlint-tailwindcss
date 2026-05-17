@@ -13,7 +13,7 @@
   - `mask-l-from-N mask-l-to-N` and per-axis `mask-{x,y}-*` stop pairs
   - `mask-linear-N mask-linear-from-N` and the negative-angle form, plus cross-family combinations like `mask-b-from-N mask-radial-from-N`
   - `mask-add` / `mask-subtract` / `mask-intersect` / `mask-exclude` paired with any mask gradient
-  Implemented as a generic `isNarrowingOverride` heuristic (the later class's CSS properties are a strict subset of the earlier class's, so the later class refines one of the shorthand's properties — direction-sensitive, so `h-6 size-4` still flags as the wider later class clobbering the earlier override) plus a new `COMPLEMENTARY_GROUPS` entry that captures the mask-gradient `<family>` / `<family>-<role>`. Two mask composite modes (`mask-add mask-subtract`) still conflict on `mask-composite`.
+    Implemented as a generic `isNarrowingOverride` heuristic (the later class's CSS properties are a strict subset of the earlier class's, so the later class refines one of the shorthand's properties — direction-sensitive, so `h-6 size-4` still flags as the wider later class clobbering the earlier override) plus a new `COMPLEMENTARY_GROUPS` entry that captures the mask-gradient `<family>` / `<family>-<role>`. Two mask composite modes (`mask-add mask-subtract`) still conflict on `mask-composite`.
 
 - **`no-hardcoded-colors`: stop flagging `var(--…)` wrappers** ([#20](https://github.com/sergioazoc/oxlint-tailwindcss/pull/20), thanks @Hexoplon) — Values like `bg-[hsl(var(--primary))]`, `border-[rgb(var(--border))]`, `bg-[oklch(var(--bg))]`, `text-[lab(var(--fg))]`, `bg-[var(--primary,#fff)]`, and `bg-[rgb(var(--r),var(--g),var(--b))]` were previously reported as hardcoded colors because the rule matched on the color-function form without checking whether the inner value was a CSS variable. `isHardcodedColor()` now short-circuits when any `var(--…)` reference is present in the value. Documented non-change: mixed gradient values like `bg-[linear-gradient(hsl(var(--a)),#fff)]` remain valid — the bail short-circuits the whole value once any `var(--…)` is present, so a hardcoded stop nested inside a gradient is not flagged.
 
@@ -27,7 +27,7 @@
 
 - **Internal: testability refactors** — Extracted four pure functions previously buried in module-level IIFEs or visitor closures to enable direct unit tests: `computeCacheKey` + `readTailwindVersion` in `sync-loader.ts`, `resolveCssPath` in `loader.ts` (entry-point resolution logic with injectable `autoDetect` and `lastPath`), and `shouldSkipPair` + `isCompositionViaCssVars` + `isNarrowingOverride` in `no-conflicting-classes.ts` (composition heuristics). Also moved `COMPLEMENTARY_GROUPS` and `COMPOSITION_PAIRS` regex tables from inside the `no-conflicting-classes` visitor loop to module scope (minor perf win: regexes no longer recompiled per AST node). No behavior change for users.
 
-- 1080 tests (up from 852).
+- 1091 tests (up from 852). Includes new unit tests for `isNarrowingOverride` (8 cases covering subset/superset/equal/disjoint/empty matrices) and regression guards for `arbitraryEquivalents` (shape invariants + acid test that `bg-[var(--color-red-500)]` resolves to `bg-red-500`).
 
 ## 0.7.1 (2026-05-07)
 

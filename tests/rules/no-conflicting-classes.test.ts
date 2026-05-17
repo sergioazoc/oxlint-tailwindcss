@@ -4,6 +4,7 @@ import { RuleTester } from 'oxlint/plugins-dev'
 import {
   noConflictingClasses,
   isCompositionViaCssVars,
+  isNarrowingOverride,
   shouldSkipPair,
 } from '../../src/rules/no-conflicting-classes'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
@@ -274,6 +275,56 @@ describe('isCompositionViaCssVars', () => {
 
   it('returns false when neither side has custom properties', () => {
     expect(isCompositionViaCssVars(['color'], ['color'])).toBe(false)
+  })
+})
+
+describe('isNarrowingOverride', () => {
+  it('returns true when later is a strict subset of earlier (size + h)', () => {
+    // size-4 sets {width, height}; h-6 sets {height} — narrows one axis
+    expect(isNarrowingOverride(['width', 'height'], ['height'])).toBe(true)
+  })
+
+  it('returns true for shorthand → corner (rounded + corner)', () => {
+    // rounded-t sets {border-top-left-radius, border-top-right-radius};
+    // rounded-tl sets {border-top-left-radius} — refines one corner
+    expect(
+      isNarrowingOverride(
+        ['border-top-left-radius', 'border-top-right-radius'],
+        ['border-top-left-radius'],
+      ),
+    ).toBe(true)
+  })
+
+  it('returns false when the inverse (wider later clobbers narrower earlier)', () => {
+    // h-6 then size-4: later is wider, not a refinement — must report conflict
+    expect(isNarrowingOverride(['height'], ['width', 'height'])).toBe(false)
+  })
+
+  it('returns false when sets are equal (no strict subset)', () => {
+    // mt-2 vs mt-4: same property set — overlap check should still fire
+    expect(isNarrowingOverride(['margin-top'], ['margin-top'])).toBe(false)
+  })
+
+  it('returns false when later is disjoint from earlier', () => {
+    // padding-left is not in {color}, so no narrowing — different concern entirely
+    expect(isNarrowingOverride(['color'], ['padding-left'])).toBe(false)
+  })
+
+  it('returns false when later is empty', () => {
+    expect(isNarrowingOverride(['width', 'height'], [])).toBe(false)
+  })
+
+  it('returns true for multi-property shorthand narrowing (truncate + text-clip)', () => {
+    // truncate sets {overflow, text-overflow, white-space}; text-clip refines text-overflow
+    expect(
+      isNarrowingOverride(['overflow', 'text-overflow', 'white-space'], ['text-overflow']),
+    ).toBe(true)
+  })
+
+  it('returns false when later has same length as earlier (not strict subset)', () => {
+    // Same length means not strictly smaller — even if subset relation holds, this
+    // is redundancy, not refinement
+    expect(isNarrowingOverride(['color', 'background'], ['color', 'background'])).toBe(false)
   })
 })
 

@@ -93,3 +93,47 @@ describe('readTailwindVersion', () => {
     expect(readTailwindVersion()).toMatch(/^\d+\.\d+\.\d+/)
   })
 })
+
+describe('arbitraryEquivalents shape', () => {
+  it('emits one mapping per dash split point for multi-segment utilities', () => {
+    // The precompute loop enumerates every dash split, so for `bg-card-foreground`
+    // (3 segments) it produces 2 candidates: `bg-[<value>]` and `bg-card-[<value>]`.
+    // Whichever round-trips through Tailwind's `candidatesToCss` ends up in the map.
+    // This locks down the fix that replaced `lastIndexOf('-')` (single split, missed
+    // every multi-segment utility) with `indexOf('-', 1)` (all splits, skip leading `-`).
+    const result = loadDesignSystemSync(ENTRY_POINT)!
+    const keys = Object.keys(result.arbitraryEquivalents)
+    // Sanity: there ARE entries
+    expect(keys.length).toBeGreaterThan(50)
+  })
+
+  it('never emits a candidate with an empty prefix (negative-utility guard)', () => {
+    // Regression guard for the negative-utility case: if the dash-enumeration loop
+    // started at `cls.indexOf('-')` (without the +1 offset), classes like
+    // `-translate-x-1` would produce `''.indexOf('-') === 0`, exit the loop
+    // immediately, and emit zero candidates. Worse, off-by-one variants of the fix
+    // could emit `'-[<value>]'` with an empty prefix. Every key must contain a
+    // non-bracket character before the `-[`.
+    const result = loadDesignSystemSync(ENTRY_POINT)!
+    for (const key of Object.keys(result.arbitraryEquivalents)) {
+      // Find the `-[` that introduces the arbitrary value
+      const bracketStart = key.lastIndexOf('-[')
+      expect(bracketStart, `key ${key} has no -[`).toBeGreaterThan(0)
+      const prefix = key.slice(0, bracketStart)
+      // Prefix must contain at least one non-dash, non-empty character
+      expect(prefix.length, `key ${key} has empty prefix`).toBeGreaterThan(0)
+      expect(prefix.replace(/-/g, '').length, `key ${key} has dash-only prefix`).toBeGreaterThan(0)
+    }
+  })
+
+  it('maps multi-segment utilities like bg-red-500 via the shortest valid split', () => {
+    // The acid test for the lastIndexOf → indexOf fix: bg-red-500 must register
+    // the bracket-form that uses the FULL value (matching the named utility's CSS).
+    // Tailwind's CSS for bg-red-500 references --color-red-500, so the matching
+    // arbitrary form is `bg-[var(--color-red-500)]`. The pre-fix code emitted
+    // `bg-red-[<value>]` only (which doesn't round-trip).
+    const result = loadDesignSystemSync(ENTRY_POINT)!
+    const equivalents = result.arbitraryEquivalents as Record<string, string>
+    expect(equivalents['bg-[var(--color-red-500)]']).toBe('bg-red-500')
+  })
+})
