@@ -44,10 +44,14 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Create GitHub Release
+      - name: Create or update GitHub Release
         run: |
           VERSION="v$(node -p 'require("./package.json").version')"
           BODY=$(awk "/^## ${VERSION#v} /{found=1; next} /^## /{found=0} found" CHANGELOG.md)
-          gh release create "$VERSION" --title "$VERSION" --notes "$BODY" --target "$GITHUB_SHA"
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$VERSION" --title "$VERSION" --notes "$BODY" --target "$GITHUB_SHA"
+          else
+            gh release create "$VERSION" --title "$VERSION" --notes "$BODY" --target "$GITHUB_SHA"
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
