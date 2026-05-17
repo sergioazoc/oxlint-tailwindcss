@@ -6,6 +6,8 @@ import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-syste
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 const COMPONENTS_ENTRY_POINT = resolve(__dirname, '../fixtures/with-components.css')
+const ANIMATE_ENTRY_POINT = resolve(__dirname, '../fixtures/with-tailwindcss-animate.css')
+const TW_ANIMATE_CSS_ENTRY_POINT = resolve(__dirname, '../fixtures/with-tw-animate-css.css')
 
 // Pre-load the design system singleton so rules find it
 beforeAll(() => {
@@ -140,6 +142,84 @@ describe('component classes', () => {
         code: '<div className="fake-component" />',
         filename: 'test.tsx',
         errors: [{ messageId: 'unknown' }],
+      },
+    ],
+  })
+})
+
+describe('tailwindcss-animate classes', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(ANIMATE_ENTRY_POINT)
+  })
+
+  const animateTester = new RuleTester()
+
+  animateTester.run('no-unknown-classes (tailwindcss-animate)', noUnknownClasses, {
+    valid: [
+      { code: '<div className="animate-in fade-in zoom-in" />', filename: 'test.tsx' },
+      {
+        code: '<div className="animate-out fade-out slide-out-to-right-96" />',
+        filename: 'test.tsx',
+      },
+      {
+        code: '<div className="direction-alternate-reverse fill-mode-both repeat-infinite" />',
+        filename: 'test.tsx',
+      },
+      { code: '<div className="fill-mode-[forwards,backwards]" />', filename: 'test.tsx' },
+      { code: '<div className="running paused motion-safe:animate-in" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      {
+        code: '<div className="animate-ins fade-in" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+    ],
+  })
+})
+
+describe('tw-animate-css classes', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(TW_ANIMATE_CSS_ENTRY_POINT)
+  })
+
+  const tester = new RuleTester()
+
+  tester.run('no-unknown-classes (tw-animate-css)', noUnknownClasses, {
+    valid: [
+      { code: '<div className="animate-in fade-in zoom-in spin-in" />', filename: 'test.tsx' },
+      {
+        code: '<div className="animate-out fade-out zoom-out slide-out-to-right-96" />',
+        filename: 'test.tsx',
+      },
+      {
+        code: '<div className="direction-alternate-reverse fill-mode-both repeat-infinite" />',
+        filename: 'test.tsx',
+      },
+      { code: '<div className="running paused motion-safe:animate-in" />', filename: 'test.tsx' },
+      { code: '<div className="blur-in blur-out blur-in-30 blur-out-12" />', filename: 'test.tsx' },
+      {
+        code: '<div className="slide-in-from-start slide-out-to-end-8" />',
+        filename: 'test.tsx',
+      },
+      { code: '<div className="play-state-initial" />', filename: 'test.tsx' },
+      {
+        code: '<div className="animate-accordion-down animate-accordion-up" />',
+        filename: 'test.tsx',
+      },
+      {
+        code: '<div className="animate-collapsible-down animate-collapsible-up" />',
+        filename: 'test.tsx',
+      },
+      { code: '<div className="animate-caret-blink" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      {
+        code: '<div className="animate-ins blur-in" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownWithSuggestion' }],
       },
     ],
   })

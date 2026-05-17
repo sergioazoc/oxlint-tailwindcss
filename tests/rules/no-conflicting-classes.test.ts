@@ -1,7 +1,11 @@
 import { resolve } from 'node:path'
-import { beforeAll, describe, test, expect } from 'vitest'
+import { beforeAll, describe, it, test, expect } from 'vitest'
 import { RuleTester } from 'oxlint/plugins-dev'
-import { noConflictingClasses } from '../../src/rules/no-conflicting-classes'
+import {
+  noConflictingClasses,
+  isCompositionViaCssVars,
+  shouldSkipPair,
+} from '../../src/rules/no-conflicting-classes'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
 import { loadDesignSystemSync } from '../../src/design-system/sync-loader'
 import { DesignSystemCache } from '../../src/design-system/cache'
@@ -9,6 +13,8 @@ import { DesignSystemCache } from '../../src/design-system/cache'
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 const PROSE_ENTRY = resolve(__dirname, '../fixtures/with-typography.css')
 const LETTER_SPACING_ENTRY = resolve(__dirname, '../fixtures/with-letter-spacing.css')
+const ANIMATE_ENTRY = resolve(__dirname, '../fixtures/with-tailwindcss-animate.css')
+const TW_ANIMATE_CSS_ENTRY = resolve(__dirname, '../fixtures/with-tw-animate-css.css')
 
 // --- Default design system tests ---
 
@@ -74,6 +80,36 @@ ruleTester.run('no-conflicting-classes', noConflictingClasses, {
     { code: '<div className="touch-pan-x touch-pinch-zoom" />', filename: 'test.tsx' },
     // border-spacing axis composition
     { code: '<div className="border-spacing-x-2 border-spacing-y-4" />', filename: 'test.tsx' },
+    // size-* sets {width,height}; later h-*/w-* narrows one axis (subset-override)
+    { code: '<div className="size-4 h-6" />', filename: 'test.tsx' },
+    { code: '<div className="size-4 w-6" />', filename: 'test.tsx' },
+    // rounded-{side} (2 corners) → rounded-{corner} (1) refines one corner
+    { code: '<div className="rounded-t-lg rounded-tl-sm" />', filename: 'test.tsx' },
+    { code: '<div className="rounded-s-lg rounded-ss-sm" />', filename: 'test.tsx' },
+    // rounded (4 corners) → side (2) → corner (1) — both subset layers compose
+    { code: '<div className="rounded-lg rounded-t-sm" />', filename: 'test.tsx' },
+    { code: '<div className="rounded-lg rounded-tl-sm" />', filename: 'test.tsx' },
+    // truncate sets {overflow,text-overflow,white-space}; text-clip refines text-overflow
+    { code: '<div className="truncate text-clip" />', filename: 'test.tsx' },
+    // Mask gradient utilities are designed to compose across stops, families, axes, and edges.
+    // Source: https://tailwindcss.com/docs/mask-image
+    { code: '<div className="mask-l-from-50% mask-l-to-90%" />', filename: 'test.tsx' },
+    {
+      code: '<div className="mask-linear-50 mask-linear-from-60% mask-linear-to-80%" />',
+      filename: 'test.tsx',
+    },
+    {
+      code: '<div className="-mask-linear-50 mask-linear-from-60% mask-linear-to-80%" />',
+      filename: 'test.tsx',
+    },
+    { code: '<div className="mask-b-from-50% mask-radial-from-80%" />', filename: 'test.tsx' },
+    {
+      code: '<div className="mask-r-from-80% mask-b-from-80% mask-radial-from-70% mask-radial-to-85%" />',
+      filename: 'test.tsx',
+    },
+    { code: '<div className="mask-x-from-50% mask-x-to-90%" />', filename: 'test.tsx' },
+    { code: '<div className="mask-radial-from-75% mask-radial-at-left" />', filename: 'test.tsx' },
+    { code: '<div className="mask-add mask-linear-from-20%" />', filename: 'test.tsx' },
   ],
   invalid: [
     {
@@ -111,6 +147,23 @@ ruleTester.run('no-conflicting-classes', noConflictingClasses, {
       filename: 'test.tsx',
       errors: [{ messageId: 'conflict' }],
     },
+    // Same mask slot (family + role) with different values still conflicts.
+    {
+      code: '<div className="mask-linear-from-50% mask-linear-from-80%" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'conflict' }],
+    },
+    {
+      code: '<div className="mask-l-from-50% mask-l-from-80%" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'conflict' }],
+    },
+    // Two mask composite modes conflict on mask-composite.
+    {
+      code: '<div className="mask-add mask-subtract" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'conflict' }],
+    },
     {
       code: '<div className="blur-sm blur-lg" />',
       filename: 'test.tsx',
@@ -128,6 +181,22 @@ ruleTester.run('no-conflicting-classes', noConflictingClasses, {
     },
     {
       code: '<div className="inset-ring-1 inset-ring-4" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'conflict' }],
+    },
+    {
+      code: '<div className="skew-x-1 skew-x-2" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'conflict' }],
+    },
+    // Asymmetry guard: subset-override only skips when the later class is narrower.
+    {
+      code: '<div className="h-6 size-4" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'conflict' }],
+    },
+    {
+      code: '<div className="rounded-tl-sm rounded-t-lg" />',
       filename: 'test.tsx',
       errors: [{ messageId: 'conflict' }],
     },
@@ -178,5 +247,194 @@ describe('text + tracking composition with letter-spacing', () => {
       { code: '<div className="text-base tracking-normal" />', filename: 'test.tsx' },
     ],
     invalid: [],
+  })
+})
+
+// --- Unit tests for the pure composition heuristics ---
+
+describe('isCompositionViaCssVars', () => {
+  it('returns true when both sides define disjoint --tw-* properties', () => {
+    // shadow and ring both contribute to box-shadow via different vars
+    expect(
+      isCompositionViaCssVars(['box-shadow', '--tw-shadow'], ['box-shadow', '--tw-ring-shadow']),
+    ).toBe(true)
+  })
+
+  it('returns false when both sides share a --tw-* property', () => {
+    expect(
+      isCompositionViaCssVars(['box-shadow', '--tw-shadow'], ['box-shadow', '--tw-shadow']),
+    ).toBe(false)
+  })
+
+  it('returns false when one side has no custom properties', () => {
+    expect(
+      isCompositionViaCssVars(['background-color'], ['background-color', '--tw-bg-opacity']),
+    ).toBe(false)
+  })
+
+  it('returns false when neither side has custom properties', () => {
+    expect(isCompositionViaCssVars(['color'], ['color'])).toBe(false)
+  })
+})
+
+describe('shouldSkipPair', () => {
+  it('skips pairs that compose via disjoint --tw-* vars', () => {
+    expect(
+      shouldSkipPair(
+        'shadow-md',
+        'ring-2',
+        ['box-shadow', '--tw-shadow'],
+        ['box-shadow', '--tw-ring-shadow'],
+      ),
+    ).toBe(true)
+  })
+
+  it('skips pairs in the same complementary group (gradient stops)', () => {
+    expect(shouldSkipPair('from-red-500', 'to-blue-500', [], [])).toBe(true)
+  })
+
+  it('skips transform axes via disjoint --tw-* vars', () => {
+    // translate-x and translate-y are same captured prefix ("translate"),
+    // so they fall through the complementary-group check. With real DS props
+    // they have disjoint --tw-translate-{x,y} vars and compose via vars.
+    expect(
+      shouldSkipPair(
+        'translate-x-2',
+        'translate-y-4',
+        ['translate', '--tw-translate-x'],
+        ['translate', '--tw-translate-y'],
+      ),
+    ).toBe(true)
+  })
+
+  it('does NOT skip same-axis transforms (same captured prefix conflict)', () => {
+    // translate-x-1 vs translate-x-2: same prefix → fall through → overlap → conflict
+    expect(
+      shouldSkipPair(
+        'translate-x-1',
+        'translate-x-2',
+        ['translate', '--tw-translate-x'],
+        ['translate', '--tw-translate-x'],
+      ),
+    ).toBe(false)
+  })
+
+  it('skips composition pair text-* + leading-*', () => {
+    expect(shouldSkipPair('text-sm', 'leading-tight', [], [])).toBe(true)
+  })
+
+  it('skips composition pair in either order (leading-* + text-*)', () => {
+    expect(shouldSkipPair('leading-tight', 'text-sm', [], [])).toBe(true)
+  })
+
+  it('does NOT skip true conflicts on the same property', () => {
+    expect(
+      shouldSkipPair('bg-red-500', 'bg-blue-500', ['background-color'], ['background-color']),
+    ).toBe(false)
+  })
+
+  it('strips ! (prefix) before regex matching', () => {
+    expect(shouldSkipPair('!from-red-500', '!to-blue-500', [], [])).toBe(true)
+  })
+
+  it('strips ! (suffix) before regex matching', () => {
+    expect(shouldSkipPair('from-red-500!', 'to-blue-500!', [], [])).toBe(true)
+  })
+
+  it('accepts injected rule tables', () => {
+    // With empty rule tables nothing should be skipped via regex
+    expect(
+      shouldSkipPair('from-red-500', 'to-blue-500', [], [], {
+        complementaryGroups: [],
+        compositionPairs: [],
+      }),
+    ).toBe(false)
+  })
+})
+
+// --- tailwindcss-animate utilities compose through CSS custom properties ---
+
+describe('tailwindcss-animate composition', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(ANIMATE_ENTRY)
+  })
+
+  const animateTester = new RuleTester()
+
+  animateTester.run('no-conflicting-classes (tailwindcss-animate)', noConflictingClasses, {
+    valid: [
+      {
+        code: '<div className="animate-in fade-in zoom-in slide-in-from-top" />',
+        filename: 'test.tsx',
+      },
+      {
+        code: '<div className="animate-in fade-in-50 zoom-in-95 slide-in-from-bottom-48" />',
+        filename: 'test.tsx',
+      },
+      { code: '<div className="animate-out slide-out-to-top" />', filename: 'test.tsx' },
+      {
+        code: '<div className="animate-out fade-out zoom-out slide-out-to-right-96" />',
+        filename: 'test.tsx',
+      },
+      {
+        code: '<div className="animate-bounce duration-300 delay-150 ease-in-out" />',
+        filename: 'test.tsx',
+      },
+      {
+        code: '<div className="animate-bounce direction-reverse fill-mode-both repeat-infinite running" />',
+        filename: 'test.tsx',
+      },
+    ],
+    invalid: [
+      {
+        code: '<div className="fade-in fade-in-50" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'conflict' }],
+      },
+      {
+        code: '<div className="running paused" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'conflict' }],
+      },
+    ],
+  })
+})
+
+// --- tw-animate-css utilities compose through CSS custom properties ---
+
+describe('tw-animate-css composition', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(TW_ANIMATE_CSS_ENTRY)
+  })
+
+  const tester = new RuleTester()
+
+  tester.run('no-conflicting-classes (tw-animate-css)', noConflictingClasses, {
+    valid: [
+      {
+        code: '<div className="animate-in fade-in zoom-in slide-in-from-top" />',
+        filename: 'test.tsx',
+      },
+      {
+        code: '<div className="animate-out fade-out zoom-out slide-out-to-right" />',
+        filename: 'test.tsx',
+      },
+      { code: '<div className="animate-in fade-in blur-in" />', filename: 'test.tsx' },
+      { code: '<div className="animate-out fade-out blur-out" />', filename: 'test.tsx' },
+      { code: '<div className="animate-in slide-in-from-start" />', filename: 'test.tsx' },
+      { code: '<div className="animate-out slide-out-to-end-8" />', filename: 'test.tsx' },
+      { code: '<div className="animate-accordion-down" />', filename: 'test.tsx' },
+      { code: '<div className="animate-collapsible-up" />', filename: 'test.tsx' },
+      { code: '<div className="animate-caret-blink" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      {
+        code: '<div className="running play-state-initial" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'conflict' }],
+      },
+    ],
   })
 })

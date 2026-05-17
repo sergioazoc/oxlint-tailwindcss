@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { resolve } from 'node:path'
-import { loadDesignSystemSync } from '../../src/design-system/sync-loader'
+import {
+  computeCacheKey,
+  loadDesignSystemSync,
+  readTailwindVersion,
+} from '../../src/design-system/sync-loader'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 
@@ -57,5 +61,35 @@ describe('loadDesignSystemSync', () => {
     // May return cached data or null depending on cache state
     // The key assertion is that it doesn't throw
     loadDesignSystemSync(ENTRY_POINT, 1)
+  })
+})
+
+describe('computeCacheKey', () => {
+  it('is deterministic for the same inputs', () => {
+    expect(computeCacheKey('const x = 1', '4.3.0')).toBe(computeCacheKey('const x = 1', '4.3.0'))
+  })
+
+  it('changes when the script content changes', () => {
+    const a = computeCacheKey('const x = 1', '4.3.0')
+    const b = computeCacheKey('const x = 2', '4.3.0')
+    expect(a).not.toBe(b)
+  })
+
+  it('changes when the tailwind version changes', () => {
+    const a = computeCacheKey('const x = 1', '4.2.4')
+    const b = computeCacheKey('const x = 1', '4.3.0')
+    expect(a).not.toBe(b)
+  })
+
+  it('produces a stable shape: <8-hex>:<version>', () => {
+    expect(computeCacheKey('script', '4.3.0')).toMatch(/^[a-f0-9]{8}:4\.3\.0$/)
+  })
+})
+
+describe('readTailwindVersion', () => {
+  it('returns the installed @tailwindcss/node version', () => {
+    // Format is semver — fallback "unknown" would mean @tailwindcss/node isn't resolvable,
+    // which would also break loadDesignSystemSync entirely (covered by tests above).
+    expect(readTailwindVersion()).toMatch(/^\d+\.\d+\.\d+/)
   })
 })

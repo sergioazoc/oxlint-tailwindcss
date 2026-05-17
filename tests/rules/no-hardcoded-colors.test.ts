@@ -12,6 +12,25 @@ ruleTester.run('no-hardcoded-colors', noHardcodedColors, {
     { code: '<div className="tracking-[0.5em]" />', filename: 'test.tsx' },
     // CSS variable is NOT a hardcoded color
     { code: '<div className="bg-[var(--primary)]" />', filename: 'test.tsx' },
+    // CSS variable wrapped in a color function (e.g. theme tokens stored as
+    // raw channels) is not hardcoded.
+    { code: '<div className="bg-[hsl(var(--primary))]" />', filename: 'test.tsx' },
+    { code: '<div className="text-[hsla(var(--fg),0.8)]" />', filename: 'test.tsx' },
+    { code: '<div className="border-[rgb(var(--border))]" />', filename: 'test.tsx' },
+    { code: '<div className="bg-[rgb(var(--r),var(--g),var(--b))]" />', filename: 'test.tsx' },
+    { code: '<div className="bg-[rgba(var(--bg),0.5)]" />', filename: 'test.tsx' },
+    { code: '<div className="bg-[oklch(var(--bg))]" />', filename: 'test.tsx' },
+    { code: '<div className="text-[lab(var(--fg))]" />', filename: 'test.tsx' },
+    { code: '<div className="bg-[lch(var(--bg))]" />', filename: 'test.tsx' },
+    { code: '<div className="border-[hwb(var(--border))]" />', filename: 'test.tsx' },
+    {
+      code: '<div className="text-[color(display-p3_var(--r)_var(--g)_var(--b))]" />',
+      filename: 'test.tsx',
+    },
+    // var() with fallback containing a color literal — still references a variable
+    { code: '<div className="bg-[var(--primary,#fff)]" />', filename: 'test.tsx' },
+    // Nested gradient stops are outside this rule's non-recursive scope.
+    { code: '<div className="bg-[linear-gradient(hsl(var(--a)),#fff)]" />', filename: 'test.tsx' },
   ],
   invalid: [
     {

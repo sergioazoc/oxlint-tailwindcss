@@ -29,16 +29,21 @@
  *   (d) Bracket form of (c) — canonicalizeCandidates rewrites the syntax,
  *       prefer-theme-tokens rewrites to the named utility directly.
  *
- * Shadcn-style theme matrix (--color-X wraps raw --X via @theme inline):
+ * Theme-token matrix where `--color-X` exposes the raw variable directly
+ * (e.g. `@theme inline { --color-border: var(--border); }`, no wrapping
+ * color function):
  *
  *   ┌────────────────────────────┬──────────┬─────────────┬────────────┐
  *   │ input                      │ canon    │ no-unnec    │ prefer-tt  │
  *   ├────────────────────────────┼──────────┼─────────────┼────────────┤
  *   │ border-(--border)          │ silent   │ silent      │ fires      │
- *   │ border-[var(--border)]     │ fires*   │ silent      │ fires      │
+ *   │ border-[var(--border)]     │ fires*   │ fires       │ silent     │
  *   │ border-(--no-such-var)     │ silent   │ silent      │ silent     │
  *   └────────────────────────────┴──────────┴─────────────┴────────────┘
- *   *Only the bracket→paren syntax change (border-color CSS differs).
+ *   *Only the bracket→paren syntax change. no-unnec fires because the
+ *   bracket form is CSS-equivalent to border-border (both compile to
+ *   `border-color: var(--border)`). prefer-tt stays silent on the bracket
+ *   form thanks to its getNamedEquivalent guard — no-unnec owns it.
  */
 
 import { resolve } from 'node:path'
@@ -50,7 +55,7 @@ import { noUnnecessaryArbitraryValue } from '../../src/rules/no-unnecessary-arbi
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
 import { resetCanonicalizeService } from '../../src/design-system/canonicalize-service'
 
-const SHADCN_FIXTURE = resolve(__dirname, '../fixtures/shadcn-theme.css')
+const SHADCN_FIXTURE = resolve(__dirname, '../fixtures/shadcn.css')
 const DEFAULT_FIXTURE = resolve(__dirname, '../fixtures/default.css')
 
 describe('prefer-theme-tokens coexistence (default theme)', () => {
@@ -160,8 +165,8 @@ describe('prefer-theme-tokens coexistence (shadcn-style theme)', () => {
   })
 
   // ── enforce-canonical ────────────────────────────────────────────
-  // In shadcn-style themes, --border is NOT a theme token (--color-border is,
-  // and it wraps --border in hsl()). canonicalizeCandidates therefore only
+  // With this fixture, `--border` is NOT itself a theme token (`--color-border`
+  // is, and it points to `--border`). canonicalizeCandidates therefore only
   // changes the bracket→paren syntax — it does not produce border-border.
   new RuleTester().run('enforce-canonical (shadcn theme)', enforceCanonical, {
     valid: [
@@ -179,37 +184,36 @@ describe('prefer-theme-tokens coexistence (shadcn-style theme)', () => {
   })
 
   // ── no-unnecessary-arbitrary-value ──────────────────────────────
-  // border-[var(--border)] produces `border-color: var(--border)`, while
-  // border-border produces `border-color: hsl(var(--border))` — not CSS
-  // equivalent, so this rule must stay silent.
+  // With this fixture, `--color-border` resolves directly to `var(--border)`,
+  // so border-[var(--border)] is CSS-equivalent to border-border.
   new RuleTester().run(
     'no-unnecessary-arbitrary-value (shadcn theme)',
     noUnnecessaryArbitraryValue,
     {
-      valid: [
-        { code: '<div className="border-[var(--border)]" />', filename: 'test.tsx' },
-        { code: '<div className="border-(--border)" />', filename: 'test.tsx' },
+      valid: [{ code: '<div className="border-(--border)" />', filename: 'test.tsx' }],
+      invalid: [
+        {
+          code: '<div className="border-[var(--border)]" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'unnecessaryArbitrary' }],
+          output: '<div className="border-border" />',
+        },
       ],
-      invalid: [],
     },
   )
 
   // ── prefer-theme-tokens ─────────────────────────────────────────
+  // Bracket form is owned by no-unnecessary-arbitrary-value (CSS-equivalent),
+  // so prefer-theme-tokens' getNamedEquivalent guard silences it here.
   new RuleTester().run('prefer-theme-tokens (shadcn theme)', preferThemeTokens, {
     valid: [
       { code: '<div className="border-(--no-such-var)" />', filename: 'test.tsx' },
       { code: '<div className="border-border" />', filename: 'test.tsx' },
+      { code: '<div className="border-[var(--border)]" />', filename: 'test.tsx' },
     ],
     invalid: [
-      // Both forms get rewritten directly to the named utility
       {
         code: '<div className="border-(--border)" />',
-        filename: 'test.tsx',
-        errors: [{ messageId: 'preferNamed' }],
-        output: '<div className="border-border" />',
-      },
-      {
-        code: '<div className="border-[var(--border)]" />',
         filename: 'test.tsx',
         errors: [{ messageId: 'preferNamed' }],
         output: '<div className="border-border" />',
@@ -220,12 +224,12 @@ describe('prefer-theme-tokens coexistence (shadcn-style theme)', () => {
 
 // Convergence property
 // ─────────────────────
-// prefer-theme-tokens × enforce-canonical converge regardless of which fix
-// oxlint applies first:
+// Both rules + enforce-canonical converge on `border-border` regardless of
+// which fix oxlint applies first:
 //
 //   border-[var(--border)]
-//     → enforce-canonical first → border-(--border) → prefer-theme-tokens → border-border
-//     → prefer-theme-tokens first → border-border  (single step)
+//     → no-unnec → border-border  (single step)
+//     → enforce-canonical → border-(--border) → prefer-tt → border-border
 //
 // The valid/invalid blocks above lock down each rule's behavior on both the
 // intermediate (`border-(--border)`) and the input (`border-[var(--border)]`)

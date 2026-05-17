@@ -11,7 +11,7 @@ beforeEach(() => {
   resetExtractorConfig()
 })
 
-const SHADCN_FIXTURE = resolve(__dirname, '../fixtures/shadcn-theme.css')
+const SHADCN_FIXTURE = resolve(__dirname, '../fixtures/shadcn.css')
 const DEFAULT_FIXTURE = resolve(__dirname, '../fixtures/default.css')
 
 describe('prefer-theme-tokens (shadcn-style theme)', () => {
@@ -45,6 +45,9 @@ describe('prefer-theme-tokens (shadcn-style theme)', () => {
       { code: '<div className="nonexistent-(--border)" />', filename: 'test.tsx' },
       // Directional sub-utility with unknown variable
       { code: '<div className="border-l-(--no-such-token)" />', filename: 'test.tsx' },
+      // Bracket form is CSS-equivalent to `border-border` with this fixture —
+      // owned by no-unnecessary-arbitrary-value; the getNamedEquivalent guard silences this rule.
+      { code: '<div className="border-[var(--border)]" />', filename: 'test.tsx' },
     ],
     invalid: [
       // Paren shorthand — the case from the issue
@@ -72,13 +75,6 @@ describe('prefer-theme-tokens (shadcn-style theme)', () => {
           },
         ],
         output: '<div className="bg-primary text-background" />',
-      },
-      // Bracket form with var()
-      {
-        code: '<div className="border-[var(--border)]" />',
-        filename: 'test.tsx',
-        errors: [{ messageId: 'preferNamed' }],
-        output: '<div className="border-border" />',
       },
       // Variant prefix preserved
       {

@@ -48,9 +48,12 @@ const LCH_RE = /^lch\s*\(/
 const LAB_RE = /^lab\s*\(/
 const HWB_RE = /^hwb\s*\(/
 const COLOR_RE = /^color\s*\(/
+const VAR_REF_RE = /var\(\s*--[\w-]+/i
 
 function isHardcodedColor(value: string): boolean {
   const trimmed = value.trim()
+  // Skip values referencing CSS variables (e.g. hsl(var(--x)), oklch(var(--x))).
+  if (VAR_REF_RE.test(trimmed)) return false
   return (
     HEX_RE.test(trimmed) ||
     RGB_RE.test(trimmed) ||

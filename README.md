@@ -815,7 +815,7 @@ Detects arbitrary values that have a named Tailwind equivalent. The arbitrary fo
 
 Suggests replacing raw CSS variable references like `border-(--border)` or `bg-[var(--primary)]` with the equivalent named theme-token utility (`border-border`, `bg-primary`) when one exists in your design system.
 
-Unlike `no-unnecessary-arbitrary-value`, this rule fires even when the named utility produces _different_ CSS — for example, in shadcn-style themes where `--color-border: hsl(var(--border))` wraps the raw variable. Useful to match the official Tailwind VS Code extension's `suggestCanonicalClasses` behavior. **Off by default** because the replacement may change observable CSS in those setups.
+Unlike `no-unnecessary-arbitrary-value`, this rule fires even when the named utility produces _different_ CSS — for example, in themes that wrap the raw variable in a color function (`--color-border: hsl(var(--border))`). Useful to match the official Tailwind VS Code extension's `suggestCanonicalClasses` behavior. **Off by default** because the replacement may change observable CSS in those setups. (When the theme exposes the variable directly with no wrapping function, `border-[var(--border)]` is CSS-equivalent to `border-border` and is owned by `no-unnecessary-arbitrary-value` instead.)
 
 ```tsx
 // ❌ Bad → ✅ Fixed (when border-border is a valid utility)
@@ -843,10 +843,20 @@ The class parser correctly handles:
 ## Known limitations
 
 - **`enforce-canonical`**: Named classes are canonicalized via the precomputed map (covers everything in `getClassList()` plus a curated list of legacy v3 spellings like `break-words`, `flex-grow`, `start-N`, `bg-gradient-to-*`). Arbitrary/CSS-var forms (`p-[2px]`, `bg-(--c)`) are canonicalized dynamically via the worker. Some valid v4 classes that don't appear in `getClassList()` and have no canonical rewrite (e.g. `border-1` is valid as a dynamic numeric value but isn't enumerated) are left untouched.
-- **`no-conflicting-classes`**: Uses exact CSS property name matching. Shorthand vs longhand conflicts (e.g., `p-4` vs `px-2` where `padding` conflicts with `padding-left`) are not detected.
+- **`no-conflicting-classes`**: Uses exact CSS property name matching plus composition heuristics: CSS-var composition (`shadow` + `ring`), narrowing-override (later class is a strict subset of earlier — handles `size-4 h-6`, `rounded-t-lg rounded-tl-sm`, `truncate text-clip`), complementary groups (gradient stops, transition family, transform axes, mask gradient family across edges/axes/`linear`/`radial`/`conic`), and composition pairs (e.g. `mask-add` + any mask gradient). Shorthand vs longhand cases where Tailwind emits the shorthand and Tailwind's longhand has a different CSS property name (e.g., `p-4` vs `px-2`: `padding` vs `padding-left`/`padding-right`) are still not detected.
 - **`no-dark-without-light`**: Groups by utility prefix heuristic. May not perfectly match all multi-part utility prefixes.
 - **`no-unnecessary-arbitrary-value`**: Only detects equivalences for classes with a single CSS property. Multi-property utilities may have arbitrary forms that aren't detected.
 - **Component classes**: Only first-level `@import` relative paths are followed. Deeply nested imports or absolute paths are not resolved.
+
+## Supported plugins
+
+The plugin loads classes through `@tailwindcss/node`, so any plugin imported into your CSS entry point — `@plugin '...'` or `@import '...'` — is recognized automatically by every rule. The following are exercised by the test suite:
+
+- **[`@tailwindcss/typography`](https://github.com/tailwindlabs/tailwindcss-typography)** — `prose`, `prose-sm/lg/xl`, `not-prose`. `no-conflicting-classes` extracts only root-level CSS properties from `prose`, so utilities like `prose overflow-x-auto` aren't reported as conflicts.
+- **[`tailwindcss-animate`](https://github.com/jamiebuilds/tailwindcss-animate)** — `animate-in`, `animate-out`, `fade-{in,out}-*`, `zoom-{in,out}-*`, `spin-{in,out}-*`, `slide-{in-from,out-to}-*`, `duration-*`, `delay-*`, `ease-*`, `direction-*`, `fill-mode-*`, `repeat-*`, `running`, `paused`. `animate-in`/`animate-out` initialize all `--tw-enter-*` / `--tw-exit-*` custom properties to `initial`, and modifiers (`fade-in`, `zoom-in`, `slide-in-from-*`, etc.) each override one of them; this composition is recognized by `no-conflicting-classes`.
+- **[`tw-animate-css`](https://github.com/Wombosvideo/tw-animate-css)** — v4-native rewrite of `tailwindcss-animate`. Adds `blur-{in,out}-*`, logical (RTL-aware) `slide-{in-from,out-to}-{start,end}-*`, `play-state-*`, `animation-duration-*`, and the `animate-accordion-{up,down}` / `animate-collapsible-{up,down}` / `animate-caret-blink` keyframe animations used by Radix-style headless component libraries.
+
+Other plugins that emit classes through standard `getClassList()` and CSS output should work out of the box. If you find one that doesn't, open an issue.
 
 ## Requirements
 

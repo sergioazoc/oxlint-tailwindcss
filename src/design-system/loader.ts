@@ -108,6 +108,40 @@ function cachedAutoDetect(filePath?: string): string | null {
 }
 
 /**
+ * Pure resolution of which CSS entry point to use for a given context.
+ *
+ * Resolution order: rule option `entryPoint` > `settingsEntry` (string or
+ * closest-of-array) > `autoDetect(filePath)` > `lastPath` fallback.
+ *
+ * Returns `isExplicit: true` when the result came from a rule option or
+ * settings (not auto-detect / lastPath) — the caller uses this to decide
+ * whether to update the shared `lastLoadedPath` fallback. Auto-detect
+ * results never update the fallback (prevents cross-package contamination
+ * in monorepos).
+ *
+ * `autoDetect` is injected for testability; in production it's
+ * `cachedAutoDetect`. Pure: does not touch module state.
+ */
+export function resolveCssPath(args: {
+  entryPoint?: string
+  settingsEntry?: string | string[]
+  filePath?: string
+  lastPath?: string | null
+  autoDetect: (filePath?: string) => string | null
+}): { path: string | null; isExplicit: boolean } {
+  const { entryPoint, settingsEntry, filePath, lastPath, autoDetect } = args
+  const explicit =
+    entryPoint ??
+    (Array.isArray(settingsEntry)
+      ? resolveClosestEntryPoint(settingsEntry, filePath)
+      : settingsEntry)
+  if (explicit) return { path: explicit, isExplicit: true }
+  const detected = autoDetect(filePath)
+  if (detected) return { path: detected, isExplicit: false }
+  return { path: lastPath ?? null, isExplicit: false }
+}
+
+/**
  * Returns the design system cache, loading synchronously on first call.
  * Uses execFileSync internally to bridge the async Tailwind API.
  *
@@ -122,15 +156,13 @@ export function getLoadedDesignSystem(
   settings?: Readonly<Record<string, unknown>>,
   filePath?: string,
 ): LoadResult | null {
-  // Explicit entry points (rule option or settings) update the fallback path.
-  // Auto-detect results do NOT — this prevents cross-package contamination in monorepos.
-  const settingsEntry = entryPointFromSettings(settings)
-  const explicitEntry =
-    entryPoint ??
-    (Array.isArray(settingsEntry)
-      ? resolveClosestEntryPoint(settingsEntry, filePath)
-      : settingsEntry)
-  const cssPath = explicitEntry ?? cachedAutoDetect(filePath) ?? lastLoadedPath
+  const { path: cssPath, isExplicit } = resolveCssPath({
+    entryPoint,
+    settingsEntry: entryPointFromSettings(settings),
+    filePath,
+    lastPath: lastLoadedPath,
+    autoDetect: cachedAutoDetect,
+  })
   if (!cssPath) return null
 
   const resolvedPath = resolve(cssPath)
@@ -139,7 +171,7 @@ export function getLoadedDesignSystem(
     const mtime = statSync(resolvedPath).mtimeMs
     const cached = dsCache.get(resolvedPath)
     if (cached && cached.mtime === mtime) {
-      if (explicitEntry) lastLoadedPath = resolvedPath
+      if (isExplicit) lastLoadedPath = resolvedPath
       return { cache: cached.cache, entryPoint: resolvedPath }
     }
 
@@ -149,7 +181,7 @@ export function getLoadedDesignSystem(
     const cache = DesignSystemCache.fromPrecomputed(data)
     dsCache.set(resolvedPath, { cache, mtime })
     debugLog(`Loaded design system from "${resolvedPath}"`)
-    if (explicitEntry) lastLoadedPath = resolvedPath
+    if (isExplicit) lastLoadedPath = resolvedPath
     return { cache, entryPoint: resolvedPath }
   } catch {
     return null

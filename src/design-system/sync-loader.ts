@@ -353,7 +353,12 @@ async function main() {
     }
   }
 
-  // Arbitrary equivalents: map arbitrary forms to named equivalents
+  // Arbitrary equivalents: map arbitrary forms to named equivalents.
+  // Enumerate every dash split point so multi-segment utilities (e.g.
+  // bg-card-foreground) emit candidates for every prefix; lastIndexOf
+  // alone drops the shorter prefix and misses multi-segment mappings.
+  // Start at indexOf('-', 1) so negative utilities (e.g. -translate-x-1)
+  // keep their leading '-' in every prefix instead of producing '' + '-[…]'.
   const arbitraryEquivalents = {};
   const candidates = [];
   for (const cls of validClasses) {
@@ -365,10 +370,10 @@ async function main() {
     const pvMatch = cssText.match(/^\\s+([\\w-]+)\\s*:\\s*(.+?)\\s*;?\\s*$/m);
     if (!pvMatch) continue;
     const value = pvMatch[2].trim().replace(/;$/, '');
-    const lastDash = cls.lastIndexOf('-');
-    if (lastDash <= 0) continue;
-    const prefix = cls.slice(0, lastDash);
-    candidates.push({ arbitraryForm: prefix + '-[' + value + ']', namedCls: cls, namedCss: cssText });
+    for (let dashPos = cls.indexOf('-', 1); dashPos > 0; dashPos = cls.indexOf('-', dashPos + 1)) {
+      const prefix = cls.slice(0, dashPos);
+      candidates.push({ arbitraryForm: prefix + '-[' + value + ']', namedCls: cls, namedCss: cssText });
+    }
   }
   function extractDeclarations(css) {
     const openBrace = css.indexOf('{');
@@ -394,8 +399,50 @@ main().catch(e => { process.stderr.write(e.message); process.exit(1); });
 
 const CACHE_DIR = join(tmpdir(), 'oxlint-tailwindcss')
 
-// Bump this when precompute logic changes to invalidate disk cache
-const CACHE_VERSION = 13
+/**
+ * Cache key derived from:
+ *   - md5(PRECOMPUTE_SCRIPT): auto-invalidates when our precompute logic changes,
+ *     since the shape and content of the cached JSON is fully determined by what
+ *     this script prints to stdout.
+ *   - @tailwindcss/node version: auto-invalidates when the consumer upgrades
+ *     tailwindcss (e.g. 4.2 → 4.3 adding `zoom-*`, `tab-*`, `scrollbar-*` etc.),
+ *     so `validClasses`, `cssProps`, `canonical`, and `arbitraryEquivalents`
+ *     reflect the installed version. @tailwindcss/node and tailwindcss are
+ *     published together, so their versions match.
+ */
+export function computeCacheKey(scriptContent: string, tailwindVersion: string): string {
+  const scriptHash = createHash('md5').update(scriptContent).digest('hex').slice(0, 8)
+  return `${scriptHash}:${tailwindVersion}`
+}
+
+export function readTailwindVersion(): string {
+  try {
+    // @tailwindcss/node doesn't expose ./package.json in its exports map,
+    // so walk up from the resolved entry until we find a package.json named
+    // '@tailwindcss/node'.
+    let dir = dirname(require.resolve('@tailwindcss/node'))
+    while (true) {
+      const candidate = join(dir, 'package.json')
+      if (existsSync(candidate)) {
+        const pkg = JSON.parse(readFileSync(candidate, 'utf-8')) as {
+          name?: string
+          version?: string
+        }
+        if (pkg.name === '@tailwindcss/node' && pkg.version) return pkg.version
+      }
+      const parent = dirname(dir)
+      if (parent === dir) break
+      dir = parent
+    }
+  } catch {
+    // Fallback below.
+  }
+  // Fallback: cache key still varies with script content; consumers without
+  // @tailwindcss/node installed won't reach the precompute path anyway.
+  return 'unknown'
+}
+
+const CACHE_KEY = computeCacheKey(PRECOMPUTE_SCRIPT, readTailwindVersion())
 
 /**
  * Two-level disk cache for monorepo deduplication:
@@ -408,12 +455,12 @@ const CACHE_VERSION = 13
  */
 
 function getMtimeIndexPath(cssPath: string, mtime: number): string {
-  const hash = createHash('md5').update(`v${CACHE_VERSION}:${cssPath}:${mtime}`).digest('hex')
+  const hash = createHash('md5').update(`${CACHE_KEY}:${cssPath}:${mtime}`).digest('hex')
   return join(CACHE_DIR, `${hash}.idx`)
 }
 
 function computeContentHash(content: string): string {
-  return createHash('md5').update(`v${CACHE_VERSION}:${content}`).digest('hex')
+  return createHash('md5').update(`${CACHE_KEY}:${content}`).digest('hex')
 }
 
 function getContentCachePath(contentHash: string): string {
