@@ -34,7 +34,7 @@ import { noUnnecessaryArbitraryValue } from '../../src/rules/no-unnecessary-arbi
 import { preferThemeTokens } from '../../src/rules/prefer-theme-tokens'
 
 const DEFAULT_FIXTURE = resolve(__dirname, '../fixtures/default.css')
-const SHADCN_FIXTURE = resolve(__dirname, '../fixtures/shadcn-theme.css')
+const SHADCN_FIXTURE = resolve(__dirname, '../fixtures/shadcn.css')
 
 // Whitespace shape produced by `enforce-consistent-line-wrapping`'s
 // `classesPerLine` autofix: `\n` followed by enough spaces to align with the

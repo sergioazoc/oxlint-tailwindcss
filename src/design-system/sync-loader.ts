@@ -353,7 +353,12 @@ async function main() {
     }
   }
 
-  // Arbitrary equivalents: map arbitrary forms to named equivalents
+  // Arbitrary equivalents: map arbitrary forms to named equivalents.
+  // Enumerate every dash split point so multi-segment utilities (e.g.
+  // bg-card-foreground) emit candidates for every prefix; lastIndexOf
+  // alone drops the shorter prefix and misses multi-segment mappings.
+  // Start at indexOf('-', 1) so negative utilities (e.g. -translate-x-1)
+  // keep their leading '-' in every prefix instead of producing '' + '-[…]'.
   const arbitraryEquivalents = {};
   const candidates = [];
   for (const cls of validClasses) {
@@ -365,10 +370,10 @@ async function main() {
     const pvMatch = cssText.match(/^\\s+([\\w-]+)\\s*:\\s*(.+?)\\s*;?\\s*$/m);
     if (!pvMatch) continue;
     const value = pvMatch[2].trim().replace(/;$/, '');
-    const lastDash = cls.lastIndexOf('-');
-    if (lastDash <= 0) continue;
-    const prefix = cls.slice(0, lastDash);
-    candidates.push({ arbitraryForm: prefix + '-[' + value + ']', namedCls: cls, namedCss: cssText });
+    for (let dashPos = cls.indexOf('-', 1); dashPos > 0; dashPos = cls.indexOf('-', dashPos + 1)) {
+      const prefix = cls.slice(0, dashPos);
+      candidates.push({ arbitraryForm: prefix + '-[' + value + ']', namedCls: cls, namedCss: cssText });
+    }
   }
   function extractDeclarations(css) {
     const openBrace = css.indexOf('{');

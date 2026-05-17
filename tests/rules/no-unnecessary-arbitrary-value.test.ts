@@ -78,5 +78,25 @@ ruleTester.run('no-unnecessary-arbitrary-value', noUnnecessaryArbitraryValue, {
       ],
       output: '<div className="h-auto w-auto flex" />',
     },
+    // Multi-segment utilities: arbitraryEquivalents must enumerate every
+    // dash split point so `bg-red-500` registers `bg-[<value>]`.
+    {
+      code: '<div className="bg-[var(--color-red-500)]" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'unnecessaryArbitrary' }],
+      output: '<div className="bg-red-500" />',
+    },
+    {
+      code: '<div className="text-[var(--color-blue-700)]" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'unnecessaryArbitrary' }],
+      output: '<div className="text-blue-700" />',
+    },
+    {
+      code: '<div className="ring-offset-[var(--color-blue-500)]" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'unnecessaryArbitrary' }],
+      output: '<div className="ring-offset-blue-500" />',
+    },
   ],
 })

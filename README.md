@@ -815,7 +815,7 @@ Detects arbitrary values that have a named Tailwind equivalent. The arbitrary fo
 
 Suggests replacing raw CSS variable references like `border-(--border)` or `bg-[var(--primary)]` with the equivalent named theme-token utility (`border-border`, `bg-primary`) when one exists in your design system.
 
-Unlike `no-unnecessary-arbitrary-value`, this rule fires even when the named utility produces _different_ CSS — for example, in shadcn-style themes where `--color-border: hsl(var(--border))` wraps the raw variable. Useful to match the official Tailwind VS Code extension's `suggestCanonicalClasses` behavior. **Off by default** because the replacement may change observable CSS in those setups.
+Unlike `no-unnecessary-arbitrary-value`, this rule fires even when the named utility produces _different_ CSS — for example, in themes that wrap the raw variable in a color function (`--color-border: hsl(var(--border))`). Useful to match the official Tailwind VS Code extension's `suggestCanonicalClasses` behavior. **Off by default** because the replacement may change observable CSS in those setups. (When the theme exposes the variable directly with no wrapping function, `border-[var(--border)]` is CSS-equivalent to `border-border` and is owned by `no-unnecessary-arbitrary-value` instead.)
 
 ```tsx
 // ❌ Bad → ✅ Fixed (when border-border is a valid utility)
