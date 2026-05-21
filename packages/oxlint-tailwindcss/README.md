@@ -1,15 +1,19 @@
 # oxlint-tailwindcss
 
-23 Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). Built for Tailwind CSS v4 with auto-detection, typo suggestions, and autofixes.
+23 Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). Built for Tailwind CSS v4 with deterministic config, typo suggestions, and autofixes.
+
+> **v1.0.0** — Upgrading from v0.x? See the **[migration guide](https://oxlint-tailwindcss.dev/migration/v0-to-v1)**. The headline change: `settings.tailwindcss.entryPoint` is now required.
 
 Read the story behind this plugin: [oxlint-tailwindcss: The Linting Plugin Tailwind v4 Needed](https://sergioazocar.com/en/blog/oxlint-tailwindcss-the-linting-plugin-tailwind-v4-needed)
 
 ## Highlights
 
-- **Works out of the box** — Auto-detects your Tailwind CSS entry point. Fully configurable when needed.
-- **Monorepo-ready** — Each package resolves its own design system automatically. Run `oxlint` once from the workspace root.
-- **Fast** — Native oxlint plugin with per-entry-point caching and content-based disk cache for monorepo deduplication.
-- **Tailwind CSS v4** — Designed for v4 from day one.
+- **Configure once, never fails** — `settings.tailwindcss.entryPoint` is explicit. Same input → same output on every machine.
+- **Monorepo-ready** — Single root config with a glob → CSS mapping array, or one `.oxlintrc.json` per package. Both fully deterministic.
+- **Coexists with oxfmt and Prettier** — Point all tools at the same CSS and they agree byte-for-byte. See the [interop guide](https://oxlint-tailwindcss.dev/interop).
+- **Tailwind CSS v4** — Designed for v4 from day one. Reads your `@theme { ... }` custom tokens, your shadcn variables, your typography plugin.
+- **Fail loud** — Misconfiguration surfaces as a single `designSystemUnavailable` diagnostic with an actionable hint. Never silently skipped rules.
+- **Fast** — Native oxlint plugin with per-entry-point caching and content-hash disk cache for monorepo deduplication.
 - **Typo suggestions** — `itms-center` → "Did you mean `items-center`?"
 - **Conflict detection** — Shows exactly which CSS properties conflict and which class wins.
 - **Lightweight** — Only 2 runtime dependencies: `@tailwindcss/node` and `tailwindcss`.
@@ -17,6 +21,8 @@ Read the story behind this plugin: [oxlint-tailwindcss: The Linting Plugin Tailw
 - **Variable detection** — Lints variables named `className`, `classes`, `style` automatically.
 - **Customizable** — Extend class detection with custom attributes, callees, tags, and variable patterns.
 - **Component class support** — Recognizes `@layer components { .btn {} }` in your CSS.
+
+Full documentation: **https://oxlint-tailwindcss.dev** (English) · **https://oxlint-tailwindcss.dev/es** (Español)
 
 ## Installation
 
@@ -63,60 +69,48 @@ Add the plugin to your `.oxlintrc.json`:
 }
 ```
 
-The plugin auto-detects your Tailwind CSS entry point. No configuration needed in most projects.
-
-## Auto-detection
-
-The plugin searches for a CSS file containing a Tailwind import signal (`@import "tailwindcss"`, `@import 'tailwindcss'`, `@import tailwindcss`, `@tailwind base`) in these locations, walking upward from the linted file:
-
-```
-src/{name}.css       {name}.css            app/{name}.css
-styles/{name}.css    style/{name}.css      css/{name}.css
-assets/{name}.css    assets/css/{name}.css  resources/css/{name}.css
-```
-
-Where `{name}` is one of: `app`, `globals`, `global`, `style`, `styles`, `index`, `main`, `tailwind`, `tailwindcss`.
-
-The search is monorepo-aware — it stops at `package.json` boundaries so each package resolves its own Tailwind config. Packages without a Tailwind CSS file are silently skipped (DS-dependent rules produce no diagnostics). If the signal isn't found directly in the CSS file, the auto-detector follows `@import` statements one level deep — supporting both relative paths and package imports (e.g. `@import '@company/theme/tailwind.config.css'`).
-
-If auto-detection doesn't find your CSS file, set `entryPoint` once in `settings`:
+Declare your Tailwind CSS entry point in `settings.tailwindcss.entryPoint`:
 
 ```jsonc
 {
   "jsPlugins": ["oxlint-tailwindcss"],
   "settings": {
     "tailwindcss": {
-      "entryPoint": "app/tailwind.css",
-    },
+      "entryPoint": "src/styles.css"
+    }
   },
   "rules": {
-    "tailwindcss/no-unknown-classes": "error",
+    "tailwindcss/no-unknown-classes": "error"
     // ...
-  },
+  }
 }
 ```
 
-The design system is loaded once per entry point and shared across all rules. In monorepos, each package resolves its own entry point automatically via `package.json` boundaries.
+That's the only required setting. The plugin loads your design system from that file once and shares it across every rule.
 
-### Multiple entry points (monorepos)
+### Monorepos
 
-For monorepos where auto-detection isn't enough, `entryPoint` accepts an array. The plugin picks the closest entry point for each file based on directory proximity:
+Two patterns, both fully deterministic:
+
+**Pattern A — single root config with a glob → CSS mapping.** First match wins, evaluation in array order:
 
 ```jsonc
 {
   "settings": {
     "tailwindcss": {
       "entryPoint": [
-        "packages/web/src/globals.css",
-        "packages/admin/src/styles.css",
-        "packages/marketing/src/tailwind.css",
-      ],
-    },
-  },
+        { "files": "packages/ui/**",     "use": "packages/ui/src/styles.css" },
+        { "files": "packages/admin/**",  "use": "packages/admin/src/admin.css" },
+        { "files": "**",                  "use": "src/global.css" }
+      ]
+    }
+  }
 }
 ```
 
-For example, `packages/web/src/App.tsx` resolves to `packages/web/src/globals.css` and `packages/admin/src/Dashboard.tsx` resolves to `packages/admin/src/styles.css`.
+**Pattern B — one `.oxlintrc.json` per package**, each with its own string `entryPoint`. oxlint resolves the closest config to the file being linted.
+
+See the full [monorepo guide](https://oxlint-tailwindcss.dev/monorepo) for examples of both.
 
 ### Per-rule override
 
@@ -140,9 +134,9 @@ For slow environments (large monorepos, CI), you can increase the design system 
 {
   "settings": {
     "tailwindcss": {
-      "timeout": 60000, // milliseconds (default: 30000)
-    },
-  },
+      "timeout": 120000 // milliseconds (default: 60000)
+    }
+  }
 }
 ```
 
