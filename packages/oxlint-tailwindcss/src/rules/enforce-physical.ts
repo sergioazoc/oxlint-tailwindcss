@@ -2,12 +2,40 @@ import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
 import { splitUtilityAndVariant } from '../utils/class-parser'
-import { PHYSICAL_TO_LOGICAL } from './enforce-logical'
+import {
+  PHYSICAL_TO_LOGICAL_MAPPINGS,
+  type Direction,
+  type LogicalMapping,
+} from './enforce-logical'
+import { safeOptions } from '../types'
 
-// Invert the mapping: logical → physical
-const LOGICAL_TO_PHYSICAL: Record<string, string> = {}
-for (const [physical, logical] of Object.entries(PHYSICAL_TO_LOGICAL)) {
-  LOGICAL_TO_PHYSICAL[logical] = physical
+interface Options {
+  allowlist?: string[]
+  direction?: Direction
+}
+
+// Invert the mapping: logical → physical, preserving axis tags.
+const LOGICAL_TO_PHYSICAL_MAPPINGS: LogicalMapping[] = PHYSICAL_TO_LOGICAL_MAPPINGS.map((m) => ({
+  physical: m.logical,
+  logical: m.physical,
+  axis: m.axis,
+}))
+
+function compileAllowlist(patterns?: string[]): RegExp[] {
+  if (!patterns || patterns.length === 0) return []
+  const compiled: RegExp[] = []
+  for (const p of patterns) {
+    try {
+      compiled.push(new RegExp(p))
+    } catch {
+      // Skip invalid regex sources rather than blowing up the lint.
+    }
+  }
+  return compiled
+}
+
+function isAllowlisted(cls: string, allowlist: readonly RegExp[]): boolean {
+  return allowlist.some((re) => re.test(cls))
 }
 
 export const enforcePhysical = defineRule({
@@ -18,8 +46,18 @@ export const enforcePhysical = defineRule({
         'Enforce physical Tailwind CSS properties instead of logical ones for consistency in LTR-only projects',
     },
     fixable: 'code',
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          allowlist: { type: 'array', items: { type: 'string' } },
+          direction: { type: 'string', enum: ['inline', 'block', 'both'] },
+        },
+        additionalProperties: false,
+      },
+    ],
     hasSuggestions: true,
+    defaultOptions: [{ allowlist: [], direction: 'both' }],
     messages: {
       usePhysical:
         '"{{className}}" uses a logical property. Use "{{replacement}}" for consistency.',
@@ -27,10 +65,24 @@ export const enforcePhysical = defineRule({
     },
   },
   createOnce(context) {
+    let _state: { allowlist: RegExp[]; direction: Direction } | null = null
+    function getState() {
+      if (!_state) {
+        const opts = safeOptions<Options>(context)
+        _state = {
+          allowlist: compileAllowlist(opts?.allowlist),
+          direction: opts?.direction ?? 'both',
+        }
+      }
+      return _state
+    }
+
     function convertClass(cls: string): string | null {
+      const { allowlist, direction } = getState()
+      if (isAllowlisted(cls, allowlist)) return null
+
       const { utility, variant } = splitUtilityAndVariant(cls)
 
-      // Strip ! (important) for lookup — prefix or suffix
       const hasImportantPrefix = utility.startsWith('!')
       const hasImportantSuffix = !hasImportantPrefix && utility.endsWith('!')
       const bareUtility = hasImportantPrefix
@@ -39,10 +91,14 @@ export const enforcePhysical = defineRule({
           ? utility.slice(0, -1)
           : utility
 
-      for (const [logical, physical] of Object.entries(LOGICAL_TO_PHYSICAL)) {
-        if (bareUtility === logical || bareUtility.startsWith(`${logical}-`)) {
-          const suffix = bareUtility.slice(logical.length)
-          return `${variant}${hasImportantPrefix ? '!' : ''}${physical}${suffix}${hasImportantSuffix ? '!' : ''}`
+      // Note: `physical` field on a LOGICAL_TO_PHYSICAL_MAPPINGS entry holds the
+      // logical prefix (the input), and `logical` holds the physical target.
+      // We swap names on inversion but keep the property layout to minimize churn.
+      for (const { physical: logicalPrefix, logical: physicalTarget, axis } of LOGICAL_TO_PHYSICAL_MAPPINGS) {
+        if (direction !== 'both' && direction !== axis) continue
+        if (bareUtility === logicalPrefix || bareUtility.startsWith(`${logicalPrefix}-`)) {
+          const suffix = bareUtility.slice(logicalPrefix.length)
+          return `${variant}${hasImportantPrefix ? '!' : ''}${physicalTarget}${suffix}${hasImportantSuffix ? '!' : ''}`
         }
       }
       return null
