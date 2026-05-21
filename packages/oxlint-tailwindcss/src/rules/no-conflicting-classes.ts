@@ -3,6 +3,7 @@ import { createExtractorVisitors, type ClassLocation } from '../utils/extractors
 import { splitClasses } from '../utils/class-splitter'
 import { extractUtility, getVariantPrefix } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
+import { safeGetDS } from '../utils/fatal'
 
 // Utilities that share a CSS property but are designed to compose.
 // Most composition is detected automatically via CSS custom properties
@@ -129,13 +130,14 @@ export const noConflictingClasses = defineRule({
     messages: {
       conflict:
         '"{{classA}}" and "{{classB}}" affect {{properties}}. "{{winner}}" takes precedence (appears later).',
+      designSystemUnavailable: '{{message}}',
     },
   },
   createOnce(context) {
     const getDS = createLazyLoader(context)
 
     function check(locations: ClassLocation[]) {
-      const ds = getDS()
+      const ds = safeGetDS(getDS, context, locations[0]?.node)
       if (!ds) return
       const { cache } = ds
       for (const loc of locations) {

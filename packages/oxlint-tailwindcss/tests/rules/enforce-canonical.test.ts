@@ -3,6 +3,7 @@ import { beforeAll } from 'vitest'
 import { RuleTester } from 'oxlint/plugins-dev'
 import { enforceCanonical } from '../../src/rules/enforce-canonical'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
+import { runWithFixture } from '../utils/with-fixture'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 
@@ -13,7 +14,7 @@ beforeAll(() => {
 
 const ruleTester = new RuleTester()
 
-ruleTester.run('enforce-canonical', enforceCanonical, {
+runWithFixture(ruleTester, 'enforce-canonical', enforceCanonical, ENTRY_POINT, {
   valid: [
     { code: '<div className="flex items-center" />', filename: 'test.tsx' },
     { code: '<div className="bg-blue-500 p-4" />', filename: 'test.tsx' },

@@ -54,22 +54,41 @@ export function formatFatalError(err: FatalError): string {
 
 /**
  * Helper for DS-dependent rules to convert a caught fatal error into a
- * single Program-level diagnostic. Returns `true` if the error was reported
- * (and the visitor should bail out), `false` otherwise — the rule layer
- * rethrows non-fatal errors to surface real bugs.
+ * single diagnostic. Returns `true` if the error was reported (and the
+ * visitor should bail out), `false` otherwise — the rule layer rethrows
+ * non-fatal errors to surface real bugs.
+ *
+ * `context` is typed as `unknown` here to avoid pinning the helper to a
+ * specific oxlint version's `RuleContext`. Rules pass their own typed
+ * context; we trust the duck-typed `.report` to exist.
  */
 export function reportFatalDsError(
-  context: {
-    report(descriptor: { node?: unknown; loc?: unknown; messageId: string; data?: object }): void
-  },
+  context: unknown,
   err: unknown,
   node?: unknown,
 ): boolean {
   if (!isFatalError(err)) return false
-  context.report({
+  const ctx = context as { report: (d: unknown) => void }
+  ctx.report({
     node,
     messageId: 'designSystemUnavailable',
     data: { message: formatFatalError(err) },
   })
   return true
+}
+
+/**
+ * Call `getDS()` and route fatal errors through `reportFatalDsError`.
+ *
+ * Returns the load result on success, or `null` after a fatal error has been
+ * reported (rules should `if (!ds) return` and exit the visitor). Non-fatal
+ * errors are re-thrown so genuine bugs aren't hidden.
+ */
+export function safeGetDS<T>(getDS: () => T, context: unknown, node?: unknown): T | null {
+  try {
+    return getDS()
+  } catch (err) {
+    if (reportFatalDsError(context, err, node)) return null
+    throw err
+  }
 }

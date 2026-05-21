@@ -16,8 +16,8 @@
 
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, describe } from 'vitest'
-import { RuleTester } from 'oxlint/plugins-dev'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
+import { makeFixtureRunner } from '../utils/with-fixture'
 import { enforceCanonical } from '../../src/rules/enforce-canonical'
 import { enforceSortOrder } from '../../src/rules/enforce-sort-order'
 import { consistentVariantOrder } from '../../src/rules/consistent-variant-order'
@@ -42,6 +42,7 @@ const SHADCN_FIXTURE = resolve(__dirname, '../fixtures/shadcn.css')
 const NL = '\n                  '
 
 describe('multiline preservation under default theme', () => {
+  const run = makeFixtureRunner(DEFAULT_FIXTURE)
   beforeAll(() => {
     resetDesignSystem()
     getLoadedDesignSystem(DEFAULT_FIXTURE)
@@ -51,7 +52,7 @@ describe('multiline preservation under default theme', () => {
   })
 
   // 1-to-1 reordering — must keep separators verbatim.
-  new RuleTester().run('enforce-sort-order keeps multiline', enforceSortOrder, {
+  run('enforce-sort-order keeps multiline', enforceSortOrder, {
     valid: [],
     invalid: [
       {
@@ -64,7 +65,7 @@ describe('multiline preservation under default theme', () => {
   })
 
   // 1-to-1 canonicalization — must keep separators verbatim.
-  new RuleTester().run('enforce-canonical keeps multiline', enforceCanonical, {
+  run('enforce-canonical keeps multiline', enforceCanonical, {
     valid: [],
     invalid: [
       {
@@ -78,7 +79,7 @@ describe('multiline preservation under default theme', () => {
 
   // 1-to-1 variant reordering inside one class — separators between classes untouched.
   // Default fixture loads the DS, so DS-mode order applies (state→breakpoint).
-  new RuleTester().run('consistent-variant-order keeps multiline', consistentVariantOrder, {
+  run('consistent-variant-order keeps multiline', consistentVariantOrder, {
     valid: [],
     invalid: [
       {
@@ -91,7 +92,7 @@ describe('multiline preservation under default theme', () => {
   })
 
   // 1-to-1 ! reposition — must keep separators verbatim.
-  new RuleTester().run(
+  run(
     'enforce-consistent-important-position keeps multiline',
     enforceConsistentImportantPosition,
     {
@@ -109,7 +110,7 @@ describe('multiline preservation under default theme', () => {
   )
 
   // 1-to-1 physical→logical.
-  new RuleTester().run('enforce-logical keeps multiline', enforceLogical, {
+  run('enforce-logical keeps multiline', enforceLogical, {
     valid: [],
     invalid: [
       {
@@ -122,7 +123,7 @@ describe('multiline preservation under default theme', () => {
   })
 
   // 1-to-1 logical→physical.
-  new RuleTester().run('enforce-physical keeps multiline', enforcePhysical, {
+  run('enforce-physical keeps multiline', enforcePhysical, {
     valid: [],
     invalid: [
       {
@@ -135,7 +136,7 @@ describe('multiline preservation under default theme', () => {
   })
 
   // 1-to-1 var syntax flip.
-  new RuleTester().run(
+  run(
     'enforce-consistent-variable-syntax keeps multiline',
     enforceConsistentVariableSyntax,
     {
@@ -153,7 +154,7 @@ describe('multiline preservation under default theme', () => {
   )
 
   // 1-to-1 negative arbitrary repositioning.
-  new RuleTester().run(
+  run(
     'enforce-negative-arbitrary-values keeps multiline',
     enforceNegativeArbitraryValues,
     {
@@ -170,7 +171,7 @@ describe('multiline preservation under default theme', () => {
   )
 
   // Length-shrinking — degrades gracefully to multiline join.
-  new RuleTester().run('enforce-shorthand keeps multiline', enforceShorthand, {
+  run('enforce-shorthand keeps multiline', enforceShorthand, {
     valid: [],
     invalid: [
       {
@@ -184,7 +185,7 @@ describe('multiline preservation under default theme', () => {
   })
 
   // 1-to-1 deprecation rewrite.
-  new RuleTester().run('no-deprecated-classes keeps multiline', noDeprecatedClasses, {
+  run('no-deprecated-classes keeps multiline', noDeprecatedClasses, {
     valid: [],
     invalid: [
       {
@@ -197,7 +198,7 @@ describe('multiline preservation under default theme', () => {
   })
 
   // Length-shrinking — must preserve the surviving newline.
-  new RuleTester().run('no-duplicate-classes keeps multiline', noDuplicateClasses, {
+  run('no-duplicate-classes keeps multiline', noDuplicateClasses, {
     valid: [],
     invalid: [
       {
@@ -210,7 +211,7 @@ describe('multiline preservation under default theme', () => {
   })
 
   // Suggestion-only (typo fix); still needs to preserve multiline in the suggestion.
-  new RuleTester().run('no-unknown-classes suggestion keeps multiline', noUnknownClasses, {
+  run('no-unknown-classes suggestion keeps multiline', noUnknownClasses, {
     valid: [],
     invalid: [
       {
@@ -233,7 +234,7 @@ describe('multiline preservation under default theme', () => {
   })
 
   // 1-to-1 arbitrary→named.
-  new RuleTester().run(
+  run(
     'no-unnecessary-arbitrary-value keeps multiline',
     noUnnecessaryArbitraryValue,
     {
@@ -251,6 +252,7 @@ describe('multiline preservation under default theme', () => {
 })
 
 describe('multiline preservation under shadcn-style theme', () => {
+  const run = makeFixtureRunner(SHADCN_FIXTURE)
   beforeAll(() => {
     resetDesignSystem()
     getLoadedDesignSystem(SHADCN_FIXTURE)
@@ -260,7 +262,7 @@ describe('multiline preservation under shadcn-style theme', () => {
   })
 
   // 1-to-1 named-equivalent suggestion.
-  new RuleTester().run('prefer-theme-tokens keeps multiline', preferThemeTokens, {
+  run('prefer-theme-tokens keeps multiline', preferThemeTokens, {
     valid: [],
     invalid: [
       {

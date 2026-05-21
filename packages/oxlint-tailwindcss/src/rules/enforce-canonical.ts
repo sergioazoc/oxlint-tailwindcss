@@ -5,6 +5,7 @@ import { utilityHasDynamicValue } from '../utils/class-parser'
 import { createLazyLoader, rootFontSizeFromSettings } from '../design-system/loader'
 import { canonicalizeClassesSync } from '../design-system/canonicalize-service'
 import { safeSettings } from '../types'
+import { safeGetDS } from '../utils/fatal'
 
 /**
  * Preserve the user's ! position after canonicalization.
@@ -51,6 +52,7 @@ export const enforceCanonical = defineRule({
     messages: {
       nonCanonical: '"{{className}}" can be written as "{{canonical}}". Use the canonical form.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
+      designSystemUnavailable: '{{message}}',
     },
   },
   createOnce(context) {
@@ -66,7 +68,7 @@ export const enforceCanonical = defineRule({
     }
 
     function check(locations: ClassLocation[]) {
-      const ds = getDS()
+      const ds = safeGetDS(getDS, context, locations[0]?.node)
       if (!ds) return
       const { cache, entryPoint } = ds
 

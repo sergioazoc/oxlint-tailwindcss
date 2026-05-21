@@ -5,23 +5,24 @@ import {
   loadDesignSystemSync,
   readTailwindVersion,
 } from '../../src/design-system/sync-loader'
+import { DesignSystemLoadError } from '../../src/utils/fatal'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 
 describe('loadDesignSystemSync', () => {
   it('loads design system from valid CSS file', () => {
     const result = loadDesignSystemSync(ENTRY_POINT)
-    expect(result).not.toBeNull()
+    expect(result).toBeDefined()
   })
 
-  it('returns null for nonexistent file', () => {
-    const result = loadDesignSystemSync('/nonexistent/path/tailwind.css')
-    expect(result).toBeNull()
+  it('throws DesignSystemLoadError for a nonexistent file', () => {
+    expect(() => loadDesignSystemSync('/nonexistent/path/tailwind.css')).toThrow(
+      DesignSystemLoadError,
+    )
   })
 
   it('returns PrecomputedData with all required fields', () => {
-    const result = loadDesignSystemSync(ENTRY_POINT)!
-    expect(result).not.toBeNull()
+    const result = loadDesignSystemSync(ENTRY_POINT)
 
     // All fields exist
     expect(result.validClasses).toBeDefined()
@@ -43,7 +44,7 @@ describe('loadDesignSystemSync', () => {
   })
 
   it('produces non-empty data for default Tailwind CSS', () => {
-    const result = loadDesignSystemSync(ENTRY_POINT)!
+    const result = loadDesignSystemSync(ENTRY_POINT)
 
     expect(result.validClasses.length).toBeGreaterThan(1000)
     expect(Object.keys(result.order).length).toBeGreaterThan(1000)
@@ -53,14 +54,7 @@ describe('loadDesignSystemSync', () => {
 
   it('accepts custom timeout', () => {
     const result = loadDesignSystemSync(ENTRY_POINT, 60_000)
-    expect(result).not.toBeNull()
-  })
-
-  it('returns null gracefully on very short timeout', () => {
-    // 1ms timeout — child process can't possibly finish
-    // May return cached data or null depending on cache state
-    // The key assertion is that it doesn't throw
-    loadDesignSystemSync(ENTRY_POINT, 1)
+    expect(result).toBeDefined()
   })
 })
 

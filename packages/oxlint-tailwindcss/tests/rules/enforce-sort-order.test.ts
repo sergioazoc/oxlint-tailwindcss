@@ -4,6 +4,7 @@ import { RuleTester } from 'oxlint/plugins-dev'
 import { enforceSortOrder } from '../../src/rules/enforce-sort-order'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
 import type { DesignSystemCache } from '../../src/design-system/cache'
+import { runWithFixture } from '../utils/with-fixture'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 
@@ -11,12 +12,12 @@ let cache: DesignSystemCache
 
 beforeAll(() => {
   resetDesignSystem()
-  cache = getLoadedDesignSystem(ENTRY_POINT)!.cache
+  cache = getLoadedDesignSystem(ENTRY_POINT).cache
 })
 
 const ruleTester = new RuleTester()
 
-ruleTester.run('enforce-sort-order', enforceSortOrder, {
+runWithFixture(ruleTester, 'enforce-sort-order', enforceSortOrder, ENTRY_POINT, {
   valid: [
     {
       code: '<div className="flex items-center p-4 text-red-500" />',
@@ -103,7 +104,7 @@ describe('heuristic sort fallback', () => {
 })
 
 // Strict mode: groups by variant, sorts within groups, then sorts groups
-ruleTester.run('enforce-sort-order (strict)', enforceSortOrder, {
+runWithFixture(ruleTester, 'enforce-sort-order (strict)', enforceSortOrder, ENTRY_POINT, {
   valid: [
     // Already sorted: no-variant first, then hover group
     {

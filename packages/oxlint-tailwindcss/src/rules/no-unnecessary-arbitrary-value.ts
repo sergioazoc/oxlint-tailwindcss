@@ -3,6 +3,7 @@ import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
 import { hasArbitraryValue, splitUtilityAndVariant } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
+import { safeGetDS } from '../utils/fatal'
 
 export const noUnnecessaryArbitraryValue = defineRule({
   meta: {
@@ -25,13 +26,14 @@ export const noUnnecessaryArbitraryValue = defineRule({
       unnecessaryArbitrary:
         '"{{className}}" can be written as "{{replacement}}". Use the named class instead.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
+      designSystemUnavailable: '{{message}}',
     },
   },
   createOnce(context) {
     const getDS = createLazyLoader(context)
 
     function check(locations: ClassLocation[]) {
-      const ds = getDS()
+      const ds = safeGetDS(getDS, context, locations[0]?.node)
       if (!ds) return
       const { cache } = ds
       for (const loc of locations) {

@@ -152,7 +152,15 @@ export const consistentVariantOrder = defineRule({
     function getConfig(): CompiledConfig {
       if (_config === null) {
         const options = safeOptions<Options>(context)
-        const dsCache = getDS()?.cache ?? null
+        // consistent-variant-order is the one DS-optional rule in v1: its
+        // static fallback is also fully deterministic, so when no entryPoint
+        // is configured we fall back to it silently instead of erroring.
+        let dsCache: import('../design-system/cache').DesignSystemCache | null = null
+        try {
+          dsCache = getDS().cache
+        } catch {
+          dsCache = null
+        }
         const priorityMap = new Map<string, number>()
 
         if (options?.order) {

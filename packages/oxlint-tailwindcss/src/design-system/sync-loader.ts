@@ -10,9 +10,10 @@
 
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
+import { DesignSystemLoadError } from '../utils/fatal'
 
 export interface PrecomputedData {
   /** All valid class names (candidatesToCss returned non-null) */
@@ -445,19 +446,21 @@ export function readTailwindVersion(): string {
 const CACHE_KEY = computeCacheKey(PRECOMPUTE_SCRIPT, readTailwindVersion())
 
 /**
- * Two-level disk cache for monorepo deduplication:
+ * Single-level disk cache keyed by content hash only.
  *
- * Level 1 — mtime index (.idx): maps path+mtime → content hash (fast-path, avoids reading CSS)
- * Level 2 — content cache (.json): maps content hash → precomputed data (shared across packages)
+ * `loader.ts` keeps a per-process in-memory cache keyed by `(path, mtime)`
+ * to avoid re-stat'ing the same file repeatedly. The disk cache lives in
+ * `os.tmpdir()/oxlint-tailwindcss/` and is shared across processes — and
+ * across packages in a monorepo, since two packages with identical CSS
+ * content produce the same hash.
  *
- * In monorepos, multiple packages with identical CSS (e.g. `@import 'tailwindcss'`) at different
- * paths share a single content cache entry, avoiding redundant child process spawns.
+ * v1 removed the legacy two-level cache (mtime-keyed `.idx` files →
+ * content-keyed `.json`). The fast path it provided is duplicated by the
+ * in-memory mtime check in loader.ts; storing it on disk too created the
+ * possibility of mtime/content drift that could serve stale data.
  */
 
-function getMtimeIndexPath(cssPath: string, mtime: number): string {
-  const hash = createHash('md5').update(`${CACHE_KEY}:${cssPath}:${mtime}`).digest('hex')
-  return join(CACHE_DIR, `${hash}.idx`)
-}
+export const DEFAULT_LOAD_TIMEOUT_MS = 60_000
 
 function computeContentHash(content: string): string {
   return createHash('md5').update(`${CACHE_KEY}:${content}`).digest('hex')
@@ -475,68 +478,62 @@ function tryReadCache(cachePath: string): PrecomputedData | null {
   }
 }
 
-function writeCacheFiles(
-  contentCachePath: string,
-  mtimeIndexPath: string,
-  contentHash: string,
-  data: string,
-): void {
+function writeCacheFile(contentCachePath: string, data: string): void {
   try {
     mkdirSync(CACHE_DIR, { recursive: true })
     writeFileSync(contentCachePath, data)
-    writeFileSync(mtimeIndexPath, contentHash)
   } catch {
     // Non-fatal — cache is optional
   }
 }
 
-export function loadDesignSystemSync(cssPath: string, timeout?: number): PrecomputedData | null {
+/**
+ * Synchronously load and precompute the design system for a CSS file.
+ *
+ * Throws `DesignSystemLoadError` on any failure (missing file, child
+ * process error, missing `@tailwindcss/node`, etc.). Callers catch via
+ * `reportFatalDsError` to surface a single Program-level diagnostic.
+ */
+export function loadDesignSystemSync(cssPath: string, timeout?: number): PrecomputedData {
   const resolvedPath = resolve(cssPath)
 
+  let content: string
   try {
-    const mtime = statSync(resolvedPath).mtimeMs
-    const mtimeIndexPath = getMtimeIndexPath(resolvedPath, mtime)
+    content = readFileSync(resolvedPath, 'utf-8')
+  } catch (cause) {
+    throw new DesignSystemLoadError(
+      `Could not read CSS entry point: ${resolvedPath}`,
+      'Verify the path resolves from the oxlint working directory and the file is readable.',
+      { cause: cause instanceof Error ? cause : undefined },
+    )
+  }
 
-    // Fast path: mtime index exists → read content hash → look up content cache
-    if (existsSync(mtimeIndexPath)) {
-      try {
-        const contentHash = readFileSync(mtimeIndexPath, 'utf-8').trim()
-        const contentCachePath = getContentCachePath(contentHash)
-        const cached = tryReadCache(contentCachePath)
-        if (cached) return cached
-      } catch {
-        // Index corrupted, fall through
-      }
-    }
+  const contentHash = computeContentHash(content)
+  const contentCachePath = getContentCachePath(contentHash)
 
-    // Slow path: read CSS content, compute content hash
-    const content = readFileSync(resolvedPath, 'utf-8')
-    const contentHash = computeContentHash(content)
-    const contentCachePath = getContentCachePath(contentHash)
+  const cached = tryReadCache(contentCachePath)
+  if (cached) return cached
 
-    // Check content cache — another package with identical CSS may have already computed this
-    const cached = tryReadCache(contentCachePath)
-    if (cached) {
-      // Content cache hit (monorepo deduplication) — just write the mtime index
-      try {
-        mkdirSync(CACHE_DIR, { recursive: true })
-        writeFileSync(mtimeIndexPath, contentHash)
-      } catch {
-        // Non-fatal
-      }
-      return cached
-    }
+  // Resolve @tailwindcss/node from the plugin's own location and pass it to
+  // the child via env. Bare-specifier resolution from the child's cwd would
+  // fail under pnpm strict workspaces where the consumer's project root has
+  // no direct access to the plugin's transitive deps.
+  let tailwindNodePath: string
+  try {
+    tailwindNodePath = require.resolve('@tailwindcss/node')
+  } catch (cause) {
+    throw new DesignSystemLoadError(
+      `Could not resolve '@tailwindcss/node' while loading "${resolvedPath}".`,
+      "Install '@tailwindcss/node' (or upgrade oxlint-tailwindcss) and re-run.",
+      { cause: cause instanceof Error ? cause : undefined },
+    )
+  }
 
-    // Resolve @tailwindcss/node from the plugin's own location and pass it to
-    // the child via env. Bare-specifier resolution from the child's cwd would
-    // fail under pnpm strict workspaces where the consumer's project root has
-    // no direct access to the plugin's transitive deps.
-    const tailwindNodePath = require.resolve('@tailwindcss/node')
-
-    // Full computation: spawn child process
-    const stdout = execFileSync(process.execPath, ['-e', PRECOMPUTE_SCRIPT], {
+  let stdout: string
+  try {
+    stdout = execFileSync(process.execPath, ['-e', PRECOMPUTE_SCRIPT], {
       encoding: 'utf-8',
-      timeout: timeout ?? 30_000,
+      timeout: timeout ?? DEFAULT_LOAD_TIMEOUT_MS,
       maxBuffer: 50 * 1024 * 1024,
       env: {
         ...process.env,
@@ -545,29 +542,26 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
       },
       cwd: dirname(resolvedPath),
     })
+  } catch (cause) {
+    const causeError = cause instanceof Error ? cause : undefined
+    const message = causeError?.message ?? String(cause)
+    throw new DesignSystemLoadError(
+      `Failed to precompute design system from "${resolvedPath}": ${message}`,
+      'Check the CSS file for syntax errors. If this looks like a timeout, raise `settings.tailwindcss.timeout`.',
+      { cause: causeError },
+    )
+  }
 
-    // Write both cache levels
-    writeCacheFiles(contentCachePath, mtimeIndexPath, contentHash, stdout)
+  writeCacheFile(contentCachePath, stdout)
 
+  try {
     return JSON.parse(stdout) as PrecomputedData
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    // Surface the pnpm/npm hoisting failure mode with an actionable hint
-    // instead of a raw "Cannot find module '@tailwindcss/node'" stack.
-    if (msg.includes("Cannot find module '@tailwindcss/node'")) {
-      console.error(
-        `[oxlint-tailwindcss] Could not resolve '@tailwindcss/node' for "${resolvedPath}". ` +
-          `If you are using pnpm with strict hoisting, add '@tailwindcss/node' as a direct devDependency, ` +
-          `or upgrade oxlint-tailwindcss to >= 0.7.0 which resolves it from the plugin's own install location. ` +
-          `DS-dependent rules will be skipped for this file.`,
-      )
-    } else {
-      console.error(
-        `[oxlint-tailwindcss] Failed to load design system from "${resolvedPath}":`,
-        msg,
-      )
-    }
-    return null
+  } catch (cause) {
+    throw new DesignSystemLoadError(
+      `Precompute output for "${resolvedPath}" was not valid JSON.`,
+      'This is likely a bug in oxlint-tailwindcss. Please open an issue with the CSS that triggered it.',
+      { cause: cause instanceof Error ? cause : undefined },
+    )
   }
 }
 

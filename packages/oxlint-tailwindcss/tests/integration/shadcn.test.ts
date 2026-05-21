@@ -13,7 +13,7 @@
 
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, describe } from 'vitest'
-import { RuleTester } from 'oxlint/plugins-dev'
+import { makeFixtureRunner } from '../utils/with-fixture'
 import { noUnknownClasses } from '../../src/rules/no-unknown-classes'
 import { noConflictingClasses } from '../../src/rules/no-conflicting-classes'
 import { noDeprecatedClasses } from '../../src/rules/no-deprecated-classes'
@@ -62,6 +62,7 @@ const VALID_SHADCN_CASES = SHADCN_CLASS_STRINGS.map((s) => ({
 }))
 
 describe('shadcn compatibility', () => {
+  const run = makeFixtureRunner(SHADCN_FIXTURE)
   beforeAll(() => {
     resetDesignSystem()
     resetCanonicalizeService()
@@ -72,29 +73,29 @@ describe('shadcn compatibility', () => {
     resetCanonicalizeService()
   })
 
-  new RuleTester().run('no-unknown-classes', noUnknownClasses, {
+  run('no-unknown-classes', noUnknownClasses, {
     valid: VALID_SHADCN_CASES,
     invalid: [],
   })
 
-  new RuleTester().run('no-conflicting-classes', noConflictingClasses, {
+  run('no-conflicting-classes', noConflictingClasses, {
     valid: VALID_SHADCN_CASES,
     invalid: [],
   })
 
-  new RuleTester().run('no-deprecated-classes', noDeprecatedClasses, {
+  run('no-deprecated-classes', noDeprecatedClasses, {
     valid: VALID_SHADCN_CASES,
     invalid: [],
   })
 
-  new RuleTester().run('no-duplicate-classes', noDuplicateClasses, {
+  run('no-duplicate-classes', noDuplicateClasses, {
     valid: VALID_SHADCN_CASES,
     invalid: [],
   })
 
   // hsl(var(--…)) / rgb(var(--…)) / oklch(var(--…)) reference theme tokens
   // and must not be flagged as hardcoded.
-  new RuleTester().run('no-hardcoded-colors', noHardcodedColors, {
+  run('no-hardcoded-colors', noHardcodedColors, {
     valid: [
       ...VALID_SHADCN_CASES,
       { code: '<div className="bg-[hsl(var(--primary))]" />', filename: 'test.tsx' },
@@ -105,14 +106,14 @@ describe('shadcn compatibility', () => {
     invalid: [],
   })
 
-  new RuleTester().run('no-unnecessary-arbitrary-value', noUnnecessaryArbitraryValue, {
+  run('no-unnecessary-arbitrary-value', noUnnecessaryArbitraryValue, {
     valid: VALID_SHADCN_CASES,
     invalid: [],
   })
 
   // Multi-segment shadcn tokens convert paren/bracket forms of raw vars
   // (--card-foreground) directly to the named utility.
-  new RuleTester().run('prefer-theme-tokens on multi-segment vars', preferThemeTokens, {
+  run('prefer-theme-tokens on multi-segment vars', preferThemeTokens, {
     valid: [{ code: '<div className="bg-card-foreground" />', filename: 'test.tsx' }],
     invalid: [
       {
@@ -131,7 +132,7 @@ describe('shadcn compatibility', () => {
   })
 
   // Theme-token references collapse to the named utility via canonicalizeCandidates.
-  new RuleTester().run('enforce-canonical on multi-segment tokens', enforceCanonical, {
+  run('enforce-canonical on multi-segment tokens', enforceCanonical, {
     valid: [
       { code: '<div className="bg-card-foreground" />', filename: 'test.tsx' },
       { code: '<div className="text-muted-foreground" />', filename: 'test.tsx' },

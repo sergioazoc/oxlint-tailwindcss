@@ -3,6 +3,7 @@ import { beforeAll, describe } from 'vitest'
 import { RuleTester } from 'oxlint/plugins-dev'
 import { noUnknownClasses } from '../../src/rules/no-unknown-classes'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
+import { runWithFixture } from '../utils/with-fixture'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 const COMPONENTS_ENTRY_POINT = resolve(__dirname, '../fixtures/with-components.css')
@@ -17,7 +18,7 @@ beforeAll(() => {
 
 const ruleTester = new RuleTester()
 
-ruleTester.run('no-unknown-classes', noUnknownClasses, {
+runWithFixture(ruleTester, 'no-unknown-classes', noUnknownClasses, ENTRY_POINT, {
   valid: [
     { code: '<div className="flex items-center" />', filename: 'test.tsx' },
     { code: '<div className="bg-blue-500 text-white p-4" />', filename: 'test.tsx' },
@@ -94,7 +95,7 @@ ruleTester.run('no-unknown-classes', noUnknownClasses, {
 describe('tw-classed template literal', () => {
   const classedTester = new RuleTester()
 
-  classedTester.run('no-unknown-classes (classed template literal)', noUnknownClasses, {
+  runWithFixture(classedTester, 'no-unknown-classes (classed template literal)', noUnknownClasses, ENTRY_POINT, {
     valid: [
       // First arg as string literal — element type skipped
       { code: 'classed("div", "truncate")', filename: 'test.tsx' },
@@ -129,7 +130,7 @@ describe('component classes', () => {
 
   const componentTester = new RuleTester()
 
-  componentTester.run('no-unknown-classes (with components)', noUnknownClasses, {
+  runWithFixture(componentTester, 'no-unknown-classes (with components)', noUnknownClasses, COMPONENTS_ENTRY_POINT, {
     valid: [
       // Component classes should be recognized as valid
       { code: '<div className="btn" />', filename: 'test.tsx' },
@@ -155,7 +156,7 @@ describe('tailwindcss-animate classes', () => {
 
   const animateTester = new RuleTester()
 
-  animateTester.run('no-unknown-classes (tailwindcss-animate)', noUnknownClasses, {
+  runWithFixture(animateTester, 'no-unknown-classes (tailwindcss-animate)', noUnknownClasses, ANIMATE_ENTRY_POINT, {
     valid: [
       { code: '<div className="animate-in fade-in zoom-in" />', filename: 'test.tsx' },
       {
@@ -187,7 +188,7 @@ describe('tw-animate-css classes', () => {
 
   const tester = new RuleTester()
 
-  tester.run('no-unknown-classes (tw-animate-css)', noUnknownClasses, {
+  runWithFixture(tester, 'no-unknown-classes (tw-animate-css)', noUnknownClasses, TW_ANIMATE_CSS_ENTRY_POINT, {
     valid: [
       { code: '<div className="animate-in fade-in zoom-in spin-in" />', filename: 'test.tsx' },
       {

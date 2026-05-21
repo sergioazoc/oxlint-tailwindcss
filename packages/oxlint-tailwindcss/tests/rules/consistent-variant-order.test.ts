@@ -3,6 +3,7 @@ import { beforeAll, afterAll, describe } from 'vitest'
 import { RuleTester } from 'oxlint/plugins-dev'
 import { consistentVariantOrder } from '../../src/rules/consistent-variant-order'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
+import { runWithFixture } from '../utils/with-fixture'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 
@@ -161,7 +162,7 @@ describe('consistent-variant-order (design system)', () => {
   const dsRuleTester = new RuleTester()
 
   // DS order: hover(39) < sm(50), focus(40) < md(51), hover(39) < dark(59)
-  dsRuleTester.run('consistent-variant-order (DS order)', consistentVariantOrder, {
+  runWithFixture(dsRuleTester, 'consistent-variant-order (DS order)', consistentVariantOrder, ENTRY_POINT, {
     valid: [
       { code: '<div className="hover:sm:flex" />', filename: 'test.tsx' },
       { code: '<div className="hover:dark:text-white" />', filename: 'test.tsx' },

@@ -10,6 +10,7 @@ import {
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
 import { loadDesignSystemSync } from '../../src/design-system/sync-loader'
 import { DesignSystemCache } from '../../src/design-system/cache'
+import { runWithFixture } from '../utils/with-fixture'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 const PROSE_ENTRY = resolve(__dirname, '../fixtures/with-typography.css')
@@ -26,7 +27,7 @@ beforeAll(() => {
 
 const ruleTester = new RuleTester()
 
-ruleTester.run('no-conflicting-classes', noConflictingClasses, {
+runWithFixture(ruleTester, 'no-conflicting-classes', noConflictingClasses, ENTRY_POINT, {
   valid: [
     { code: '<div className="flex items-center" />', filename: 'test.tsx' },
     { code: '<div className="p-4 m-2" />', filename: 'test.tsx' },
@@ -240,7 +241,7 @@ describe('text + tracking composition with letter-spacing', () => {
 
   const trackingTester = new RuleTester()
 
-  trackingTester.run('no-conflicting-classes (text + tracking)', noConflictingClasses, {
+  runWithFixture(trackingTester, 'no-conflicting-classes (text + tracking)', noConflictingClasses, LETTER_SPACING_ENTRY, {
     valid: [
       // text-* sets letter-spacing as default, tracking-* overrides it (#8)
       { code: '<div className="text-base tracking-tight" />', filename: 'test.tsx' },
@@ -413,7 +414,7 @@ describe('tailwindcss-animate composition', () => {
 
   const animateTester = new RuleTester()
 
-  animateTester.run('no-conflicting-classes (tailwindcss-animate)', noConflictingClasses, {
+  runWithFixture(animateTester, 'no-conflicting-classes (tailwindcss-animate)', noConflictingClasses, ANIMATE_ENTRY, {
     valid: [
       {
         code: '<div className="animate-in fade-in zoom-in slide-in-from-top" />',
@@ -462,7 +463,7 @@ describe('tw-animate-css composition', () => {
 
   const tester = new RuleTester()
 
-  tester.run('no-conflicting-classes (tw-animate-css)', noConflictingClasses, {
+  runWithFixture(tester, 'no-conflicting-classes (tw-animate-css)', noConflictingClasses, TW_ANIMATE_CSS_ENTRY, {
     valid: [
       {
         code: '<div className="animate-in fade-in zoom-in slide-in-from-top" />',

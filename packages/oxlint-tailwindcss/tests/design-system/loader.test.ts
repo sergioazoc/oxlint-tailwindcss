@@ -1,95 +1,146 @@
 import { describe, it, expect } from 'vitest'
-import { resolveCssPath } from '../../src/design-system/loader'
+import { resolve, sep } from 'node:path'
+import {
+  entryPointFromSettings,
+  resolveByGlobMapping,
+  resolveEntryPointForFile,
+  type EntryPointMapping,
+} from '../../src/design-system/loader'
+import {
+  DeprecatedEntryPointShapeError,
+  MissingEntryPointError,
+} from '../../src/utils/fatal'
 
-const noAutoDetect = () => null
+// v1 dropped auto-detect, lastLoadedPath, and the `string[]` prefix heuristic.
+// The remaining resolution surface is pure functions: `entryPointFromSettings`
+// parses the user's `settings.tailwindcss.entryPoint`, and
+// `resolveByGlobMapping` / `resolveEntryPointForFile` do the matching.
 
-describe('resolveCssPath', () => {
-  describe('explicit entry point (rule option)', () => {
-    it('wins over settings, auto-detect and lastPath', () => {
-      const result = resolveCssPath({
-        entryPoint: '/explicit.css',
-        settingsEntry: '/settings.css',
-        lastPath: '/last.css',
-        autoDetect: () => '/detected.css',
-      })
-      expect(result).toEqual({ path: '/explicit.css', isExplicit: true })
-    })
+describe('entryPointFromSettings', () => {
+  it('returns undefined when settings or tailwindcss is missing', () => {
+    expect(entryPointFromSettings(undefined)).toBeUndefined()
+    expect(entryPointFromSettings({})).toBeUndefined()
+    expect(entryPointFromSettings({ tailwindcss: {} })).toBeUndefined()
   })
 
-  describe('settings.entryPoint as string', () => {
-    it('is used when no rule option is given', () => {
-      const result = resolveCssPath({
-        settingsEntry: '/settings.css',
-        autoDetect: noAutoDetect,
-      })
-      expect(result).toEqual({ path: '/settings.css', isExplicit: true })
-    })
+  it('returns the string form unchanged', () => {
+    expect(entryPointFromSettings({ tailwindcss: { entryPoint: 'src/app.css' } })).toBe('src/app.css')
   })
 
-  describe('settings.entryPoint as array', () => {
-    it('picks the entry with longest common directory prefix to filePath', () => {
-      const result = resolveCssPath({
-        settingsEntry: ['/repo/apps/web/styles.css', '/repo/apps/admin/styles.css'],
-        filePath: '/repo/apps/admin/src/page.tsx',
-        autoDetect: noAutoDetect,
-      })
-      expect(result).toEqual({ path: '/repo/apps/admin/styles.css', isExplicit: true })
-    })
-
-    it('falls back to first entry when filePath is missing', () => {
-      const result = resolveCssPath({
-        settingsEntry: ['/a/styles.css', '/b/styles.css'],
-        autoDetect: noAutoDetect,
-      })
-      expect(result).toEqual({ path: '/a/styles.css', isExplicit: true })
-    })
+  it('returns an EntryPointMapping[] when given an array of objects', () => {
+    const mappings: EntryPointMapping[] = [
+      { files: 'packages/ui/**', use: 'packages/ui/src/styles.css' },
+      { files: ['packages/admin/**', 'packages/billing/**'], use: 'shared.css' },
+    ]
+    expect(entryPointFromSettings({ tailwindcss: { entryPoint: mappings } })).toEqual(mappings)
   })
 
-  describe('auto-detect', () => {
-    it('is used when no explicit entry is provided', () => {
-      const result = resolveCssPath({
-        filePath: '/repo/src/page.tsx',
-        autoDetect: () => '/repo/app/styles.css',
-      })
-      expect(result).toEqual({ path: '/repo/app/styles.css', isExplicit: false })
-    })
-
-    it('marks isExplicit:false so the caller does NOT update lastLoadedPath (monorepo safety)', () => {
-      const result = resolveCssPath({
-        filePath: '/repo/pkg-a/src/x.tsx',
-        autoDetect: () => '/repo/pkg-a/styles.css',
-      })
-      expect(result.isExplicit).toBe(false)
-    })
+  it('throws DeprecatedEntryPointShapeError for legacy string[]', () => {
+    expect(() =>
+      entryPointFromSettings({ tailwindcss: { entryPoint: ['a.css', 'b.css'] } }),
+    ).toThrow(DeprecatedEntryPointShapeError)
   })
 
-  describe('lastPath fallback', () => {
-    it('is used only when explicit and auto-detect both fail', () => {
-      const result = resolveCssPath({
-        lastPath: '/previously-loaded.css',
-        autoDetect: noAutoDetect,
-      })
-      expect(result).toEqual({ path: '/previously-loaded.css', isExplicit: false })
-    })
-
-    it('is skipped when auto-detect succeeds', () => {
-      const result = resolveCssPath({
-        lastPath: '/old.css',
-        autoDetect: () => '/fresh.css',
-      })
-      expect(result.path).toBe('/fresh.css')
-    })
+  it('throws when array entries are neither all strings nor valid mappings', () => {
+    expect(() =>
+      entryPointFromSettings({
+        tailwindcss: { entryPoint: [{ files: 'foo', not_use: 'bar' }] as unknown as EntryPointMapping[] },
+      }),
+    ).toThrow(MissingEntryPointError)
   })
 
-  describe('no resolution possible', () => {
-    it('returns null path when nothing resolves', () => {
-      const result = resolveCssPath({ autoDetect: noAutoDetect })
-      expect(result).toEqual({ path: null, isExplicit: false })
-    })
+  it('treats an empty array as undefined (no rule output)', () => {
+    expect(entryPointFromSettings({ tailwindcss: { entryPoint: [] } })).toBeUndefined()
+  })
+})
 
-    it('treats null lastPath the same as undefined', () => {
-      const result = resolveCssPath({ lastPath: null, autoDetect: noAutoDetect })
-      expect(result.path).toBeNull()
-    })
+describe('resolveByGlobMapping', () => {
+  const base = resolve('/workspace')
+
+  function abs(...parts: string[]): string {
+    return resolve(base, ...parts)
+  }
+
+  it('returns the first matching glob, preserving array order', () => {
+    const mappings: EntryPointMapping[] = [
+      { files: 'packages/ui/**', use: 'packages/ui/styles.css' },
+      { files: '**', use: 'src/global.css' },
+    ]
+    expect(resolveByGlobMapping(mappings, abs('packages/ui/src/Button.tsx'), base)).toBe(
+      resolve(base, 'packages/ui/styles.css'),
+    )
+    expect(resolveByGlobMapping(mappings, abs('apps/web/index.tsx'), base)).toBe(
+      resolve(base, 'src/global.css'),
+    )
+  })
+
+  it('accepts an array of globs per mapping', () => {
+    const mappings: EntryPointMapping[] = [
+      { files: ['packages/ui/**', 'packages/icons/**'], use: 'shared.css' },
+    ]
+    expect(resolveByGlobMapping(mappings, abs('packages/ui/Button.tsx'), base)).toBe(
+      resolve(base, 'shared.css'),
+    )
+    expect(resolveByGlobMapping(mappings, abs('packages/icons/Icon.tsx'), base)).toBe(
+      resolve(base, 'shared.css'),
+    )
+    expect(resolveByGlobMapping(mappings, abs('apps/web/Page.tsx'), base)).toBeNull()
+  })
+
+  it('returns null when nothing matches', () => {
+    const mappings: EntryPointMapping[] = [{ files: 'packages/ui/**', use: 'ui.css' }]
+    expect(resolveByGlobMapping(mappings, abs('apps/web/Page.tsx'), base)).toBeNull()
+  })
+
+  it('normalizes backslashes for cross-platform consistency', () => {
+    // Simulate a Windows-style path under the same base.
+    const mappings: EntryPointMapping[] = [{ files: 'packages/ui/**', use: 'ui.css' }]
+    // resolve() will normalize separators, so use sep-built path to assert the matcher itself.
+    const winLike = `${base}${sep}packages${sep}ui${sep}Button.tsx`
+    expect(resolveByGlobMapping(mappings, winLike, base)).toBe(resolve(base, 'ui.css'))
+  })
+})
+
+describe('resolveEntryPointForFile', () => {
+  it('rule option entryPoint wins over everything', () => {
+    expect(
+      resolveEntryPointForFile('/explicit.css', 'will-be-ignored.css', '/any/file.tsx'),
+    ).toBe('/explicit.css')
+  })
+
+  it('falls back to the string-form settings entry', () => {
+    expect(resolveEntryPointForFile(undefined, 'src/app.css', '/any/file.tsx')).toBe('src/app.css')
+  })
+
+  it('resolves through the mapping array when settings is a mapping', () => {
+    const mappings: EntryPointMapping[] = [
+      { files: 'packages/ui/**', use: 'packages/ui/styles.css' },
+      { files: '**', use: 'src/global.css' },
+    ]
+    const filePath = resolve(process.cwd(), 'packages/ui/src/Button.tsx')
+    expect(resolveEntryPointForFile(undefined, mappings, filePath)).toBe(
+      resolve(process.cwd(), 'packages/ui/styles.css'),
+    )
+  })
+
+  it('throws MissingEntryPointError when nothing resolves', () => {
+    expect(() => resolveEntryPointForFile(undefined, undefined, '/some/file.tsx')).toThrow(
+      MissingEntryPointError,
+    )
+  })
+
+  it('throws MissingEntryPointError when the mapping does not match the file', () => {
+    const mappings: EntryPointMapping[] = [{ files: 'packages/ui/**', use: 'ui.css' }]
+    const filePath = resolve(process.cwd(), 'apps/web/Page.tsx')
+    expect(() => resolveEntryPointForFile(undefined, mappings, filePath)).toThrow(
+      MissingEntryPointError,
+    )
+  })
+
+  it('throws when a mapping array is provided without a file path', () => {
+    const mappings: EntryPointMapping[] = [{ files: '**', use: 'global.css' }]
+    expect(() => resolveEntryPointForFile(undefined, mappings, undefined)).toThrow(
+      MissingEntryPointError,
+    )
   })
 })

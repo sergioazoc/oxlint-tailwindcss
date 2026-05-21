@@ -5,6 +5,7 @@ import { findBestSuggestion } from '../utils/levenshtein'
 import { createLazyLoader } from '../design-system/loader'
 import { safeOptions } from '../types'
 import { DEPRECATED_MAP } from './no-deprecated-classes'
+import { safeGetDS } from '../utils/fatal'
 
 interface Options {
   entryPoint?: string
@@ -39,6 +40,7 @@ export const noUnknownClasses = defineRule({
       unknownWithSuggestion:
         '"{{className}}" is not a valid Tailwind class. Did you mean "{{suggestion}}"?',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
+      designSystemUnavailable: '{{message}}',
     },
   },
   createOnce(context) {
@@ -70,7 +72,7 @@ export const noUnknownClasses = defineRule({
     }
 
     function check(locations: ClassLocation[]) {
-      const ds = getDS()
+      const ds = safeGetDS(getDS, context, locations[0]?.node)
       if (!ds) return
       const { cache } = ds
 

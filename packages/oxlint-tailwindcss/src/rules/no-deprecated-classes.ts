@@ -3,6 +3,7 @@ import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
 import { splitUtilityAndVariant } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
+import { safeGetDS } from '../utils/fatal'
 
 // Mapping of deprecated classes in TW v4 to their replacements
 export const DEPRECATED_MAP: Record<string, string> = {
@@ -43,13 +44,15 @@ export const noDeprecatedClasses = defineRule({
     messages: {
       deprecated: '"{{className}}" is deprecated in Tailwind v4. Use "{{replacement}}" instead.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
+      designSystemUnavailable: '{{message}}',
     },
   },
   createOnce(context) {
     const getDS = createLazyLoader(context)
 
     function check(locations: ClassLocation[]) {
-      const dsResult = getDS()
+      const dsResult = safeGetDS(getDS, context, locations[0]?.node)
+      if (!dsResult) return
       for (const loc of locations) {
         const split = splitClassesWithSeparators(loc.value)
         const classes = split.classes

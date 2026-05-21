@@ -1,76 +1,129 @@
 import { DesignSystemCache } from './cache'
 import { loadDesignSystemSync } from './sync-loader'
-import { autoDetectEntryPoint } from './auto-detect'
 import { debugLog, isDebugEnabled, setDebugEnabled, resetDebug } from './debug'
 import { statSync } from 'node:fs'
-import { dirname, resolve, relative } from 'node:path'
+import { relative, resolve } from 'node:path'
+import {
+  DeprecatedEntryPointShapeError,
+  DesignSystemLoadError,
+  MissingEntryPointError,
+  isFatalError,
+} from '../utils/fatal'
+
+export interface EntryPointMapping {
+  files: string | string[]
+  use: string
+}
 
 export interface LoadResult {
   cache: DesignSystemCache
   entryPoint: string
 }
 
-// Per-entry-point DS cache — supports multiple design systems in monorepos
+type EntryPointSetting = string | EntryPointMapping[]
+
 const dsCache = new Map<string, { cache: DesignSystemCache; mtime: number }>()
 
-// Auto-detect result cache by directory — avoids repeated filesystem walks
-const autoDetectCache = new Map<string, string | null>()
-
-// Fallback path — only set by explicit entryPoint calls (tests, rule options),
-// never by auto-detect. Prevents cross-package contamination in monorepos.
-let lastLoadedPath: string | null = null
+function isEntryPointMapping(v: unknown): v is EntryPointMapping {
+  if (typeof v !== 'object' || v === null) return false
+  const m = v as Record<string, unknown>
+  const filesOk = typeof m.files === 'string' || (Array.isArray(m.files) && m.files.every((s) => typeof s === 'string'))
+  return filesOk && typeof m.use === 'string'
+}
 
 /**
- * Extracts `entryPoint` from `context.settings.tailwindcss`.
- * Supports both `string` and `string[]` (for monorepos).
+ * Read `settings.tailwindcss.entryPoint` and normalize it to the v1 shape.
+ *
+ * Throws `DeprecatedEntryPointShapeError` if the legacy `string[]` shape is
+ * still in use (removed in v1; the user must migrate to `{ files, use }[]`).
  */
-function entryPointFromSettings(
+export function entryPointFromSettings(
   settings?: Readonly<Record<string, unknown>>,
-): string | string[] | undefined {
+): EntryPointSetting | undefined {
   const tw = settings?.tailwindcss
-  if (tw && typeof tw === 'object' && 'entryPoint' in tw) {
-    const ep = (tw as Record<string, unknown>).entryPoint
-    if (typeof ep === 'string') return ep
-    if (Array.isArray(ep) && ep.length > 0 && ep.every((e) => typeof e === 'string')) {
-      return ep as string[]
+  if (!tw || typeof tw !== 'object' || !('entryPoint' in tw)) return undefined
+  const ep = (tw as Record<string, unknown>).entryPoint
+  if (typeof ep === 'string') return ep
+  if (Array.isArray(ep)) {
+    if (ep.length === 0) return undefined
+    if (ep.every((e) => typeof e === 'string')) {
+      throw new DeprecatedEntryPointShapeError(
+        '`settings.tailwindcss.entryPoint: string[]` was removed in v1.0.0.',
+        'Convert each entry into an object with explicit globs:\n' +
+          '  entryPoint: [\n' +
+          '    { files: "packages/app/**", use: "packages/app/src/styles.css" },\n' +
+          '    ...\n' +
+          '  ]\n' +
+          'See https://oxlint-tailwindcss.dev/migration/v0-to-v1',
+      )
     }
+    if (ep.every(isEntryPointMapping)) return ep as EntryPointMapping[]
+    throw new MissingEntryPointError(
+      '`settings.tailwindcss.entryPoint` must be either a string or an array of `{ files, use }` objects.',
+      'Each item needs `files` (glob or array of globs) and `use` (path to a CSS file).',
+    )
   }
   return undefined
 }
 
 /**
- * Given an array of entry points and a file path, pick the one that shares
- * the longest common directory prefix with the file. Falls back to first entry.
+ * Compile a minimal glob pattern to a regular expression.
+ *
+ * Supported syntax: `**` (any depth), `*` (any chars except `/`), `?` (one
+ * char except `/`), plus literal segments. Anchored on both ends.
  */
-function resolveClosestEntryPoint(entryPoints: string[], filePath?: string): string {
-  if (entryPoints.length === 1 || !filePath) return entryPoints[0]
-
-  const fileDir = dirname(resolve(filePath))
-  let best = entryPoints[0]
-  let bestLen = 0
-
-  for (const ep of entryPoints) {
-    const epDir = dirname(resolve(ep))
-    // Count shared path prefix length
-    const len = commonPrefixLength(fileDir, epDir)
-    if (len > bestLen) {
-      bestLen = len
-      best = ep
+function globToRegExp(glob: string): RegExp {
+  let re = ''
+  let i = 0
+  while (i < glob.length) {
+    const c = glob[i]
+    if (c === '*' && glob[i + 1] === '*') {
+      re += '.*'
+      i += 2
+      if (glob[i] === '/') i++
+    } else if (c === '*') {
+      re += '[^/]*'
+      i++
+    } else if (c === '?') {
+      re += '[^/]'
+      i++
+    } else if ('+()|.\\$^{}[]'.includes(c)) {
+      re += '\\' + c
+      i++
+    } else {
+      re += c
+      i++
     }
   }
-
-  return best
+  return new RegExp('^' + re + '$')
 }
 
-function commonPrefixLength(a: string, b: string): number {
-  const len = Math.min(a.length, b.length)
-  let i = 0
-  while (i < len && a[i] === b[i]) i++
-  return i
+function matchesAnyGlob(filePath: string, globs: string | string[]): boolean {
+  const list = typeof globs === 'string' ? [globs] : globs
+  return list.some((g) => globToRegExp(g).test(filePath))
 }
 
 /**
- * Extracts `rootFontSize` from `context.settings.tailwindcss` (default: 16).
+ * Resolve a file path to its entry-point CSS via a mapping array.
+ * First-match-wins. Paths are matched relative to `baseDir` (typically the
+ * process CWD where oxlint runs), with forward-slash normalization for
+ * cross-platform consistency. Returns the absolute CSS path, or `null` if
+ * no mapping matches.
+ */
+export function resolveByGlobMapping(
+  mappings: EntryPointMapping[],
+  filePath: string,
+  baseDir: string,
+): string | null {
+  const relPath = relative(baseDir, resolve(filePath)).split('\\').join('/')
+  for (const m of mappings) {
+    if (matchesAnyGlob(relPath, m.files)) return resolve(baseDir, m.use)
+  }
+  return null
+}
+
+/**
+ * Extract `rootFontSize` from `settings.tailwindcss` (default: 16).
  */
 export function rootFontSizeFromSettings(settings?: Readonly<Record<string, unknown>>): number {
   const tw = settings?.tailwindcss
@@ -81,9 +134,6 @@ export function rootFontSizeFromSettings(settings?: Readonly<Record<string, unkn
   return 16
 }
 
-/**
- * Extracts `timeout` from `context.settings.tailwindcss`.
- */
 function timeoutFromSettings(settings?: Readonly<Record<string, unknown>>): number | undefined {
   const tw = settings?.tailwindcss
   if (tw && typeof tw === 'object' && 'timeout' in tw) {
@@ -94,126 +144,74 @@ function timeoutFromSettings(settings?: Readonly<Record<string, unknown>>): numb
 }
 
 /**
- * Cached auto-detect: caches by directory since all files in the same directory
- * resolve to the same entry point. Avoids repeated filesystem walks.
- */
-function cachedAutoDetect(filePath?: string): string | null {
-  if (!filePath) return autoDetectEntryPoint(filePath)
-  const dir = dirname(resolve(filePath))
-  const cached = autoDetectCache.get(dir)
-  if (cached !== undefined) return cached
-  const result = autoDetectEntryPoint(filePath)
-  autoDetectCache.set(dir, result)
-  return result
-}
-
-/**
- * Pure resolution of which CSS entry point to use for a given context.
+ * Load the design system for a specific CSS entry point.
  *
- * Resolution order: rule option `entryPoint` > `settingsEntry` (string or
- * closest-of-array) > `autoDetect(filePath)` > `lastPath` fallback.
+ * Throws `DesignSystemLoadError` if the load fails for any reason. Callers
+ * (rules via `createLazyLoader`) catch via `reportFatalDsError` and surface
+ * the failure as a single Program-level diagnostic.
  *
- * Returns `isExplicit: true` when the result came from a rule option or
- * settings (not auto-detect / lastPath) — the caller uses this to decide
- * whether to update the shared `lastLoadedPath` fallback. Auto-detect
- * results never update the fallback (prevents cross-package contamination
- * in monorepos).
- *
- * `autoDetect` is injected for testability; in production it's
- * `cachedAutoDetect`. Pure: does not touch module state.
- */
-export function resolveCssPath(args: {
-  entryPoint?: string
-  settingsEntry?: string | string[]
-  filePath?: string
-  lastPath?: string | null
-  autoDetect: (filePath?: string) => string | null
-}): { path: string | null; isExplicit: boolean } {
-  const { entryPoint, settingsEntry, filePath, lastPath, autoDetect } = args
-  const explicit =
-    entryPoint ??
-    (Array.isArray(settingsEntry)
-      ? resolveClosestEntryPoint(settingsEntry, filePath)
-      : settingsEntry)
-  if (explicit) return { path: explicit, isExplicit: true }
-  const detected = autoDetect(filePath)
-  if (detected) return { path: detected, isExplicit: false }
-  return { path: lastPath ?? null, isExplicit: false }
-}
-
-/**
- * Returns the design system cache, loading synchronously on first call.
- * Uses execFileSync internally to bridge the async Tailwind API.
- *
- * Supports multiple design systems: each unique CSS entry point gets its own cache.
- * In monorepos, files in different packages auto-detect to different entry points
- * and each gets the correct DS.
- *
- * Resolution order: rule option `entryPoint` > `settings.tailwindcss.entryPoint` > auto-detect.
+ * Cached per absolute entry-point path, keyed by mtime. In monorepos each
+ * unique CSS gets its own cache entry.
  */
 export function getLoadedDesignSystem(
-  entryPoint?: string,
+  cssPath: string,
   settings?: Readonly<Record<string, unknown>>,
-  filePath?: string,
-): LoadResult | null {
-  const { path: cssPath, isExplicit } = resolveCssPath({
-    entryPoint,
-    settingsEntry: entryPointFromSettings(settings),
-    filePath,
-    lastPath: lastLoadedPath,
-    autoDetect: cachedAutoDetect,
-  })
-  if (!cssPath) return null
-
+): LoadResult {
   const resolvedPath = resolve(cssPath)
 
+  let mtime: number
   try {
-    const mtime = statSync(resolvedPath).mtimeMs
-    const cached = dsCache.get(resolvedPath)
-    if (cached && cached.mtime === mtime) {
-      if (isExplicit) lastLoadedPath = resolvedPath
-      return { cache: cached.cache, entryPoint: resolvedPath }
-    }
-
-    const data = loadDesignSystemSync(resolvedPath, timeoutFromSettings(settings))
-    if (!data) return null
-
-    const cache = DesignSystemCache.fromPrecomputed(data)
-    dsCache.set(resolvedPath, { cache, mtime })
-    debugLog(`Loaded design system from "${resolvedPath}"`)
-    if (isExplicit) lastLoadedPath = resolvedPath
-    return { cache, entryPoint: resolvedPath }
-  } catch {
-    return null
+    mtime = statSync(resolvedPath).mtimeMs
+  } catch (cause) {
+    throw new DesignSystemLoadError(
+      `Could not stat CSS entry point: ${resolvedPath}`,
+      'Check that the file exists and is readable. The path is resolved relative to the oxlint working directory.',
+      { cause: cause instanceof Error ? cause : undefined },
+    )
   }
+
+  const cached = dsCache.get(resolvedPath)
+  if (cached && cached.mtime === mtime) return { cache: cached.cache, entryPoint: resolvedPath }
+
+  const data = loadDesignSystemSync(resolvedPath, timeoutFromSettings(settings))
+  const cache = DesignSystemCache.fromPrecomputed(data)
+  dsCache.set(resolvedPath, { cache, mtime })
+  debugLog(`Loaded design system from "${resolvedPath}"`)
+  return { cache, entryPoint: resolvedPath }
 }
 
 /**
- * Creates a lazy DS loader that resolves the correct design system per file.
+ * Lazy DS loader for a rule. Resolves the correct design system for each
+ * file being linted, using (in priority order):
  *
- * In `createOnce`, `context.settings` and `context.filename` throw. When visitors
- * run, they become available. The loader re-resolves when the filename changes,
- * supporting monorepos where different files need different design systems.
+ *   1. Rule option `entryPoint` (a string path).
+ *   2. `settings.tailwindcss.entryPoint` as a string.
+ *   3. `settings.tailwindcss.entryPoint` as an `EntryPointMapping[]` —
+ *      first matching glob (relative to CWD) wins.
  *
- * When a fixed entryPoint is provided (rule option or settings), it's used for all
- * files and cached after first resolution.
+ * If none of those produce an entry point for the current file, throws
+ * `MissingEntryPointError`. If the resolved CSS fails to load, throws
+ * `DesignSystemLoadError`. Both extend `OxlintTailwindError` and are
+ * meant to be caught by `reportFatalDsError` in the rule's `check()`.
+ *
+ * `context.settings` and `context.filename` are unavailable in `createOnce`,
+ * so the actual work is deferred until the returned thunk is invoked from
+ * inside a visitor.
  */
 export function createLazyLoader(context: {
   options?: readonly unknown[]
   settings?: Readonly<Record<string, unknown>>
   filename?: string
-}): () => LoadResult | null {
-  let lastFilePath: string | undefined
-  let lastResult: LoadResult | null = null
-  let fixedEntryResolved = false
-  let fixedResult: LoadResult | null = null
+}): () => LoadResult {
   let debugInitialized = false
+  let lastFilePath: string | undefined
+  let lastResult: LoadResult | undefined
 
   return () => {
-    let entryPoint: string | undefined
+    let ruleOptionEntry: string | undefined
     try {
       const opts = context.options?.[0] as { entryPoint?: string } | undefined
-      entryPoint = opts?.entryPoint
+      ruleOptionEntry = opts?.entryPoint
     } catch {}
 
     let settings: Readonly<Record<string, unknown>> | undefined
@@ -226,48 +224,22 @@ export function createLazyLoader(context: {
       filePath = context.filename
     } catch {}
 
-    // Initialize debug from settings on first successful access
     if (!debugInitialized && settings) {
       debugInitialized = true
       setDebugEnabled(isDebugEnabled(settings))
     }
 
-    // Fixed entry point (rule option or settings) — same for all files
     const settingsEntry = entryPointFromSettings(settings)
-    const fixedEntry = entryPoint ?? (typeof settingsEntry === 'string' ? settingsEntry : undefined)
-    if (fixedEntry) {
-      if (fixedEntryResolved) return fixedResult
-      fixedEntryResolved = true
-      fixedResult = getLoadedDesignSystem(fixedEntry, settings, filePath)
-      if (fixedResult && filePath) {
-        debugLog(
-          `${relative(process.cwd(), filePath)} → ${relative(process.cwd(), fixedResult.entryPoint)}`,
-        )
-      }
-      return fixedResult
-    }
+    const cssPath = resolveEntryPointForFile(ruleOptionEntry, settingsEntry, filePath)
 
-    // Array entry point from settings — resolve closest per file
-    if (Array.isArray(settingsEntry)) {
-      const closest = resolveClosestEntryPoint(settingsEntry, filePath)
-      // Re-resolve when the file changes (different file may map to different entry)
-      if (filePath && filePath === lastFilePath) return lastResult
-      if (filePath) lastFilePath = filePath
-      lastResult = getLoadedDesignSystem(closest, settings, filePath)
-      if (lastResult && filePath) {
-        debugLog(
-          `${relative(process.cwd(), filePath)} → ${relative(process.cwd(), lastResult.entryPoint)}`,
-        )
-      }
+    // Avoid redundant work when linting the same file repeatedly.
+    if (filePath === lastFilePath && lastResult && lastResult.entryPoint === resolve(cssPath)) {
       return lastResult
     }
+    lastFilePath = filePath
 
-    // Auto-detect mode: re-resolve when the file changes
-    if (filePath && filePath === lastFilePath) return lastResult
-    if (filePath) lastFilePath = filePath
-
-    lastResult = getLoadedDesignSystem(undefined, settings, filePath)
-    if (lastResult && filePath) {
+    lastResult = getLoadedDesignSystem(cssPath, settings)
+    if (filePath) {
       debugLog(
         `${relative(process.cwd(), filePath)} → ${relative(process.cwd(), lastResult.entryPoint)}`,
       )
@@ -277,11 +249,44 @@ export function createLazyLoader(context: {
 }
 
 /**
- * Resets all DS caches (useful for tests).
+ * Pure resolution from (rule option, settings entry, file path) to a CSS
+ * entry-point path. Exported for testability.
+ *
+ * Throws `MissingEntryPointError` if nothing resolves. The error message
+ * names the file so the user knows which one tripped the configuration.
  */
+export function resolveEntryPointForFile(
+  ruleOptionEntry: string | undefined,
+  settingsEntry: EntryPointSetting | undefined,
+  filePath: string | undefined,
+): string {
+  if (ruleOptionEntry) return ruleOptionEntry
+  if (typeof settingsEntry === 'string') return settingsEntry
+  if (Array.isArray(settingsEntry)) {
+    if (!filePath) {
+      throw new MissingEntryPointError(
+        '`settings.tailwindcss.entryPoint` is a mapping array but no file path is available to match against.',
+        'This usually means the rule ran outside the linter context. Open an issue if you see this in a real lint run.',
+      )
+    }
+    const matched = resolveByGlobMapping(settingsEntry, filePath, process.cwd())
+    if (matched) return matched
+    throw new MissingEntryPointError(
+      `No \`entryPoint\` mapping matched \`${filePath}\`.`,
+      'Add a mapping covering this file to `settings.tailwindcss.entryPoint`, or use a `"**"` fallback entry.',
+    )
+  }
+  throw new MissingEntryPointError(
+    `\`settings.tailwindcss.entryPoint\` is required${filePath ? ` (linting \`${filePath}\`)` : ''}.`,
+    'Set it to a string (single-project) or an array of `{ files, use }` mappings (monorepo).',
+  )
+}
+
+/** Reset all DS caches (useful for tests). */
 export function resetDesignSystem(): void {
   dsCache.clear()
-  autoDetectCache.clear()
-  lastLoadedPath = null
   resetDebug()
 }
+
+// Re-export so callers don't need to know the fatal module exists for type usage.
+export { isFatalError }

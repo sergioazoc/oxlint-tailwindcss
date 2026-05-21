@@ -5,6 +5,7 @@ import { splitUtilityAndVariant } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import { sortClassesSync } from '../design-system/sort-service'
 import { safeOptions } from '../types'
+import { safeGetDS } from '../utils/fatal'
 
 interface Options {
   entryPoint?: string
@@ -31,6 +32,7 @@ export const enforceSortOrder = defineRule({
     ],
     messages: {
       unsorted: 'Tailwind classes are not in the recommended order.',
+      designSystemUnavailable: '{{message}}',
     },
   },
   createOnce(context) {
@@ -46,7 +48,7 @@ export const enforceSortOrder = defineRule({
     }
 
     function check(locations: ClassLocation[]) {
-      const ds = getDS()
+      const ds = safeGetDS(getDS, context, locations[0]?.node)
       if (!ds) return
       const { cache, entryPoint } = ds
       const mode = getMode()

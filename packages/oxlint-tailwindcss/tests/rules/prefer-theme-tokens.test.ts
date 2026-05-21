@@ -4,6 +4,7 @@ import { RuleTester } from 'oxlint/plugins-dev'
 import { preferThemeTokens } from '../../src/rules/prefer-theme-tokens'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
 import { resetExtractorConfig } from '../../src/utils/extractors'
+import { runWithFixture } from '../utils/with-fixture'
 
 // Per-test extractor reset — settings are read once and cached on module scope,
 // so tests that toggle `settings.tailwindcss.attributes` need a clean slate.
@@ -22,7 +23,7 @@ describe('prefer-theme-tokens (shadcn-style theme)', () => {
 
   const ruleTester = new RuleTester()
 
-  ruleTester.run('prefer-theme-tokens', preferThemeTokens, {
+  runWithFixture(ruleTester, 'prefer-theme-tokens', preferThemeTokens, SHADCN_FIXTURE, {
     valid: [
       // Already using the named token
       { code: '<div className="border-border bg-primary" />', filename: 'test.tsx' },
@@ -215,7 +216,7 @@ describe('prefer-theme-tokens (no overlap with other rules)', () => {
 
   const ruleTester = new RuleTester()
 
-  ruleTester.run('prefer-theme-tokens', preferThemeTokens, {
+  runWithFixture(ruleTester, 'prefer-theme-tokens', preferThemeTokens, DEFAULT_FIXTURE, {
     valid: [
       // Bracket form CSS-equivalent — handled by no-unnecessary-arbitrary-value
       { code: '<div className="bg-[var(--color-red-500)]" />', filename: 'test.tsx' },
@@ -238,19 +239,24 @@ describe('prefer-theme-tokens (no overlap with other rules)', () => {
   })
 })
 
-describe('prefer-theme-tokens (graceful degradation)', () => {
-  // No design system loaded — the rule must silently skip every class.
+describe('prefer-theme-tokens (fail-loud when entryPoint is missing)', () => {
   beforeAll(() => {
     resetDesignSystem()
   })
 
   const ruleTester = new RuleTester()
 
+  // No `settings.tailwindcss.entryPoint` provided. v1 surfaces a single
+  // `designSystemUnavailable` diagnostic per location instead of silently
+  // skipping. The graceful-degradation behavior was removed.
   ruleTester.run('prefer-theme-tokens', preferThemeTokens, {
-    valid: [
-      { code: '<div className="border-(--border)" />', filename: 'test.tsx' },
-      { code: '<div className="bg-[var(--primary)]" />', filename: 'test.tsx' },
+    valid: [],
+    invalid: [
+      {
+        code: '<div className="border-(--border)" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'designSystemUnavailable' }],
+      },
     ],
-    invalid: [],
   })
 })

@@ -48,7 +48,7 @@
 
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, describe } from 'vitest'
-import { RuleTester } from 'oxlint/plugins-dev'
+import { makeFixtureRunner } from '../utils/with-fixture'
 import { preferThemeTokens } from '../../src/rules/prefer-theme-tokens'
 import { enforceCanonical } from '../../src/rules/enforce-canonical'
 import { noUnnecessaryArbitraryValue } from '../../src/rules/no-unnecessary-arbitrary-value'
@@ -59,6 +59,7 @@ const SHADCN_FIXTURE = resolve(__dirname, '../fixtures/shadcn.css')
 const DEFAULT_FIXTURE = resolve(__dirname, '../fixtures/default.css')
 
 describe('prefer-theme-tokens coexistence (default theme)', () => {
+  const run = makeFixtureRunner(DEFAULT_FIXTURE)
   beforeAll(() => {
     resetDesignSystem()
     resetCanonicalizeService()
@@ -70,7 +71,7 @@ describe('prefer-theme-tokens coexistence (default theme)', () => {
   })
 
   // ── enforce-canonical ────────────────────────────────────────────
-  new RuleTester().run('enforce-canonical (default theme)', enforceCanonical, {
+  run('enforce-canonical (default theme)', enforceCanonical, {
     valid: [
       // Already canonical
       { code: '<div className="rounded-sm" />', filename: 'test.tsx' },
@@ -104,7 +105,7 @@ describe('prefer-theme-tokens coexistence (default theme)', () => {
   })
 
   // ── no-unnecessary-arbitrary-value ──────────────────────────────
-  new RuleTester().run(
+  run(
     'no-unnecessary-arbitrary-value (default theme)',
     noUnnecessaryArbitraryValue,
     {
@@ -128,7 +129,7 @@ describe('prefer-theme-tokens coexistence (default theme)', () => {
   )
 
   // ── prefer-theme-tokens ─────────────────────────────────────────
-  new RuleTester().run('prefer-theme-tokens (default theme)', preferThemeTokens, {
+  run('prefer-theme-tokens (default theme)', preferThemeTokens, {
     valid: [
       // Theme-prefixed token cases are owned by enforce-canonical / no-unnec.
       // prefer-theme-tokens' candidate `rounded-radius-sm` isn't a real utility.
@@ -154,6 +155,7 @@ describe('prefer-theme-tokens coexistence (default theme)', () => {
 })
 
 describe('prefer-theme-tokens coexistence (shadcn-style theme)', () => {
+  const run = makeFixtureRunner(SHADCN_FIXTURE)
   beforeAll(() => {
     resetDesignSystem()
     resetCanonicalizeService()
@@ -168,7 +170,7 @@ describe('prefer-theme-tokens coexistence (shadcn-style theme)', () => {
   // With this fixture, `--border` is NOT itself a theme token (`--color-border`
   // is, and it points to `--border`). canonicalizeCandidates therefore only
   // changes the bracket→paren syntax — it does not produce border-border.
-  new RuleTester().run('enforce-canonical (shadcn theme)', enforceCanonical, {
+  run('enforce-canonical (shadcn theme)', enforceCanonical, {
     valid: [
       { code: '<div className="border-(--border)" />', filename: 'test.tsx' },
       { code: '<div className="border-border" />', filename: 'test.tsx' },
@@ -186,7 +188,7 @@ describe('prefer-theme-tokens coexistence (shadcn-style theme)', () => {
   // ── no-unnecessary-arbitrary-value ──────────────────────────────
   // With this fixture, `--color-border` resolves directly to `var(--border)`,
   // so border-[var(--border)] is CSS-equivalent to border-border.
-  new RuleTester().run(
+  run(
     'no-unnecessary-arbitrary-value (shadcn theme)',
     noUnnecessaryArbitraryValue,
     {
@@ -205,7 +207,7 @@ describe('prefer-theme-tokens coexistence (shadcn-style theme)', () => {
   // ── prefer-theme-tokens ─────────────────────────────────────────
   // Bracket form is owned by no-unnecessary-arbitrary-value (CSS-equivalent),
   // so prefer-theme-tokens' getNamedEquivalent guard silences it here.
-  new RuleTester().run('prefer-theme-tokens (shadcn theme)', preferThemeTokens, {
+  run('prefer-theme-tokens (shadcn theme)', preferThemeTokens, {
     valid: [
       { code: '<div className="border-(--no-such-var)" />', filename: 'test.tsx' },
       { code: '<div className="border-border" />', filename: 'test.tsx' },

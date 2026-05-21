@@ -72,3 +72,40 @@ describe('fatal errors', () => {
     )
   })
 })
+
+describe('safeGetDS', () => {
+  it('returns the result on success', async () => {
+    const { safeGetDS } = await import('../../src/utils/fatal')
+    const report = vi.fn()
+    const result = safeGetDS(() => ({ ok: true }), { report })
+    expect(result).toEqual({ ok: true })
+    expect(report).not.toHaveBeenCalled()
+  })
+
+  it('catches fatal errors, reports them, and returns null', async () => {
+    const { safeGetDS } = await import('../../src/utils/fatal')
+    const report = vi.fn()
+    const result = safeGetDS(
+      () => {
+        throw new MissingEntryPointError('boom', 'fix it')
+      },
+      { report },
+    )
+    expect(result).toBeNull()
+    expect(report).toHaveBeenCalledOnce()
+  })
+
+  it('re-throws non-fatal errors', async () => {
+    const { safeGetDS } = await import('../../src/utils/fatal')
+    const report = vi.fn()
+    expect(() =>
+      safeGetDS(
+        () => {
+          throw new Error('regular bug')
+        },
+        { report },
+      ),
+    ).toThrow('regular bug')
+    expect(report).not.toHaveBeenCalled()
+  })
+})

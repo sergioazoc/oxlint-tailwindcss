@@ -3,6 +3,7 @@ import { beforeAll } from 'vitest'
 import { RuleTester } from 'oxlint/plugins-dev'
 import { noUnnecessaryArbitraryValue } from '../../src/rules/no-unnecessary-arbitrary-value'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
+import { runWithFixture } from '../utils/with-fixture'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 
@@ -13,7 +14,7 @@ beforeAll(() => {
 
 const ruleTester = new RuleTester()
 
-ruleTester.run('no-unnecessary-arbitrary-value', noUnnecessaryArbitraryValue, {
+runWithFixture(ruleTester, 'no-unnecessary-arbitrary-value', noUnnecessaryArbitraryValue, ENTRY_POINT, {
   valid: [
     // Named classes — no issue
     { code: '<div className="w-full h-auto" />', filename: 'test.tsx' },
