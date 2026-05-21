@@ -4,35 +4,22 @@ import { splitClasses } from '../utils/class-splitter'
 import { extractUtility, getVariantPrefix } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import { safeGetDS } from '../utils/fatal'
+import {
+  COMPLEMENTARY_GROUPS as SPEC_COMPLEMENTARY_GROUPS,
+  COMPOSITION_PAIRS as SPEC_COMPOSITION_PAIRS,
+} from './no-conflicting-classes/spec'
 
-// Utilities that share a CSS property but are designed to compose.
-// Most composition is detected automatically via CSS custom properties
-// (see isCompositionViaCssVars). These groups cover cases where the
-// heuristic fails: shared intermediate vars or missing custom props.
-// A capture group marks the utility prefix: same-prefix pairs (e.g.
-// duration-300 / duration-500) fall through to the overlap check so they
-// still conflict, only cross-prefix pairs compose. No capture group means
-// "always compose within group" (e.g. prose).
-export const COMPLEMENTARY_GROUPS: readonly RegExp[] = [
-  /^(from|via|to)-/, // gradient stops (share --tw-gradient-stops)
-  /^(transition|duration|ease|delay)(?:-|$)/, // transition composition (transition-all has no custom vars)
-  /^-?(translate|scale|rotate|skew)-/, // transform axis composition (overlap not in cssProps)
-  /^-?mask-((?:linear|radial|conic|[trblxy])(?:-(?:from|via|to|at))?)(?:-|$)/, // mask gradients: capture "<family>" or "<family>-<role>"; cross-family or cross-role composes
-  /^prose(?:-|$)/, // prose + prose-sm/lg/xl modifiers
-]
-
-// Pairs where one utility sets defaults and the other overrides a specific property.
-export const COMPOSITION_PAIRS: readonly (readonly [RegExp, RegExp])[] = [
-  [/^text-/, /^leading-/], // text-sm sets line-height, leading-* overrides
-  [/^text-/, /^tracking-/], // text-* sets letter-spacing, tracking-* overrides
-  [/^border(?:-[0-9]|$)/, /^border-(?:solid|dashed|dotted|double|hidden|none)$/], // border width + style
-  [/^divide-/, /^border(?:-[trblxyse])?-/], // divide-* targets children
-  [/^prose(?:-|$)/, /^max-w-/], // prose sets max-width, max-w-* overrides
-  [/^animate-in$/, /^(?:fade|spin|zoom|blur)-in(?:-|$)|^slide-in-from-/], // animate-in sets enter defaults, *-in modifiers override one each
-  [/^animate-out$/, /^(?:fade|spin|zoom|blur)-out(?:-|$)|^slide-out-to-/], // animate-out sets exit defaults, *-out modifiers override one each
-  // mask-composite mode + mask gradient compose; two composite modes don't match this pair and still conflict on mask-composite
-  [/^mask-(?:add|subtract|intersect|exclude)$/, /^-?mask-(?:linear|radial|conic|[trblxy])-/],
-]
+// Backward-compatible exports: the rule keeps consuming bare regex tables,
+// while `./no-conflicting-classes/spec.ts` is the authoritative source the
+// docs site imports for its rendered explanations.
+export const COMPLEMENTARY_GROUPS: readonly RegExp[] = SPEC_COMPLEMENTARY_GROUPS.map((g) => g.pattern)
+export const COMPOSITION_PAIRS: readonly (readonly [RegExp, RegExp])[] = SPEC_COMPOSITION_PAIRS.map(
+  (p) => [p.a, p.b] as const,
+)
+export {
+  COMPLEMENTARY_GROUPS as COMPLEMENTARY_GROUPS_WITH_REASONS,
+  COMPOSITION_PAIRS as COMPOSITION_PAIRS_WITH_REASONS,
+} from './no-conflicting-classes/spec'
 
 function stripImportant(utility: string): string {
   if (utility.startsWith('!')) return utility.slice(1)
