@@ -25,8 +25,8 @@ import { Worker } from 'node:worker_threads'
 const BUFFER_SIZE = 4 * 1024 * 1024 // 4 MB
 const HEADER_INTS = 4
 const DATA_OFFSET = HEADER_INTS * 4 + 4 // 20 bytes
-const INIT_TIMEOUT = 30_000 // 30 s to load DS
-const REQUEST_TIMEOUT = 10_000 // 10 s per sort request
+const INIT_TIMEOUT = 60_000 // 60 s to load DS (raised in v1 to avoid spurious timeouts on slow CI)
+const REQUEST_TIMEOUT = 30_000 // 30 s per sort request
 
 const WORKER_SCRIPT = `
 const { workerData } = require('worker_threads');

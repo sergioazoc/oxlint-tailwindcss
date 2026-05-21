@@ -40,6 +40,7 @@ export const noRestrictedClasses = defineRule({
         additionalProperties: false,
       },
     ],
+    defaultOptions: [{ classes: [], patterns: [] }],
     messages: {
       restricted: '"{{className}}" is restricted.',
       restrictedWithMessage: '"{{className}}" is restricted: {{message}}',

@@ -90,6 +90,7 @@ export const noHardcodedColors = defineRule({
         additionalProperties: false,
       },
     ],
+    defaultOptions: [{ allow: [] }],
     messages: {
       noHardcoded:
         '"{{className}}" uses a hardcoded color value. Use a design token from your theme instead.',

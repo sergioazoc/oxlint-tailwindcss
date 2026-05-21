@@ -49,6 +49,7 @@ export const enforceCanonical = defineRule({
       },
     ],
     hasSuggestions: true,
+    defaultOptions: [{}],
     messages: {
       nonCanonical: '"{{className}}" can be written as "{{canonical}}". Use the canonical form.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',

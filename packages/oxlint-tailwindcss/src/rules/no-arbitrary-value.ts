@@ -23,6 +23,7 @@ export const noArbitraryValue = defineRule({
         additionalProperties: false,
       },
     ],
+    defaultOptions: [{ allow: [] }],
     messages: {
       noArbitrary:
         '"{{className}}" uses an arbitrary value. Use a design token or extend your theme instead.',

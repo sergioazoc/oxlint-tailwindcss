@@ -41,6 +41,7 @@ export const noDeprecatedClasses = defineRule({
       },
     ],
     hasSuggestions: true,
+    defaultOptions: [{}],
     messages: {
       deprecated: '"{{className}}" is deprecated in Tailwind v4. Use "{{replacement}}" instead.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',

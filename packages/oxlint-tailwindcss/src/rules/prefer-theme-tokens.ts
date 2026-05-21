@@ -45,6 +45,7 @@ export const preferThemeTokens = defineRule({
       },
     ],
     hasSuggestions: true,
+    defaultOptions: [{}],
     messages: {
       preferNamed:
         '"{{className}}" can be written as "{{replacement}}". Use the named theme token.',

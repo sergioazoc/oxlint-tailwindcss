@@ -22,6 +22,7 @@ export const noUnnecessaryArbitraryValue = defineRule({
       },
     ],
     hasSuggestions: true,
+    defaultOptions: [{}],
     messages: {
       unnecessaryArbitrary:
         '"{{className}}" can be written as "{{replacement}}". Use the named class instead.',

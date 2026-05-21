@@ -134,6 +134,10 @@ export const consistentVariantOrder = defineRule({
       },
     ],
     hasSuggestions: true,
+    // No defaultOptions for `order`: leaving it undefined is what triggers
+    // the "use the design system's order when available, fall back to the
+    // built-in static list otherwise" detection in createOnce.
+    defaultOptions: [{}],
     messages: {
       wrongOrder: '"{{className}}" has variants in wrong order. Use "{{replacement}}" instead.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',

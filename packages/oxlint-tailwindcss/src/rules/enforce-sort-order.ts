@@ -30,6 +30,7 @@ export const enforceSortOrder = defineRule({
         additionalProperties: false,
       },
     ],
+    defaultOptions: [{ mode: 'default' }],
     messages: {
       unsorted: 'Tailwind classes are not in the recommended order.',
       designSystemUnavailable: '{{message}}',

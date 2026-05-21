@@ -127,6 +127,7 @@ export const noConflictingClasses = defineRule({
         additionalProperties: false,
       },
     ],
+    defaultOptions: [{}],
     messages: {
       conflict:
         '"{{classA}}" and "{{classB}}" affect {{properties}}. "{{winner}}" takes precedence (appears later).',
