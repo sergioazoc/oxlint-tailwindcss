@@ -54,8 +54,18 @@ export const DEFAULT_EXTRACTOR_CONFIG: ExtractorConfig = {
 
 // --- Custom config resolution via settings.tailwindcss ---
 
-let _cachedConfig: ExtractorConfig | null = null
-let _settingsResolved = false
+/**
+ * v1: per-context extractor config cache. Each oxlint rule context gets its
+ * own cached config, keyed by reference identity in a WeakMap. This prevents
+ * the cross-contamination bug where two test suites (or parallel rule
+ * contexts) would race on a module-level global and the first one to read
+ * settings would freeze the config for everyone else.
+ *
+ * WeakMap also lets us drop entries automatically when a context goes out of
+ * scope — no manual cache eviction needed.
+ */
+type ContextKey = object
+const configCache = new WeakMap<ContextKey, ExtractorConfig>()
 
 function mergeUnique(defaults: string[], extras?: string[], exclusions?: string[]): string[] {
   let base = defaults
@@ -70,14 +80,19 @@ function mergeUnique(defaults: string[], extras?: string[], exclusions?: string[
 }
 
 /**
- * Returns the extractor config, merging defaults with user settings from
- * `settings.tailwindcss`. Caches after the first successful settings read.
- * Falls back to DEFAULT_EXTRACTOR_CONFIG if settings are unavailable.
+ * Returns the extractor config for this rule context, merging defaults with
+ * user settings from `settings.tailwindcss`. The result is cached per
+ * context (WeakMap-keyed) so settings are read once per rule lifetime.
+ *
+ * In `createOnce` the settings getter throws — we fall back to the defaults
+ * without caching so the next visitor call (where settings ARE available)
+ * still resolves the user's overrides.
  */
 export function getExtractorConfig(context: {
   settings?: Readonly<Record<string, unknown>>
 }): ExtractorConfig {
-  if (_settingsResolved) return _cachedConfig!
+  const cached = configCache.get(context as ContextKey)
+  if (cached) return cached
 
   let tw: PluginSettings | undefined
   try {
@@ -85,15 +100,16 @@ export function getExtractorConfig(context: {
     if (raw && typeof raw === 'object') {
       tw = raw as PluginSettings
     }
-    _settingsResolved = true
   } catch {
-    // createOnce — settings not available yet, return defaults without caching
+    // createOnce — settings not available yet. Return defaults without
+    // caching so a later call from a visitor still gets a chance to read
+    // the real settings.
     return DEFAULT_EXTRACTOR_CONFIG
   }
 
   if (!tw) {
-    _cachedConfig = DEFAULT_EXTRACTOR_CONFIG
-    return _cachedConfig
+    configCache.set(context as ContextKey, DEFAULT_EXTRACTOR_CONFIG)
+    return DEFAULT_EXTRACTOR_CONFIG
   }
 
   const exclude = tw.exclude
@@ -107,7 +123,7 @@ export function getExtractorConfig(context: {
         )
       : DEFAULT_EXTRACTOR_CONFIG.variablePatterns
 
-  _cachedConfig = {
+  const resolved: ExtractorConfig = {
     attributes: mergeUnique(
       DEFAULT_EXTRACTOR_CONFIG.attributes,
       tw.attributes,
@@ -120,13 +136,24 @@ export function getExtractorConfig(context: {
       ...(tw.variablePatterns ?? []).map((p) => new RegExp(p)),
     ],
   }
-  return _cachedConfig
+  configCache.set(context as ContextKey, resolved)
+  return resolved
 }
 
-/** Reset cached config — for test isolation */
-export function resetExtractorConfig(): void {
-  _cachedConfig = null
-  _settingsResolved = false
+/**
+ * Reset cached config for a specific context, or globally for tests that
+ * don't track contexts.
+ *
+ * Kept for backward compat with existing tests that call it from `beforeEach`.
+ * With WeakMap-keyed caching, fresh contexts get fresh caches automatically;
+ * this helper now only needs to drop a specific entry when callers pass one.
+ */
+export function resetExtractorConfig(context?: { settings?: unknown }): void {
+  if (context) {
+    configCache.delete(context as ContextKey)
+  }
+  // No-op when called without a context: the WeakMap already handles
+  // lifecycle. Module-level global state was removed in v1.
 }
 
 /**
