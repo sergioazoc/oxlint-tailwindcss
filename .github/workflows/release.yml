@@ -40,14 +40,14 @@ jobs:
         run: pnpm test
 
       - name: Publish to npm
-        run: pnpm publish --no-git-checks --provenance
+        run: pnpm -C packages/oxlint-tailwindcss publish --no-git-checks --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create or update GitHub Release
         run: |
-          VERSION="v$(node -p 'require("./package.json").version')"
-          BODY=$(awk "/^## ${VERSION#v} /{found=1; next} /^## /{found=0} found" CHANGELOG.md)
+          VERSION="v$(node -p 'require("./packages/oxlint-tailwindcss/package.json").version')"
+          BODY=$(awk "/^## ${VERSION#v} /{found=1; next} /^## /{found=0} found" packages/oxlint-tailwindcss/CHANGELOG.md)
           if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$VERSION" --title "$VERSION" --notes "$BODY" --target "$GITHUB_SHA"
           else
