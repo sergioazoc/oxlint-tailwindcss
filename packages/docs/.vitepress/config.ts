@@ -1,0 +1,134 @@
+import { defineConfig } from 'vitepress'
+
+const RULES_NAV = [
+  { text: 'enforce-canonical', link: '/rules/enforce-canonical' },
+  { text: 'enforce-sort-order', link: '/rules/enforce-sort-order' },
+  { text: 'no-unknown-classes', link: '/rules/no-unknown-classes' },
+  { text: 'no-conflicting-classes', link: '/rules/no-conflicting-classes' },
+  { text: 'no-deprecated-classes', link: '/rules/no-deprecated-classes' },
+  { text: 'no-duplicate-classes', link: '/rules/no-duplicate-classes' },
+  { text: 'enforce-logical', link: '/rules/enforce-logical' },
+  { text: 'enforce-physical', link: '/rules/enforce-physical' },
+]
+
+// Multi-locale VitePress v2 config. English is the default at `/`,
+// Spanish lives at `/es`. The sidebar and nav structures mirror each
+// other so users can switch locale at any depth without losing context.
+export default defineConfig({
+  title: 'oxlint-tailwindcss',
+  description:
+    'Tailwind CSS linting rules for oxlint — fast, deterministic, designed for Tailwind v4.',
+
+  // Same sitemap regardless of locale prefix.
+  cleanUrls: true,
+  lastUpdated: true,
+  ignoreDeadLinks: true,
+
+  locales: {
+    root: {
+      label: 'English',
+      lang: 'en-US',
+      themeConfig: {
+        nav: [
+          { text: 'Guide', link: '/getting-started' },
+          { text: 'Rules', link: '/rules/' },
+          { text: 'Migration', link: '/migration/v0-to-v1' },
+          {
+            text: 'v1.0.0',
+            items: [
+              { text: 'Changelog', link: 'https://github.com/sergioazoc/oxlint-tailwindcss/blob/main/packages/oxlint-tailwindcss/CHANGELOG.md' },
+              { text: 'npm', link: 'https://www.npmjs.com/package/oxlint-tailwindcss' },
+            ],
+          },
+        ],
+        sidebar: {
+          '/': [
+            {
+              text: 'Getting Started',
+              items: [
+                { text: 'Introduction', link: '/' },
+                { text: 'Setup', link: '/getting-started' },
+                { text: 'Settings reference', link: '/settings' },
+                { text: 'Defaults', link: '/defaults' },
+              ],
+            },
+            {
+              text: 'Guides',
+              items: [
+                { text: 'Monorepo', link: '/monorepo' },
+                { text: 'Interop (oxfmt, prettier-plugin)', link: '/interop' },
+              ],
+            },
+            {
+              text: 'Rules',
+              link: '/rules/',
+              items: RULES_NAV,
+            },
+            {
+              text: 'Migration',
+              items: [{ text: 'v0 → v1', link: '/migration/v0-to-v1' }],
+            },
+          ],
+        },
+      },
+    },
+    es: {
+      label: 'Español',
+      lang: 'es-ES',
+      link: '/es/',
+      themeConfig: {
+        nav: [
+          { text: 'Guía', link: '/es/getting-started' },
+          { text: 'Reglas', link: '/es/rules/' },
+          { text: 'Migración', link: '/es/migration/v0-to-v1' },
+        ],
+        sidebar: {
+          '/es/': [
+            {
+              text: 'Empezar',
+              items: [
+                { text: 'Introducción', link: '/es/' },
+                { text: 'Setup', link: '/es/getting-started' },
+                { text: 'Referencia de settings', link: '/es/settings' },
+                { text: 'Defaults', link: '/es/defaults' },
+              ],
+            },
+            {
+              text: 'Guías',
+              items: [
+                { text: 'Monorepo', link: '/es/monorepo' },
+                { text: 'Interop (oxfmt, prettier-plugin)', link: '/es/interop' },
+              ],
+            },
+            {
+              text: 'Reglas',
+              link: '/es/rules/',
+              items: RULES_NAV.map((r) => ({ ...r, link: `/es${r.link}` })),
+            },
+            {
+              text: 'Migración',
+              items: [{ text: 'v0 → v1', link: '/es/migration/v0-to-v1' }],
+            },
+          ],
+        },
+      },
+    },
+  },
+
+  themeConfig: {
+    logo: undefined,
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/sergioazoc/oxlint-tailwindcss' },
+      { icon: 'npm', link: 'https://www.npmjs.com/package/oxlint-tailwindcss' },
+    ],
+    search: { provider: 'local' },
+    editLink: {
+      pattern:
+        'https://github.com/sergioazoc/oxlint-tailwindcss/edit/main/packages/docs/:path',
+    },
+    footer: {
+      message: 'Released under the MIT License.',
+      copyright: 'Copyright © 2024–present Sergio Azocar',
+    },
+  },
+})

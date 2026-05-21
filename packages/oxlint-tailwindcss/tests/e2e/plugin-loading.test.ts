@@ -7,6 +7,7 @@ const ROOT = resolve(__dirname, '../..')
 const DIST_CJS = resolve(ROOT, 'dist/index.cjs')
 const OXLINT = resolve(ROOT, 'node_modules/.bin/oxlint')
 const E2E_DIR = resolve(__dirname, 'tmp')
+const FIXTURE_CSS = resolve(__dirname, '../fixtures/default.css')
 
 function runOxlint(configFile: string, targetFile: string): { stdout: string; exitCode: number } {
   try {
@@ -44,6 +45,11 @@ describe('E2E: oxlint plugin loading', () => {
             'tailwindcss/no-duplicate-classes': 'error',
             'tailwindcss/no-unnecessary-whitespace': 'error',
             'tailwindcss/no-deprecated-classes': 'error',
+          },
+          settings: {
+            // v1 requires an explicit entryPoint for DS-dependent rules
+            // (no-deprecated-classes here).
+            tailwindcss: { entryPoint: FIXTURE_CSS },
           },
         },
         null,

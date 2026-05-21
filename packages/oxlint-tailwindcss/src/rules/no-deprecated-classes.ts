@@ -52,7 +52,8 @@ export const noDeprecatedClasses = defineRule({
     const getDS = createLazyLoader(context)
 
     function check(locations: ClassLocation[]) {
-      const dsResult = safeGetDS(getDS, context, locations[0]?.node)
+      if (locations.length === 0) return
+      const dsResult = safeGetDS(getDS, context, locations[0].node)
       if (!dsResult) return
       for (const loc of locations) {
         const split = splitClassesWithSeparators(loc.value)

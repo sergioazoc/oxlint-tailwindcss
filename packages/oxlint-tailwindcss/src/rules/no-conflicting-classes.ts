@@ -125,7 +125,8 @@ export const noConflictingClasses = defineRule({
     const getDS = createLazyLoader(context)
 
     function check(locations: ClassLocation[]) {
-      const ds = safeGetDS(getDS, context, locations[0]?.node)
+      if (locations.length === 0) return
+      const ds = safeGetDS(getDS, context, locations[0].node)
       if (!ds) return
       const { cache } = ds
       for (const loc of locations) {
