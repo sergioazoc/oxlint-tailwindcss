@@ -57,8 +57,7 @@ export const enforceSortOrder = defineRule({
        */
       function sortClassesWithCustomPriority(classes: string[], baselineSorted: string[]): string[] {
         const orderedMap = new Map<string, bigint | number | null>(cache.getClassOrder(classes))
-
-        // Helper to check if a class utility segment is completely unknown to Tailwind
+        
         const isUnknownClass = (cls: string): boolean => {
           const { utility } = splitUtilityAndVariant(cls)
           const score = orderedMap.get(utility) ?? orderedMap.get(cls)
@@ -69,17 +68,15 @@ export const enforceSortOrder = defineRule({
           const variantA = splitUtilityAndVariant(a).variant
           const variantB = splitUtilityAndVariant(b).variant
 
-          // Only refine the sort order if both classes share the exact same variant pool
-          // (e.g., comparing two base classes, or comparing two "hover:" classes)
           if (variantA === variantB) {
             const unknownA = isUnknownClass(a)
             const unknownB = isUnknownClass(b)
 
-            if (unknownA && !unknownB) return -1 // Prioritize custom 'a' to the front of this group
-            if (!unknownA && unknownB) return 1  // Prioritize custom 'b' to the front of this group
+            if (unknownA && !unknownB) return -1
+            if (!unknownA && unknownB) return 1
           }
 
-          return 0 // Trust the baseline engine sorting for everything else
+          return 0
         })
       }
 
