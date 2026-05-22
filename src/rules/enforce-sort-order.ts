@@ -51,24 +51,55 @@ export const enforceSortOrder = defineRule({
       const { cache, entryPoint } = ds
       const mode = getMode()
 
-      function sortDefault(classes: string[]): string[] {
-        // Use persistent child process for exact official Tailwind sort order
-        const dynamic = sortClassesSync(entryPoint, classes)
-        if (dynamic) return dynamic
+      /**
+       * Safely places custom/unknown classes ahead of standard Tailwind classes
+       * within their matching variant contexts, mirroring prettier-plugin-tailwindcss.
+       */
+      function sortClassesWithCustomPriority(classes: string[], baselineSorted: string[]): string[] {
+        const orderedMap = new Map<string, bigint | number | null>(cache.getClassOrder(classes))
 
-        // Fallback to precomputed heuristic sort.
-        // Null-order classes (group/name, peer/name) sort first — matches
-        // the behavior of prettier-plugin-tailwindcss and oxfmt.
-        const ordered = cache.getClassOrder(classes)
-        const sorted = [...ordered].sort((a, b) => {
-          if (a[1] === null && b[1] === null) return 0
-          if (a[1] === null) return -1
-          if (b[1] === null) return 1
-          if (a[1] < b[1]) return -1
-          if (a[1] > b[1]) return 1
-          return 0
+        // Helper to check if a class utility segment is completely unknown to Tailwind
+        const isUnknownClass = (cls: string): boolean => {
+          const { utility } = splitUtilityAndVariant(cls)
+          const score = orderedMap.get(utility) ?? orderedMap.get(cls)
+          return score === null || score === undefined
+        }
+
+        return [...baselineSorted].sort((a, b) => {
+          const variantA = splitUtilityAndVariant(a).variant
+          const variantB = splitUtilityAndVariant(b).variant
+
+          // Only refine the sort order if both classes share the exact same variant pool
+          // (e.g., comparing two base classes, or comparing two "hover:" classes)
+          if (variantA === variantB) {
+            const unknownA = isUnknownClass(a)
+            const unknownB = isUnknownClass(b)
+
+            if (unknownA && !unknownB) return -1 // Prioritize custom 'a' to the front of this group
+            if (!unknownA && unknownB) return 1  // Prioritize custom 'b' to the front of this group
+          }
+
+          return 0 // Trust the baseline engine sorting for everything else
         })
-        return sorted.map(([name]) => name)
+      }
+
+      function sortDefault(classes: string[]): string[] {
+        let targetOrder = sortClassesSync(entryPoint, classes)
+
+        if (!targetOrder) {
+          const ordered = cache.getClassOrder(classes)
+          const sorted = [...ordered].sort((a, b) => {
+            if (a[1] === null && b[1] === null) return 0
+            if (a[1] === null) return -1
+            if (b[1] === null) return 1
+            if (a[1] < b[1]) return -1
+            if (a[1] > b[1]) return 1
+            return 0
+          })
+          targetOrder = sorted.map(([name]) => name)
+        }
+
+        return sortClassesWithCustomPriority(classes, targetOrder)
       }
 
       function sortStrict(classes: string[]): string[] {
@@ -83,7 +114,7 @@ export const enforceSortOrder = defineRule({
           groups.get(variant)!.push(cls)
         }
 
-        for (const [, groupClasses] of groups) {
+        for (const [variantKey, groupClasses] of groups) {
           const ordered = cache.getClassOrder(groupClasses)
           ordered.sort((a, b) => {
             if (a[1] === null && b[1] === null) return 0
@@ -93,8 +124,11 @@ export const enforceSortOrder = defineRule({
             if (a[1] > b[1]) return 1
             return 0
           })
-          groupClasses.length = 0
-          for (const [name] of ordered) groupClasses.push(name)
+
+          const sortedNames = ordered.map(([name]) => name)
+          const finalizedGroupOrder = sortClassesWithCustomPriority(groupClasses, sortedNames)
+
+          groups.set(variantKey, finalizedGroupOrder)
         }
 
         const sortedGroupKeys = [...groups.keys()].sort((a, b) => {
@@ -102,7 +136,6 @@ export const enforceSortOrder = defineRule({
           if (a !== '' && b === '') return 1
           if (a === '' && b === '') return 0
 
-          // For compound variant keys like "dark:hover:", use the first variant for ordering
           const variantA = a.slice(0, -1)
           const variantB = b.slice(0, -1)
           const firstA = variantA.includes(':') ? variantA.split(':')[0] : variantA
@@ -118,6 +151,7 @@ export const enforceSortOrder = defineRule({
         }
         return result
       }
+
       for (const loc of locations) {
         const split = splitClassesWithSeparators(loc.value)
         const classes = split.classes
