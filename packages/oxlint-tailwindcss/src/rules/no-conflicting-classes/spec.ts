@@ -46,15 +46,18 @@ export const COMPLEMENTARY_GROUPS: readonly ComplementaryGroup[] = [
   },
   {
     pattern: /^-?(translate|scale|rotate|skew)-/,
-    reason: 'Transform axes (translate / scale / rotate / skew) compose into a single `transform`; the overlap is not captured in `cssProps`.',
+    reason:
+      'Transform axes (translate / scale / rotate / skew) compose into a single `transform`; the overlap is not captured in `cssProps`.',
   },
   {
     pattern: /^-?mask-((?:linear|radial|conic|[trblxy])(?:-(?:from|via|to|at))?)(?:-|$)/,
-    reason: 'Mask gradients: different families (e.g. `mask-linear-*` vs `mask-radial-*`) or roles (`from`/`via`/`to`/`at`) compose; same family+role conflicts.',
+    reason:
+      'Mask gradients: different families (e.g. `mask-linear-*` vs `mask-radial-*`) or roles (`from`/`via`/`to`/`at`) compose; same family+role conflicts.',
   },
   {
     pattern: /^prose(?:-|$)/,
-    reason: '`prose` + `prose-sm`/`prose-lg`/`prose-xl` modify the same scope and are designed to compose.',
+    reason:
+      '`prose` + `prose-sm`/`prose-lg`/`prose-xl` modify the same scope and are designed to compose.',
   },
 ]
 
@@ -87,16 +90,19 @@ export const COMPOSITION_PAIRS: readonly CompositionPair[] = [
   {
     a: /^animate-in$/,
     b: /^(?:fade|spin|zoom|blur)-in(?:-|$)|^slide-in-from-/,
-    reason: '`animate-in` initializes all `--tw-enter-*` vars; `*-in` modifiers each override one. (`tailwindcss-animate` / `tw-animate-css`.)',
+    reason:
+      '`animate-in` initializes all `--tw-enter-*` vars; `*-in` modifiers each override one. (`tailwindcss-animate` / `tw-animate-css`.)',
   },
   {
     a: /^animate-out$/,
     b: /^(?:fade|spin|zoom|blur)-out(?:-|$)|^slide-out-to-/,
-    reason: '`animate-out` initializes all `--tw-exit-*` vars; `*-out` modifiers each override one.',
+    reason:
+      '`animate-out` initializes all `--tw-exit-*` vars; `*-out` modifiers each override one.',
   },
   {
     a: /^mask-(?:add|subtract|intersect|exclude)$/,
     b: /^-?mask-(?:linear|radial|conic|[trblxy])-/,
-    reason: '`mask-{add,subtract,intersect,exclude}` are mask-composite modes that compose with mask-gradient utilities.',
+    reason:
+      '`mask-{add,subtract,intersect,exclude}` are mask-composite modes that compose with mask-gradient utilities.',
   },
 ]

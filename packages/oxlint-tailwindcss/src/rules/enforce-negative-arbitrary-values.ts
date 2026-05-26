@@ -1,6 +1,7 @@
 import { defineRule } from '@oxlint/plugins'
-import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
-import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
+import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { splitClassesWithSeparators } from '../utils/class-splitter'
+import { reportClassReplacements } from '../utils/report'
 import { splitUtilityAndVariant } from '../utils/class-parser'
 
 function fixClass(cls: string): string | null {
@@ -54,50 +55,13 @@ export const enforceNegativeArbitraryValues = defineRule({
     function check(locations: ClassLocation[]) {
       for (const loc of locations) {
         const split = splitClassesWithSeparators(loc.value)
-        const classes = split.classes
-        const offending: Array<{ cls: string; replacement: string }> = []
-
-        for (const cls of classes) {
+        const offending = split.classes.flatMap((cls) => {
           const fixed = fixClass(cls)
-          if (fixed) offending.push({ cls, replacement: fixed })
-        }
-
-        if (offending.length === 0) continue
-
-        const replacements = new Map(offending.map(({ cls, replacement }) => [cls, replacement]))
-        const fixedValue = rebuildClassString(
-          split,
-          classes.map((cls) => replacements.get(cls) ?? cls),
-        )
-
-        for (let i = 0; i < offending.length; i++) {
-          const { cls, replacement } = offending[i]
-          if (i === 0) {
-            context.report({
-              node: loc.node,
-              messageId: 'moveNegative',
-              data: { className: cls, replacement },
-              fix(fixer) {
-                return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-              },
-            })
-          } else {
-            context.report({
-              node: loc.node,
-              messageId: 'moveNegative',
-              data: { className: cls, replacement },
-              suggest: [
-                {
-                  messageId: 'suggestReplace',
-                  data: { className: cls, replacement },
-                  fix(fixer) {
-                    return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-                  },
-                },
-              ],
-            })
-          }
-        }
+          return fixed ? [{ cls, replacement: fixed }] : []
+        })
+        reportClassReplacements(context, loc, split, split.classes, offending, {
+          messageId: 'moveNegative',
+        })
       }
     }
 

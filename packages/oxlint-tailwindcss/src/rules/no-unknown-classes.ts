@@ -2,10 +2,11 @@ import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
 import { findBestSuggestion } from '../utils/levenshtein'
+import { splitImportant } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
-import { safeOptions } from '../types'
+import { createLazyOptions } from '../utils/context'
 import { DEPRECATED_MAP } from './no-deprecated-classes'
-import { safeGetDS } from '../utils/fatal'
+import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 
 interface Options {
   entryPoint?: string
@@ -40,22 +41,19 @@ export const noUnknownClasses = defineRule({
       unknownWithSuggestion:
         '"{{className}}" is not a valid Tailwind class. Did you mean "{{suggestion}}"?',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
-      designSystemUnavailable: '{{message}}',
+      ...DS_UNAVAILABLE_MESSAGE,
     },
   },
   createOnce(context) {
     const getDS = createLazyLoader(context)
 
-    let _allowlist: Set<string> | null = null
-    let _ignorePrefixes: string[] | null = null
-    function getLazyOptions() {
-      if (_allowlist === null) {
-        const opts = safeOptions<Options>(context)
-        _allowlist = new Set(opts?.allowlist ?? [])
-        _ignorePrefixes = opts?.ignorePrefixes ?? []
-      }
-      return { allowlist: _allowlist, ignorePrefixes: _ignorePrefixes! }
-    }
+    const getLazyOptions = createLazyOptions<
+      Options,
+      { allowlist: Set<string>; ignorePrefixes: string[] }
+    >(context, (o) => ({
+      allowlist: new Set(o?.allowlist ?? []),
+      ignorePrefixes: o?.ignorePrefixes ?? [],
+    }))
 
     function shouldIgnore(className: string): boolean {
       const { allowlist, ignorePrefixes } = getLazyOptions()
@@ -64,11 +62,7 @@ export const noUnknownClasses = defineRule({
     }
 
     function stripModifiers(className: string): string {
-      // Strip ! (important) for validation — prefix or suffix form
-      let stripped = className
-      if (stripped.startsWith('!')) stripped = stripped.slice(1)
-      if (stripped.endsWith('!')) stripped = stripped.slice(0, -1)
-      return stripped
+      return splitImportant(className).bare
     }
 
     function check(locations: ClassLocation[]) {

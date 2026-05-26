@@ -1,9 +1,10 @@
 import { defineRule } from '@oxlint/plugins'
-import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
-import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
-import { splitUtilityAndVariant } from '../utils/class-parser'
+import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { splitClassesWithSeparators } from '../utils/class-splitter'
+import { reportClassReplacements } from '../utils/report'
+import { reattachImportant, splitImportant, splitUtilityAndVariant } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
-import { safeGetDS } from '../utils/fatal'
+import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 
 // Mapping of deprecated classes in TW v4 to their replacements
 export const DEPRECATED_MAP: Record<string, string> = {
@@ -45,7 +46,7 @@ export const noDeprecatedClasses = defineRule({
     messages: {
       deprecated: '"{{className}}" is deprecated in Tailwind v4. Use "{{replacement}}" instead.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
-      designSystemUnavailable: '{{message}}',
+      ...DS_UNAVAILABLE_MESSAGE,
     },
   },
   createOnce(context) {
@@ -57,76 +58,17 @@ export const noDeprecatedClasses = defineRule({
       if (!dsResult) return
       for (const loc of locations) {
         const split = splitClassesWithSeparators(loc.value)
-        const classes = split.classes
-        const offending: Array<{ cls: string; replacement: string }> = []
-
-        for (const cls of classes) {
+        const offending = split.classes.flatMap((cls) => {
           const { utility, variant } = splitUtilityAndVariant(cls)
-
-          // Strip ! (important) for lookup — prefix or suffix
-          const hasImportantPrefix = utility.startsWith('!')
-          const hasImportantSuffix = !hasImportantPrefix && utility.endsWith('!')
-          const bareUtility = hasImportantPrefix
-            ? utility.slice(1)
-            : hasImportantSuffix
-              ? utility.slice(0, -1)
-              : utility
-
+          const { bare: bareUtility, position } = splitImportant(utility)
           const replacement = DEPRECATED_MAP[bareUtility]
-          if (!replacement) continue
-
-          // If we have a design system, verify with canonicalize
-          if (dsResult) {
-            const canonical = dsResult.cache.canonicalize(bareUtility)
-            if (canonical !== bareUtility && canonical === replacement) {
-              // Confirmed by the design system
-            }
-          }
-
-          const fullReplacement =
-            variant +
-            (hasImportantPrefix ? '!' : '') +
-            replacement +
-            (hasImportantSuffix ? '!' : '')
-          offending.push({ cls, replacement: fullReplacement })
-        }
-
-        if (offending.length === 0) continue
-
-        const replacements = new Map(offending.map(({ cls, replacement }) => [cls, replacement]))
-        const fixedValue = rebuildClassString(
-          split,
-          classes.map((cls) => replacements.get(cls) ?? cls),
-        )
-
-        for (let i = 0; i < offending.length; i++) {
-          const { cls, replacement } = offending[i]
-          if (i === 0) {
-            context.report({
-              node: loc.node,
-              messageId: 'deprecated',
-              data: { className: cls, replacement },
-              fix(fixer) {
-                return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-              },
-            })
-          } else {
-            context.report({
-              node: loc.node,
-              messageId: 'deprecated',
-              data: { className: cls, replacement },
-              suggest: [
-                {
-                  messageId: 'suggestReplace',
-                  data: { className: cls, replacement },
-                  fix(fixer) {
-                    return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-                  },
-                },
-              ],
-            })
-          }
-        }
+          return replacement
+            ? [{ cls, replacement: variant + reattachImportant(replacement, position) }]
+            : []
+        })
+        reportClassReplacements(context, loc, split, split.classes, offending, {
+          messageId: 'deprecated',
+        })
       }
     }
 

@@ -152,6 +152,41 @@ export function getArbitraryValue(cls: string): string | null {
 }
 
 /**
+ * Position of the `!` important modifier within a utility.
+ *
+ * Tailwind v4 accepts `!` as a prefix (`!flex`) or suffix (`flex!`).
+ * Rules that look up the utility's bare form (e.g. against the design
+ * system) must strip and later reattach `!` at the original position
+ * so the rewrite preserves the user's chosen convention.
+ *
+ * Reuses the same `'prefix' | 'suffix' | null` shape `parseClass` exposes.
+ */
+export type ImportantPosition = 'prefix' | 'suffix' | null
+
+/**
+ * Strip the `!` important modifier from a utility's bare form (no variant
+ * prefix). Returns the bare string and the original position. Operate on
+ * the utility part — call `splitUtilityAndVariant` first if you have the
+ * full class. `parseClass` does both in one pass; use that when you need
+ * the full ParsedClass shape.
+ */
+export function splitImportant(utility: string): { bare: string; position: ImportantPosition } {
+  if (utility.startsWith('!')) return { bare: utility.slice(1), position: 'prefix' }
+  if (utility.endsWith('!')) return { bare: utility.slice(0, -1), position: 'suffix' }
+  return { bare: utility, position: null }
+}
+
+/**
+ * Reattach `!` at the position recorded by `splitImportant`.
+ * The inverse of `splitImportant`: `reattachImportant(splitImportant(x).bare, splitImportant(x).position) === x`.
+ */
+export function reattachImportant(bare: string, position: ImportantPosition): string {
+  if (position === 'prefix') return `!${bare}`
+  if (position === 'suffix') return `${bare}!`
+  return bare
+}
+
+/**
  * Fully parses a Tailwind class into its components.
  */
 export function parseClass(cls: string): ParsedClass {

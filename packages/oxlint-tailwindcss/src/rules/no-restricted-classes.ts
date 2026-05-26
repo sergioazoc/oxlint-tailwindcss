@@ -1,7 +1,7 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
-import { safeOptions } from '../types'
+import { createLazyOptions } from '../utils/context'
 
 interface PatternConfig {
   pattern: string
@@ -47,25 +47,16 @@ export const noRestrictedClasses = defineRule({
     },
   },
   createOnce(context) {
-    interface CompiledConfig {
-      restrictedClasses: Set<string>
-      patterns: Array<{ regex: RegExp; message?: string }>
-    }
-
-    let _config: CompiledConfig | null = null
-    function getConfig(): CompiledConfig {
-      if (_config === null) {
-        const options = safeOptions<Options>(context)
-        _config = {
-          restrictedClasses: new Set(options?.classes ?? []),
-          patterns: (options?.patterns ?? []).map((p) => ({
-            regex: new RegExp(p.pattern),
-            message: p.message,
-          })),
-        }
-      }
-      return _config
-    }
+    const getConfig = createLazyOptions<
+      Options,
+      { restrictedClasses: Set<string>; patterns: Array<{ regex: RegExp; message?: string }> }
+    >(context, (o) => ({
+      restrictedClasses: new Set(o?.classes ?? []),
+      patterns: (o?.patterns ?? []).map((p) => ({
+        regex: new RegExp(p.pattern),
+        message: p.message,
+      })),
+    }))
 
     function check(locations: ClassLocation[]) {
       const { restrictedClasses, patterns } = getConfig()

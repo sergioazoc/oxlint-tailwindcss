@@ -162,64 +162,70 @@ describe('consistent-variant-order (design system)', () => {
   const dsRuleTester = new RuleTester()
 
   // DS order: hover(39) < sm(50), focus(40) < md(51), hover(39) < dark(59)
-  runWithFixture(dsRuleTester, 'consistent-variant-order (DS order)', consistentVariantOrder, ENTRY_POINT, {
-    valid: [
-      { code: '<div className="hover:sm:flex" />', filename: 'test.tsx' },
-      { code: '<div className="hover:dark:text-white" />', filename: 'test.tsx' },
-      { code: '<div className="focus:md:bg-blue-500" />', filename: 'test.tsx' },
-      { code: '<div className="hover:flex" />', filename: 'test.tsx' },
-      // Child/descendant selectors with arbitrary variants must preserve order (DS)
-      { code: '<div className="*:[a]:underline" />', filename: 'test.tsx' },
-      { code: '<div className="**:[[cmdk-group-heading]]:px-2" />', filename: 'test.tsx' },
-      // Pseudo-elements must stay after element-selecting variants in DS mode (#12)
-      { code: '<div className="[&>svg]:before:text-red-500" />', filename: 'test.tsx' },
-      { code: '<div className="has-[.active]:after:text-red-500" />', filename: 'test.tsx' },
-      { code: '<div className="aria-expanded:before:text-red-500" />', filename: 'test.tsx' },
-      { code: '<div className="data-[state=open]:after:text-red-500" />', filename: 'test.tsx' },
-      // Pseudo-elements stay innermost even when DS puts them early
-      { code: '<div className="hover:before:text-red-500" />', filename: 'test.tsx' },
-      { code: '<div className="sm:after:text-red-500" />', filename: 'test.tsx' },
-    ],
-    invalid: [
-      {
-        code: '<div className="sm:hover:flex" />',
-        filename: 'test.tsx',
-        errors: [{ messageId: 'wrongOrder' }],
-        output: '<div className="hover:sm:flex" />',
-      },
-      {
-        code: '<div className="md:focus:bg-blue-500" />',
-        filename: 'test.tsx',
-        errors: [{ messageId: 'wrongOrder' }],
-        output: '<div className="focus:md:bg-blue-500" />',
-      },
-      {
-        code: '<div className="dark:hover:text-white" />',
-        filename: 'test.tsx',
-        errors: [{ messageId: 'wrongOrder' }],
-        output: '<div className="hover:dark:text-white" />',
-      },
-      // Pseudo-element incorrectly before element-selecting variant (DS mode)
-      {
-        code: '<div className="before:[&>svg]:text-red-500" />',
-        filename: 'test.tsx',
-        errors: [{ messageId: 'wrongOrder' }],
-        output: '<div className="[&>svg]:before:text-red-500" />',
-      },
-      {
-        code: '<div className="before:hover:text-red-500" />',
-        filename: 'test.tsx',
-        errors: [{ messageId: 'wrongOrder' }],
-        output: '<div className="hover:before:text-red-500" />',
-      },
-      {
-        code: '<div className="after:data-[state=open]:text-red-500" />',
-        filename: 'test.tsx',
-        errors: [{ messageId: 'wrongOrder' }],
-        output: '<div className="data-[state=open]:after:text-red-500" />',
-      },
-    ],
-  })
+  runWithFixture(
+    dsRuleTester,
+    'consistent-variant-order (DS order)',
+    consistentVariantOrder,
+    ENTRY_POINT,
+    {
+      valid: [
+        { code: '<div className="hover:sm:flex" />', filename: 'test.tsx' },
+        { code: '<div className="hover:dark:text-white" />', filename: 'test.tsx' },
+        { code: '<div className="focus:md:bg-blue-500" />', filename: 'test.tsx' },
+        { code: '<div className="hover:flex" />', filename: 'test.tsx' },
+        // Child/descendant selectors with arbitrary variants must preserve order (DS)
+        { code: '<div className="*:[a]:underline" />', filename: 'test.tsx' },
+        { code: '<div className="**:[[cmdk-group-heading]]:px-2" />', filename: 'test.tsx' },
+        // Pseudo-elements must stay after element-selecting variants in DS mode (#12)
+        { code: '<div className="[&>svg]:before:text-red-500" />', filename: 'test.tsx' },
+        { code: '<div className="has-[.active]:after:text-red-500" />', filename: 'test.tsx' },
+        { code: '<div className="aria-expanded:before:text-red-500" />', filename: 'test.tsx' },
+        { code: '<div className="data-[state=open]:after:text-red-500" />', filename: 'test.tsx' },
+        // Pseudo-elements stay innermost even when DS puts them early
+        { code: '<div className="hover:before:text-red-500" />', filename: 'test.tsx' },
+        { code: '<div className="sm:after:text-red-500" />', filename: 'test.tsx' },
+      ],
+      invalid: [
+        {
+          code: '<div className="sm:hover:flex" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'wrongOrder' }],
+          output: '<div className="hover:sm:flex" />',
+        },
+        {
+          code: '<div className="md:focus:bg-blue-500" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'wrongOrder' }],
+          output: '<div className="focus:md:bg-blue-500" />',
+        },
+        {
+          code: '<div className="dark:hover:text-white" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'wrongOrder' }],
+          output: '<div className="hover:dark:text-white" />',
+        },
+        // Pseudo-element incorrectly before element-selecting variant (DS mode)
+        {
+          code: '<div className="before:[&>svg]:text-red-500" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'wrongOrder' }],
+          output: '<div className="[&>svg]:before:text-red-500" />',
+        },
+        {
+          code: '<div className="before:hover:text-red-500" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'wrongOrder' }],
+          output: '<div className="hover:before:text-red-500" />',
+        },
+        {
+          code: '<div className="after:data-[state=open]:text-red-500" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'wrongOrder' }],
+          output: '<div className="data-[state=open]:after:text-red-500" />',
+        },
+      ],
+    },
+  )
 
   // User-specified order should override DS order
   dsRuleTester.run('consistent-variant-order (user order overrides DS)', consistentVariantOrder, {

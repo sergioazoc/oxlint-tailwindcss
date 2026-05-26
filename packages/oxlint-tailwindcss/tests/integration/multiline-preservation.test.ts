@@ -92,22 +92,18 @@ describe('multiline preservation under default theme', () => {
   })
 
   // 1-to-1 ! reposition — must keep separators verbatim.
-  run(
-    'enforce-consistent-important-position keeps multiline',
-    enforceConsistentImportantPosition,
-    {
-      valid: [],
-      invalid: [
-        {
-          code: `const className = \`flex !p-4${NL}!m-2\``,
-          filename: 'a.tsx',
-          options: [{ position: 'suffix' }],
-          errors: [{ messageId: 'useSuffix' }, { messageId: 'useSuffix' }],
-          output: `const className = \`flex p-4!${NL}m-2!\``,
-        },
-      ],
-    },
-  )
+  run('enforce-consistent-important-position keeps multiline', enforceConsistentImportantPosition, {
+    valid: [],
+    invalid: [
+      {
+        code: `const className = \`flex !p-4${NL}!m-2\``,
+        filename: 'a.tsx',
+        options: [{ position: 'suffix' }],
+        errors: [{ messageId: 'useSuffix' }, { messageId: 'useSuffix' }],
+        output: `const className = \`flex p-4!${NL}m-2!\``,
+      },
+    ],
+  })
 
   // 1-to-1 physical→logical.
   run('enforce-logical keeps multiline', enforceLogical, {
@@ -136,39 +132,31 @@ describe('multiline preservation under default theme', () => {
   })
 
   // 1-to-1 var syntax flip.
-  run(
-    'enforce-consistent-variable-syntax keeps multiline',
-    enforceConsistentVariableSyntax,
-    {
-      valid: [],
-      invalid: [
-        {
-          code: `const className = \`bg-[var(--color-x)] flex${NL}text-[var(--color-y)]\``,
-          filename: 'a.tsx',
-          options: [{ syntax: 'shorthand' }],
-          errors: [{ messageId: 'useShorthand' }, { messageId: 'useShorthand' }],
-          output: `const className = \`bg-(--color-x) flex${NL}text-(--color-y)\``,
-        },
-      ],
-    },
-  )
+  run('enforce-consistent-variable-syntax keeps multiline', enforceConsistentVariableSyntax, {
+    valid: [],
+    invalid: [
+      {
+        code: `const className = \`bg-[var(--color-x)] flex${NL}text-[var(--color-y)]\``,
+        filename: 'a.tsx',
+        options: [{ syntax: 'shorthand' }],
+        errors: [{ messageId: 'useShorthand' }, { messageId: 'useShorthand' }],
+        output: `const className = \`bg-(--color-x) flex${NL}text-(--color-y)\``,
+      },
+    ],
+  })
 
   // 1-to-1 negative arbitrary repositioning.
-  run(
-    'enforce-negative-arbitrary-values keeps multiline',
-    enforceNegativeArbitraryValues,
-    {
-      valid: [],
-      invalid: [
-        {
-          code: `const className = \`flex -top-[5px]${NL}p-4\``,
-          filename: 'a.tsx',
-          errors: [{ messageId: 'moveNegative' }],
-          output: `const className = \`flex top-[-5px]${NL}p-4\``,
-        },
-      ],
-    },
-  )
+  run('enforce-negative-arbitrary-values keeps multiline', enforceNegativeArbitraryValues, {
+    valid: [],
+    invalid: [
+      {
+        code: `const className = \`flex -top-[5px]${NL}p-4\``,
+        filename: 'a.tsx',
+        errors: [{ messageId: 'moveNegative' }],
+        output: `const className = \`flex top-[-5px]${NL}p-4\``,
+      },
+    ],
+  })
 
   // Length-shrinking — degrades gracefully to multiline join.
   run('enforce-shorthand keeps multiline', enforceShorthand, {
@@ -234,21 +222,17 @@ describe('multiline preservation under default theme', () => {
   })
 
   // 1-to-1 arbitrary→named.
-  run(
-    'no-unnecessary-arbitrary-value keeps multiline',
-    noUnnecessaryArbitraryValue,
-    {
-      valid: [],
-      invalid: [
-        {
-          code: `const className = \`flex h-[auto]${NL}p-4\``,
-          filename: 'a.tsx',
-          errors: [{ messageId: 'unnecessaryArbitrary' }],
-          output: `const className = \`flex h-auto${NL}p-4\``,
-        },
-      ],
-    },
-  )
+  run('no-unnecessary-arbitrary-value keeps multiline', noUnnecessaryArbitraryValue, {
+    valid: [],
+    invalid: [
+      {
+        code: `const className = \`flex h-[auto]${NL}p-4\``,
+        filename: 'a.tsx',
+        errors: [{ messageId: 'unnecessaryArbitrary' }],
+        output: `const className = \`flex h-auto${NL}p-4\``,
+      },
+    ],
+  })
 })
 
 describe('multiline preservation under shadcn-style theme', () => {

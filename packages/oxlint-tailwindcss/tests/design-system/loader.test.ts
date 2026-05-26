@@ -6,10 +6,7 @@ import {
   resolveEntryPointForFile,
   type EntryPointMapping,
 } from '../../src/design-system/loader'
-import {
-  DeprecatedEntryPointShapeError,
-  MissingEntryPointError,
-} from '../../src/utils/fatal'
+import { DeprecatedEntryPointShapeError, MissingEntryPointError } from '../../src/utils/fatal'
 
 // v1 dropped auto-detect, lastLoadedPath, and the `string[]` prefix heuristic.
 // The remaining resolution surface is pure functions: `entryPointFromSettings`
@@ -24,7 +21,9 @@ describe('entryPointFromSettings', () => {
   })
 
   it('returns the string form unchanged', () => {
-    expect(entryPointFromSettings({ tailwindcss: { entryPoint: 'src/app.css' } })).toBe('src/app.css')
+    expect(entryPointFromSettings({ tailwindcss: { entryPoint: 'src/app.css' } })).toBe(
+      'src/app.css',
+    )
   })
 
   it('returns an EntryPointMapping[] when given an array of objects', () => {
@@ -44,7 +43,9 @@ describe('entryPointFromSettings', () => {
   it('throws when array entries are neither all strings nor valid mappings', () => {
     expect(() =>
       entryPointFromSettings({
-        tailwindcss: { entryPoint: [{ files: 'foo', not_use: 'bar' }] as unknown as EntryPointMapping[] },
+        tailwindcss: {
+          entryPoint: [{ files: 'foo', not_use: 'bar' }] as unknown as EntryPointMapping[],
+        },
       }),
     ).toThrow(MissingEntryPointError)
   })
@@ -103,9 +104,9 @@ describe('resolveByGlobMapping', () => {
 
 describe('resolveEntryPointForFile', () => {
   it('rule option entryPoint wins over everything', () => {
-    expect(
-      resolveEntryPointForFile('/explicit.css', 'will-be-ignored.css', '/any/file.tsx'),
-    ).toBe('/explicit.css')
+    expect(resolveEntryPointForFile('/explicit.css', 'will-be-ignored.css', '/any/file.tsx')).toBe(
+      '/explicit.css',
+    )
   })
 
   it('falls back to the string-form settings entry', () => {

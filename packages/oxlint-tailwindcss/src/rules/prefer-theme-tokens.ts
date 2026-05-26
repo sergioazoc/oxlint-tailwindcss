@@ -1,9 +1,10 @@
 import { defineRule } from '@oxlint/plugins'
-import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
-import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
-import { splitUtilityAndVariant } from '../utils/class-parser'
+import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { splitClassesWithSeparators } from '../utils/class-splitter'
+import { reportClassReplacements } from '../utils/report'
+import { reattachImportant, splitImportant, splitUtilityAndVariant } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
-import { safeGetDS } from '../utils/fatal'
+import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 
 /**
  * Match `prefix-(--name)` or `prefix-(--name)/modifier`.
@@ -50,7 +51,7 @@ export const preferThemeTokens = defineRule({
       preferNamed:
         '"{{className}}" can be written as "{{replacement}}". Use the named theme token.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
-      designSystemUnavailable: '{{message}}',
+      ...DS_UNAVAILABLE_MESSAGE,
     },
   },
   createOnce(context) {
@@ -64,76 +65,27 @@ export const preferThemeTokens = defineRule({
 
       for (const loc of locations) {
         const split = splitClassesWithSeparators(loc.value)
-        const classes = split.classes
-        const offending: Array<{ cls: string; replacement: string }> = []
-
-        for (const cls of classes) {
+        const offending = split.classes.flatMap((cls) => {
           const { utility, variant } = splitUtilityAndVariant(cls)
-
-          // Strip ! (important) — prefix or suffix
-          const hasImportantPrefix = utility.startsWith('!')
-          const hasImportantSuffix = !hasImportantPrefix && utility.endsWith('!')
-          const bareUtility = hasImportantPrefix
-            ? utility.slice(1)
-            : hasImportantSuffix
-              ? utility.slice(0, -1)
-              : utility
-
+          const { bare: bareUtility, position } = splitImportant(utility)
           const match = detectRawVariable(bareUtility)
-          if (!match) continue
+          if (!match) return []
 
           const candidate = `${match.prefix}-${match.varName}${match.modifier}`
-          if (!cache.isValid(candidate)) continue
+          if (!cache.isValid(candidate)) return []
 
           // Reject if the named candidate resolves to a class that produces
           // the same CSS as the original — that case is handled by
-          // no-unnecessary-arbitrary-value (CSS-equivalent fix). This rule
-          // only reports the heuristic-only cases.
+          // no-unnecessary-arbitrary-value. This rule only catches the
+          // heuristic-only cases.
           const namedEquivalent = cache.getNamedEquivalent(bareUtility)
-          if (namedEquivalent && namedEquivalent === `${match.prefix}-${match.varName}`) continue
+          if (namedEquivalent && namedEquivalent === `${match.prefix}-${match.varName}`) return []
 
-          const replacement =
-            variant + (hasImportantPrefix ? '!' : '') + candidate + (hasImportantSuffix ? '!' : '')
-
-          offending.push({ cls, replacement })
-        }
-
-        if (offending.length === 0) continue
-
-        const replacements = new Map(offending.map(({ cls, replacement }) => [cls, replacement]))
-        const fixedValue = rebuildClassString(
-          split,
-          classes.map((cls) => replacements.get(cls) ?? cls),
-        )
-
-        for (let i = 0; i < offending.length; i++) {
-          const { cls, replacement } = offending[i]
-          if (i === 0) {
-            context.report({
-              node: loc.node,
-              messageId: 'preferNamed',
-              data: { className: cls, replacement },
-              fix(fixer) {
-                return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-              },
-            })
-          } else {
-            context.report({
-              node: loc.node,
-              messageId: 'preferNamed',
-              data: { className: cls, replacement },
-              suggest: [
-                {
-                  messageId: 'suggestReplace',
-                  data: { className: cls, replacement },
-                  fix(fixer) {
-                    return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-                  },
-                },
-              ],
-            })
-          }
-        }
+          return [{ cls, replacement: variant + reattachImportant(candidate, position) }]
+        })
+        reportClassReplacements(context, loc, split, split.classes, offending, {
+          messageId: 'preferNamed',
+        })
       }
     }
 

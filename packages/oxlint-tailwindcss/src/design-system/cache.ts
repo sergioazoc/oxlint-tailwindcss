@@ -1,13 +1,11 @@
 import { type PrecomputedData } from './sync-loader'
 import { roundRemValue } from '../utils/floating-point'
-import { extractUtility, extractVariants, hasArbitraryValue } from '../utils/class-parser'
-
-/** Strip `!` modifier from start or end: `!flex` → `flex`, `flex!` → `flex` */
-function stripImportant(cls: string): { bare: string; important: boolean } {
-  if (cls.startsWith('!')) return { bare: cls.slice(1), important: true }
-  if (cls.endsWith('!')) return { bare: cls.slice(0, -1), important: true }
-  return { bare: cls, important: false }
-}
+import {
+  extractUtility,
+  extractVariants,
+  hasArbitraryValue,
+  splitImportant,
+} from '../utils/class-parser'
 
 export class DesignSystemCache {
   private canonicalMap = new Map<string, string>()
@@ -86,14 +84,15 @@ export class DesignSystemCache {
     }
 
     // Strip ! (important) — prefix or suffix — and retry
-    const { bare, important } = stripImportant(utility)
-    if (important) {
+    const { bare, position } = splitImportant(utility)
+    if (position) {
       const canonicalBare = this.canonicalMap.get(bare)
       if (canonicalBare !== undefined) {
         const variantPrefix = className.slice(0, className.length - utility.length)
         // Preserve the user's ! position — enforce-consistent-important-position handles normalization
-        const isPrefix = utility.startsWith('!')
-        return isPrefix ? variantPrefix + '!' + canonicalBare : variantPrefix + canonicalBare + '!'
+        return position === 'prefix'
+          ? variantPrefix + '!' + canonicalBare
+          : variantPrefix + canonicalBare + '!'
       }
     }
 
@@ -148,6 +147,30 @@ export class DesignSystemCache {
     return 0
   }
 
+  // Lazily built map from every dash-bounded prefix (with and without
+  // trailing dash) to the order of the FIRST class in iteration order that
+  // exposes that prefix. Replaces a linear scan in the hot path of
+  // `enforce-sort-order` (which calls `findOrderByPrefix` for every dynamic
+  // utility — `bg-[#fff]`, `gap-13`, `h-(--var)`, etc.).
+  private _prefixOrderMap: Map<string, bigint> | null = null
+
+  private buildPrefixOrderMap(): Map<string, bigint> {
+    const index = new Map<string, bigint>()
+    for (const [cls, order] of this.orderMap) {
+      if (order === null) continue
+      // For `underline-offset-3` produce: `underline`, `underline-`,
+      // `underline-offset`, `underline-offset-`. Insertion order in
+      // `orderMap` is preserved, so the first class hitting a prefix wins.
+      for (let i = cls.indexOf('-'); i >= 0; i = cls.indexOf('-', i + 1)) {
+        const p = cls.slice(0, i)
+        if (!index.has(p)) index.set(p, order)
+        const pd = p + '-'
+        if (!index.has(pd)) index.set(pd, order)
+      }
+    }
+    return index
+  }
+
   /** Find the order of the first class matching a prefix (e.g. "max-w-" → order of "max-w-0") */
   private findOrderByPrefix(prefix: string): bigint | undefined {
     // Try prefix without trailing dash first (e.g. "border-" → "border")
@@ -156,11 +179,8 @@ export class DesignSystemCache {
       const order = this.orderMap.get(withoutDash)
       if (order != null) return order
     }
-    // Find first matching class in the order map
-    for (const [cls, order] of this.orderMap) {
-      if (cls.startsWith(prefix) && order != null) return order
-    }
-    return undefined
+    if (!this._prefixOrderMap) this._prefixOrderMap = this.buildPrefixOrderMap()
+    return this._prefixOrderMap.get(prefix)
   }
 
   private getKnownPrefixes(): Set<string> {
@@ -182,7 +202,7 @@ export class DesignSystemCache {
     if (utility !== className && this.validitySet.has(utility)) return true
 
     // Strip ! (important) for validation
-    const { bare } = stripImportant(utility)
+    const { bare } = splitImportant(utility)
     if (bare !== utility && this.validitySet.has(bare)) return true
 
     // Slash modifier: bg-black/80 (opacity), aspect-3/2 (ratio), w-1/2 (fraction)
@@ -224,8 +244,8 @@ export class DesignSystemCache {
 
     // Strip ! (important) and retry
     if (baseOrder === undefined) {
-      const { bare, important } = stripImportant(utility)
-      if (important) {
+      const { bare, position } = splitImportant(utility)
+      if (position) {
         baseOrder = this.orderMap.get(bare) ?? undefined
       }
     }
@@ -238,8 +258,8 @@ export class DesignSystemCache {
         baseOrder = this.orderMap.get(base) ?? undefined
         // Also try stripping ! from the base before slash
         if (baseOrder === undefined) {
-          const { bare, important } = stripImportant(base)
-          if (important) {
+          const { bare, position } = splitImportant(base)
+          if (position) {
             baseOrder = this.orderMap.get(bare) ?? undefined
           }
         }
@@ -248,7 +268,7 @@ export class DesignSystemCache {
 
     // Arbitrary values: max-w-[200px] → look up prefix "max-w-" in order map
     if (baseOrder === undefined) {
-      const stripped = stripImportant(utility).bare
+      const stripped = splitImportant(utility).bare
       const bracketIdx = stripped.indexOf('[')
       if (bracketIdx > 0) {
         const prefix = stripped.slice(0, bracketIdx)
@@ -258,7 +278,7 @@ export class DesignSystemCache {
 
     // CSS function syntax: h-(--cell-size), rounded-(--radius) → look up prefix "h-", "rounded-"
     if (baseOrder === undefined) {
-      const stripped = stripImportant(utility).bare
+      const stripped = splitImportant(utility).bare
       const parenIdx = stripped.indexOf('(')
       if (parenIdx > 0) {
         const prefix = stripped.slice(0, parenIdx)
@@ -268,7 +288,7 @@ export class DesignSystemCache {
 
     // Dynamic numeric values: underline-offset-3, gap-13, etc. → look up prefix
     if (baseOrder === undefined) {
-      const stripped = stripImportant(utility).bare
+      const stripped = splitImportant(utility).bare
       const numericMatch = /^(.+)-(\d+\.?\d*)$/.exec(stripped)
       if (numericMatch && this.getKnownPrefixes().has(numericMatch[1])) {
         baseOrder = this.findOrderByPrefix(numericMatch[1] + '-')
@@ -306,8 +326,8 @@ export class DesignSystemCache {
   getCssProperties(className: string): string[] {
     const result = this.cssPropsMap.get(className)
     if (result) return result
-    const { bare, important } = stripImportant(className)
-    if (important) return this.cssPropsMap.get(bare) ?? []
+    const { bare, position } = splitImportant(className)
+    if (position) return this.cssPropsMap.get(bare) ?? []
     return []
   }
 
@@ -322,8 +342,8 @@ export class DesignSystemCache {
   getNamedEquivalent(className: string): string | null {
     const result = this.arbitraryEquivMap.get(className)
     if (result) return result
-    const { bare, important } = stripImportant(className)
-    if (important) return this.arbitraryEquivMap.get(bare) ?? null
+    const { bare, position } = splitImportant(className)
+    if (position) return this.arbitraryEquivMap.get(bare) ?? null
     return null
   }
 }

@@ -1,6 +1,7 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
+import { splitImportant } from '../utils/class-parser'
 
 const VALUE_RE = /^(?:m[trbl]|p[trbl]|[wh]|rounded-t[lr]|rounded-b[lr]|min-[wh]|max-[wh])-(.+)$/
 
@@ -80,16 +81,10 @@ export const enforceShorthand = defineRule({
 
         const classSet = new Set(classes)
 
-        // Extract all unique values used in the classes
-        // Strip ! (prefix or suffix) for regex matching
+        // Extract all unique values used in the classes (strip ! for matching).
         const values = new Set<string>()
         for (const cls of classes) {
-          const bare = cls.startsWith('!')
-            ? cls.slice(1)
-            : cls.endsWith('!')
-              ? cls.slice(0, -1)
-              : cls
-          const match = VALUE_RE.exec(bare)
+          const match = VALUE_RE.exec(splitImportant(cls).bare)
           if (match) values.add(match[1])
         }
 

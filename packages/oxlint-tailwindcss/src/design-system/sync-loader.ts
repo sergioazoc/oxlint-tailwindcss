@@ -10,10 +10,11 @@
 
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { DesignSystemLoadError } from '../utils/fatal'
+import { TAILWIND_NODE_PATH, TAILWIND_NODE_VERSION } from './tailwind-node'
 
 export interface PrecomputedData {
   /** All valid class names (candidatesToCss returned non-null) */
@@ -416,34 +417,7 @@ export function computeCacheKey(scriptContent: string, tailwindVersion: string):
   return `${scriptHash}:${tailwindVersion}`
 }
 
-export function readTailwindVersion(): string {
-  try {
-    // @tailwindcss/node doesn't expose ./package.json in its exports map,
-    // so walk up from the resolved entry until we find a package.json named
-    // '@tailwindcss/node'.
-    let dir = dirname(require.resolve('@tailwindcss/node'))
-    while (true) {
-      const candidate = join(dir, 'package.json')
-      if (existsSync(candidate)) {
-        const pkg = JSON.parse(readFileSync(candidate, 'utf-8')) as {
-          name?: string
-          version?: string
-        }
-        if (pkg.name === '@tailwindcss/node' && pkg.version) return pkg.version
-      }
-      const parent = dirname(dir)
-      if (parent === dir) break
-      dir = parent
-    }
-  } catch {
-    // Fallback below.
-  }
-  // Fallback: cache key still varies with script content; consumers without
-  // @tailwindcss/node installed won't reach the precompute path anyway.
-  return 'unknown'
-}
-
-const CACHE_KEY = computeCacheKey(PRECOMPUTE_SCRIPT, readTailwindVersion())
+const CACHE_KEY = computeCacheKey(PRECOMPUTE_SCRIPT, TAILWIND_NODE_VERSION)
 
 /**
  * Single-level disk cache keyed by content hash only.
@@ -514,18 +488,14 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
   const cached = tryReadCache(contentCachePath)
   if (cached) return cached
 
-  // Resolve @tailwindcss/node from the plugin's own location and pass it to
-  // the child via env. Bare-specifier resolution from the child's cwd would
-  // fail under pnpm strict workspaces where the consumer's project root has
-  // no direct access to the plugin's transitive deps.
-  let tailwindNodePath: string
-  try {
-    tailwindNodePath = require.resolve('@tailwindcss/node')
-  } catch (cause) {
+  // The child process receives @tailwindcss/node's absolute path via env.
+  // Bare-specifier resolution from the child's cwd would fail under pnpm
+  // strict workspaces where the consumer's project root has no direct
+  // access to the plugin's transitive deps.
+  if (TAILWIND_NODE_PATH === null) {
     throw new DesignSystemLoadError(
       `Could not resolve '@tailwindcss/node' while loading "${resolvedPath}".`,
       "Install '@tailwindcss/node' (or upgrade oxlint-tailwindcss) and re-run.",
-      { cause: cause instanceof Error ? cause : undefined },
     )
   }
 
@@ -538,7 +508,7 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
       env: {
         ...process.env,
         TAILWIND_CSS_PATH: resolvedPath,
-        TAILWIND_NODE_PATH: tailwindNodePath,
+        TAILWIND_NODE_PATH: TAILWIND_NODE_PATH,
       },
       cwd: dirname(resolvedPath),
     })

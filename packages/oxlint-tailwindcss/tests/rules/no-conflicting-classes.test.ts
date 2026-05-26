@@ -241,15 +241,21 @@ describe('text + tracking composition with letter-spacing', () => {
 
   const trackingTester = new RuleTester()
 
-  runWithFixture(trackingTester, 'no-conflicting-classes (text + tracking)', noConflictingClasses, LETTER_SPACING_ENTRY, {
-    valid: [
-      // text-* sets letter-spacing as default, tracking-* overrides it (#8)
-      { code: '<div className="text-base tracking-tight" />', filename: 'test.tsx' },
-      { code: '<div className="text-lg tracking-wide" />', filename: 'test.tsx' },
-      { code: '<div className="text-base tracking-normal" />', filename: 'test.tsx' },
-    ],
-    invalid: [],
-  })
+  runWithFixture(
+    trackingTester,
+    'no-conflicting-classes (text + tracking)',
+    noConflictingClasses,
+    LETTER_SPACING_ENTRY,
+    {
+      valid: [
+        // text-* sets letter-spacing as default, tracking-* overrides it (#8)
+        { code: '<div className="text-base tracking-tight" />', filename: 'test.tsx' },
+        { code: '<div className="text-lg tracking-wide" />', filename: 'test.tsx' },
+        { code: '<div className="text-base tracking-normal" />', filename: 'test.tsx' },
+      ],
+      invalid: [],
+    },
+  )
 })
 
 // --- Unit tests for the pure composition heuristics ---
@@ -414,43 +420,49 @@ describe('tailwindcss-animate composition', () => {
 
   const animateTester = new RuleTester()
 
-  runWithFixture(animateTester, 'no-conflicting-classes (tailwindcss-animate)', noConflictingClasses, ANIMATE_ENTRY, {
-    valid: [
-      {
-        code: '<div className="animate-in fade-in zoom-in slide-in-from-top" />',
-        filename: 'test.tsx',
-      },
-      {
-        code: '<div className="animate-in fade-in-50 zoom-in-95 slide-in-from-bottom-48" />',
-        filename: 'test.tsx',
-      },
-      { code: '<div className="animate-out slide-out-to-top" />', filename: 'test.tsx' },
-      {
-        code: '<div className="animate-out fade-out zoom-out slide-out-to-right-96" />',
-        filename: 'test.tsx',
-      },
-      {
-        code: '<div className="animate-bounce duration-300 delay-150 ease-in-out" />',
-        filename: 'test.tsx',
-      },
-      {
-        code: '<div className="animate-bounce direction-reverse fill-mode-both repeat-infinite running" />',
-        filename: 'test.tsx',
-      },
-    ],
-    invalid: [
-      {
-        code: '<div className="fade-in fade-in-50" />',
-        filename: 'test.tsx',
-        errors: [{ messageId: 'conflict' }],
-      },
-      {
-        code: '<div className="running paused" />',
-        filename: 'test.tsx',
-        errors: [{ messageId: 'conflict' }],
-      },
-    ],
-  })
+  runWithFixture(
+    animateTester,
+    'no-conflicting-classes (tailwindcss-animate)',
+    noConflictingClasses,
+    ANIMATE_ENTRY,
+    {
+      valid: [
+        {
+          code: '<div className="animate-in fade-in zoom-in slide-in-from-top" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="animate-in fade-in-50 zoom-in-95 slide-in-from-bottom-48" />',
+          filename: 'test.tsx',
+        },
+        { code: '<div className="animate-out slide-out-to-top" />', filename: 'test.tsx' },
+        {
+          code: '<div className="animate-out fade-out zoom-out slide-out-to-right-96" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="animate-bounce duration-300 delay-150 ease-in-out" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="animate-bounce direction-reverse fill-mode-both repeat-infinite running" />',
+          filename: 'test.tsx',
+        },
+      ],
+      invalid: [
+        {
+          code: '<div className="fade-in fade-in-50" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'conflict' }],
+        },
+        {
+          code: '<div className="running paused" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'conflict' }],
+        },
+      ],
+    },
+  )
 })
 
 // --- tw-animate-css utilities compose through CSS custom properties ---
@@ -463,30 +475,36 @@ describe('tw-animate-css composition', () => {
 
   const tester = new RuleTester()
 
-  runWithFixture(tester, 'no-conflicting-classes (tw-animate-css)', noConflictingClasses, TW_ANIMATE_CSS_ENTRY, {
-    valid: [
-      {
-        code: '<div className="animate-in fade-in zoom-in slide-in-from-top" />',
-        filename: 'test.tsx',
-      },
-      {
-        code: '<div className="animate-out fade-out zoom-out slide-out-to-right" />',
-        filename: 'test.tsx',
-      },
-      { code: '<div className="animate-in fade-in blur-in" />', filename: 'test.tsx' },
-      { code: '<div className="animate-out fade-out blur-out" />', filename: 'test.tsx' },
-      { code: '<div className="animate-in slide-in-from-start" />', filename: 'test.tsx' },
-      { code: '<div className="animate-out slide-out-to-end-8" />', filename: 'test.tsx' },
-      { code: '<div className="animate-accordion-down" />', filename: 'test.tsx' },
-      { code: '<div className="animate-collapsible-up" />', filename: 'test.tsx' },
-      { code: '<div className="animate-caret-blink" />', filename: 'test.tsx' },
-    ],
-    invalid: [
-      {
-        code: '<div className="running play-state-initial" />',
-        filename: 'test.tsx',
-        errors: [{ messageId: 'conflict' }],
-      },
-    ],
-  })
+  runWithFixture(
+    tester,
+    'no-conflicting-classes (tw-animate-css)',
+    noConflictingClasses,
+    TW_ANIMATE_CSS_ENTRY,
+    {
+      valid: [
+        {
+          code: '<div className="animate-in fade-in zoom-in slide-in-from-top" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="animate-out fade-out zoom-out slide-out-to-right" />',
+          filename: 'test.tsx',
+        },
+        { code: '<div className="animate-in fade-in blur-in" />', filename: 'test.tsx' },
+        { code: '<div className="animate-out fade-out blur-out" />', filename: 'test.tsx' },
+        { code: '<div className="animate-in slide-in-from-start" />', filename: 'test.tsx' },
+        { code: '<div className="animate-out slide-out-to-end-8" />', filename: 'test.tsx' },
+        { code: '<div className="animate-accordion-down" />', filename: 'test.tsx' },
+        { code: '<div className="animate-collapsible-up" />', filename: 'test.tsx' },
+        { code: '<div className="animate-caret-blink" />', filename: 'test.tsx' },
+      ],
+      invalid: [
+        {
+          code: '<div className="running play-state-initial" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'conflict' }],
+        },
+      ],
+    },
+  )
 })

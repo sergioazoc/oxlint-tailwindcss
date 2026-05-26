@@ -7,6 +7,19 @@
  * diagnostic so the user sees exactly what to fix.
  */
 
+/**
+ * The single `messageId` every DS-dependent rule uses to surface a fatal
+ * design-system load failure. Exported as a constant so the rule's
+ * `meta.messages` and `context.report()` calls in `reportFatalDsError`
+ * cannot drift apart silently.
+ */
+export const DS_UNAVAILABLE_MESSAGE_ID = 'designSystemUnavailable' as const
+
+/** Pre-shaped entry for `meta.messages`. Spread it: `messages: { ..., ...DS_UNAVAILABLE_MESSAGE }`. */
+export const DS_UNAVAILABLE_MESSAGE = {
+  [DS_UNAVAILABLE_MESSAGE_ID]: '{{message}}',
+} as const
+
 export class OxlintTailwindError extends Error {
   /** A short, actionable hint shown alongside the error message. */
   public readonly hint?: string
@@ -53,25 +66,28 @@ export function formatFatalError(err: FatalError): string {
 }
 
 /**
+ * Structural reporter shape. Permissive on the diagnostic parameter so the
+ * helper accepts oxlint's strict `RuleContext.report` (which takes a typed
+ * `DiagnosticBase`) without pinning to a specific oxlint version.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Reporter = { report: (diagnostic: any) => void }
+
+/**
  * Helper for DS-dependent rules to convert a caught fatal error into a
  * single diagnostic. Returns `true` if the error was reported (and the
  * visitor should bail out), `false` otherwise — the rule layer rethrows
  * non-fatal errors to surface real bugs.
- *
- * `context` is typed as `unknown` here to avoid pinning the helper to a
- * specific oxlint version's `RuleContext`. Rules pass their own typed
- * context; we trust the duck-typed `.report` to exist.
  */
-export function reportFatalDsError(
-  context: unknown,
+export function reportFatalDsError<C extends Reporter>(
+  context: C,
   err: unknown,
   node?: unknown,
 ): boolean {
   if (!isFatalError(err)) return false
-  const ctx = context as { report: (d: unknown) => void }
-  ctx.report({
+  context.report({
     node,
-    messageId: 'designSystemUnavailable',
+    messageId: DS_UNAVAILABLE_MESSAGE_ID,
     data: { message: formatFatalError(err) },
   })
   return true
@@ -84,7 +100,11 @@ export function reportFatalDsError(
  * reported (rules should `if (!ds) return` and exit the visitor). Non-fatal
  * errors are re-thrown so genuine bugs aren't hidden.
  */
-export function safeGetDS<T>(getDS: () => T, context: unknown, node?: unknown): T | null {
+export function safeGetDS<T, C extends Reporter>(
+  getDS: () => T,
+  context: C,
+  node?: unknown,
+): T | null {
   try {
     return getDS()
   } catch (err) {

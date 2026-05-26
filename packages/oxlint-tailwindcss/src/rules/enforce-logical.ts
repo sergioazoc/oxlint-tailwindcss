@@ -1,70 +1,136 @@
 import { defineRule } from '@oxlint/plugins'
-import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
-import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
-import { splitUtilityAndVariant } from '../utils/class-parser'
-import { safeOptions } from '../types'
+import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { splitClassesWithSeparators } from '../utils/class-splitter'
+import { reportClassReplacements } from '../utils/report'
+import { reattachImportant, splitImportant, splitUtilityAndVariant } from '../utils/class-parser'
+import { createLazyOptions } from '../utils/context'
+import { compileRegexList, matchesAny } from '../utils/allowlist'
 
 export type Direction = 'inline' | 'block' | 'both'
 
-interface Options {
+/**
+ * Shared `{ allowlist, direction }` shape consumed by both enforce-logical and
+ * enforce-physical. Co-located here so a future option addition lands in one
+ * place.
+ */
+export interface LogicalPhysicalOptions {
   allowlist?: string[]
   direction?: Direction
 }
 
+export const LOGICAL_PHYSICAL_SCHEMA = {
+  type: 'object',
+  properties: {
+    allowlist: { type: 'array', items: { type: 'string' } },
+    direction: { type: 'string', enum: ['inline', 'block', 'both'] },
+  },
+  additionalProperties: false,
+} as const
+
 /**
- * Each entry maps a physical Tailwind utility prefix to its logical equivalent
- * and tags the writing-mode axis it affects. v1 added the `axis` field so the
- * rule's `direction` option can filter by inline-only (LTR horizontal)
- * vs block-only (vertical) — today every entry is `inline` because Tailwind
- * has no block-axis logical-vs-physical pair, but the shape is in place.
+ * A directional mapping entry: replace `from` with `to` along `axis`. Used by
+ * both enforce-logical (physical → logical) and enforce-physical (logical →
+ * physical, just the inverted table).
+ *
+ * The `axis` tag lets the rule's `direction` option filter — today every entry
+ * is `'inline'` because Tailwind has no block-axis logical-vs-physical pair,
+ * but the shape is in place for when it does.
  */
-export interface LogicalMapping {
-  physical: string
-  logical: string
+export interface AxisMapping {
+  from: string
+  to: string
   axis: 'inline' | 'block'
 }
 
-export const PHYSICAL_TO_LOGICAL_MAPPINGS: LogicalMapping[] = [
-  { physical: 'ml', logical: 'ms', axis: 'inline' },
-  { physical: 'mr', logical: 'me', axis: 'inline' },
-  { physical: 'pl', logical: 'ps', axis: 'inline' },
-  { physical: 'pr', logical: 'pe', axis: 'inline' },
-  { physical: 'left', logical: 'start', axis: 'inline' },
-  { physical: 'right', logical: 'end', axis: 'inline' },
-  { physical: 'border-l', logical: 'border-s', axis: 'inline' },
-  { physical: 'border-r', logical: 'border-e', axis: 'inline' },
-  { physical: 'rounded-l', logical: 'rounded-s', axis: 'inline' },
-  { physical: 'rounded-r', logical: 'rounded-e', axis: 'inline' },
-  { physical: 'rounded-tl', logical: 'rounded-ss', axis: 'inline' },
-  { physical: 'rounded-tr', logical: 'rounded-se', axis: 'inline' },
-  { physical: 'rounded-bl', logical: 'rounded-es', axis: 'inline' },
-  { physical: 'rounded-br', logical: 'rounded-ee', axis: 'inline' },
-  { physical: 'scroll-ml', logical: 'scroll-ms', axis: 'inline' },
-  { physical: 'scroll-mr', logical: 'scroll-me', axis: 'inline' },
-  { physical: 'scroll-pl', logical: 'scroll-ps', axis: 'inline' },
-  { physical: 'scroll-pr', logical: 'scroll-pe', axis: 'inline' },
+export const PHYSICAL_TO_LOGICAL_MAPPINGS: AxisMapping[] = [
+  { from: 'ml', to: 'ms', axis: 'inline' },
+  { from: 'mr', to: 'me', axis: 'inline' },
+  { from: 'pl', to: 'ps', axis: 'inline' },
+  { from: 'pr', to: 'pe', axis: 'inline' },
+  { from: 'left', to: 'start', axis: 'inline' },
+  { from: 'right', to: 'end', axis: 'inline' },
+  { from: 'border-l', to: 'border-s', axis: 'inline' },
+  { from: 'border-r', to: 'border-e', axis: 'inline' },
+  { from: 'rounded-l', to: 'rounded-s', axis: 'inline' },
+  { from: 'rounded-r', to: 'rounded-e', axis: 'inline' },
+  { from: 'rounded-tl', to: 'rounded-ss', axis: 'inline' },
+  { from: 'rounded-tr', to: 'rounded-se', axis: 'inline' },
+  { from: 'rounded-bl', to: 'rounded-es', axis: 'inline' },
+  { from: 'rounded-br', to: 'rounded-ee', axis: 'inline' },
+  { from: 'scroll-ml', to: 'scroll-ms', axis: 'inline' },
+  { from: 'scroll-mr', to: 'scroll-me', axis: 'inline' },
+  { from: 'scroll-pl', to: 'scroll-ps', axis: 'inline' },
+  { from: 'scroll-pr', to: 'scroll-pe', axis: 'inline' },
 ]
 
-/** Kept for backward compatibility with existing imports (e.g. enforce-physical). */
-export const PHYSICAL_TO_LOGICAL: Record<string, string> = Object.fromEntries(
-  PHYSICAL_TO_LOGICAL_MAPPINGS.map((m) => [m.physical, m.logical]),
-)
-
-function compileAllowlist(patterns?: string[]): RegExp[] {
-  if (!patterns || patterns.length === 0) return []
-  const compiled: RegExp[] = []
-  for (const p of patterns) {
-    try {
-      compiled.push(new RegExp(p))
-    } catch {
-      // Skip invalid regex sources rather than blowing up the lint.
-    }
-  }
-  return compiled
+/** Invert a directional table. enforce-physical consumes this. */
+export function invertAxisMappings(mappings: AxisMapping[]): AxisMapping[] {
+  return mappings.map((m) => ({ from: m.to, to: m.from, axis: m.axis }))
 }
 
-function isAllowlisted(cls: string, allowlist: readonly RegExp[]): boolean {
-  return allowlist.some((re) => re.test(cls))
+/**
+ * Flat `physical → logical` lookup. Kept exported so the test matrices in
+ * `tests/rules/enforce-{logical,physical}.test.ts` can iterate the table
+ * without depending on the richer `AxisMapping` shape.
+ */
+export const PHYSICAL_TO_LOGICAL: Record<string, string> = Object.fromEntries(
+  PHYSICAL_TO_LOGICAL_MAPPINGS.map((m) => [m.from, m.to]),
+)
+
+/**
+ * Build the `check` callback for a directional-rewrite rule. Both
+ * enforce-logical and enforce-physical instantiate this with their own
+ * mapping table and messageId; the rule's `createOnce` wires it through
+ * `createExtractorVisitors`.
+ *
+ * Owns: option compilation (allowlist + direction), per-class conversion
+ * (linear scan of the mapping table respecting `!`-prefix/suffix), and
+ * the `reportClassReplacements` dispatch.
+ */
+export function createDirectionalMapper(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: any,
+  opts: { mappings: AxisMapping[]; messageId: string },
+): { check: (locations: ClassLocation[]) => void } {
+  const getState = createLazyOptions<
+    LogicalPhysicalOptions,
+    { allowlist: RegExp[]; direction: Direction }
+  >(context, (o) => ({
+    allowlist: compileRegexList(o?.allowlist),
+    direction: o?.direction ?? 'both',
+  }))
+
+  function convertClass(cls: string): string | null {
+    const { allowlist, direction } = getState()
+    if (matchesAny(cls, allowlist)) return null
+
+    const { utility, variant } = splitUtilityAndVariant(cls)
+    const { bare: bareUtility, position } = splitImportant(utility)
+
+    for (const { from, to, axis } of opts.mappings) {
+      if (direction !== 'both' && direction !== axis) continue
+      if (bareUtility === from || bareUtility.startsWith(`${from}-`)) {
+        const suffix = bareUtility.slice(from.length)
+        return `${variant}${reattachImportant(to + suffix, position)}`
+      }
+    }
+    return null
+  }
+
+  function check(locations: ClassLocation[]) {
+    for (const loc of locations) {
+      const split = splitClassesWithSeparators(loc.value)
+      const offending = split.classes.flatMap((cls) => {
+        const converted = convertClass(cls)
+        return converted ? [{ cls, replacement: converted }] : []
+      })
+      reportClassReplacements(context, loc, split, split.classes, offending, {
+        messageId: opts.messageId,
+      })
+    }
+  }
+
+  return { check }
 }
 
 export const enforceLogical = defineRule({
@@ -75,16 +141,7 @@ export const enforceLogical = defineRule({
         'Enforce logical (RTL-friendly) Tailwind CSS properties instead of physical ones',
     },
     fixable: 'code',
-    schema: [
-      {
-        type: 'object',
-        properties: {
-          allowlist: { type: 'array', items: { type: 'string' } },
-          direction: { type: 'string', enum: ['inline', 'block', 'both'] },
-        },
-        additionalProperties: false,
-      },
-    ],
+    schema: [LOGICAL_PHYSICAL_SCHEMA],
     hasSuggestions: true,
     defaultOptions: [{ allowlist: [], direction: 'both' }],
     messages: {
@@ -94,92 +151,10 @@ export const enforceLogical = defineRule({
     },
   },
   createOnce(context) {
-    let _state: { allowlist: RegExp[]; direction: Direction } | null = null
-    function getState() {
-      if (!_state) {
-        const opts = safeOptions<Options>(context)
-        _state = {
-          allowlist: compileAllowlist(opts?.allowlist),
-          direction: opts?.direction ?? 'both',
-        }
-      }
-      return _state
-    }
-
-    function convertClass(cls: string): string | null {
-      const { allowlist, direction } = getState()
-      if (isAllowlisted(cls, allowlist)) return null
-
-      const { utility, variant } = splitUtilityAndVariant(cls)
-
-      const hasImportantPrefix = utility.startsWith('!')
-      const hasImportantSuffix = !hasImportantPrefix && utility.endsWith('!')
-      const bareUtility = hasImportantPrefix
-        ? utility.slice(1)
-        : hasImportantSuffix
-          ? utility.slice(0, -1)
-          : utility
-
-      for (const { physical, logical, axis } of PHYSICAL_TO_LOGICAL_MAPPINGS) {
-        if (direction !== 'both' && direction !== axis) continue
-        if (bareUtility === physical || bareUtility.startsWith(`${physical}-`)) {
-          const suffix = bareUtility.slice(physical.length)
-          return `${variant}${hasImportantPrefix ? '!' : ''}${logical}${suffix}${hasImportantSuffix ? '!' : ''}`
-        }
-      }
-      return null
-    }
-
-    function check(locations: ClassLocation[]) {
-      for (const loc of locations) {
-        const split = splitClassesWithSeparators(loc.value)
-        const classes = split.classes
-        const offending: Array<{ cls: string; replacement: string }> = []
-
-        for (const cls of classes) {
-          const converted = convertClass(cls)
-          if (converted) offending.push({ cls, replacement: converted })
-        }
-
-        if (offending.length === 0) continue
-
-        const replacements = new Map(offending.map(({ cls, replacement }) => [cls, replacement]))
-        const fixedValue = rebuildClassString(
-          split,
-          classes.map((cls) => replacements.get(cls) ?? cls),
-        )
-
-        for (let i = 0; i < offending.length; i++) {
-          const { cls, replacement } = offending[i]
-          if (i === 0) {
-            context.report({
-              node: loc.node,
-              messageId: 'useLogical',
-              data: { className: cls, replacement },
-              fix(fixer) {
-                return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-              },
-            })
-          } else {
-            context.report({
-              node: loc.node,
-              messageId: 'useLogical',
-              data: { className: cls, replacement },
-              suggest: [
-                {
-                  messageId: 'suggestReplace',
-                  data: { className: cls, replacement },
-                  fix(fixer) {
-                    return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-                  },
-                },
-              ],
-            })
-          }
-        }
-      }
-    }
-
+    const { check } = createDirectionalMapper(context, {
+      mappings: PHYSICAL_TO_LOGICAL_MAPPINGS,
+      messageId: 'useLogical',
+    })
     return createExtractorVisitors(context, check)
   },
 })

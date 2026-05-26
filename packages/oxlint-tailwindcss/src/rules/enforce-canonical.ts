@@ -1,35 +1,33 @@
 import { defineRule } from '@oxlint/plugins'
-import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
-import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
-import { utilityHasDynamicValue } from '../utils/class-parser'
+import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { splitClassesWithSeparators } from '../utils/class-splitter'
+import { reportClassReplacements } from '../utils/report'
+import {
+  reattachImportant,
+  splitImportant,
+  splitUtilityAndVariant,
+  utilityHasDynamicValue,
+} from '../utils/class-parser'
 import { createLazyLoader, rootFontSizeFromSettings } from '../design-system/loader'
 import { canonicalizeClassesSync } from '../design-system/canonicalize-service'
-import { safeSettings } from '../types'
-import { safeGetDS } from '../utils/fatal'
+import { safeSettings } from '../utils/context'
+import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 
 /**
- * Preserve the user's ! position after canonicalization.
- * canonicalizeCandidates always normalizes ! to suffix, but
- * enforce-consistent-important-position handles that separately.
+ * Preserve the user's `!` position after canonicalization.
+ *
+ * `canonicalizeCandidates` normalizes `!` to suffix; this restores the
+ * original prefix-or-suffix-or-none position so `enforce-consistent-important-position`
+ * remains the single source of truth for ! placement policy.
+ *
+ * Bracket-aware via `splitUtilityAndVariant` — arbitrary variants like
+ * `[&>svg]:!w-4` round-trip correctly.
  */
 function preserveImportantPosition(original: string, canonicalized: string): string {
-  const origHasPrefix = original.startsWith('!') || /^[a-z0-9[\]*@-]*:!/.test(original)
-  const origHasSuffix = original.endsWith('!') && !origHasPrefix
-
-  if (!origHasPrefix && !origHasSuffix) {
-    // Original has no ! — strip any ! the canonicalizer added
-    return canonicalized.replace(/!/g, '')
-  }
-
-  // Strip ! from canonicalized, then re-add in original position
-  const bare = canonicalized.replace(/!/g, '')
-  if (origHasPrefix) {
-    // Re-add ! after variant prefix (e.g. "hover:!p-0.5")
-    const variantPrefix = bare.slice(0, bare.length - bare.replace(/^[a-z0-9[\]*@-]*:/g, '').length)
-    return variantPrefix + '!' + bare.slice(variantPrefix.length)
-  }
-  // Suffix
-  return bare + '!'
+  const { position } = splitImportant(splitUtilityAndVariant(original).utility)
+  const { utility, variant } = splitUtilityAndVariant(canonicalized)
+  const bare = splitImportant(utility).bare
+  return variant + reattachImportant(bare, position)
 }
 
 export const enforceCanonical = defineRule({
@@ -53,7 +51,7 @@ export const enforceCanonical = defineRule({
     messages: {
       nonCanonical: '"{{className}}" can be written as "{{canonical}}". Use the canonical form.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
-      designSystemUnavailable: '{{message}}',
+      ...DS_UNAVAILABLE_MESSAGE,
     },
   },
   createOnce(context) {
@@ -104,54 +102,27 @@ export const enforceCanonical = defineRule({
 
         if (arbitrary.length > 0) {
           const rem = getRem()
-          const dynamic = canonicalizeClassesSync(entryPoint, arbitrary, rem)
-          if (dynamic) {
-            for (let k = 0; k < arbitrary.length; k++) {
-              canonicals[arbitraryIdx[k]] = preserveImportantPosition(arbitrary[k], dynamic[k])
-            }
-          } else {
-            for (let k = 0; k < arbitrary.length; k++) {
-              canonicals[arbitraryIdx[k]] = cache.canonicalize(arbitrary[k])
-            }
+          // Worker provides the authoritative canonicalization for arbitrary
+          // values. Failures throw SortServiceError, surfaced as a fatal
+          // diagnostic via safeGetDS — no heuristic fallback.
+          const dynamic = safeGetDS(
+            () => canonicalizeClassesSync(entryPoint, arbitrary, rem),
+            context,
+            loc.node,
+          )
+          if (!dynamic) return // worker fatal already reported; stop the check
+          for (let k = 0; k < arbitrary.length; k++) {
+            canonicals[arbitraryIdx[k]] = preserveImportantPosition(arbitrary[k], dynamic[k])
           }
         }
 
-        let firstNonCanonical = true
-
-        for (let i = 0; i < classes.length; i++) {
-          const cls = classes[i]
-          const canonical = canonicals[i]
-          if (canonical === cls) continue
-
-          if (firstNonCanonical) {
-            firstNonCanonical = false
-            const fixedValue = rebuildClassString(split, canonicals)
-            context.report({
-              node: loc.node,
-              messageId: 'nonCanonical',
-              data: { className: cls, canonical },
-              fix(fixer) {
-                return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-              },
-            })
-          } else {
-            const fixedValue = rebuildClassString(split, canonicals)
-            context.report({
-              node: loc.node,
-              messageId: 'nonCanonical',
-              data: { className: cls, canonical },
-              suggest: [
-                {
-                  messageId: 'suggestReplace',
-                  data: { className: cls, replacement: canonical },
-                  fix(fixer) {
-                    return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-                  },
-                },
-              ],
-            })
-          }
-        }
+        const offending = classes.flatMap((cls, i) =>
+          canonicals[i] === cls ? [] : [{ cls, replacement: canonicals[i] }],
+        )
+        reportClassReplacements(context, loc, split, classes, offending, {
+          messageId: 'nonCanonical',
+          replacementKey: 'canonical',
+        })
       }
     }
 

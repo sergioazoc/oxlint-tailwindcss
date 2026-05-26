@@ -1,8 +1,9 @@
 import { defineRule } from '@oxlint/plugins'
-import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
-import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
+import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { splitClassesWithSeparators } from '../utils/class-splitter'
+import { reportClassReplacements } from '../utils/report'
 import { splitUtilityAndVariant } from '../utils/class-parser'
-import { safeOptions } from '../types'
+import { createLazyOptions } from '../utils/context'
 
 interface Options {
   position?: 'prefix' | 'suffix'
@@ -34,14 +35,10 @@ export const enforceConsistentImportantPosition = defineRule({
     },
   },
   createOnce(context) {
-    let _position: 'prefix' | 'suffix' | null = null
-    function getPosition(): 'prefix' | 'suffix' {
-      if (_position === null) {
-        const options = safeOptions<Options>(context)
-        _position = options?.position ?? 'suffix'
-      }
-      return _position
-    }
+    const getPosition = createLazyOptions<Options, 'prefix' | 'suffix'>(
+      context,
+      (o) => o?.position ?? 'suffix',
+    )
 
     function fixUtility(utility: string, variantPfx: string): string | null {
       const position = getPosition()
@@ -56,54 +53,15 @@ export const enforceConsistentImportantPosition = defineRule({
 
     function check(locations: ClassLocation[]) {
       const position = getPosition()
+      const messageId = position === 'prefix' ? 'usePrefix' : 'useSuffix'
       for (const loc of locations) {
         const split = splitClassesWithSeparators(loc.value)
-        const classes = split.classes
-        const offending: Array<{ cls: string; replacement: string }> = []
-
-        for (const cls of classes) {
+        const offending = split.classes.flatMap((cls) => {
           const { utility, variant } = splitUtilityAndVariant(cls)
           const fixed = fixUtility(utility, variant)
-          if (fixed) offending.push({ cls, replacement: fixed })
-        }
-
-        if (offending.length === 0) continue
-
-        const replacements = new Map(offending.map(({ cls, replacement }) => [cls, replacement]))
-        const fixedValue = rebuildClassString(
-          split,
-          classes.map((cls) => replacements.get(cls) ?? cls),
-        )
-
-        // Report each offending class; attach the fix to the first one
-        for (let i = 0; i < offending.length; i++) {
-          const { cls, replacement } = offending[i]
-          if (i === 0) {
-            context.report({
-              node: loc.node,
-              messageId: position === 'prefix' ? 'usePrefix' : 'useSuffix',
-              data: { className: cls, replacement },
-              fix(fixer) {
-                return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-              },
-            })
-          } else {
-            context.report({
-              node: loc.node,
-              messageId: position === 'prefix' ? 'usePrefix' : 'useSuffix',
-              data: { className: cls, replacement },
-              suggest: [
-                {
-                  messageId: 'suggestReplace',
-                  data: { className: cls, replacement },
-                  fix(fixer) {
-                    return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-                  },
-                },
-              ],
-            })
-          }
-        }
+          return fixed ? [{ cls, replacement: fixed }] : []
+        })
+        reportClassReplacements(context, loc, split, split.classes, offending, { messageId })
       }
     }
 

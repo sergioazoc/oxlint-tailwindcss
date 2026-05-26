@@ -1,15 +1,10 @@
 import { defineConfig } from 'vitepress'
+import { RULE_NAMES } from '../scripts/rules'
 
-const RULES_NAV = [
-  { text: 'enforce-canonical', link: '/rules/enforce-canonical' },
-  { text: 'enforce-sort-order', link: '/rules/enforce-sort-order' },
-  { text: 'no-unknown-classes', link: '/rules/no-unknown-classes' },
-  { text: 'no-conflicting-classes', link: '/rules/no-conflicting-classes' },
-  { text: 'no-deprecated-classes', link: '/rules/no-deprecated-classes' },
-  { text: 'no-duplicate-classes', link: '/rules/no-duplicate-classes' },
-  { text: 'enforce-logical', link: '/rules/enforce-logical' },
-  { text: 'enforce-physical', link: '/rules/enforce-physical' },
-]
+// Sidebar entries derive from the library's plugin registry — adding a rule
+// to `src/index.ts` makes it visible in both locales' sidebars with no
+// hand-editing here.
+const RULES_NAV = RULE_NAMES.map((name) => ({ text: name, link: `/rules/${name}` }))
 
 // Multi-locale VitePress v2 config. English is the default at `/`,
 // Spanish lives at `/es`. The sidebar and nav structures mirror each

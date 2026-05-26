@@ -6,6 +6,8 @@ import {
   getVariantPrefix,
   hasArbitraryValue,
   getArbitraryValue,
+  splitImportant,
+  reattachImportant,
 } from '../../src/utils/class-parser'
 
 describe('extractVariants', () => {
@@ -161,5 +163,32 @@ describe('parseClass', () => {
     expect(result.negative).toBe(true)
     expect(result.utility).toBe('translate-x-[10px]')
     expect(result.arbitraryValue).toBe('10px')
+  })
+})
+
+describe('splitImportant / reattachImportant', () => {
+  it.each([
+    ['!flex', 'flex', 'prefix'],
+    ['flex!', 'flex', 'suffix'],
+    ['flex', 'flex', null],
+    ['!bg-red-500', 'bg-red-500', 'prefix'],
+    ['bg-red-500!', 'bg-red-500', 'suffix'],
+    ['p-[2px]', 'p-[2px]', null],
+    ['!p-[2px]', 'p-[2px]', 'prefix'],
+    ['p-[2px]!', 'p-[2px]', 'suffix'],
+  ] as const)('splitImportant("%s")', (input, expectedBare, expectedPos) => {
+    expect(splitImportant(input)).toEqual({ bare: expectedBare, position: expectedPos })
+  })
+
+  it('round-trips through reattachImportant', () => {
+    for (const input of ['!flex', 'flex!', 'flex', '!bg-red-500', 'p-[2px]!']) {
+      const { bare, position } = splitImportant(input)
+      expect(reattachImportant(bare, position)).toBe(input)
+    }
+  })
+
+  it('treats !something! as prefix-only (suffix never wins on a prefix-set utility)', () => {
+    // Defensive case: malformed input. We don't normalize — prefix wins.
+    expect(splitImportant('!flex!')).toEqual({ bare: 'flex!', position: 'prefix' })
   })
 })

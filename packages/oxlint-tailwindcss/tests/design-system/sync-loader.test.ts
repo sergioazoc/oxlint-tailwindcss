@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { resolve } from 'node:path'
-import {
-  computeCacheKey,
-  loadDesignSystemSync,
-  readTailwindVersion,
-} from '../../src/design-system/sync-loader'
+import { computeCacheKey, loadDesignSystemSync } from '../../src/design-system/sync-loader'
+import { TAILWIND_NODE_VERSION } from '../../src/design-system/tailwind-node'
 import { DesignSystemLoadError } from '../../src/utils/fatal'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
@@ -80,11 +77,11 @@ describe('computeCacheKey', () => {
   })
 })
 
-describe('readTailwindVersion', () => {
-  it('returns the installed @tailwindcss/node version', () => {
+describe('TAILWIND_NODE_VERSION', () => {
+  it('matches the installed @tailwindcss/node version', () => {
     // Format is semver — fallback "unknown" would mean @tailwindcss/node isn't resolvable,
     // which would also break loadDesignSystemSync entirely (covered by tests above).
-    expect(readTailwindVersion()).toMatch(/^\d+\.\d+\.\d+/)
+    expect(TAILWIND_NODE_VERSION).toMatch(/^\d+\.\d+\.\d+/)
   })
 })
 

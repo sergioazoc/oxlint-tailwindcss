@@ -1,8 +1,8 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
-import { hasArbitraryValue, extractUtility } from '../utils/class-parser'
-import { safeOptions } from '../types'
+import { hasArbitraryValue, extractUtility, splitImportant } from '../utils/class-parser'
+import { createLazyOptions } from '../utils/context'
 
 interface Options {
   allow?: string[]
@@ -30,14 +30,10 @@ export const noArbitraryValue = defineRule({
     },
   },
   createOnce(context) {
-    let _allowPrefixes: string[] | null = null
-    function getAllowPrefixes(): string[] {
-      if (_allowPrefixes === null) {
-        const options = safeOptions<Options>(context)
-        _allowPrefixes = options?.allow ?? []
-      }
-      return _allowPrefixes
-    }
+    const getAllowPrefixes = createLazyOptions<Options, string[]>(
+      context,
+      (o) => o?.allow ?? [],
+    )
 
     function isAllowed(utility: string): boolean {
       return getAllowPrefixes().some((prefix) => utility.startsWith(prefix))
@@ -50,9 +46,7 @@ export const noArbitraryValue = defineRule({
         for (const cls of classes) {
           if (!hasArbitraryValue(cls)) continue
 
-          let utility = extractUtility(cls)
-          if (utility.startsWith('!')) utility = utility.slice(1)
-          else if (utility.endsWith('!')) utility = utility.slice(0, -1)
+          const utility = splitImportant(extractUtility(cls)).bare
           if (isAllowed(utility)) continue
 
           context.report({

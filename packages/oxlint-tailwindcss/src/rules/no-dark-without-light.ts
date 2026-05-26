@@ -1,8 +1,8 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
-import { extractVariants, extractUtility } from '../utils/class-parser'
-import { safeOptions } from '../types'
+import { extractVariants, extractUtility, splitImportant } from '../utils/class-parser'
+import { createLazyOptions } from '../utils/context'
 
 interface Options {
   variants?: string[]
@@ -49,9 +49,7 @@ const KNOWN_PREFIXES = [
  * Used to group utilities by their property type.
  */
 function getUtilityPrefix(utility: string): string {
-  let u = utility
-  if (u.startsWith('!')) u = u.slice(1)
-  else if (u.endsWith('!')) u = u.slice(0, -1)
+  let u = splitImportant(utility).bare
   if (u.startsWith('-')) u = u.slice(1)
 
   for (const prefix of KNOWN_PREFIXES) {
@@ -84,14 +82,10 @@ export const noDarkWithoutLight = defineRule({
     },
   },
   createOnce(context) {
-    let _watchedVariants: Set<string> | null = null
-    function getWatchedVariants(): Set<string> {
-      if (_watchedVariants === null) {
-        const options = safeOptions<Options>(context)
-        _watchedVariants = new Set(options?.variants ?? DEFAULT_VARIANTS)
-      }
-      return _watchedVariants
-    }
+    const getWatchedVariants = createLazyOptions<Options, Set<string>>(
+      context,
+      (o) => new Set(o?.variants ?? DEFAULT_VARIANTS),
+    )
 
     function check(locations: ClassLocation[]) {
       const watchedVariants = getWatchedVariants()

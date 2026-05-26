@@ -15,15 +15,18 @@
   },
   "type": "module",
   "scripts": {
+    "dev": "pnpm -C packages/docs dev",
     "build": "pnpm -C packages/oxlint-tailwindcss build",
-    "dev": "pnpm -C packages/oxlint-tailwindcss dev",
+    "build:watch": "pnpm -C packages/oxlint-tailwindcss dev",
     "test": "pnpm -C packages/oxlint-tailwindcss test",
     "test:watch": "pnpm -C packages/oxlint-tailwindcss test:watch",
     "bench": "pnpm -C packages/oxlint-tailwindcss bench",
     "lint": "pnpm -C packages/oxlint-tailwindcss lint",
     "format": "pnpm -C packages/oxlint-tailwindcss format",
     "format:check": "pnpm -C packages/oxlint-tailwindcss format:check",
-    "typecheck": "pnpm -C packages/oxlint-tailwindcss typecheck"
+    "typecheck": "pnpm -C packages/oxlint-tailwindcss typecheck",
+    "docs:build": "pnpm -C packages/docs build",
+    "docs:preview": "pnpm -C packages/docs preview"
   },
   "engines": {
     "node": ">=20"

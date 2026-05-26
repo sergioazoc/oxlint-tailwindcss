@@ -2,8 +2,10 @@ import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
 import { extractVariants, extractUtility } from '../utils/class-parser'
-import { safeOptions } from '../types'
+import { createLazyOptions } from '../utils/context'
 import { createLazyLoader } from '../design-system/loader'
+import type { DesignSystemCache } from '../design-system/cache'
+import { isFatalError } from '../utils/fatal'
 
 interface Options {
   entryPoint?: string
@@ -146,66 +148,45 @@ export const consistentVariantOrder = defineRule({
   createOnce(context) {
     const getDS = createLazyLoader(context)
 
-    interface CompiledConfig {
-      priorityMap: Map<string, number>
-      fallbackPriority: number
-      dsCache: import('../design-system/cache').DesignSystemCache | null
-    }
-
-    let _config: CompiledConfig | null = null
-    function getConfig(): CompiledConfig {
-      if (_config === null) {
-        const options = safeOptions<Options>(context)
-        // consistent-variant-order is the one DS-optional rule in v1: its
-        // static fallback is also fully deterministic, so when no entryPoint
-        // is configured we fall back to it silently instead of erroring.
-        let dsCache: import('../design-system/cache').DesignSystemCache | null = null
-        try {
-          dsCache = getDS().cache
-        } catch {
-          dsCache = null
-        }
-        const priorityMap = new Map<string, number>()
-
-        if (options?.order) {
-          for (let i = 0; i < options.order.length; i++) {
-            priorityMap.set(options.order[i], i)
-          }
-          _config = { priorityMap, fallbackPriority: options.order.length, dsCache }
-        } else if (dsCache && dsCache.hasVariantOrder()) {
-          for (const variant of DEFAULT_VARIANT_ORDER) {
-            const p = dsCache.getVariantPriority(variant)
-            if (p !== null) priorityMap.set(variant, p)
-          }
-          _config = { priorityMap, fallbackPriority: Number.MAX_SAFE_INTEGER, dsCache }
-        } else {
-          for (let i = 0; i < DEFAULT_VARIANT_ORDER.length; i++) {
-            priorityMap.set(DEFAULT_VARIANT_ORDER[i], i)
-          }
-          _config = { priorityMap, fallbackPriority: DEFAULT_VARIANT_ORDER.length, dsCache }
-        }
+    // consistent-variant-order is the one DS-optional rule in v1: its static
+    // fallback is also fully deterministic, so when no entryPoint is
+    // configured we silently fall back to it instead of erroring. Only
+    // plugin-fatal errors are swallowed — anything else is rethrown so real
+    // bugs stay visible.
+    const getPriority = createLazyOptions<Options, (variant: string) => number>(context, (o) => {
+      let dsCache: DesignSystemCache | null = null
+      try {
+        dsCache = getDS().cache
+      } catch (err) {
+        if (!isFatalError(err)) throw err
       }
-      return _config
-    }
 
-    function getVariantPriority(variant: string): number {
-      const { priorityMap, fallbackPriority, dsCache } = getConfig()
-      const priority = priorityMap.get(variant)
-      if (priority !== undefined) return priority
+      if (o?.order) {
+        const map = new Map<string, number>()
+        for (let i = 0; i < o.order.length; i++) map.set(o.order[i], i)
+        const fallback = o.order.length
+        return (v) => map.get(v) ?? fallback
+      }
 
       if (dsCache && dsCache.hasVariantOrder()) {
-        const dsPriority = dsCache.getVariantPriority(variant)
-        if (dsPriority !== null) return dsPriority
+        const ds = dsCache
+        return (v) => ds.getVariantPriority(v) ?? Number.MAX_SAFE_INTEGER
       }
 
-      return fallbackPriority
-    }
+      const map = new Map<string, number>()
+      for (let i = 0; i < DEFAULT_VARIANT_ORDER.length; i++) {
+        map.set(DEFAULT_VARIANT_ORDER[i], i)
+      }
+      const fallback = DEFAULT_VARIANT_ORDER.length
+      return (v) => map.get(v) ?? fallback
+    })
 
     function reorderClass(cls: string): string | null {
       const variants = extractVariants(cls)
       if (variants.length < 2) return null
 
-      const sorted = [...variants].sort((a, b) => getVariantPriority(a) - getVariantPriority(b))
+      const priorityOf = getPriority()
+      const sorted = [...variants].sort((a, b) => priorityOf(a) - priorityOf(b))
 
       // Pseudo-elements must always be innermost (last in the variant chain).
       // Partition sorted variants: non-pseudo-elements first, pseudo-elements last.

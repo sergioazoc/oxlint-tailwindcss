@@ -4,8 +4,8 @@ import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-s
 import { splitUtilityAndVariant } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import { sortClassesSync } from '../design-system/sort-service'
-import { safeOptions } from '../types'
-import { safeGetDS } from '../utils/fatal'
+import { createLazyOptions } from '../utils/context'
+import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 
 interface Options {
   entryPoint?: string
@@ -33,20 +33,16 @@ export const enforceSortOrder = defineRule({
     defaultOptions: [{ mode: 'default' }],
     messages: {
       unsorted: 'Tailwind classes are not in the recommended order.',
-      designSystemUnavailable: '{{message}}',
+      ...DS_UNAVAILABLE_MESSAGE,
     },
   },
   createOnce(context) {
     const getDS = createLazyLoader(context)
 
-    let _mode: 'default' | 'strict' | null = null
-    function getMode(): 'default' | 'strict' {
-      if (_mode === null) {
-        const opts = safeOptions<Options>(context)
-        _mode = opts?.mode ?? 'default'
-      }
-      return _mode
-    }
+    const getMode = createLazyOptions<Options, 'default' | 'strict'>(
+      context,
+      (o) => o?.mode ?? 'default',
+    )
 
     function check(locations: ClassLocation[]) {
       if (locations.length === 0) return
@@ -56,23 +52,10 @@ export const enforceSortOrder = defineRule({
       const mode = getMode()
 
       function sortDefault(classes: string[]): string[] {
-        // Use persistent child process for exact official Tailwind sort order
-        const dynamic = sortClassesSync(entryPoint, classes)
-        if (dynamic) return dynamic
-
-        // Fallback to precomputed heuristic sort.
-        // Null-order classes (group/name, peer/name) sort first — matches
-        // the behavior of prettier-plugin-tailwindcss and oxfmt.
-        const ordered = cache.getClassOrder(classes)
-        const sorted = [...ordered].sort((a, b) => {
-          if (a[1] === null && b[1] === null) return 0
-          if (a[1] === null) return -1
-          if (b[1] === null) return 1
-          if (a[1] < b[1]) return -1
-          if (a[1] > b[1]) return 1
-          return 0
-        })
-        return sorted.map(([name]) => name)
+        // Worker provides the exact official Tailwind sort order. Failures
+        // throw SortServiceError, which the caller surfaces as a fatal
+        // diagnostic via safeGetDS.
+        return sortClassesSync(entryPoint, classes)
       }
 
       function sortStrict(classes: string[]): string[] {
@@ -127,7 +110,11 @@ export const enforceSortOrder = defineRule({
         const classes = split.classes
         if (classes.length < 2) continue
 
-        const sortedNames = mode === 'strict' ? sortStrict(classes) : sortDefault(classes)
+        const sortedNames =
+          mode === 'strict'
+            ? sortStrict(classes)
+            : safeGetDS(() => sortDefault(classes), context, loc.node)
+        if (!sortedNames) return // worker fatal already reported; stop the check
 
         const isSorted = classes.every((name, i) => name === sortedNames[i])
         if (isSorted) continue

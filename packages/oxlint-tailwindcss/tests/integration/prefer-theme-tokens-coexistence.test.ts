@@ -105,28 +105,24 @@ describe('prefer-theme-tokens coexistence (default theme)', () => {
   })
 
   // ── no-unnecessary-arbitrary-value ──────────────────────────────
-  run(
-    'no-unnecessary-arbitrary-value (default theme)',
-    noUnnecessaryArbitraryValue,
-    {
-      valid: [
-        // Paren shorthand is owned by enforce-canonical
-        { code: '<div className="rounded-(--radius-sm)" />', filename: 'test.tsx' },
-        { code: '<div className="bg-(--red-500)" />', filename: 'test.tsx' },
-        // Bracket form whose CSS does not match any named utility
-        { code: '<div className="bg-[var(--red-500)]" />', filename: 'test.tsx' },
-      ],
-      invalid: [
-        // Bracket form CSS-equivalent to named utility (a)
-        {
-          code: '<div className="rounded-[var(--radius-sm)]" />',
-          filename: 'test.tsx',
-          errors: [{ messageId: 'unnecessaryArbitrary' }],
-          output: '<div className="rounded-sm" />',
-        },
-      ],
-    },
-  )
+  run('no-unnecessary-arbitrary-value (default theme)', noUnnecessaryArbitraryValue, {
+    valid: [
+      // Paren shorthand is owned by enforce-canonical
+      { code: '<div className="rounded-(--radius-sm)" />', filename: 'test.tsx' },
+      { code: '<div className="bg-(--red-500)" />', filename: 'test.tsx' },
+      // Bracket form whose CSS does not match any named utility
+      { code: '<div className="bg-[var(--red-500)]" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      // Bracket form CSS-equivalent to named utility (a)
+      {
+        code: '<div className="rounded-[var(--radius-sm)]" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unnecessaryArbitrary' }],
+        output: '<div className="rounded-sm" />',
+      },
+    ],
+  })
 
   // ── prefer-theme-tokens ─────────────────────────────────────────
   run('prefer-theme-tokens (default theme)', preferThemeTokens, {
@@ -188,21 +184,17 @@ describe('prefer-theme-tokens coexistence (shadcn-style theme)', () => {
   // ── no-unnecessary-arbitrary-value ──────────────────────────────
   // With this fixture, `--color-border` resolves directly to `var(--border)`,
   // so border-[var(--border)] is CSS-equivalent to border-border.
-  run(
-    'no-unnecessary-arbitrary-value (shadcn theme)',
-    noUnnecessaryArbitraryValue,
-    {
-      valid: [{ code: '<div className="border-(--border)" />', filename: 'test.tsx' }],
-      invalid: [
-        {
-          code: '<div className="border-[var(--border)]" />',
-          filename: 'test.tsx',
-          errors: [{ messageId: 'unnecessaryArbitrary' }],
-          output: '<div className="border-border" />',
-        },
-      ],
-    },
-  )
+  run('no-unnecessary-arbitrary-value (shadcn theme)', noUnnecessaryArbitraryValue, {
+    valid: [{ code: '<div className="border-(--border)" />', filename: 'test.tsx' }],
+    invalid: [
+      {
+        code: '<div className="border-[var(--border)]" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unnecessaryArbitrary' }],
+        output: '<div className="border-border" />',
+      },
+    ],
+  })
 
   // ── prefer-theme-tokens ─────────────────────────────────────────
   // Bracket form is owned by no-unnecessary-arbitrary-value (CSS-equivalent),

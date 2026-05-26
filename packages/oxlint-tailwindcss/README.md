@@ -76,13 +76,13 @@ Declare your Tailwind CSS entry point in `settings.tailwindcss.entryPoint`:
   "jsPlugins": ["oxlint-tailwindcss"],
   "settings": {
     "tailwindcss": {
-      "entryPoint": "src/styles.css"
-    }
+      "entryPoint": "src/styles.css",
+    },
   },
   "rules": {
-    "tailwindcss/no-unknown-classes": "error"
+    "tailwindcss/no-unknown-classes": "error",
     // ...
-  }
+  },
 }
 ```
 
@@ -99,12 +99,12 @@ Two patterns, both fully deterministic:
   "settings": {
     "tailwindcss": {
       "entryPoint": [
-        { "files": "packages/ui/**",     "use": "packages/ui/src/styles.css" },
-        { "files": "packages/admin/**",  "use": "packages/admin/src/admin.css" },
-        { "files": "**",                  "use": "src/global.css" }
-      ]
-    }
-  }
+        { "files": "packages/ui/**", "use": "packages/ui/src/styles.css" },
+        { "files": "packages/admin/**", "use": "packages/admin/src/admin.css" },
+        { "files": "**", "use": "src/global.css" },
+      ],
+    },
+  },
 }
 ```
 
@@ -124,7 +124,7 @@ You can also override per rule if needed:
 }
 ```
 
-Resolution order: rule option > `settings.tailwindcss.entryPoint` > auto-detect.
+Resolution order: rule option > `settings.tailwindcss.entryPoint`. If neither resolves a CSS file, DS-dependent rules emit a single `designSystemUnavailable` diagnostic per file (with the migration hint inline). v1.0.0 removed the filesystem auto-detect — explicit `entryPoint` is mandatory.
 
 ### Timeout
 
@@ -134,9 +134,9 @@ For slow environments (large monorepos, CI), you can increase the design system 
 {
   "settings": {
     "tailwindcss": {
-      "timeout": 120000 // milliseconds (default: 60000)
-    }
-  }
+      "timeout": 120000, // milliseconds (default: 60000)
+    },
+  },
 }
 ```
 
@@ -182,7 +182,7 @@ Output:
 [oxlint-tailwindcss] packages/admin/src/Dashboard.tsx → packages/admin/src/styles.css
 ```
 
-If no entry point is found (neither configured nor auto-detected), rules that require the design system (`no-unknown-classes`, `no-conflicting-classes`, `no-deprecated-classes`, `enforce-canonical`, `enforce-sort-order`, `no-unnecessary-arbitrary-value`, `prefer-theme-tokens`, `consistent-variant-order`) are silently disabled. All other rules work without it.
+If no entry point is configured, the DS-dependent rules (`no-unknown-classes`, `no-conflicting-classes`, `no-deprecated-classes`, `enforce-canonical`, `enforce-sort-order`, `no-unnecessary-arbitrary-value`, `prefer-theme-tokens`) emit a single `designSystemUnavailable` diagnostic per file with an actionable hint — no more silent skips. `consistent-variant-order` is the lone exception: its static fallback is itself deterministic, so a missing entryPoint is tolerated there. All non-DS rules work without an entry point.
 
 ## Custom class detection
 

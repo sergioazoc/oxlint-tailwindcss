@@ -1,8 +1,13 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
-import { hasArbitraryValue, getArbitraryValue, extractUtility } from '../utils/class-parser'
-import { safeOptions } from '../types'
+import {
+  hasArbitraryValue,
+  getArbitraryValue,
+  extractUtility,
+  splitImportant,
+} from '../utils/class-parser'
+import { createLazyOptions } from '../utils/context'
 
 interface Options {
   entryPoint?: string
@@ -97,14 +102,10 @@ export const noHardcodedColors = defineRule({
     },
   },
   createOnce(context) {
-    let _allowlist: Set<string> | null = null
-    function getAllowlist(): Set<string> {
-      if (_allowlist === null) {
-        const options = safeOptions<Options>(context)
-        _allowlist = new Set(options?.allow ?? [])
-      }
-      return _allowlist
-    }
+    const getAllowlist = createLazyOptions<Options, Set<string>>(
+      context,
+      (o) => new Set(o?.allow ?? []),
+    )
 
     function check(locations: ClassLocation[]) {
       const allowlist = getAllowlist()
@@ -115,9 +116,7 @@ export const noHardcodedColors = defineRule({
           if (allowlist.has(cls)) continue
           if (!hasArbitraryValue(cls)) continue
 
-          let utility = extractUtility(cls)
-          if (utility.startsWith('!')) utility = utility.slice(1)
-          else if (utility.endsWith('!')) utility = utility.slice(0, -1)
+          const utility = splitImportant(extractUtility(cls)).bare
           if (!isColorUtility(utility)) continue
 
           const value = getArbitraryValue(cls)

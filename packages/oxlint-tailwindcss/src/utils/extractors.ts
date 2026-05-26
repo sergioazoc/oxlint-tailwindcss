@@ -239,7 +239,7 @@ export function extractFromCallExpression(
 
   const results: ClassLocation[] = []
   for (const arg of node.arguments) {
-    results.push(...extractFromExpression(arg))
+    extractFromExpression(arg, results)
   }
   return results
 }
@@ -266,7 +266,7 @@ function extractObjectValues(node: ESTree.ObjectExpression): ClassLocation[] {
   const results: ClassLocation[] = []
   for (const prop of node.properties) {
     if (prop.type === 'Property') {
-      results.push(...extractFromExpression(prop.value))
+      extractFromExpression(prop.value, results)
     }
   }
   return results
@@ -303,7 +303,7 @@ function extractFromClassedCall(node: ESTree.CallExpression): ClassLocation[] {
     if (arg.type === 'ObjectExpression') {
       results.push(...extractFromCvaConfig(arg as ESTree.ObjectExpression))
     } else {
-      results.push(...extractFromExpression(arg))
+      extractFromExpression(arg, results)
     }
   }
   return results
@@ -319,7 +319,7 @@ function extractFromCvaCall(node: ESTree.CallExpression): ClassLocation[] {
     if (arg.type === 'ObjectExpression') {
       results.push(...extractFromCvaConfig(arg as ESTree.ObjectExpression))
     } else {
-      results.push(...extractFromExpression(arg))
+      extractFromExpression(arg, results)
     }
   }
   return results
@@ -342,7 +342,7 @@ function extractFromCvaConfig(node: ESTree.ObjectExpression): ClassLocation[] {
         if (category.type !== 'Property' || category.value.type !== 'ObjectExpression') continue
         for (const variant of (category.value as ESTree.ObjectExpression).properties) {
           if (variant.type === 'Property') {
-            results.push(...extractFromExpression(variant.value))
+            extractFromExpression(variant.value, results)
           }
         }
       }
@@ -353,7 +353,7 @@ function extractFromCvaConfig(node: ESTree.ObjectExpression): ClassLocation[] {
       // Ignore — these are variant names, not class strings
     } else {
       // Other properties (e.g. unknown) — try extracting
-      results.push(...extractFromExpression(prop.value))
+      extractFromExpression(prop.value, results)
     }
   }
   return results
@@ -369,7 +369,7 @@ function extractFromTvCall(node: ESTree.CallExpression): ClassLocation[] {
     if (arg.type === 'ObjectExpression') {
       results.push(...extractFromTvConfig(arg as ESTree.ObjectExpression))
     } else {
-      results.push(...extractFromExpression(arg))
+      extractFromExpression(arg, results)
     }
   }
   return results
@@ -387,12 +387,12 @@ function extractFromTvConfig(node: ESTree.ObjectExpression): ClassLocation[] {
     const name = getPropertyName(prop.key)
 
     if (name === 'base') {
-      results.push(...extractFromExpression(prop.value))
+      extractFromExpression(prop.value, results)
     } else if (name === 'slots' && prop.value.type === 'ObjectExpression') {
       // slots: { header: "p-2", body: "p-4" }
       for (const slot of (prop.value as ESTree.ObjectExpression).properties) {
         if (slot.type === 'Property') {
-          results.push(...extractFromExpression(slot.value))
+          extractFromExpression(slot.value, results)
         }
       }
     } else if (name === 'variants' && prop.value.type === 'ObjectExpression') {
@@ -405,11 +405,11 @@ function extractFromTvConfig(node: ESTree.ObjectExpression): ClassLocation[] {
             // Slot-level: { header: "p-2", body: "p-4" }
             for (const slotProp of (variant.value as ESTree.ObjectExpression).properties) {
               if (slotProp.type === 'Property') {
-                results.push(...extractFromExpression(slotProp.value))
+                extractFromExpression(slotProp.value, results)
               }
             }
           } else {
-            results.push(...extractFromExpression(variant.value))
+            extractFromExpression(variant.value, results)
           }
         }
       }
@@ -421,7 +421,7 @@ function extractFromTvConfig(node: ESTree.ObjectExpression): ClassLocation[] {
     } else if (name === 'defaultVariants') {
       // Ignore
     } else {
-      results.push(...extractFromExpression(prop.value))
+      extractFromExpression(prop.value, results)
     }
   }
   return results
@@ -439,7 +439,7 @@ function extractClassFromCompoundEntries(node: ESTree.ArrayExpression): ClassLoc
       if (prop.type !== 'Property') continue
       const name = getPropertyName(prop.key)
       if (name === 'class' || name === 'className') {
-        results.push(...extractFromExpression(prop.value))
+        extractFromExpression(prop.value, results)
       }
     }
   }
@@ -471,56 +471,63 @@ export function extractFromVariableDeclarator(
   return extractFromExpression(node.init)
 }
 
-function extractFromExpression(node: ESTree.Node): ClassLocation[] {
+/**
+ * Walk an expression and append every class-bearing location to `out`.
+ *
+ * Internal helpers pass their accumulator down to avoid the
+ * `extractFromExpression(x, results)` pattern, which allocates an
+ * intermediate array per recursive call. Public callers may omit `out` to
+ * receive a fresh array.
+ */
+function extractFromExpression(node: ESTree.Node, out: ClassLocation[] = []): ClassLocation[] {
   if (node.type === 'Literal' && typeof node.value === 'string') {
-    return [
-      {
-        value: node.value,
-        node,
-        range: [node.range[0] + 1, node.range[1] - 1],
-      },
-    ]
+    out.push({
+      value: node.value,
+      node,
+      range: [node.range[0] + 1, node.range[1] - 1],
+    })
+    return out
   }
 
   if (node.type === 'TemplateLiteral') {
-    return extractFromTemplateLiteral(node as ESTree.TemplateLiteral)
+    return appendFromTemplateLiteral(node as ESTree.TemplateLiteral, out)
   }
 
   if (node.type === 'ConditionalExpression') {
-    return [
-      ...extractFromExpression((node as ESTree.ConditionalExpression).consequent),
-      ...extractFromExpression((node as ESTree.ConditionalExpression).alternate),
-    ]
+    extractFromExpression((node as ESTree.ConditionalExpression).consequent, out)
+    extractFromExpression((node as ESTree.ConditionalExpression).alternate, out)
+    return out
   }
 
   if (node.type === 'LogicalExpression') {
-    return extractFromExpression((node as ESTree.LogicalExpression).right)
+    return extractFromExpression((node as ESTree.LogicalExpression).right, out)
   }
 
   // Objects: cn({ "bg-red-500": isError }) — extract the keys
   if (node.type === 'ObjectExpression') {
-    const results: ClassLocation[] = []
     for (const prop of (node as ESTree.ObjectExpression).properties) {
       if (
         prop.type === 'Property' &&
         prop.key.type === 'Literal' &&
         typeof prop.key.value === 'string'
       ) {
-        results.push({
+        out.push({
           value: prop.key.value,
           node: prop.key,
           range: [prop.key.range[0] + 1, prop.key.range[1] - 1],
         })
       }
     }
-    return results
+    return out
   }
 
-  return []
+  return out
 }
 
-function extractFromTemplateLiteral(node: ESTree.TemplateLiteral): ClassLocation[] {
-  const results: ClassLocation[] = []
+function appendFromTemplateLiteral(
+  node: ESTree.TemplateLiteral,
+  out: ClassLocation[],
+): ClassLocation[] {
   for (let i = 0; i < node.quasis.length; i++) {
     const quasi = node.quasis[i]
     const value = quasi.value.raw
@@ -529,7 +536,7 @@ function extractFromTemplateLiteral(node: ESTree.TemplateLiteral): ClassLocation
       // Use value length to compute end — avoids issues with non-tail quasis
       // whose range includes the closing `${` (2 chars, not 1)
       const start = quasi.range[0] + 1
-      results.push({
+      out.push({
         value,
         node: quasi,
         range: [start, start + value.length],
@@ -538,7 +545,11 @@ function extractFromTemplateLiteral(node: ESTree.TemplateLiteral): ClassLocation
       })
     }
   }
-  return results
+  return out
+}
+
+function extractFromTemplateLiteral(node: ESTree.TemplateLiteral): ClassLocation[] {
+  return appendFromTemplateLiteral(node, [])
 }
 
 function getCalleeName(node: ESTree.Node): string | undefined {

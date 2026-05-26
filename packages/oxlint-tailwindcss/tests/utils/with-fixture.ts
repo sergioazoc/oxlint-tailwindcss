@@ -6,17 +6,17 @@
 
 import { RuleTester } from 'oxlint/plugins-dev'
 
-type CaseWithSettings = {
-  settings?: Record<string, unknown>
-  [k: string]: unknown
-}
+type RunArgs = Parameters<RuleTester['run']>
+type Rule = RunArgs[1]
+type Cases = RunArgs[2]
+type Case = Cases['valid'] extends (infer V)[] | undefined
+  ? V & { settings?: Record<string, unknown> }
+  : never
 
-/**
- * Map a list of test cases, injecting `settings.tailwindcss.entryPoint` into
- * each. An already-set value in the case wins (per-case overrides are rare
- * but useful when validating cross-DS behavior).
- */
-export function withFixture<T extends CaseWithSettings>(cases: T[], entryPoint: string): T[] {
+function injectEntryPoint<T extends { settings?: Record<string, unknown> }>(
+  cases: T[],
+  entryPoint: string,
+): T[] {
   return cases.map((c) => {
     const existingTw =
       typeof c.settings?.tailwindcss === 'object' && c.settings.tailwindcss !== null
@@ -33,41 +33,30 @@ export function withFixture<T extends CaseWithSettings>(cases: T[], entryPoint: 
 }
 
 /**
- * `RuleTester.run` wrapper that applies `withFixture(..., entryPoint)` to
- * both `valid` and `invalid` arrays. Convenience for the common case where
- * every test case in the file shares the same fixture.
+ * `RuleTester.run` wrapper that injects `settings.tailwindcss.entryPoint`
+ * into every valid/invalid case. The common case for rule tests where
+ * one fixture applies to the whole file.
  */
 export function runWithFixture(
   tester: RuleTester,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ruleName: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rule: any,
+  rule: Rule,
   entryPoint: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  cases: { valid?: any[]; invalid?: any[] },
+  cases: Cases,
 ): void {
   tester.run(ruleName, rule, {
-    valid: withFixture(cases.valid ?? [], entryPoint),
-    invalid: withFixture(cases.invalid ?? [], entryPoint),
+    valid: injectEntryPoint((cases.valid ?? []) as Case[], entryPoint),
+    invalid: injectEntryPoint((cases.invalid ?? []) as Case[], entryPoint),
   })
 }
 
 /**
- * Create a one-shot runner bound to a fixture. Each call instantiates a fresh
- * `RuleTester`, applies `withFixture(..., entryPoint)`, and runs the rule.
- *
- * Useful when a test file has many small `new RuleTester().run(...)` blocks
- * that all share the same fixture — keeps the call sites tight.
+ * One-shot runner bound to a fixture. Each call instantiates a fresh
+ * `RuleTester` and applies `runWithFixture`. Useful for integration tests
+ * with many small RuleTester blocks all sharing the same fixture.
  */
 export function makeFixtureRunner(entryPoint: string) {
-  return function run(
-    ruleName: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rule: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    cases: { valid?: any[]; invalid?: any[] },
-  ): void {
+  return function run(ruleName: string, rule: Rule, cases: Cases): void {
     runWithFixture(new RuleTester(), ruleName, rule, entryPoint, cases)
   }
 }

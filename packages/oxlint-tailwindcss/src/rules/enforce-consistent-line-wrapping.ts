@@ -1,7 +1,7 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
-import { safeOptions } from '../types'
+import { createLazyOptions } from '../utils/context'
 
 interface Options {
   printWidth?: number
@@ -36,23 +36,14 @@ export const enforceConsistentLineWrapping = defineRule({
     },
   },
   createOnce(context) {
-    let _printWidth: number | null = null
-    function getPrintWidth(): number {
-      if (_printWidth === null) {
-        const options = safeOptions<Options>(context)
-        _printWidth = options?.printWidth ?? DEFAULT_PRINT_WIDTH
-      }
-      return _printWidth
-    }
-
-    let _classesPerLine: number | undefined | null = null
-    function getClassesPerLine(): number | undefined {
-      if (_classesPerLine === null) {
-        const options = safeOptions<Options>(context)
-        _classesPerLine = options?.classesPerLine ?? undefined
-      }
-      return _classesPerLine
-    }
+    const getPrintWidth = createLazyOptions<Options, number>(
+      context,
+      (o) => o?.printWidth ?? DEFAULT_PRINT_WIDTH,
+    )
+    const getClassesPerLine = createLazyOptions<Options, number | undefined>(
+      context,
+      (o) => o?.classesPerLine,
+    )
 
     function check(locations: ClassLocation[]) {
       const printWidth = getPrintWidth()

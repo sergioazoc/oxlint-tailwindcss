@@ -7,13 +7,11 @@ import {
   DeprecatedEntryPointShapeError,
   DesignSystemLoadError,
   MissingEntryPointError,
-  isFatalError,
 } from '../utils/fatal'
+import type { EntryPointMapping } from '../types'
+import { safeFilename, safeOptions, safeSettings } from '../utils/context'
 
-export interface EntryPointMapping {
-  files: string | string[]
-  use: string
-}
+export type { EntryPointMapping }
 
 export interface LoadResult {
   cache: DesignSystemCache
@@ -27,7 +25,9 @@ const dsCache = new Map<string, { cache: DesignSystemCache; mtime: number }>()
 function isEntryPointMapping(v: unknown): v is EntryPointMapping {
   if (typeof v !== 'object' || v === null) return false
   const m = v as Record<string, unknown>
-  const filesOk = typeof m.files === 'string' || (Array.isArray(m.files) && m.files.every((s) => typeof s === 'string'))
+  const filesOk =
+    typeof m.files === 'string' ||
+    (Array.isArray(m.files) && m.files.every((s) => typeof s === 'string'))
   return filesOk && typeof m.use === 'string'
 }
 
@@ -71,8 +71,14 @@ export function entryPointFromSettings(
  *
  * Supported syntax: `**` (any depth), `*` (any chars except `/`), `?` (one
  * char except `/`), plus literal segments. Anchored on both ends.
+ *
+ * Memoized across calls because `resolveByGlobMapping` runs per lint visit;
+ * recompiling the same pattern per AST node would be wasted work.
  */
+const globRegexCache = new Map<string, RegExp>()
 function globToRegExp(glob: string): RegExp {
+  const cached = globRegexCache.get(glob)
+  if (cached) return cached
   let re = ''
   let i = 0
   while (i < glob.length) {
@@ -95,7 +101,9 @@ function globToRegExp(glob: string): RegExp {
       i++
     }
   }
-  return new RegExp('^' + re + '$')
+  const compiled = new RegExp('^' + re + '$')
+  globRegexCache.set(glob, compiled)
+  return compiled
 }
 
 function matchesAnyGlob(filePath: string, globs: string | string[]): boolean {
@@ -208,21 +216,17 @@ export function createLazyLoader(context: {
   let lastResult: LoadResult | undefined
 
   return () => {
-    let ruleOptionEntry: string | undefined
-    try {
-      const opts = context.options?.[0] as { entryPoint?: string } | undefined
-      ruleOptionEntry = opts?.entryPoint
-    } catch {}
+    const filePath = safeFilename(context)
 
-    let settings: Readonly<Record<string, unknown>> | undefined
-    try {
-      settings = context.settings
-    } catch {}
+    // Visitors fire on every AST node and the file is stable within a lint
+    // pass; once we have a result for this filename we can skip the entire
+    // resolve → stat → cache-lookup chain.
+    if (filePath !== undefined && filePath === lastFilePath && lastResult) {
+      return lastResult
+    }
 
-    let filePath: string | undefined
-    try {
-      filePath = context.filename
-    } catch {}
+    const ruleOptionEntry = safeOptions<{ entryPoint?: string }>(context)?.entryPoint
+    const settings = safeSettings(context)
 
     if (!debugInitialized && settings) {
       debugInitialized = true
@@ -232,12 +236,7 @@ export function createLazyLoader(context: {
     const settingsEntry = entryPointFromSettings(settings)
     const cssPath = resolveEntryPointForFile(ruleOptionEntry, settingsEntry, filePath)
 
-    // Avoid redundant work when linting the same file repeatedly.
-    if (filePath === lastFilePath && lastResult && lastResult.entryPoint === resolve(cssPath)) {
-      return lastResult
-    }
     lastFilePath = filePath
-
     lastResult = getLoadedDesignSystem(cssPath, settings)
     if (filePath) {
       debugLog(
@@ -287,6 +286,3 @@ export function resetDesignSystem(): void {
   dsCache.clear()
   resetDebug()
 }
-
-// Re-export so callers don't need to know the fatal module exists for type usage.
-export { isFatalError }

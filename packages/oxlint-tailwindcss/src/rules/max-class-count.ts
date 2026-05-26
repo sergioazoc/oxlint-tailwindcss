@@ -1,7 +1,7 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
-import { safeOptions } from '../types'
+import { createLazyOptions } from '../utils/context'
 
 interface Options {
   max?: number
@@ -31,14 +31,7 @@ export const maxClassCount = defineRule({
     },
   },
   createOnce(context) {
-    let _max: number | null = null
-    function getMax(): number {
-      if (_max === null) {
-        const options = safeOptions<Options>(context)
-        _max = options?.max ?? DEFAULT_MAX
-      }
-      return _max
-    }
+    const getMax = createLazyOptions<Options, number>(context, (o) => o?.max ?? DEFAULT_MAX)
 
     function check(locations: ClassLocation[]) {
       const max = getMax()

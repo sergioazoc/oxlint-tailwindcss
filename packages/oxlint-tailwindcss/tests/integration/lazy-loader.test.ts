@@ -5,10 +5,7 @@ import {
   getLoadedDesignSystem,
   resetDesignSystem,
 } from '../../src/design-system/loader'
-import {
-  DeprecatedEntryPointShapeError,
-  MissingEntryPointError,
-} from '../../src/utils/fatal'
+import { DeprecatedEntryPointShapeError, MissingEntryPointError } from '../../src/utils/fatal'
 
 // v1 lazy-loader semantics:
 //   - `createLazyLoader` defers reading `context.settings`/`context.filename`

@@ -14,9 +14,9 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { RULE_NAMES, oxlintPlugin, type RuleExport } from './rules.ts'
 
 const DOCS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const LIB_ROOT = resolve(DOCS_ROOT, '../oxlint-tailwindcss')
 
 interface RuleMeta {
   type?: string
@@ -27,38 +27,6 @@ interface RuleMeta {
   defaultOptions?: unknown[]
   messages?: Record<string, string>
 }
-
-interface RuleExport {
-  meta?: RuleMeta
-  // The defineRule output also carries createOnce / create, but we don't need
-  // them for documentation generation.
-}
-
-const RULE_NAMES = [
-  'consistent-variant-order',
-  'enforce-canonical',
-  'enforce-consistent-important-position',
-  'enforce-consistent-line-wrapping',
-  'enforce-consistent-variable-syntax',
-  'enforce-logical',
-  'enforce-negative-arbitrary-values',
-  'enforce-physical',
-  'enforce-shorthand',
-  'enforce-sort-order',
-  'max-class-count',
-  'no-arbitrary-value',
-  'no-conflicting-classes',
-  'no-contradicting-variants',
-  'no-dark-without-light',
-  'no-deprecated-classes',
-  'no-duplicate-classes',
-  'no-hardcoded-colors',
-  'no-restricted-classes',
-  'no-unknown-classes',
-  'no-unnecessary-arbitrary-value',
-  'no-unnecessary-whitespace',
-  'prefer-theme-tokens',
-] as const
 
 function formatDefaultOptions(opts: unknown[] | undefined): string {
   if (!opts || opts.length === 0) return '_(no options)_\n'
@@ -133,29 +101,13 @@ function pageFor(rule: { name: string; meta?: RuleMeta }, locale: 'en' | 'es'): 
 }
 
 async function main(): Promise<void> {
-  // Read the published plugin shape from the built CJS bundle, which exposes
-  // `{ meta, rules }` directly. Requires `pnpm -r build` to have run first
-  // (the docs `build` script does this implicitly via the workspace order).
-  const distPath = resolve(LIB_ROOT, 'dist/index.cjs')
-  if (!existsSync(distPath)) {
-    throw new Error(
-      `[generate-rules] ${distPath} not found. Run \`pnpm -C packages/oxlint-tailwindcss build\` first.`,
-    )
-  }
-  const require_ = (await import('node:module')).createRequire(import.meta.url)
-  const plugin = require_(distPath) as { rules: Record<string, RuleExport> }
-
   for (const locale of ['en', 'es'] as const) {
     const localePrefix = locale === 'en' ? '' : 'es/'
     const outDir = resolve(DOCS_ROOT, localePrefix, 'rules')
     mkdirSync(outDir, { recursive: true })
 
     for (const ruleName of RULE_NAMES) {
-      const exported = plugin.rules[ruleName]
-      if (!exported) {
-        console.warn(`[generate-rules] missing rule for ${ruleName}`)
-        continue
-      }
+      const exported: RuleExport = oxlintPlugin.rules[ruleName]
       const md = pageFor({ name: ruleName, meta: exported.meta }, locale)
       writeFileSync(resolve(outDir, `${ruleName}.md`), md, 'utf-8')
     }
