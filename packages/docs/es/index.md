@@ -8,7 +8,7 @@ hero:
   actions:
     - theme: brand
       text: Empezar
-      link: /es/getting-started
+      link: /es/setup
     - theme: alt
       text: Reglas
       link: /es/rules/

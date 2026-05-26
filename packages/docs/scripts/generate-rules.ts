@@ -61,6 +61,23 @@ function pageFor(rule: { name: string; meta?: RuleMeta }, locale: 'en' | 'es'): 
     lines.push('')
   }
 
+  // When a hand-written extras file exists, it owns the page body: Options,
+  // examples, interactions, when-to-disable. Otherwise we emit the minimal
+  // auto-generated stub (schema table + defaults + auto-fix flag) so the
+  // page is at least present in the sidebar.
+  const extrasPath = resolve(
+    DOCS_ROOT,
+    locale === 'es' ? 'es' : '',
+    'rules',
+    '_extras',
+    `${rule.name}.md`,
+  )
+  if (existsSync(extrasPath)) {
+    lines.push(readFileSync(extrasPath, 'utf-8').trim())
+    lines.push('')
+    return lines.join('\n') + '\n'
+  }
+
   lines.push(locale === 'es' ? '## Opciones' : '## Options')
   lines.push('')
   lines.push(formatSchema(meta.schema))
@@ -86,14 +103,6 @@ function pageFor(rule: { name: string; meta?: RuleMeta }, locale: 'en' | 'es'): 
           : '- It also offers editor suggestions for non-primary fix candidates.',
       )
     }
-    lines.push('')
-  }
-
-  // Optional extras file
-  const extrasPath = resolve(DOCS_ROOT, locale === 'es' ? 'es' : '', 'rules', '_extras', `${rule.name}.md`)
-  if (existsSync(extrasPath)) {
-    lines.push('')
-    lines.push(readFileSync(extrasPath, 'utf-8').trim())
     lines.push('')
   }
 

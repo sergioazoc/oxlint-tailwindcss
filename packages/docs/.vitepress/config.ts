@@ -25,7 +25,7 @@ export default defineConfig({
       lang: 'en-US',
       themeConfig: {
         nav: [
-          { text: 'Guide', link: '/getting-started' },
+          { text: 'Setup', link: '/setup' },
           { text: 'Rules', link: '/rules/' },
           { text: 'Migration', link: '/migration/v0-to-v1' },
           {
@@ -42,14 +42,13 @@ export default defineConfig({
               text: 'Getting Started',
               items: [
                 { text: 'Introduction', link: '/' },
-                { text: 'Setup', link: '/getting-started' },
-                { text: 'Settings reference', link: '/settings' },
-                { text: 'Defaults', link: '/defaults' },
+                { text: 'Setup', link: '/setup' },
               ],
             },
             {
-              text: 'Guides',
+              text: 'Reference',
               items: [
+                { text: 'Settings', link: '/settings' },
                 { text: 'Monorepo', link: '/monorepo' },
                 { text: 'Interop (oxfmt, prettier-plugin)', link: '/interop' },
               ],
@@ -73,7 +72,7 @@ export default defineConfig({
       link: '/es/',
       themeConfig: {
         nav: [
-          { text: 'Guía', link: '/es/getting-started' },
+          { text: 'Setup', link: '/es/setup' },
           { text: 'Reglas', link: '/es/rules/' },
           { text: 'Migración', link: '/es/migration/v0-to-v1' },
         ],
@@ -83,14 +82,13 @@ export default defineConfig({
               text: 'Empezar',
               items: [
                 { text: 'Introducción', link: '/es/' },
-                { text: 'Setup', link: '/es/getting-started' },
-                { text: 'Referencia de settings', link: '/es/settings' },
-                { text: 'Defaults', link: '/es/defaults' },
+                { text: 'Setup', link: '/es/setup' },
               ],
             },
             {
-              text: 'Guías',
+              text: 'Referencia',
               items: [
+                { text: 'Settings', link: '/es/settings' },
                 { text: 'Monorepo', link: '/es/monorepo' },
                 { text: 'Interop (oxfmt, prettier-plugin)', link: '/es/interop' },
               ],

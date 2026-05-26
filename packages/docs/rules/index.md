@@ -42,10 +42,57 @@ These rules catch problems that would generate invalid or unexpected CSS.
 
 ## Per-rule pages
 
-Each rule's page below covers:
+Each rule's page covers:
 
 - **What it does**, in one paragraph.
-- **Options** with their default values.
+- **Options** with their default values and a description per option.
 - **Correct / incorrect examples**.
+- **When to disable it** — the use cases where this rule is the wrong
+  fit.
 - For DS-dependent rules: whether `entryPoint` is required (always
   yes in v1) and what happens when it's missing.
+
+## Defaults reference
+
+A quick lookup table for what each rule does when you turn it on
+without overriding `meta.defaultOptions`.
+
+### DS-dependent rules
+
+These rules require `settings.tailwindcss.entryPoint` to be set; they
+emit a fatal `designSystemUnavailable` diagnostic when it isn't.
+
+| Rule | Default options |
+|---|---|
+| `enforce-canonical` | `{}` |
+| `enforce-sort-order` | `{ mode: 'default' }` |
+| `no-conflicting-classes` | `{}` |
+| `no-deprecated-classes` | `{}` |
+| `no-unknown-classes` | `{ allowlist: [], ignorePrefixes: [] }` |
+| `no-unnecessary-arbitrary-value` | `{}` |
+| `prefer-theme-tokens` | `{}` |
+
+`consistent-variant-order` is DS-optional — when no `entryPoint` is
+declared, it falls back to a built-in static order (which is itself
+deterministic).
+
+### DS-independent rules
+
+| Rule | Default options |
+|---|---|
+| `consistent-variant-order` | `{}` (DS-derived order when available) |
+| `enforce-consistent-important-position` | `{ position: 'suffix' }` |
+| `enforce-consistent-line-wrapping` | `{ printWidth: 80 }` |
+| `enforce-consistent-variable-syntax` | `{ syntax: 'shorthand' }` |
+| `enforce-logical` | `{ allowlist: [], direction: 'both' }` |
+| `enforce-negative-arbitrary-values` | (no options) |
+| `enforce-physical` | `{ allowlist: [], direction: 'both' }` |
+| `enforce-shorthand` | (no options) |
+| `max-class-count` | `{ max: 20 }` |
+| `no-arbitrary-value` | `{ allow: [] }` |
+| `no-contradicting-variants` | (no options) |
+| `no-dark-without-light` | `{ variants: ['dark'] }` |
+| `no-duplicate-classes` | (no options) |
+| `no-hardcoded-colors` | `{ allow: [] }` |
+| `no-restricted-classes` | `{ classes: [], patterns: [] }` |
+| `no-unnecessary-whitespace` | (no options) |

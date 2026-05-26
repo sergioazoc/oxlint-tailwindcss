@@ -47,7 +47,54 @@ inesperado.
 Cada página de regla cubre:
 
 - **Qué hace**, en un párrafo.
-- **Opciones** con sus defaults.
+- **Opciones** con sus defaults y una descripción por opción.
 - **Ejemplos correctos / incorrectos**.
+- **Cuándo desactivarla** — los casos de uso donde esta regla no es
+  la indicada.
 - Para reglas DS-dependientes: si `entryPoint` es obligatorio
   (siempre sí en v1) y qué pasa cuando falta.
+
+## Referencia de defaults
+
+Tabla rápida para saber qué hace cada regla cuando la activás sin
+sobreescribir `meta.defaultOptions`.
+
+### Reglas DS-dependientes
+
+Estas reglas requieren que `settings.tailwindcss.entryPoint` esté
+configurado; emiten un diagnóstico fatal `designSystemUnavailable`
+cuando falta.
+
+| Regla | Opciones por defecto |
+|---|---|
+| `enforce-canonical` | `{}` |
+| `enforce-sort-order` | `{ mode: 'default' }` |
+| `no-conflicting-classes` | `{}` |
+| `no-deprecated-classes` | `{}` |
+| `no-unknown-classes` | `{ allowlist: [], ignorePrefixes: [] }` |
+| `no-unnecessary-arbitrary-value` | `{}` |
+| `prefer-theme-tokens` | `{}` |
+
+`consistent-variant-order` es DS-opcional — cuando no hay `entryPoint`
+declarado, cae a un orden estático interno (que es determinístico).
+
+### Reglas DS-independientes
+
+| Regla | Opciones por defecto |
+|---|---|
+| `consistent-variant-order` | `{}` (orden derivado del DS cuando está disponible) |
+| `enforce-consistent-important-position` | `{ position: 'suffix' }` |
+| `enforce-consistent-line-wrapping` | `{ printWidth: 80 }` |
+| `enforce-consistent-variable-syntax` | `{ syntax: 'shorthand' }` |
+| `enforce-logical` | `{ allowlist: [], direction: 'both' }` |
+| `enforce-negative-arbitrary-values` | (sin opciones) |
+| `enforce-physical` | `{ allowlist: [], direction: 'both' }` |
+| `enforce-shorthand` | (sin opciones) |
+| `max-class-count` | `{ max: 20 }` |
+| `no-arbitrary-value` | `{ allow: [] }` |
+| `no-contradicting-variants` | (sin opciones) |
+| `no-dark-without-light` | `{ variants: ['dark'] }` |
+| `no-duplicate-classes` | (sin opciones) |
+| `no-hardcoded-colors` | `{ allow: [] }` |
+| `no-restricted-classes` | `{ classes: [], patterns: [] }` |
+| `no-unnecessary-whitespace` | (sin opciones) |
