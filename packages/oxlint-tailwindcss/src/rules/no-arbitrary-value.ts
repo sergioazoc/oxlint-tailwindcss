@@ -30,10 +30,7 @@ export const noArbitraryValue = defineRule({
     },
   },
   createOnce(context) {
-    const getAllowPrefixes = createLazyOptions<Options, string[]>(
-      context,
-      (o) => o?.allow ?? [],
-    )
+    const getAllowPrefixes = createLazyOptions<Options, string[]>(context, (o) => o?.allow ?? [])
 
     function isAllowed(utility: string): boolean {
       return getAllowPrefixes().some((prefix) => utility.startsWith(prefix))

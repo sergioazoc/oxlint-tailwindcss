@@ -34,9 +34,7 @@ export function safeOptions<T = Record<string, unknown>>(context: ContextLike): 
  * Safely read `context.settings`. Same try/catch pattern as `safeOptions`
  * for the createOnce-throws case.
  */
-export function safeSettings(
-  context: ContextLike,
-): Readonly<Record<string, unknown>> | undefined {
+export function safeSettings(context: ContextLike): Readonly<Record<string, unknown>> | undefined {
   try {
     return context.settings ?? undefined
   } catch {
