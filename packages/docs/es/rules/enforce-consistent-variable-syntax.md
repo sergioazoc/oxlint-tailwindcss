@@ -30,7 +30,7 @@ lookup en el design system.
 `'shorthand'` reescribe `bg-[var(--primary)]` → `bg-(--primary)`. Es
 la forma idiomática de Tailwind v4 y la elección recomendada para
 proyectos nuevos. `'explicit'` reescribe en la dirección contraria —
-`bg-(--primary)` → `bg-[var(--primary)]` — útil si todavía apuntás a
+`bg-(--primary)` → `bg-[var(--primary)]` — útil si todavía apuntas a
 tooling más viejo o si tu team prefiere la forma larga por
 grepability.
 
@@ -80,14 +80,14 @@ grepability.
 - **`prefer-theme-tokens`**: cuando una variable CSS matchea un token
   `@theme`, esa regla swappea a la utility nombrada
   (`bg-(--primary)` → `bg-primary` si `--primary` está declarado en
-  `@theme`). Corré esa antes que esta si querés las dos
+  `@theme`). Ejecuta esa antes que esta si quieres las dos
   transformaciones.
 
 ## Cuándo desactivarla
 
-- **Apuntás a tooling más viejo que Tailwind v4**: la forma shorthand
+- **Apuntas a tooling más viejo que Tailwind v4**: la forma shorthand
   no está soportada. Seteá `syntax: 'explicit'` en vez de
-  desactivarla, así obtenés el rewrite en la dirección segura.
+  desactivarla, así obtienes el rewrite en la dirección segura.
 - **Codebase con sintaxis mixta en plena migración** donde la
   consistencia todavía no es el objetivo.
 

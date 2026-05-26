@@ -19,7 +19,7 @@ por archivo en vez de caer a una heurística.
 
 La salida es byte-compatible con `prettier-plugin-tailwindcss` y
 `oxfmt` siempre y cuando las tres herramientas apunten al mismo CSS
-de `entryPoint`. Mirá la guía de interop en los docs para la combo
+de `entryPoint`. Mira la guía de interop en los docs para la combo
 recomendada.
 
 ## Opciones
@@ -31,7 +31,7 @@ recomendada.
 `'default'` delega al worker de class-order de Tailwind (un tiro,
 orden oficial). `'strict'` agrupa clases primero por su cadena de
 variants (`hover:`, `dark:hover:`, …), después ordena dentro de cada
-grupo — útil si querés que los prefijos responsive/state queden
+grupo — útil si quieres que los prefijos responsive/state queden
 visualmente clusterizados en vez de intercalados por utility. La
 mayoría de los proyectos deberían quedarse con el default; es lo que
 hace todo el tooling de Tailwind.
@@ -46,7 +46,7 @@ hace todo el tooling de Tailwind.
 
 Override por regla de `settings.tailwindcss.entryPoint`. Útil en el
 caso raro donde esta regla necesita leer un stylesheet distinto al
-del resto del plugin (e.g. scopeás el sort a una sub-app). Casi nadie
+del resto del plugin (e.g. aplicas scope a el sort a una sub-app). Casi nadie
 lo necesita — definí el entry point una vez en `settings` y olvidate.
 
 ## Ejemplos
@@ -82,7 +82,7 @@ lo necesita — definí el entry point una vez en `settings` y olvidate.
 
 ## Interacciones con otras reglas
 
-- **`enforce-canonical`**: corré la canonicalización primero, después
+- **`enforce-canonical`**: ejecuta la canonicalización primero, después
   el sort. Las formas canónicas (e.g. `m-0` en vez de `-m-0`)
   participan del sort con su prioridad correcta.
 - **`enforce-shorthand`**: combiná `mt-2 mr-2 mb-2 ml-2` en `m-2`
@@ -92,15 +92,15 @@ lo necesita — definí el entry point una vez en `settings` y olvidate.
   fixer rearma el string desde una lista de tokens determinística,
   así que cualquier doble espacio sobrante colapsa en la próxima
   pasada.
-- **`prettier-plugin-tailwindcss` / `oxfmt`**: elegí una fuente de
+- **`prettier-plugin-tailwindcss` / `oxfmt`**: elige una fuente de
   verdad. Apuntando al mismo `entryPoint`, las tres producen output
-  byte-idéntico, así que podés correr formatter + linter sin que se
+  byte-idéntico, así que puedes correr formatter + linter sin que se
   peleen los fixers.
 
 ## Cuándo desactivarla
 
-- **Delegás el sort a `prettier-plugin-tailwindcss` o `oxfmt`
-  exclusivamente** y querés mantener el rule budget chico — el
+- **Delegas el sort a `prettier-plugin-tailwindcss` o `oxfmt`
+  exclusivamente** y quieres mantener el rule budget chico — el
   formatter ya hace este laburo byte-por-byte. Dejar ambas activadas
   está bien (no hay conflictos), es solo trabajo redundante.
 - **Trabajando en un codebase que ordena clases a propósito por

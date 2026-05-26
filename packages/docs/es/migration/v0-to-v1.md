@@ -11,12 +11,12 @@ lado.
 ## Obligatorio: declarar `entryPoint`
 
 En v0.x el plugin caminaba el filesystem buscando tu CSS. En v1.0.0
-no lo hace — vos se lo decís explícitamente.
+no lo hace — tú se lo dices explícitamente.
 
 ### Proyecto simple
 
 ```jsonc
-// v0.x (sigue siendo válido en v1 si tenés uno, pero ya no se
+// v0.x (sigue siendo válido en v1 si tienes uno, pero ya no se
 // auto-detecta)
 { }
 
@@ -33,7 +33,7 @@ no lo hace — vos se lo decís explícitamente.
 ### Monorepo con múltiples CSS
 
 ```jsonc
-// v0.x — array de strings, el plugin elegía el más cercano por path
+// v0.x — array de strings, el plugin eligea el más cercano por path
 {
   "settings": {
     "tailwindcss": {
@@ -63,7 +63,7 @@ La forma legacy `string[]` ahora lanza
 de migración embebido directamente en el diagnóstico.
 
 Si tu monorepo usa un `.oxlintrc.json` por package, cada uno con un
-`entryPoint: "..."` string plano, no necesitás migrar — solo cambió
+`entryPoint: "..."` string plano, no necesitas migrar — solo cambió
 la forma de config raíz + array. Ver la [guía de monorepo](/es/monorepo)
 para ambos patrones.
 
@@ -81,8 +81,8 @@ v1.0.0 remueve esto por completo. Dos razones:
    requieren config explícita. La [guía de interop](/es/interop)
    explica el porqué.
 
-**Acción**: agregá el setting `entryPoint` documentado arriba. Si no
-pasabas ninguno en v0.x, el plugin estaba auto-detectando — necesitás
+**Acción**: agrega el setting `entryPoint` documentado arriba. Si no
+pasabas ninguno en v0.x, el plugin estaba auto-detectando — necesitas
 declarar qué encontraba.
 
 ## Removido: fallbacks silenciosos
@@ -97,7 +97,7 @@ accionable — usualmente la ruta exacta que el plugin intentó, o el
 timeout que se alcanzó.
 
 **Acción**: si ves diagnósticos nuevos `designSystemUnavailable` en
-el primer run, leé el mensaje. El fix está en el hint.
+el primer run, lee el mensaje. El fix está en el hint.
 
 ## Removido: fallback heurístico de sort
 
@@ -108,7 +108,7 @@ producir output distinto para el mismo input.
 v1.0.0 remueve el fallback. Si el worker falla, la regla emite un
 diagnóstico fatal en lugar de adivinar.
 
-**Acción**: subí `settings.tailwindcss.timeout` si tenés timeouts en
+**Acción**: sube `settings.tailwindcss.timeout` si tienes timeouts en
 CI lento. El default ahora es 60 segundos (subió desde 30).
 
 ## Cambiado: clave del disk cache
@@ -117,7 +117,7 @@ El disk cache (`os.tmpdir()/oxlint-tailwindcss/`) combinaba un mtime
 index con un content cache. v1.0.0 usa solo content hash — el mtime
 es un fast path in-memory dentro del proceso de linter.
 
-**Acción**: borrá `os.tmpdir()/oxlint-tailwindcss/` una vez después
+**Acción**: borra `os.tmpdir()/oxlint-tailwindcss/` una vez después
 de actualizar. Los archivos `.idx` viejos son inofensivos pero
 ocupan disco.
 
@@ -172,10 +172,10 @@ Para tener shape-parity con `enforce-logical`:
 - Performance: el costo runtime por archivo es igual o ligeramente
   más rápido (menos branches de fallback).
 
-## ¿Necesitás ayuda?
+## ¿Necesitas ayuda?
 
-- Leé la [referencia de settings](/es/settings) para cada opción.
-- Mirá la [guía de monorepo](/es/monorepo) para setups multi-CSS.
+- Lee la [referencia de settings](/es/settings) para cada opción.
+- Mira la [guía de monorepo](/es/monorepo) para setups multi-CSS.
 - Abrí un issue en
   [github.com/sergioazoc/oxlint-tailwindcss](https://github.com/sergioazoc/oxlint-tailwindcss/issues)
   con tu config si la migración deja algo sin claridad.

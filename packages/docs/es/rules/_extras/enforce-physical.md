@@ -3,7 +3,7 @@
 El espejo de `enforce-logical`. Reescribe utilities lógicas
 conscientes del writing direction (`ms-4`, `pe-2`, `start-0`,
 `rounded-ss-md`, …) a sus equivalentes físicas (`ml-4`, `pr-2`,
-`left-0`, `rounded-tl-md`, …). Usala en codebases LTR-only donde las
+`left-0`, `rounded-tl-md`, …). Úsala en codebases LTR-only donde las
 utilities lógicas agregan carga cognitiva sin payoff — `ml-4` es más
 directo que `ms-4` cuando no hay historia de RTL. Autofix sobre el
 primer ofensor por location, sugerencia de editor sobre los
@@ -13,7 +13,7 @@ DS-independiente — funciona sin `settings.tailwindcss.entryPoint`.
 Comparte la tabla estática de mapeo con `enforce-logical` y la
 invierte.
 
-`enforce-physical` y `enforce-logical` son reglas hermanas. Activá
+`enforce-physical` y `enforce-logical` son reglas hermanas. Activa
 **solo una a la vez** — correr las dos produce un loop de autofix.
 
 ## Opciones
@@ -77,7 +77,7 @@ componente que sí tiene que soportar RTL).
 
 ## Interacciones con otras reglas
 
-- **`enforce-logical`**: la inversa. Elegí **una**. Correr las dos
+- **`enforce-logical`**: la inversa. Elige **una**. Correr las dos
   simultáneamente reescribe en loop.
 - **`enforce-canonical`**: ortogonal. Canonical normaliza la forma de
   la utility; esta regla swappea lógico por físico en un eje.
@@ -86,9 +86,9 @@ componente que sí tiene que soportar RTL).
 
 ## Cuándo desactivarla
 
-- **La app soporta RTL** (árabe, hebreo, farsi, …): usá
+- **La app soporta RTL** (árabe, hebreo, farsi, …): usa
   `enforce-logical` en su lugar, si no el autofix de la regla rompe
   los layouts en RTL.
-- **No tenés preferencia fuerte**: dejar las dos desactivadas está
+- **No tienes preferencia fuerte**: dejar las dos desactivadas está
   bien. Las dos reglas existen para expresar convenciones de team,
   no para enforzar correctness.

@@ -36,7 +36,7 @@ pasar en silencio.
 
 ## Opciones
 
-(no tiene opciones más allá de `entryPoint`, que también podés setear
+(no tiene opciones más allá de `entryPoint`, que también puedes setear
 globalmente vía `settings.tailwindcss.entryPoint`.)
 
 ## Ejemplos
@@ -83,9 +83,9 @@ globalmente vía `settings.tailwindcss.entryPoint`.)
 
 - **`no-duplicate-classes`**: complementaria. Los duplicados son la
   misma clase repetida; los conflictos son clases distintas que
-  pegan en la misma propiedad. Mantené ambas activas.
+  pegan en la misma propiedad. Mantén ambas activas.
 - **`enforce-sort-order`**: el orden define quién gana, pero no hace
-  desaparecer los conflictos. Corré esta regla primero así el
+  desaparecer los conflictos. Ejecuta esta regla primero así el
   diagnóstico apunta al solapamiento real y no a la que quedó última.
 - **`no-deprecated-classes`**: un alias deprecado y su equivalente
   moderno (`flex-grow` + `grow`) van a chocar a nivel de propiedad.
@@ -96,8 +96,8 @@ globalmente vía `settings.tailwindcss.entryPoint`.)
 ## Cuándo desactivarla
 
 - **Listas de clases generadas** donde el orden importa a propósito
-  y dependés de la semántica de "gana la última" (e.g. patrón base +
-  override en un primitive del design system). Preferí extraer el
+  y dependes de la semántica de "gana la última" (e.g. patrón base +
+  override en un primitive del design system). Prefiere extraer el
   override a un `cn()`/`twMerge()` para que el conflicto sea
   explícito.
 - **Codebases donde la mayoría de los falsos positivos vienen de

@@ -79,7 +79,7 @@ El plugin escanea estas ubicaciones por defecto:
 | Tags | `` tw`...` `` (tagged template literals) |
 | Patrones de variable | `/^classNames?$/`, `/^classes$/`, `/^styles?$/` |
 
-Agregá más sin perder los defaults:
+Agrega más sin perder los defaults:
 
 ```jsonc
 {

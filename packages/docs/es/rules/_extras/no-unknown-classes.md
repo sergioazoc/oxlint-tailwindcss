@@ -1,7 +1,7 @@
 ## Qué hace esta regla
 
 Recorre cada clase de Tailwind extraída de tu código y le pregunta al
-design system — construido a partir del CSS que apuntás con
+design system — construido a partir del CSS que apuntas con
 `entryPoint` — si esa clase existe. Si no existe, la regla la
 reporta. Cuando la clase parece un typo de una conocida (distancia
 Levenshtein ≤ 2), el diagnóstico incluye una sugerencia y un quick-fix
@@ -25,10 +25,10 @@ silencio.
 
 `string[]`, default `[]`.
 
-Nombres exactos de clases para whitelistear. Usá esto cuando la clase
+Nombres exactos de clases para whitelistear. Usa esto cuando la clase
 se genera en runtime (template strings que el plugin no puede
 resolver estáticamente) o cuando deliberadamente no es parte de tu
-design system pero querés que sobreviva al linting. Los matches son
+design system pero quieres que sobreviva al linting. Los matches son
 literales — `"my-special"` no matchea `"hover:my-special"`.
 
 ```jsonc
@@ -39,8 +39,8 @@ literales — `"my-special"` no matchea `"hover:my-special"`.
 
 `string[]`, default `[]`.
 
-Saltea cualquier clase cuyo nombre empiece con alguno de estos
-prefijos. Usá esto para familias enteras de clases que manejás fuera
+Omite cualquier clase cuyo nombre empiece con alguno de estos
+prefijos. Usa esto para familias enteras de clases que manejas fuera
 del design system a propósito — e.g. un namespace compilado de CSS
 modules (`s-`), un UI kit de terceros (`ant-`, `chakra-`), o clases
 inyectadas por un framework (`vue-enter`).
@@ -49,7 +49,7 @@ inyectadas por un framework (`vue-enter`).
 { "tailwindcss/no-unknown-classes": ["error", { "ignorePrefixes": ["ant-", "swiper-"] }] }
 ```
 
-Preferí `ignorePrefixes` sobre `allowlist` cuando hay muchas clases
+Prefiere `ignorePrefixes` sobre `allowlist` cuando hay muchas clases
 con el mismo stem — más fácil de mantener.
 
 ## Ejemplos
@@ -88,24 +88,24 @@ con el mismo stem — más fácil de mantener.
 
 ## Interacciones con otras reglas
 
-- **`no-deprecated-classes`**: esta regla saltea silenciosamente las
+- **`no-deprecated-classes`**: esta regla omite silenciosamente las
   clases marcadas por `no-deprecated-classes` (`flex-grow`,
   `space-y-reverse`, etc.) para que no veas dos diagnósticos por la
-  misma clase. Mantené ambas activas.
+  misma clase. Mantén ambas activas.
 - **`enforce-canonical`**: complementa a esta. `no-unknown-classes`
   atrapa typos y tokens faltantes; `enforce-canonical` reescribe
   formas válidas-pero-desactualizadas (`-m-0` → `m-0`).
-- **`no-restricted-classes`**: ortogonal. Esa la usás para bloquear
-  clases válidas que no querés; esta para atrapar clases inválidas.
+- **`no-restricted-classes`**: ortogonal. Esa la usas para bloquear
+  clases válidas que no quieres; esta para atrapar clases inválidas.
 
 ## Cuándo desactivarla
 
 - **Uso intensivo de generación dinámica de clases** que el extractor
   no puede resolver (e.g. clases armadas desde data de servidor sin
   tipar). La regla reporta como unknown todo lo que no reconoce.
-  Preferí `allowlist` o `ignorePrefixes` antes que desactivarla.
-- **Migrando un codebase existente**: dejala como `warn` hasta
-  terminar el cleanup, después subila a `error`.
+  Prefiere `allowlist` o `ignorePrefixes` antes que desactivarla.
+- **Migrando un codebase existente**: déjala como `warn` hasta
+  terminar el cleanup, después súbela a `error`.
 - **Dentro de CSS-in-JS donde los strings no son Tailwind**: esto se
   resuelve mejor ajustando tu config de extractors (sacando el callee
   o attribute en conflicto vía `settings.tailwindcss.exclude`) antes

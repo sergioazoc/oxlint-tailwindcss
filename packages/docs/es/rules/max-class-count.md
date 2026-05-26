@@ -20,7 +20,7 @@ clases, la regla ve N. Strings multilínea reconstruidos por
 subyacente, no por líneas visuales.
 
 DS-independiente — no necesita `entryPoint`. Sin autofix: extraer un
-componente requiere criterio que la regla no puede tomar por vos.
+componente requiere criterio que la regla no puede tomar por tú.
 
 ## Opciones
 
@@ -44,7 +44,7 @@ Rangos sugeridos:
 - **`max: 20`** (default) — punto medio, dispara sobre outliers sin
   fastidiar markup utility-first genuinamente denso.
 - **`max: 30+`** — apps tipo dashboard grandes donde layouts one-off
-  densos son comunes y solo querés una guardia contra casos
+  densos son comunes y solo quieres una guardia contra casos
   realmente exagerados.
 
 ## Ejemplos
@@ -101,7 +101,7 @@ cn("flex items-center", "p-4 m-2 gap-2")
 
 - **Archivos inherentemente densos** (layouts top-level, hero
   sections de marketing, primitivos del design system que _son_ la
-  abstracción). Preferí desactivar por línea o un `max` más alto en
+  abstracción). Prefiere desactivar por línea o un `max` más alto en
   un bloque de override.
 - **Markup generado** (codegen, componentes MDX) donde el conteo
   refleja al generador, no la intención del autor.

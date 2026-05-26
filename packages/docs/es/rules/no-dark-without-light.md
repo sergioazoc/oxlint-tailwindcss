@@ -20,7 +20,7 @@ clase con variante no tiene contraparte en light mode y se reporta.
 El conjunto de "variantes observadas" es configurable. Por defecto
 es sólo `dark`, pero el mismo shape aplica a cualquier otra variante
 estilo scheme (`contrast-more`, `motion-reduce`, `print`, variantes
-custom de data-attribute que tengas registradas, etc.) — mirá la
+custom de data-attribute que tengas registradas, etc.) — mira la
 opción `variants` abajo.
 
 ## Opciones
@@ -38,8 +38,8 @@ contraste, o una variante custom `theme-foo:` definida en tu CSS).
 { "tailwindcss/no-dark-without-light": ["error", { "variants": ["dark", "contrast-more"] }] }
 ```
 
-Si seteás `variants` a un array vacío la regla se convierte en un
-no-op — preferí desactivarla directamente en ese caso.
+Si seteas `variants` a un array vacío la regla se convierte en un
+no-op — prefiere desactivarla directamente en ese caso.
 
 ## Ejemplos
 
@@ -91,10 +91,10 @@ cn("dark:bg-gray-900")
 
 - **Apps con un único color scheme** que igual incluyen algunas
   clases `dark:` para overrides puntuales sobre una base ya correcta
-  en un componente padre. Preferí angostar `variants` (e.g. sacar
+  en un componente padre. Prefiere angostar `variants` (e.g. sacar
   `dark`) antes que desactivarla.
 - **Design systems / primitives** donde el consumidor se espera que
-  aporte la base vía `className`. Desactivá por archivo y documentá
+  aporte la base vía `className`. Desactiva por archivo y documenta
   el contrato; si no, cada primitive va a romper la regla.
 - **Strings de clases servidas desde el server** donde la base vive
   en CSS y sólo el override dark se emite desde JS. Tratalo como el

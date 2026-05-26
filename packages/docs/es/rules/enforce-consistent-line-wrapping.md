@@ -97,13 +97,13 @@ const className = `flex items-center p-4
 
 ## Cuándo desactivarla
 
-- **Dejás que `prettier` maneje el line wrapping de JSX**: prettier
+- **Dejas que `prettier` maneje el line wrapping de JSX**: prettier
   rompe a nivel del atributo JSX, no dentro del string. Son
-  complementarias, pero si no querés wrapping in-string en absoluto,
+  complementarias, pero si no quieres wrapping in-string en absoluto,
   desactivala.
 - **Trabajando con generadores de código** que emiten strings de
   clases muy largos a propósito (e.g. clases para contenido manejado
   por CMS).
-- **Usás otra convención** del estilo "siempre una clase por línea":
+- **Usas otra convención** del estilo "siempre una clase por línea":
   el wrapping por chunks de esta regla no modela eso.
 

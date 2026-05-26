@@ -5,7 +5,7 @@ utility en tu código y reescribe las que no lo son. "Canónico" es lo
 que devuelve `canonicalizeCandidates()` de `@tailwindcss/node` — la
 misma fuente de verdad que usan prettier-plugin-tailwindcss, oxfmt y
 las herramientas oficiales de Tailwind. Ejemplos: `-m-0` → `m-0` (no
-necesitás el negativo para un cero), `bg-gradient-to-r` →
+necesitas el negativo para un cero), `bg-gradient-to-r` →
 `bg-linear-to-r`, `break-words` → `wrap-break-word`, `start-2` →
 `inset-s-2`, `flex-grow-1` → `grow`, `p-[2px]` → `p-0.5` (valor
 arbitrario normalizado a un token con nombre vía tu escala
@@ -29,7 +29,7 @@ silencio.
 
 Esta regla no tiene opciones propias más allá del override estándar
 `entryPoint` (string, defaultea a `settings.tailwindcss.entryPoint`).
-Configurá el entry point en `settings.tailwindcss.entryPoint` para
+Configura el entry point en `settings.tailwindcss.entryPoint` para
 todo el proyecto en vez de por-regla cuando puedas.
 
 ## Ejemplos
@@ -83,7 +83,7 @@ todo el proyecto en vez de por-regla cuando puedas.
   equivalente bracket compartido) se dispararían.
 - **`no-deprecated-classes`**: un subconjunto estricto de lo que hace
   `enforce-canonical`. Correr ambas es seguro; los autofixes
-  coinciden. Mantené `no-deprecated-classes` si querés un pase
+  coinciden. Mantén `no-deprecated-classes` si quieres un pase
   rápido, hardcodeado y sin DS.
 - **`enforce-consistent-important-position`**: esta regla preserva la
   posición del `!` que escribiste (prefix vs suffix vs ninguno).
@@ -92,7 +92,7 @@ todo el proyecto en vez de por-regla cuando puedas.
 
 ## Cuándo desactivarla
 
-- **No querés ninguna reescritura de clases** — por ejemplo, en un
+- **No quieres ninguna reescritura de clases** — por ejemplo, en un
   archivo legacy que estás manteniendo literal para diffear.
 - **Lint runs sensibles a la performance** donde el costo de
   inicializar el worker molesta. El cache hace que las corridas

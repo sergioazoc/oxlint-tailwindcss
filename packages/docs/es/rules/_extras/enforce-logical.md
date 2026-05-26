@@ -15,7 +15,7 @@ tabla de mapeo es estática y vive en el código de la regla; no se
 necesita lookup en el design system.
 
 `enforce-logical` y `enforce-physical` son reglas hermanas —
-comparten una tabla de mapeo que una invierte. Activá **solo una a
+comparten una tabla de mapeo que una invierte. Activa **solo una a
 la vez**.
 
 ## Opciones
@@ -40,8 +40,8 @@ utilities lógicas del eje block.
 
 Patrones regex (compilados lazy, los inválidos se saltean en
 silencio). Las clases cuyo string completo matchee algún patrón
-bypassean el rewrite. Usalo para casos puntuales donde genuinamente
-querés dirección física — e.g. un ícono que siempre tiene que estar
+bypassean el rewrite. Úsalo para casos puntuales donde genuinamente
+quieres dirección física — e.g. un ícono que siempre tiene que estar
 a la izquierda visual sin importar el writing direction.
 
 ```jsonc
@@ -81,9 +81,9 @@ a la izquierda visual sin importar el writing direction.
 ## Interacciones con otras reglas
 
 - **`enforce-physical`**: la inversa. Comparten la tabla de mapeo;
-  activar las dos al mismo tiempo va a autofixear en loop. Elegí una
-  según si tu app soporta RTL (usá `enforce-logical`) o es LTR-only
-  (usá `enforce-physical`).
+  activar las dos al mismo tiempo va a autofixear en loop. Elige una
+  según si tu app soporta RTL (usa `enforce-logical`) o es LTR-only
+  (usa `enforce-physical`).
 - **`enforce-canonical`**: ortogonal. Canonical normaliza la forma de
   la utility; esta regla swappea físico por lógico en un eje.
 - **`enforce-shorthand`**: corre sobre shorthands `m-*` / `p-*` que
@@ -92,8 +92,8 @@ a la izquierda visual sin importar el writing direction.
 ## Cuándo desactivarla
 
 - **Aplicaciones LTR-only** donde estás seguro de que nunca vas a
-  necesitar RTL. Usá `enforce-physical` en su lugar si querés
+  necesitar RTL. Usa `enforce-physical` en su lugar si quieres
   consistencia en la otra dirección.
 - **Layouts pixel-perfect donde la dirección física es parte del
-  diseño** (raro, pero pasa con íconos o decoración). Tirá del
+  diseño** (raro, pero pasa con íconos o decoración). Tira del
   `allowlist` antes que desactivar globalmente.

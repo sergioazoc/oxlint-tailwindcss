@@ -9,7 +9,7 @@ calc (`p-[calc(1rem+2px)]`), gradients, y lo mismo dentro de variants
 (`hover:w-[200px]`) o con el modificador `!` (`!w-[200px]`,
 `w-[200px]!`).
 
-DS-independiente — no se carga ningún design system, no necesitás
+DS-independiente — no se carga ningún design system, no necesitas
 `entryPoint`. La regla es un chequeo puramente sintáctico, lo que la
 hace barata de correr en repos grandes. No hay autofix: reemplazar un
 arbitrary value por un token requiere criterio humano, así que la
@@ -67,10 +67,10 @@ la regla entera.
 ### ✓ Correcto
 
 ```tsx
-// Usá tokens de spacing
+// Usa tokens de spacing
 <div className="w-64 p-2.5" />
 
-// Usá un color de theme declarado en @theme
+// Usa un color de theme declarado en @theme
 <div className="bg-brand text-white" />
 
 // Los variants arbitrarios están bien — apuntan a selectores, no a valores
@@ -83,8 +83,8 @@ la regla entera.
 ## Interacciones con otras reglas
 
 - **`no-hardcoded-colors`**: un subset estricto enfocado en utilities
-  de color (`bg-[#ff0]`, `text-[rgb(...)]`). Activá esa si querés el
-  mensaje granular específico de colores; activá ambas para
+  de color (`bg-[#ff0]`, `text-[rgb(...)]`). Activa esa si quieres el
+  mensaje granular específico de colores; activa ambas para
   enforcement por capas. Las dos van a disparar sobre la misma
   clase, lo cual suele ser deseable durante una migración.
 - **`no-unnecessary-arbitrary-value`**: esta regla prohibe los
@@ -102,9 +102,9 @@ la regla entera.
 - **Prototipos / branches de spike** donde la velocidad le gana a la
   disciplina. Reactivala antes de mergear.
 - **Archivos que genuinamente necesitan un arbitrary value** (landing
-  pages one-off, shims de CSS-in-JS dinámico). Preferí `allow` con
-  una lista corta de prefijos, o desactivá por línea con
+  pages one-off, shims de CSS-in-JS dinámico). Prefiere `allow` con
+  una lista corta de prefijos, o desactiva por línea con
   `// oxlint-disable-next-line tailwindcss/no-arbitrary-value`.
 - **Librerías que publican utilities de Tailwind que el consumidor
   re-skinea**: a veces la forma arbitraria es el contrato más
-  limpio. Documentá la decisión y desactivá la regla en ese paquete.
+  limpio. Documenta la decisión y desactiva la regla en ese paquete.

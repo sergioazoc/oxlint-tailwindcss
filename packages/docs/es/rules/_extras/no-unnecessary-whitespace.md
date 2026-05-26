@@ -3,7 +3,7 @@
 Normaliza el whitespace dentro de strings de clases Tailwind: las
 corridas de espacios o tabs colapsan a un espacio, el whitespace
 leading y trailing se trimea (con una excepción en los boundaries de
-expresiones de template — mirá abajo), y la regla autofixea todo en
+expresiones de template — mira abajo), y la regla autofixea todo en
 una sola pasada.
 
 DS-independiente — funciona sin `settings.tailwindcss.entryPoint`.
@@ -78,7 +78,7 @@ const className = `bg-red-500 text-white
 
 ## Cuándo desactivarla
 
-- **Confiás en un formatter** como `prettier` u `oxfmt` para manejar
+- **Confías en un formatter** como `prettier` u `oxfmt` para manejar
   el whitespace global. Cubren el mismo terreno, y desactivar la
   regla de lint elimina trabajo redundante.
 - **Strings de clases que usan whitespace inusual a propósito** (muy

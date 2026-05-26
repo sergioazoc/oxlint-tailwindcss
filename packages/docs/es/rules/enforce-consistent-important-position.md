@@ -26,7 +26,7 @@ incluyendo proyectos que todavía no cablearon el design system.
 `hover:text-red!`) y matchea lo que produciría `enforce-canonical`,
 así que es la elección recomendada para proyectos nuevos. `'prefix'`
 mantiene la forma de v3 (`!flex`, `hover:!text-red`) — elegila solo
-si tu codebase todavía está en el spelling de v3 y no querés migrar
+si tu codebase todavía está en el spelling de v3 y no quieres migrar
 todavía.
 
 ```jsonc
@@ -34,7 +34,7 @@ todavía.
 ```
 
 Nota: setear `position: 'prefix'` va a entrar en conflicto con
-`enforce-canonical`, que normaliza a sufijo. Usá una o la otra.
+`enforce-canonical`, que normaliza a sufijo. Usa una o la otra.
 
 ## Ejemplos
 
@@ -82,7 +82,7 @@ Nota: setear `position: 'prefix'` va a entrar en conflicto con
 - **El codebase mezcla las dos formas a propósito** (e.g. archivos
   legacy de v3 conviviendo con archivos frescos de v4 durante una
   migración). Reactivala cuando termine la migración.
-- **Ya estás corriendo `enforce-canonical`** y confiás en que
+- **Ya estás corriendo `enforce-canonical`** y confías en que
   normalice la posición del `!` como parte de la canonicalización —
   dejar esta regla activada es inocuo pero redundante.
 

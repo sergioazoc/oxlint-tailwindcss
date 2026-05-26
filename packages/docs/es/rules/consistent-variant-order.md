@@ -32,9 +32,9 @@ que tolera silenciosamente un entry point faltante.
 `string[]`, opcional.
 
 Lista de prioridad custom. Los variants aparecen en el orden que
-listás; lo que no listás ordena después, en su posición original.
-Usalo cuando tu team tiene un house style distinto al default de
-Tailwind (e.g. preferís `dark:` outermost en toda cadena). El pin de
+listas; lo que no listas ordena después, en su posición original.
+Úsalo cuando tu team tiene un house style distinto al default de
+Tailwind (e.g. prefieres `dark:` outermost en toda cadena). El pin de
 pseudo-elements sigue aplicando sin importar dónde los pongas en tu
 lista.
 
@@ -90,7 +90,7 @@ semántica que el setting a nivel proyecto; casi nunca se necesita.
 
 - **`enforce-sort-order`**: complementaria. `enforce-sort-order`
   ordena clases enteras entre sí; `consistent-variant-order` ordena
-  los prefijos dentro de una clase. Corré las dos.
+  los prefijos dentro de una clase. Ejecuta las dos.
 - **`enforce-canonical`**: ortogonal. Canonical normaliza la forma de
   la utility (`m-0`, `bg-red-500/50`), no la cadena de variants.
 - **`no-unknown-classes`**: cuando se reordena una variant la clase
@@ -99,12 +99,12 @@ semántica que el setting a nivel proyecto; casi nunca se necesita.
 
 ## Cuándo desactivarla
 
-- **Confiás en `prettier-plugin-tailwindcss` también para ordenar
+- **Confías en `prettier-plugin-tailwindcss` también para ordenar
   variants**: el formatter lo hace, la regla es redundante. Dejar
   ambas activadas es seguro pero es trabajo extra.
 - **Orden custom de variants que es difícil de expresar como una
   lista plana** (e.g. el orden depende de la utility): desactivala y
   confiá en el review.
 - **Código generado** donde el orden de variants codifica un
-  significado que no querés que se reescriba.
+  significado que no quieres que se reescriba.
 

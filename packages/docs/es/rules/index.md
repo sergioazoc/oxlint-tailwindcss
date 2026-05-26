@@ -1,7 +1,7 @@
 # Reglas
 
 Las 23 reglas de `oxlint-tailwindcss`, agrupadas por lo que hacen
-cumplir. Clickeá cualquier regla para ver ejemplos y referencia de
+cumplir. Haz clic en cualquier regla para ver ejemplos y referencia de
 opciones.
 
 ## Corrección
@@ -56,7 +56,7 @@ Cada página de regla cubre:
 
 ## Referencia de defaults
 
-Tabla rápida para saber qué hace cada regla cuando la activás sin
+Tabla rápida para saber qué hace cada regla cuando la activas sin
 sobreescribir `meta.defaultOptions`.
 
 ### Reglas DS-dependientes

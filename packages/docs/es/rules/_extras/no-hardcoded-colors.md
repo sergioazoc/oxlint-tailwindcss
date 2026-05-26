@@ -14,8 +14,8 @@ La regla revisa _únicamente_ los prefijos de utility que llevan color
 `accent-`, `caret-`, `fill-`, `stroke-`, `decoration-`, `divide-`,
 `placeholder-`, gradient stops `from-`/`via-`/`to-`). Los arbitrary
 no-color como `w-[200px]` o `tracking-[0.5em]` se ignoran
-explícitamente, así que podés activar esta regla incluso donde _sí_
-querés permitir dimensiones arbitrarias.
+explícitamente, así que puedes activar esta regla incluso donde _sí_
+quieres permitir dimensiones arbitrarias.
 
 Los valores que referencian una variable CSS se tratan como
 indirección del design system y pasan: `bg-[var(--primary)]`,
@@ -36,7 +36,7 @@ elegir el token correcto es una decisión humana.
 `string[]`, default `[]`.
 
 Strings exactos de clases para whitelistear. Los matches son
-literales (no hay prefix match ni regex), así que podés permitir
+literales (no hay prefix match ni regex), así que puedes permitir
 escapes puntuales sin abrir más la puerta. Útil para el hex ocasional
 mandado por brand en un único componente de assets.
 
@@ -52,7 +52,7 @@ mandado por brand en un único componente de assets.
 
 `string`, opcional. Está en el schema por compatibilidad futura pero
 la regla todavía no lo usa — `no-hardcoded-colors` corre sin design
-system. Lo podés ignorar.
+system. Lo puedes ignorar.
 
 ## Ejemplos
 
@@ -88,10 +88,10 @@ system. Lo podés ignorar.
 
 ## Interacciones con otras reglas
 
-- **`no-arbitrary-value`**: superset. Si activás esa regla, cada
-  color hardcodeado ya está marcado. Usá `no-hardcoded-colors` sola
-  cuando querés el mensaje específico de color y tolerás otros
-  arbitrary values; usá ambas para un diagnóstico más claro sobre el
+- **`no-arbitrary-value`**: superset. Si activas esa regla, cada
+  color hardcodeado ya está marcado. Usa `no-hardcoded-colors` sola
+  cuando quieres el mensaje específico de color y toleras otros
+  arbitrary values; usa ambas para un diagnóstico más claro sobre el
   drift de color.
 - **`prefer-theme-tokens`**: complementaria. `prefer-theme-tokens` le
   pregunta al design system si existe un color `@theme` que matchee
@@ -104,11 +104,11 @@ system. Lo podés ignorar.
 ## Cuándo desactivarla
 
 - **Páginas de marketing/brand** con hex pinzados a mano que
-  genuinamente no pertenecen al design system compartido. Preferí
+  genuinamente no pertenecen al design system compartido. Prefiere
   `allow` con los strings de clase específicos.
 - **Contenido generado** (e.g. avatares inline coloreados desde un
   hash) donde el color se determina en runtime y se renderea como
   inline style igual — esos no van a aparecer acá, pero si aparecen,
-  desactivá la línea.
+  desactiva la línea.
 - **Librerías de componentes que publican ejemplos** que
   deliberadamente demuestran uso de colores arbitrarios en su doc.

@@ -69,7 +69,7 @@ tv({ slots: { header: "p-2", body: "p-4" } })
 ## Interacciones con otras reglas
 
 - **`no-contradicting-variants`**: `flex flex` es esta regla;
-  `flex hover:flex` es `no-contradicting-variants`. Mantené ambas
+  `flex hover:flex` es `no-contradicting-variants`. Mantén ambas
   activas — cubren shapes disjuntos.
 - **`no-conflicting-classes`**: un duplicado es un conflicto
   degenerado (la misma clase pega en la misma propiedad,
@@ -92,5 +92,5 @@ tv({ slots: { header: "p-2", body: "p-4" } })
   `exclude.callees`, `exclude.variablePatterns`) para que el string
   parecido no se trate como lista de clases.
 - **Código generado** en tests o fixtures que arma un duplicado a
-  propósito para ejercitar tooling downstream — desactivá por
+  propósito para ejercitar tooling downstream — desactiva por
   archivo.

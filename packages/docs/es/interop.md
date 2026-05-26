@@ -15,7 +15,7 @@ su orden va a desacordar con `enforce-sort-order` en esos tokens.
 
 ## El fix: alinear el stylesheet
 
-Apuntá `sortTailwindcss.stylesheet` de oxfmt al mismo CSS que usa
+Apunta `sortTailwindcss.stylesheet` de oxfmt al mismo CSS que usa
 este plugin:
 
 ```jsonc
@@ -54,15 +54,15 @@ decirle a cada herramienta el mismo path.
 
 ## ¿Y `tailwindcss-animate` y `@tailwindcss/typography`?
 
-Si usás plugins que registran clases (e.g. `prose-*`, `animate-in`),
+Si usas plugins que registran clases (e.g. `prose-*`, `animate-in`),
 se importan vía tu `@import` en CSS — ambas herramientas los
 detectan automáticamente siempre que estén leyendo el mismo
 stylesheet.
 
 ## Múltiples stylesheets por proyecto
 
-Si distintas partes de tu monorepo usan distintos CSS, mirá la
+Si distintas partes de tu monorepo usan distintos CSS, mira la
 [guía de monorepo](/es/monorepo). Los mismos patrones aplican a
-oxfmt — podés usar
+oxfmt — puedes usar
 [overrides en `.oxfmtrc`](https://oxc.rs/docs/guide/usage/formatter#configuration)
 para apuntar distintos globs a distintos stylesheets.

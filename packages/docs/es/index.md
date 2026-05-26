@@ -17,7 +17,7 @@ hero:
       link: https://github.com/sergioazoc/oxlint-tailwindcss
 
 features:
-  - title: Configurás una vez
+  - title: Configuras una vez
     details: |
       `settings.tailwindcss.entryPoint` es obligatorio y explícito. Sin
       auto-detect de filesystem, sin sorpresas entre máquinas. Mismo
@@ -29,7 +29,7 @@ features:
       Sin necesidad de mantener una config paralela.
   - title: Coexiste con oxfmt y Prettier
     details: |
-      Apuntá `sortTailwindcss.stylesheet` de oxfmt al mismo CSS que usa
+      Apunta `sortTailwindcss.stylesheet` de oxfmt al mismo CSS que usa
       este plugin y ambas herramientas coinciden byte a byte. La
       [guía de interop](/es/interop) lo explica.
   - title: Falla ruidoso, se arregla fácil

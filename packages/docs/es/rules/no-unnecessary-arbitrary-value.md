@@ -31,7 +31,7 @@ silencio.
 
 Esta regla no tiene opciones propias más allá del override estándar
 `entryPoint` (string, defaultea a `settings.tailwindcss.entryPoint`).
-Configurá el entry point en `settings.tailwindcss.entryPoint` para
+Configura el entry point en `settings.tailwindcss.entryPoint` para
 todo el proyecto en vez de por-regla cuando puedas.
 
 ## Ejemplos
@@ -59,7 +59,7 @@ todo el proyecto en vez de por-regla cuando puedas.
 
 <div className="hover:h-auto !w-auto" />
 
-// Valor arbitrario sin equivalente nombrado — dejalo
+// Valor arbitrario sin equivalente nombrado — déjalo
 <div className="w-[200px] bg-[#custom]" />
 ```
 
@@ -84,12 +84,12 @@ todo el proyecto en vez de por-regla cuando puedas.
 
 ## Cuándo desactivarla
 
-- **A propósito mantenés valores arbitrarios por legibilidad** —
+- **A propósito mantienes valores arbitrarios por legibilidad** —
   algunos equipos prefieren `w-[200px]` a un alias de token cuando el
-  valor es one-off o pixel-precise. Desactivá la regla y apoyate en
+  valor es one-off o pixel-precise. Desactiva la regla y apóyate en
   `prefer-theme-tokens` + `enforce-canonical` para los casos que sí
-  querés marcar.
+  quieres marcar.
 - **Migrando desde otro toolchain** que generaba valores arbitrarios
   para todo — corrila como `warn` hasta terminar el cleanup, después
-  subila a `error`.
+  súbela a `error`.
 

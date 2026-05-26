@@ -2,7 +2,7 @@
 
 `oxlint-tailwindcss` v1 soporta dos patrones para monorepos, ambos
 totalmente deterministas — sin heurísticas de globs, sin sorpresas
-del auto-detect. Elegí el que se ajuste mejor a cómo tu equipo ya
+del auto-detect. Elige el que se ajuste mejor a cómo tu equipo ya
 estructura su config.
 
 ## Patrón A — un solo config raíz con mapping de globs
@@ -35,7 +35,7 @@ que matchea el archivo lintado gana.
 Cuándo conviene:
 
 - Todos tus packages comparten las mismas reglas.
-- Querés una sola fuente de verdad de qué se lintea cómo.
+- Quieres una sola fuente de verdad de qué se lintea cómo.
 - Ya estás usando `overrides` de oxlint para customización por regla
   en la raíz.
 
@@ -80,7 +80,7 @@ Cuándo conviene:
 - Los packages divergen mucho en reglas, plugins o globals.
 - Distintos equipos son dueños de distintos packages y quieren
   config autocontenido.
-- Tenés packages sin Tailwind que NO deberían ejecutar el plugin.
+- Tienes packages sin Tailwind que NO deberían ejecutar el plugin.
 
 ## Lo que **NO** funciona en v1
 
@@ -100,7 +100,7 @@ el plugin por archivo.
 
 ## Verificando qué CSS resolvió por archivo
 
-Activá `settings.tailwindcss.debug` (o la variable
+Activa `settings.tailwindcss.debug` (o la variable
 `DEBUG=oxlint-tailwindcss`) y oxlint va a imprimir una línea por
 archivo mostrando qué CSS cargó el plugin para ese archivo. Útil
 cuando un glob matchea el mapping equivocado.

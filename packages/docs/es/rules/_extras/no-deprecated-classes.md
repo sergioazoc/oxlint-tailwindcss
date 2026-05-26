@@ -12,7 +12,7 @@ resto de las direcciones de gradient). Los variants y modificadores
 DS-dependiente — requiere `settings.tailwindcss.entryPoint`. La regla
 usa el design system para saber contra qué archivo está trabajando y
 así jugar bien con el resto del plugin (en particular, `no-unknown-
-classes` saltea las clases que esta regla marca para que no veas dos
+classes` omite las clases que esta regla marca para que no veas dos
 diagnósticos por el mismo token). Si el design system no puede
 cargar, la regla emite un único diagnóstico fatal
 `designSystemUnavailable` por archivo en vez de pasar en silencio.
@@ -21,7 +21,7 @@ cargar, la regla emite un único diagnóstico fatal
 
 Esta regla no tiene opciones propias más allá del override estándar
 `entryPoint` (string, defaultea a `settings.tailwindcss.entryPoint`).
-Configurá el entry point en `settings.tailwindcss.entryPoint` para
+Configura el entry point en `settings.tailwindcss.entryPoint` para
 todo el proyecto en vez de por-regla cuando puedas.
 
 ## Ejemplos
@@ -59,27 +59,27 @@ todo el proyecto en vez de por-regla cuando puedas.
 
 ## Interacciones con otras reglas
 
-- **`no-unknown-classes`**: saltea silenciosamente cualquier clase
+- **`no-unknown-classes`**: omite silenciosamente cualquier clase
   presente en `DEPRECATED_MAP`. No vas a recibir "unknown class" más
-  "deprecated class" para `flex-grow` — solo la deprecación. Mantené
+  "deprecated class" para `flex-grow` — solo la deprecación. Mantén
   ambas activas.
 - **`enforce-canonical`**: cubre un conjunto estrictamente más grande
   que esta regla — reescribe formas válidas-pero-no-canónicas (`-m-0`
   → `m-0`, `start-2` → `inset-s-2`) y también atrapa todas las
   deprecaciones. Correr ambas está bien; los autofixes no conflictúan.
-  Elegí `no-deprecated-classes` cuando querés un pase rápido,
-  hardcodeado y sin DS; elegí `enforce-canonical` para el cleanup
+  Elige `no-deprecated-classes` cuando quieres un pase rápido,
+  hardcodeado y sin DS; elige `enforce-canonical` para el cleanup
   completo con DS.
-- **`no-restricted-classes`**: ortogonal. Esa la usás para bloquear
+- **`no-restricted-classes`**: ortogonal. Esa la usas para bloquear
   clases válidas; esta solo se dispara con la lista fija de renames
   v3→v4.
 
 ## Cuándo desactivarla
 
-- **Seguís en Tailwind v3** y los nombres nuevos no resuelven contra
-  tu design system. Fijá el plugin y desactivá esta regla hasta que
+- **Sigues en Tailwind v3** y los nombres nuevos no resuelven contra
+  tu design system. Fija el plugin y desactiva esta regla hasta que
   migres.
-- **Mantenés a propósito una capa de clases v3-compatibles** al lado
+- **Manténs a propósito una capa de clases v3-compatibles** al lado
   de v4 (por ejemplo, una librería compartida que apunta a ambos). En
-  ese caso preferí un `eslint-disable` puntual en el archivo antes
+  ese caso prefiere un `eslint-disable` puntual en el archivo antes
   que un disable a nivel proyecto.

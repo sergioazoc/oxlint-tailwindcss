@@ -17,7 +17,7 @@ opacidad (`/80`), variants y `!` (important) se preservan.
 
 El candidato `${prefix}-${varName}` tiene que ser una utility real
 en tu DS — la regla consulta `cache.isValid(candidate)`. Después
-saltea explícitamente cualquier candidato que `cache.getNamedEquivalent`
+omite explícitamente cualquier candidato que `cache.getNamedEquivalent`
 también resolvería, porque ese caso es propiedad de
 `no-unnecessary-arbitrary-value` (mismo CSS, sin doble-fire). Lo que
 queda es exactamente el espacio solo-heurístico: la utility con
@@ -33,7 +33,7 @@ silencio.
 
 Esta regla no tiene opciones propias más allá del override estándar
 `entryPoint` (string, defaultea a `settings.tailwindcss.entryPoint`).
-Configurá el entry point en `settings.tailwindcss.entryPoint` para
+Configura el entry point en `settings.tailwindcss.entryPoint` para
 todo el proyecto en vez de por-regla cuando puedas.
 
 ## Ejemplos
@@ -68,7 +68,7 @@ Asumiendo un theme estilo shadcn con tokens como `--border`,
 
 <div className="border-l-border" />
 
-// Variable sin utility nombrada que matchee — dejala
+// Variable sin utility nombrada que matchee — déjala
 <div className="border-(--no-such-token)" />
 ```
 
@@ -86,18 +86,18 @@ Asumiendo un theme estilo shadcn con tokens como `--border`,
   cada forma arbitraria tenga exactamente un dueño.
 - **`enforce-consistent-variable-syntax`**: ortogonal — esa regla
   decide entre la forma de paréntesis y la de bracket cuando te
-  quedás sobre la representación con variable CSS. Esta te empuja
+  quedas sobre la representación con variable CSS. Esta te empuja
   fuera de las variables CSS hacia un token con nombre cuando se
   puede.
 
 ## Cuándo desactivarla
 
-- **A propósito querés referenciar variables por nombre en el
+- **A propósito quieres referenciar variables por nombre en el
   markup** para que la dependencia del theme sea explícita en el
-  call site. En ese caso mantené `no-unnecessary-arbitrary-value`
-  activa (casos CSS-equivalentes) pero desactivá esta.
+  call site. En ese caso mantén `no-unnecessary-arbitrary-value`
+  activa (casos CSS-equivalentes) pero desactiva esta.
 - **Tu design system usa variables CSS que no están registradas como
   utilities con nombre** en `@theme` — la regla no se va a disparar
-  con esas, pero si tu codebase mezcla los dos patrones y no querés
+  con esas, pero si tu codebase mezcla los dos patrones y no quieres
   presión gradual para exponer más tokens, desactivala.
 

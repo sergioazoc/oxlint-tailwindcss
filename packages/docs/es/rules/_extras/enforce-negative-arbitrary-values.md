@@ -4,7 +4,7 @@ Detecta utilities escritas con un prefijo negativo afuera de un
 bracket de valor arbitrario — `-top-[5px]`, `-translate-x-[10px]`,
 `-mt-[8px]` — y mueve el signo negativo adentro del bracket:
 `top-[-5px]`, `translate-x-[-10px]`, `mt-[-8px]`. El `-` exterior es
-redundante una vez que tenés un valor arbitrario, y meterlo adentro
+redundante una vez que tienes un valor arbitrario, y meterlo adentro
 hace explícita la intención y matchea cómo `@tailwindcss/node`
 canonicaliza la misma shape. El auto-fix corrige el primer hit, las
 sugerencias cubren el resto en el mismo string. Los variants
@@ -32,7 +32,7 @@ lados.
 ### ✗ Incorrecto
 
 ```tsx
-// Negativo afuera del bracket — movelo adentro
+// Negativo afuera del bracket — muévelo adentro
 <div className="-top-[5px] -left-[10px]" />
 
 // Transform con valor arbitrario
@@ -66,7 +66,7 @@ lados.
 - **`enforce-canonical`**: complementaria. `enforce-canonical` también
   va a normalizar la forma canónica de arbitrarios negativos vía el
   worker; esta regla provee el mismo fix sin pagar el costo de
-  cargar el DS. Si tenés ambas activas los autofixes convergen al
+  cargar el DS. Si tienes ambas activas los autofixes convergen al
   mismo output.
 - **`no-unnecessary-arbitrary-value`**: ortogonal. Esa regla se
   dispara solo cuando el valor arbitrario tiene un equivalente
@@ -77,10 +77,10 @@ lados.
 
 ## Cuándo desactivarla
 
-- **Preferís la forma con negativo exterior por legibilidad** en el
+- **Prefieres la forma con negativo exterior por legibilidad** en el
   call site (raro — la mayoría de equipos encuentran la forma con
   negativo interior más clara una vez que la ven).
 - **Estás auto-generando strings de clases** que siempre emiten la
-  forma con negativo exterior y no querés diagnósticos de lint en
-  esa capa generada. Preferí desactivar la regla en el archivo
+  forma con negativo exterior y no quieres diagnósticos de lint en
+  esa capa generada. Prefiere desactivar la regla en el archivo
   generado antes que a nivel proyecto.

@@ -71,7 +71,7 @@ upstream de Tailwind.
 
 ## Interacciones con otras reglas
 
-- **`enforce-sort-order`**: corré shorthand primero así el shorthand
+- **`enforce-sort-order`**: ejecuta shorthand primero así el shorthand
   participa del sort con su propia prioridad. Si no, el sort ubica
   `mt-2 mr-2 mb-2 ml-2` en posiciones separadas y el fix del
   shorthand las colapsa después.
@@ -85,7 +85,7 @@ upstream de Tailwind.
 
 ## Cuándo desactivarla
 
-- **Querés valores explícitos por eje para readability**, sobre todo
+- **Quieres valores explícitos por eje para readability**, sobre todo
   en libraries de componentes de design system donde los reviewers
   encuentran `mt-2 mr-2 mb-2 ml-2` más claro que `m-2`.
 - **Generación de código** donde cada utility se emite a propósito y
