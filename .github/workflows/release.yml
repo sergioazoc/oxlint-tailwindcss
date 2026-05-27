@@ -72,7 +72,12 @@ jobs:
 
       - name: Publish to npm
         if: steps.version.outputs.published == 'false'
-        run: pnpm -C packages/oxlint-tailwindcss publish --no-git-checks --provenance
+        # Publish via npm directly, not `pnpm publish`: pnpm forwards its own
+        # `--no-git-checks` flag to npm, which rejects it (EUSAGE). `--access
+        # public` is required alongside `--provenance`. The dist tarball is
+        # already built by the Build step + the package's prepublishOnly.
+        run: npm publish --provenance --access public
+        working-directory: packages/oxlint-tailwindcss
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
