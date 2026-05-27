@@ -10,7 +10,15 @@
 
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  closeSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { DesignSystemLoadError } from '../utils/fatal'
@@ -444,9 +452,30 @@ function getContentCachePath(contentHash: string): string {
   return join(CACHE_DIR, `${contentHash}.json`)
 }
 
+/**
+ * The on-disk cache artifacts for a CSS entry point: the precomputed `json`
+ * and the coordination `lock`. Exposed for tests that exercise the
+ * cold-cache fork coordination (issue #24).
+ */
+export function cacheArtifactPaths(cssPath: string): { json: string; lock: string } {
+  const content = readFileSync(resolve(cssPath), 'utf-8')
+  const hash = computeContentHash(content)
+  return { json: getContentCachePath(hash), lock: join(CACHE_DIR, `${hash}.lock`) }
+}
+
 function tryReadCache(cachePath: string): PrecomputedData | null {
+  const raw = tryReadRawCache(cachePath)
+  if (raw === null) return null
   try {
-    return JSON.parse(readFileSync(cachePath, 'utf-8')) as PrecomputedData
+    return JSON.parse(raw) as PrecomputedData
+  } catch {
+    return null
+  }
+}
+
+function tryReadRawCache(cachePath: string): string | null {
+  try {
+    return readFileSync(cachePath, 'utf-8')
   } catch {
     return null
   }
@@ -458,6 +487,131 @@ function writeCacheFile(contentCachePath: string, data: string): void {
     writeFileSync(contentCachePath, data)
   } catch {
     // Non-fatal — cache is optional
+  }
+}
+
+// --- Cross-isolate fork coordination (issue #24) ---
+//
+// oxlint lints files across parallel isolates. On a cold cache they would all
+// reach `loadDesignSystemSync` for the same CSS at once, and each used to fork
+// its own `execFileSync` Node child to precompute the design system. A dozen
+// simultaneous forks — each loading `@tailwindcss/node` — exhausted memory on
+// constrained hosts (`spawnSync … ENOMEM`, reported on WSL).
+//
+// The fix: a content-hash-scoped file lock. The first isolate to create the
+// lock forks the precompute child and writes the cache; the others busy-wait
+// for the resulting `.json` instead of forking. Coordination is keyed by
+// content hash, so distinct CSS files still precompute in parallel.
+
+const LOCK_POLL_MS = 50
+
+// Reused zero-initialized buffer for synchronous sleeps. `Atomics.wait` blocks
+// the calling thread for up to `ms` because nothing ever notifies index 0.
+const SLEEP_BUFFER = new Int32Array(new SharedArrayBuffer(4))
+
+function syncSleep(ms: number): void {
+  Atomics.wait(SLEEP_BUFFER, 0, 0, ms)
+}
+
+/** Age of the lock file in ms, or Infinity if it has already vanished. */
+function lockAgeMs(lockPath: string): number {
+  try {
+    return Date.now() - statSync(lockPath).mtimeMs
+  } catch {
+    return Number.POSITIVE_INFINITY
+  }
+}
+
+function tryUnlink(path: string): void {
+  try {
+    unlinkSync(path)
+  } catch {
+    // Already gone, or not ours to remove — either way, nothing to do.
+  }
+}
+
+/** Fork the precompute child once. Throws `DesignSystemLoadError` on failure. */
+function runPrecompute(resolvedPath: string, tailwindNodePath: string, timeout: number): string {
+  try {
+    return execFileSync(process.execPath, ['-e', PRECOMPUTE_SCRIPT], {
+      encoding: 'utf-8',
+      timeout,
+      maxBuffer: 50 * 1024 * 1024,
+      env: {
+        ...process.env,
+        TAILWIND_CSS_PATH: resolvedPath,
+        TAILWIND_NODE_PATH: tailwindNodePath,
+      },
+      cwd: dirname(resolvedPath),
+    })
+  } catch (cause) {
+    const causeError = cause instanceof Error ? cause : undefined
+    const message = causeError?.message ?? String(cause)
+    throw new DesignSystemLoadError(
+      `Failed to precompute design system from "${resolvedPath}": ${message}`,
+      'Check the CSS file for syntax errors. If this looks like a timeout, raise `settings.tailwindcss.timeout`.',
+      { cause: causeError },
+    )
+  }
+}
+
+/**
+ * Return the raw precompute JSON for `contentHash`, forking at most one child
+ * across all isolates competing for the same hash. Whoever wins the lock
+ * computes and writes the cache; the rest wait for that file.
+ */
+function computeWithLock(
+  resolvedPath: string,
+  tailwindNodePath: string,
+  contentHash: string,
+  cachePath: string,
+  timeout: number,
+): string {
+  const lockPath = join(CACHE_DIR, `${contentHash}.lock`)
+  // A healthy holder is busy inside execFileSync (up to `timeout`); only treat
+  // the lock as abandoned once it outlives that window plus a write margin.
+  const staleMs = timeout + 30_000
+
+  try {
+    mkdirSync(CACHE_DIR, { recursive: true })
+  } catch {
+    // If we can't even create the cache dir, locking is impossible — fall back
+    // to an uncoordinated compute rather than spin forever.
+    return runPrecompute(resolvedPath, tailwindNodePath, timeout)
+  }
+
+  const start = Date.now()
+  for (;;) {
+    // A peer may have finished while we looped.
+    const raw = tryReadRawCache(cachePath)
+    if (raw !== null) return raw
+
+    let lockFd: number
+    try {
+      lockFd = openSync(lockPath, 'wx')
+    } catch (cause) {
+      if ((cause as NodeJS.ErrnoException).code === 'EEXIST') {
+        // Someone else holds it. Reclaim if stale, or if we've waited well past
+        // the point a healthy holder should have produced the cache.
+        if (lockAgeMs(lockPath) > staleMs || Date.now() - start > staleMs * 2) {
+          tryUnlink(lockPath)
+        } else {
+          syncSleep(LOCK_POLL_MS)
+        }
+        continue
+      }
+      // Lock dir not writable or similar — degrade to uncoordinated compute.
+      return runPrecompute(resolvedPath, tailwindNodePath, timeout)
+    }
+
+    try {
+      const stdout = runPrecompute(resolvedPath, tailwindNodePath, timeout)
+      writeCacheFile(cachePath, stdout)
+      return stdout
+    } finally {
+      closeSync(lockFd)
+      tryUnlink(lockPath)
+    }
   }
 }
 
@@ -499,30 +653,16 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
     )
   }
 
-  let stdout: string
-  try {
-    stdout = execFileSync(process.execPath, ['-e', PRECOMPUTE_SCRIPT], {
-      encoding: 'utf-8',
-      timeout: timeout ?? DEFAULT_LOAD_TIMEOUT_MS,
-      maxBuffer: 50 * 1024 * 1024,
-      env: {
-        ...process.env,
-        TAILWIND_CSS_PATH: resolvedPath,
-        TAILWIND_NODE_PATH: TAILWIND_NODE_PATH,
-      },
-      cwd: dirname(resolvedPath),
-    })
-  } catch (cause) {
-    const causeError = cause instanceof Error ? cause : undefined
-    const message = causeError?.message ?? String(cause)
-    throw new DesignSystemLoadError(
-      `Failed to precompute design system from "${resolvedPath}": ${message}`,
-      'Check the CSS file for syntax errors. If this looks like a timeout, raise `settings.tailwindcss.timeout`.',
-      { cause: causeError },
-    )
-  }
-
-  writeCacheFile(contentCachePath, stdout)
+  // Coordinate parallel isolates: at most one forks the precompute child for a
+  // given content hash; the rest wait for the cache file it writes. Prevents
+  // the cold-cache fork storm that exhausted memory on WSL (issue #24).
+  const stdout = computeWithLock(
+    resolvedPath,
+    TAILWIND_NODE_PATH,
+    contentHash,
+    contentCachePath,
+    timeout ?? DEFAULT_LOAD_TIMEOUT_MS,
+  )
 
   try {
     return JSON.parse(stdout) as PrecomputedData

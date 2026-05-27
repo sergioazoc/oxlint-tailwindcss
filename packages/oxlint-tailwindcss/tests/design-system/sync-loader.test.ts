@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { resolve } from 'node:path'
-import { computeCacheKey, loadDesignSystemSync } from '../../src/design-system/sync-loader'
+import { existsSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import {
+  cacheArtifactPaths,
+  computeCacheKey,
+  loadDesignSystemSync,
+} from '../../src/design-system/sync-loader'
 import { TAILWIND_NODE_VERSION } from '../../src/design-system/tailwind-node'
 import { DesignSystemLoadError } from '../../src/utils/fatal'
 
@@ -52,6 +57,36 @@ describe('loadDesignSystemSync', () => {
   it('accepts custom timeout', () => {
     const result = loadDesignSystemSync(ENTRY_POINT, 60_000)
     expect(result).toBeDefined()
+  })
+})
+
+describe('cold-cache fork coordination (issue #24)', () => {
+  // Unique CSS content → unique content hash → cache artifacts isolated from
+  // every other test that shares default.css and runs in parallel.
+  const UNIQUE_CSS = resolve(__dirname, '../fixtures/lock-coordination.css')
+
+  it('breaks a stale lock and still loads', () => {
+    writeFileSync(UNIQUE_CSS, `@import 'tailwindcss';\n/* lock-coordination ${Date.now()} */\n`)
+    const { json, lock } = cacheArtifactPaths(UNIQUE_CSS)
+
+    // Force the cold path: no cached JSON, and a stale lock left behind by a
+    // hypothetical isolate that died mid-precompute.
+    rmSync(json, { force: true })
+    mkdirSync(resolve(lock, '..'), { recursive: true })
+    writeFileSync(lock, '')
+    const stale = new Date(Date.now() - 1000 * 60 * 60) // 1h ago
+    utimesSync(lock, stale, stale)
+
+    // Must reclaim the stale lock and complete instead of waiting forever.
+    const result = loadDesignSystemSync(UNIQUE_CSS)
+    expect(result).toBeDefined()
+    expect(result.validClasses.length).toBeGreaterThan(1000)
+
+    // Lock is released after a successful compute.
+    expect(existsSync(lock)).toBe(false)
+
+    rmSync(json, { force: true })
+    rmSync(UNIQUE_CSS, { force: true })
   })
 })
 
