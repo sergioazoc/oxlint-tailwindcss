@@ -503,6 +503,19 @@ function extractFromExpression(node: ESTree.Node, out: ClassLocation[] = []): Cl
     return extractFromExpression((node as ESTree.LogicalExpression).right, out)
   }
 
+  // Arrays: cn(['flex', 'p-2']) and the idiomatic tv()/cva() multi-line form
+  // `base: ['flex', cond && 'p-2']`. Recurse into each element so strings,
+  // ternaries, and nested arrays are all reached. SpreadElement and holes
+  // (`[, x]`) have nothing statically extractable, so they're skipped.
+  if (node.type === 'ArrayExpression') {
+    for (const element of (node as ESTree.ArrayExpression).elements) {
+      if (element && element.type !== 'SpreadElement') {
+        extractFromExpression(element, out)
+      }
+    }
+    return out
+  }
+
   // Objects: cn({ "bg-red-500": isError }) — extract the keys
   if (node.type === 'ObjectExpression') {
     for (const prop of (node as ESTree.ObjectExpression).properties) {

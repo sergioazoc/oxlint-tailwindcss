@@ -109,6 +109,35 @@ ruleTester.run('no-duplicate-classes', noDuplicateClasses, {
       errors: [{ messageId: 'duplicate' }],
       output: 'tv({ compoundSlots: [{ class: "p-2" }] })',
     },
+    // Issue #25: array values in base/variants/cn are scanned
+    // cn with an array argument
+    {
+      code: "cn(['flex flex items-center'])",
+      filename: 'test.tsx',
+      errors: [{ messageId: 'duplicate' }],
+      output: "cn(['flex items-center'])",
+    },
+    // tv base as an array (idiomatic multi-line form)
+    {
+      code: "tv({ base: ['flex flex'] })",
+      filename: 'test.tsx',
+      errors: [{ messageId: 'duplicate' }],
+      output: "tv({ base: ['flex'] })",
+    },
+    // tv base array, dup inside one element
+    {
+      code: "tv({ base: ['flex', 'p-2 p-2'] })",
+      filename: 'test.tsx',
+      errors: [{ messageId: 'duplicate' }],
+      output: "tv({ base: ['flex', 'p-2'] })",
+    },
+    // cva variant value as an array
+    {
+      code: "cva('flex', { variants: { size: { sm: ['p-2 p-2'] } } })",
+      filename: 'test.tsx',
+      errors: [{ messageId: 'duplicate' }],
+      output: "cva('flex', { variants: { size: { sm: ['p-2'] } } })",
+    },
     // twJoin: duplicate
     {
       code: 'twJoin("flex flex items-center")',
