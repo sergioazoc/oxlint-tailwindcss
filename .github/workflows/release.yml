@@ -80,7 +80,9 @@ jobs:
         if: steps.version.outputs.published == 'false'
         run: |
           VERSION="v${{ steps.version.outputs.local }}"
-          BODY=$(awk "/^## ${VERSION#v} /{found=1; next} /^## /{found=0} found" packages/oxlint-tailwindcss/CHANGELOG.md)
+          # Match the heading whether or not it carries a date suffix:
+          # both "## 1.0.0" and "## 0.8.0 (2026-05-17)" extract correctly.
+          BODY=$(awk -v v="${{ steps.version.outputs.local }}" '$0 ~ "^## " v "( |$)" {found=1; next} /^## / {found=0} found' packages/oxlint-tailwindcss/CHANGELOG.md)
           if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$VERSION" --title "$VERSION" --notes "$BODY" --target "$GITHUB_SHA"
           else
