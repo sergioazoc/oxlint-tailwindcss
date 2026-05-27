@@ -1,0 +1,36 @@
+name: Docs
+
+# Build-check only. The production deploy to Cloudflare Pages lives in
+# release.yml (push to `release`). This job just proves the docs site still
+# compiles before a PR lands on main.
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Library build is a prerequisite — generate-rules.ts reads dist/index.cjs.
+      - name: Build library
+        run: pnpm -C packages/oxlint-tailwindcss build
+
+      - name: Generate rule pages
+        run: pnpm -C packages/docs generate
+
+      - name: Build docs site
+        run: pnpm -C packages/docs build

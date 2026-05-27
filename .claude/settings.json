@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cd \"${CLAUDE_PROJECT_DIR}\" && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test || exit 2'",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}

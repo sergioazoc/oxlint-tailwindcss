@@ -1,0 +1,104 @@
+import { defineRule } from '@oxlint/plugins'
+import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { splitClasses } from '../utils/class-splitter'
+import { createLazyOptions } from '../utils/context'
+
+interface PatternConfig {
+  pattern: string
+  message?: string
+}
+
+interface Options {
+  classes?: string[]
+  patterns?: PatternConfig[]
+}
+
+export const noRestrictedClasses = defineRule({
+  meta: {
+    type: 'problem',
+    docs: {
+      description: 'Disallow specific Tailwind CSS classes',
+    },
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          classes: { type: 'array', items: { type: 'string' } },
+          patterns: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                pattern: { type: 'string' },
+                message: { type: 'string' },
+              },
+              required: ['pattern'],
+              additionalProperties: false,
+            },
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
+    defaultOptions: [{ classes: [], patterns: [] }],
+    messages: {
+      restricted: '"{{className}}" is restricted.',
+      restrictedWithMessage: '"{{className}}" is restricted: {{message}}',
+    },
+  },
+  createOnce(context) {
+    const getConfig = createLazyOptions<
+      Options,
+      { restrictedClasses: Set<string>; patterns: Array<{ regex: RegExp; message?: string }> }
+    >(context, (o) => ({
+      restrictedClasses: new Set(o?.classes ?? []),
+      patterns: (o?.patterns ?? []).map((p) => ({
+        regex: new RegExp(p.pattern),
+        message: p.message,
+      })),
+    }))
+
+    function check(locations: ClassLocation[]) {
+      const { restrictedClasses, patterns } = getConfig()
+      // No restrictions configured — nothing to do
+      if (restrictedClasses.size === 0 && patterns.length === 0) return
+      for (const loc of locations) {
+        const classes = splitClasses(loc.value)
+
+        for (const cls of classes) {
+          // Check exact matches
+          if (restrictedClasses.has(cls)) {
+            context.report({
+              node: loc.node,
+              messageId: 'restricted',
+              data: { className: cls },
+            })
+            continue
+          }
+
+          // Check patterns
+          for (const { regex, message } of patterns) {
+            if (regex.test(cls)) {
+              if (message) {
+                context.report({
+                  node: loc.node,
+                  messageId: 'restrictedWithMessage',
+                  data: { className: cls, message },
+                })
+              } else {
+                context.report({
+                  node: loc.node,
+                  messageId: 'restricted',
+                  data: { className: cls },
+                })
+              }
+              break
+            }
+          }
+        }
+      }
+    }
+
+    return createExtractorVisitors(context, check)
+  },
+})
