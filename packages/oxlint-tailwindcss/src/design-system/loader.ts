@@ -54,7 +54,7 @@ export function entryPointFromSettings(
           '    { files: "packages/app/**", use: "packages/app/src/styles.css" },\n' +
           '    ...\n' +
           '  ]\n' +
-          'See https://oxlint-tailwindcss.dev/migration/v0-to-v1',
+          'See https://oxlint-tailwindcss.pages.dev/migration/v0-to-v1',
       )
     }
     if (ep.every(isEntryPointMapping)) return ep as EntryPointMapping[]

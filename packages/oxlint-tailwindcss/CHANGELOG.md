@@ -2,7 +2,7 @@
 
 ## 1.0.0
 
-Major release. v1.0.0 pivots `oxlint-tailwindcss` to a deterministic, explicit-config philosophy aligned with the rest of the Tailwind ecosystem (prettier-plugin-tailwindcss, oxfmt, better-tailwindcss). The premise: a _good_ DX is not "zero config", it's **"configure once, never fails again"**. See the [migration guide](https://oxlint-tailwindcss.dev/migration/v0-to-v1) for the full delta.
+Major release. v1.0.0 pivots `oxlint-tailwindcss` to a deterministic, explicit-config philosophy aligned with the rest of the Tailwind ecosystem (prettier-plugin-tailwindcss, oxfmt, better-tailwindcss). The premise: a _good_ DX is not "zero config", it's **"configure once, never fails again"**. See the [migration guide](https://oxlint-tailwindcss.pages.dev/migration/v0-to-v1) for the full delta.
 
 ### Highlights
 

@@ -5,7 +5,7 @@ This repository contains the [oxlint-tailwindcss](./packages/oxlint-tailwindcss)
 ## Packages
 
 - **[`packages/oxlint-tailwindcss`](./packages/oxlint-tailwindcss)** — the published npm package. Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). See its [README](./packages/oxlint-tailwindcss/README.md) for installation and configuration.
-- **[`packages/docs`](./packages/docs)** — the VitePress site published at [oxlint-tailwindcss.dev](https://oxlint-tailwindcss.dev) (TBD). Source for the user-facing documentation.
+- **[`packages/docs`](./packages/docs)** — the VitePress site published at [oxlint-tailwindcss.pages.dev](https://oxlint-tailwindcss.pages.dev). Source for the user-facing documentation.
 
 ## Development
 

@@ -2,7 +2,7 @@
 
 23 Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). Built for Tailwind CSS v4 with deterministic config, typo suggestions, and autofixes.
 
-> **v1.0.0** — Upgrading from v0.x? See the **[migration guide](https://oxlint-tailwindcss.dev/migration/v0-to-v1)**. The headline change: `settings.tailwindcss.entryPoint` is now required.
+> **v1.0.0** — Upgrading from v0.x? See the **[migration guide](https://oxlint-tailwindcss.pages.dev/migration/v0-to-v1)**. The headline change: `settings.tailwindcss.entryPoint` is now required.
 
 Read the story behind this plugin: [oxlint-tailwindcss: The Linting Plugin Tailwind v4 Needed](https://sergioazocar.com/en/blog/oxlint-tailwindcss-the-linting-plugin-tailwind-v4-needed)
 
@@ -10,7 +10,7 @@ Read the story behind this plugin: [oxlint-tailwindcss: The Linting Plugin Tailw
 
 - **Configure once, never fails** — `settings.tailwindcss.entryPoint` is explicit. Same input → same output on every machine.
 - **Monorepo-ready** — Single root config with a glob → CSS mapping array, or one `.oxlintrc.json` per package. Both fully deterministic.
-- **Coexists with oxfmt and Prettier** — Point all tools at the same CSS and they agree byte-for-byte. See the [interop guide](https://oxlint-tailwindcss.dev/interop).
+- **Coexists with oxfmt and Prettier** — Point all tools at the same CSS and they agree byte-for-byte. See the [interop guide](https://oxlint-tailwindcss.pages.dev/interop).
 - **Tailwind CSS v4** — Designed for v4 from day one. Reads your `@theme { ... }` custom tokens, your shadcn variables, your typography plugin.
 - **Fail loud** — Misconfiguration surfaces as a single `designSystemUnavailable` diagnostic with an actionable hint. Never silently skipped rules.
 - **Fast** — Native oxlint plugin with per-entry-point caching and content-hash disk cache for monorepo deduplication.
@@ -22,7 +22,7 @@ Read the story behind this plugin: [oxlint-tailwindcss: The Linting Plugin Tailw
 - **Customizable** — Extend class detection with custom attributes, callees, tags, and variable patterns.
 - **Component class support** — Recognizes `@layer components { .btn {} }` in your CSS.
 
-Full documentation: **https://oxlint-tailwindcss.dev** (English) · **https://oxlint-tailwindcss.dev/es** (Español)
+Full documentation: **https://oxlint-tailwindcss.pages.dev** (English) · **https://oxlint-tailwindcss.pages.dev/es** (Español)
 
 ## Installation
 
@@ -110,7 +110,7 @@ Two patterns, both fully deterministic:
 
 **Pattern B — one `.oxlintrc.json` per package**, each with its own string `entryPoint`. oxlint resolves the closest config to the file being linted.
 
-See the full [monorepo guide](https://oxlint-tailwindcss.dev/monorepo) for examples of both.
+See the full [monorepo guide](https://oxlint-tailwindcss.pages.dev/monorepo) for examples of both.
 
 ### Per-rule override
 
