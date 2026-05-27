@@ -284,6 +284,10 @@ classed("button", "flex items-center", {
   },
 })
 
+// Array values — the idiomatic multi-line form of cn()/cva()/tv()
+cn(["flex", "items-center"])
+tv({ base: ["flex", "items-center"], variants: { size: { sm: ["p-2", "text-sm"] } } })
+
 // Object-valued JSX attributes (e.g. Mantine classNames prop)
 <Input classNames={{ root: "flex items-center", input: "border-none" }} />
 

@@ -7,7 +7,7 @@ Major release. v1.0.0 pivots `oxlint-tailwindcss` to a deterministic, explicit-c
 ### Highlights
 
 - **The repo is now a pnpm monorepo.** The published npm package lives at `packages/oxlint-tailwindcss/`; the new `packages/docs/` package hosts the VitePress v2 documentation site (English at the root, Spanish at `/es`). The `oxlint-tailwindcss` package on npm has the same shape it always did — only the source tree moved.
-- **Brand-new docs site.** Hand-written guides for getting started, settings reference, monorepo setup, oxfmt/Prettier interop, and the v0 → v1 migration. The sidebar and rule pages are both derived from the published plugin's `rules` registry — a new rule lands in `src/index.ts` and appears in both the sidebar and a generated reference page with zero hand-editing. Deployed to Cloudflare Pages.
+- **Brand-new docs site.** A single consolidated Setup page carries everything needed to get running (install, minimal config, recommended starter rule set, validation, monorepo + interop summaries); dedicated Reference pages cover the full settings, monorepo patterns, and oxfmt/Prettier interop. Every rule has a hand-written page — what it does, per-option descriptions, ✗/✓ examples, interactions with other rules, and when to disable it — in both English and Spanish (`/es`). The sidebar and rule pages are both derived from the published plugin's `rules` registry — a new rule lands in `src/index.ts` and appears in both the sidebar and its generated page with zero hand-editing. Deployed to Cloudflare Pages at [oxlint-tailwindcss.pages.dev](https://oxlint-tailwindcss.pages.dev).
 
 ### Breaking changes
 
@@ -19,6 +19,11 @@ Major release. v1.0.0 pivots `oxlint-tailwindcss` to a deterministic, explicit-c
 - **Disk cache schema simplified.** The legacy two-level cache (`.idx` mtime index → `.json` content cache) was replaced by a single content-hash-keyed `.json` cache. Mtime stays as an in-memory fast path inside the linter process. Stale `.idx` files in `os.tmpdir()/oxlint-tailwindcss/` are harmless but can be deleted after upgrading.
 - **`meta.defaultOptions` declared on every rule that takes options.** Tooling (IDEs, doc generators) can now read what each rule does without running it. Rules with empty schemas (`enforce-shorthand`, `no-contradicting-variants`, etc.) deliberately do not declare `defaultOptions` — oxlint validates `defaultOptions` against the schema and `{}` is not a valid value for `schema: []`.
 - **Extractor config is per-context.** The module-level `_cachedConfig` / `_settingsResolved` globals in `extractors.ts` were swapped for a `WeakMap<context, ExtractorConfig>` so parallel rule contexts can't race on a shared cache.
+
+### Bug fixes
+
+- **`tv()` / `cva()` / `cn()` array values are now scanned** ([#25](https://github.com/sergioazoc/oxlint-tailwindcss/issues/25)). The class extractor walked strings, template literals, ternaries, logical expressions, and objects — but skipped arrays. So the idiomatic multi-line form `tv({ base: ['flex', 'p-2'] })`, array variant/slot values, and `cn(['flex', 'bad-class'])` were silently ignored by every rule. `extractFromExpression` now recurses into each array element (skipping holes and spreads), so strings, ternaries, and nested arrays inside the array are all reached. `compoundVariants` / `compoundSlots` keep their existing array-of-objects handling.
+- **Cold-cache precompute no longer exhausts memory** ([#24](https://github.com/sergioazoc/oxlint-tailwindcss/issues/24)). oxlint lints across parallel isolates; on a cold disk cache they each forked their own `execFileSync` Node child to precompute the design system, and a dozen simultaneous forks — each loading `@tailwindcss/node` — exhausted memory on constrained hosts (`spawnSync … ENOMEM`, reported on WSL). A content-hash-scoped file lock now serializes the fork: the first isolate computes and writes the cache, the rest busy-wait (Atomics-based sync sleep) for the resulting JSON instead of forking. A stale lock — older than the precompute timeout plus a write margin, i.e. a holder that died mid-compute — is reclaimed so a crash can't wedge every isolate; a non-writable cache dir degrades to an uncoordinated compute. Coordination is keyed by content hash, so distinct CSS files still precompute in parallel.
 
 ### Internal — new modules
 
@@ -44,7 +49,7 @@ Major release. v1.0.0 pivots `oxlint-tailwindcss` to a deterministic, explicit-c
 - `extractors.ts` walks AST expressions with an accumulator-passing pattern — `extractFromExpression(node, out)` appends to the caller's array directly, eliminating thirteen intermediate-array allocations per call site.
 - Glob patterns in the entry-point `EntryPointMapping[]` resolver are memoized so the linter doesn't recompile the same `RegExp` per AST node.
 
-Test suite at 1030 passing assertions across 50 files (down from v0.8.0's 1093 because auto-detect / silent-fallback tests are gone; 15 new tests cover the options matrix for `enforce-physical`/`enforce-logical`, the fail-loud worker behavior, and the `splitImportant` round-trip).
+Test suite at 1035 passing assertions across 50 files (down from v0.8.0's 1093 because auto-detect / silent-fallback tests are gone; new tests cover the options matrix for `enforce-physical`/`enforce-logical`, the fail-loud worker behavior, the `splitImportant` round-trip, `tv`/`cva`/`cn` array extraction (#25), and the cold-cache fork lock reclaiming a stale lock (#24)).
 
 ## 0.8.0 (2026-05-17)
 
