@@ -20,13 +20,19 @@ jobs:
         with:
           version: 10
 
+      # No registry-url: it would write an .npmrc with an empty authToken,
+      # which interferes with OIDC. npm defaults to registry.npmjs.org, where
+      # the trusted publisher is configured.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-          registry-url: https://registry.npmjs.org
 
       - run: pnpm install --frozen-lockfile
+
+      # Trusted publishing (OIDC) requires npm >= 11.5.1; Node 22 ships npm 10.x.
+      - name: Update npm for OIDC publishing
+        run: npm install -g npm@latest
 
       - name: Lint
         run: pnpm lint
@@ -72,14 +78,13 @@ jobs:
 
       - name: Publish to npm
         if: steps.version.outputs.published == 'false'
-        # Publish via npm directly, not `pnpm publish`: pnpm forwards its own
-        # `--no-git-checks` flag to npm, which rejects it (EUSAGE). `--access
-        # public` is required alongside `--provenance`. The dist tarball is
-        # already built by the Build step + the package's prepublishOnly.
+        # Trusted publishing (OIDC): no NODE_AUTH_TOKEN — npm exchanges the
+        # GitHub Actions id-token for a short-lived publish credential, against
+        # the trusted publisher configured for this repo + workflow on npmjs.com.
+        # Provenance is generated automatically. Publish via npm directly (not
+        # `pnpm publish`, which forwards its own flags and trips npm's EUSAGE).
         run: npm publish --provenance --access public
         working-directory: packages/oxlint-tailwindcss
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create or update GitHub Release
         if: steps.version.outputs.published == 'false'
