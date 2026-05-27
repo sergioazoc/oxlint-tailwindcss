@@ -11,6 +11,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      deployments: write
 
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +31,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Format check
+        run: pnpm format:check
+
       - name: Type check
         run: pnpm typecheck
 
@@ -39,14 +43,43 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # --- Docs: always build and deploy on a release push ---
+      - name: Build docs site
+        run: pnpm -C packages/docs build
+
+      - name: Deploy docs to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy packages/docs/.vitepress/dist --project-name=oxlint-tailwindcss --branch=release
+
+      # --- npm: publish only when this version isn't on the registry yet ---
+      # A docs-only release (no version bump) deploys the site above but skips
+      # the publish, instead of failing on npm's "version already exists".
+      - name: Check published version
+        id: version
+        run: |
+          LOCAL=$(node -p 'require("./packages/oxlint-tailwindcss/package.json").version')
+          echo "local=$LOCAL" >> "$GITHUB_OUTPUT"
+          if npm view "oxlint-tailwindcss@$LOCAL" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "Version $LOCAL already on npm — skipping publish + release."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "Version $LOCAL not on npm — will publish."
+          fi
+
       - name: Publish to npm
+        if: steps.version.outputs.published == 'false'
         run: pnpm -C packages/oxlint-tailwindcss publish --no-git-checks --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create or update GitHub Release
+        if: steps.version.outputs.published == 'false'
         run: |
-          VERSION="v$(node -p 'require("./packages/oxlint-tailwindcss/package.json").version')"
+          VERSION="v${{ steps.version.outputs.local }}"
           BODY=$(awk "/^## ${VERSION#v} /{found=1; next} /^## /{found=0} found" packages/oxlint-tailwindcss/CHANGELOG.md)
           if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$VERSION" --title "$VERSION" --notes "$BODY" --target "$GITHUB_SHA"

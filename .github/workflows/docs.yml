@@ -1,18 +1,15 @@
 name: Docs
 
+# Build-check only. The production deploy to Cloudflare Pages lives in
+# release.yml (push to `release`). This job just proves the docs site still
+# compiles before a PR lands on main.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      deployments: write
 
     steps:
       - uses: actions/checkout@v4
@@ -37,11 +34,3 @@ jobs:
 
       - name: Build docs site
         run: pnpm -C packages/docs build
-
-      - name: Publish to Cloudflare Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/docs/.vitepress/dist --project-name=oxlint-tailwindcss
