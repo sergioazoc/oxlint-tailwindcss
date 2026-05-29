@@ -18,7 +18,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 11.4.0
 
       # No registry-url: it would write an .npmrc with an empty authToken,
       # which interferes with OIDC. npm defaults to registry.npmjs.org, where
@@ -58,7 +58,9 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/docs/.vitepress/dist --project-name=oxlint-tailwindcss --branch=release
+          command:
+            pages deploy packages/docs/.vitepress/dist --project-name=oxlint-tailwindcss
+            --branch=release
 
       # --- npm: publish only when this version isn't on the registry yet ---
       # A docs-only release (no version bump) deploys the site above but skips

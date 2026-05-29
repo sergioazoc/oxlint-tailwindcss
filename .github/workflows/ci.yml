@@ -4,7 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    # PRs into main, plus PRs that merge main -> release. Pushes to release
+    # are gated separately by release.yml, which re-runs these same checks
+    # before publishing.
+    branches: [main, release]
 
 jobs:
   test:
@@ -18,7 +21,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 11.4.0
 
       - uses: actions/setup-node@v4
         with:
