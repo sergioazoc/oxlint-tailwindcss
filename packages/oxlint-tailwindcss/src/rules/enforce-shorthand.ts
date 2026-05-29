@@ -109,8 +109,7 @@ export const enforceShorthand = defineRule({
             // Check with ! modifier: all parts must share the same modifier
             const hasImportantPrefix = rule.parts.every((p) => classSet.has(withVariant(`!${p}`)))
             const hasImportantSuffix =
-              !hasImportantPrefix &&
-              rule.parts.every((p) => classSet.has(withVariant(`${p}!`)))
+              !hasImportantPrefix && rule.parts.every((p) => classSet.has(withVariant(`${p}!`)))
             const hasPlain = rule.parts.every((p) => classSet.has(withVariant(p)))
 
             if (!hasImportantPrefix && !hasImportantSuffix && !hasPlain) continue

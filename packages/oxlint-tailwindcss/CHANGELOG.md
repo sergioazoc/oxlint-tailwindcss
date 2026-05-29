@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.0
+
+Extends `enforce-shorthand` with variant-aware merges and the axis-pair → full shorthand step ([#27](https://github.com/sergioazoc/oxlint-tailwindcss/issues/27), [#28](https://github.com/sergioazoc/oxlint-tailwindcss/pull/28)). Thanks to [@chitwitgit](https://github.com/chitwitgit) for the contribution.
+
+### Features
+
+- **`enforce-shorthand` is now variant-aware.** Parts that share the same variant prefix are merged (`sm:h-4 sm:w-4` → `sm:size-4`, `hover:mx-4 hover:my-4` → `hover:m-4`), while parts under different variants are left untouched (`hover:px-4 focus:py-4` does not merge). Grouping goes through the bracket-aware `splitUtilityAndVariant`, so stacked variants (`dark:sm:px-4 dark:sm:py-4`) and arbitrary variants (`[&:hover]:px-4 [&:hover]:py-4`) are handled too. The `!` important modifier (prefix and suffix) keeps round-tripping correctly per variant; mixed-importance pairs deliberately do not merge.
+- **Axis pair → full shorthand.** `px-* py-*` → `p-*` and `mx-* my-*` → `m-*` are now suggested, matching [eslint-plugin-tailwindcss](https://github.com/francoismassart/eslint-plugin-tailwindcss/blob/master/docs/rules/enforces-shorthand.md). `VALUE_RE` was extended so `px`/`py`/`mx`/`my` utilities participate in value discovery (previously they were invisible to the rule).
+
+### Behavior change
+
+- Same-variant stacks like `hover:mt-2 hover:mr-2 hover:mb-2 hover:ml-2` now report (and fix to `hover:m-2`). Earlier versions documented variant stacks as intentionally skipped. Autofix still appends the merged shorthand when other classes are present — ordering remains `enforce-sort-order`'s job.
+
 ## 1.0.1
 
 Fixes the cold-cache `spawnSync … node ENOMEM` that collapsed linting on memory-constrained CI runners ([#24](https://github.com/sergioazoc/oxlint-tailwindcss/issues/24)).
