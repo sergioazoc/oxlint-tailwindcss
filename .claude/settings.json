@@ -1,5 +1,18 @@
 {
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; case \"$f\" in */node_modules/*|*/dist/*) ;; *) \"${CLAUDE_PROJECT_DIR}/node_modules/.bin/oxfmt\" \"$f\" ;; esac; } >/dev/null 2>&1 || true",
+            "timeout": 30,
+            "statusMessage": "Formateando con oxfmt…"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",

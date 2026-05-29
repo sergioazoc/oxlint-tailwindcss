@@ -4,35 +4,28 @@
 
 ## Qué hace esta regla
 
-Detecta utilities escritas con un valor arbitrario (`w-[200px]`,
-`h-[auto]`, `bg-[var(--color-red-500)]`) cuando el design system ya
-expone una utility con nombre que produce exactamente el mismo CSS, y
-reescribe la forma arbitraria a la nombrada. El lookup pasa por el
-mapa precomputado `arbitraryEquivalents` (armado una sola vez por
-`@theme` — para cada utility con nombre, el paso de precompute
-enumera cada punto de corte por guión, así utilities multi-segmento
-como `bg-red-500` registran tanto `bg-[<value>]` como
-`bg-red-[<value>]`). El auto-fix corrige el primer hit, las
-sugerencias cubren el resto en el mismo string. Variants e `!`
-(important) se preservan.
+Detecta utilities escritas con un valor arbitrario (`w-[200px]`, `h-[auto]`,
+`bg-[var(--color-red-500)]`) cuando el design system ya expone una utility con nombre que produce
+exactamente el mismo CSS, y reescribe la forma arbitraria a la nombrada. El lookup pasa por el mapa
+precomputado `arbitraryEquivalents` (armado una sola vez por `@theme` — para cada utility con
+nombre, el paso de precompute enumera cada punto de corte por guión, así utilities multi-segmento
+como `bg-red-500` registran tanto `bg-[<value>]` como `bg-red-[<value>]`). El auto-fix corrige el
+primer hit, las sugerencias cubren el resto en el mismo string. Variants e `!` (important) se
+preservan.
 
-El chequeo se dispara solo cuando hay un valor arbitrario en la
-utility (`hasArbitraryValue(cls)` es true) Y el cache devuelve un
-match en `getNamedEquivalent`. Eso mantiene la regla barata y
-enfocada — sin resolución fuzzy, sin round-trip al DS por cada
-clase.
+El chequeo se dispara solo cuando hay un valor arbitrario en la utility (`hasArbitraryValue(cls)` es
+true) Y el cache devuelve un match en `getNamedEquivalent`. Eso mantiene la regla barata y enfocada
+— sin resolución fuzzy, sin round-trip al DS por cada clase.
 
-DS-dependiente — requiere `settings.tailwindcss.entryPoint`. Si el
-design system no puede cargar, la regla emite un único diagnóstico
-fatal `designSystemUnavailable` por archivo en vez de pasar en
+DS-dependiente — requiere `settings.tailwindcss.entryPoint`. Si el design system no puede cargar, la
+regla emite un único diagnóstico fatal `designSystemUnavailable` por archivo en vez de pasar en
 silencio.
 
 ## Opciones
 
-Esta regla no tiene opciones propias más allá del override estándar
-`entryPoint` (string, defaultea a `settings.tailwindcss.entryPoint`).
-Configura el entry point en `settings.tailwindcss.entryPoint` para
-todo el proyecto en vez de por-regla cuando puedas.
+Esta regla no tiene opciones propias más allá del override estándar `entryPoint` (string, defaultea
+a `settings.tailwindcss.entryPoint`). Configura el entry point en `settings.tailwindcss.entryPoint`
+para todo el proyecto en vez de por-regla cuando puedas.
 
 ## Ejemplos
 
@@ -65,31 +58,22 @@ todo el proyecto en vez de por-regla cuando puedas.
 
 ## Interacciones con otras reglas
 
-- **`enforce-canonical`**: complementaria, no hay doble-fire. Esta
-  regla se dispara solo cuando la forma arbitraria mapea directo a
-  una utility con nombre que produce el mismo CSS (`h-[auto]` →
-  `h-auto`, `bg-[var(--color-red-500)]` → `bg-red-500`).
-  `enforce-canonical` se dispara cuando la forma canónica es otra
-  shape distinta que igual produce el CSS correcto vía tus tokens
-  (`p-[2px]` → `p-0.5` vía escala de spacing). Las dos parten el
-  espacio arbitrario→nombrado de forma limpia.
-- **`prefer-theme-tokens`**: también complementaria. Se dispara para
-  referencias a variables CSS en el shorthand de paréntesis
-  `prefix-(--name)` / `prefix-[var(--name)]` cuando no existe un
-  equivalente bracket — ese es el caso solo-heurístico que esta regla
-  rechaza explícitamente (ver el guard de `getNamedEquivalent`).
-- **`no-deprecated-classes`**: ortogonal. Los nombres deprecados como
-  `flex-grow` no tienen valores arbitrarios, así que las dos reglas
-  nunca tocan la misma clase.
+- **`enforce-canonical`**: complementaria, no hay doble-fire. Esta regla se dispara solo cuando la
+  forma arbitraria mapea directo a una utility con nombre que produce el mismo CSS (`h-[auto]` →
+  `h-auto`, `bg-[var(--color-red-500)]` → `bg-red-500`). `enforce-canonical` se dispara cuando la
+  forma canónica es otra shape distinta que igual produce el CSS correcto vía tus tokens (`p-[2px]`
+  → `p-0.5` vía escala de spacing). Las dos parten el espacio arbitrario→nombrado de forma limpia.
+- **`prefer-theme-tokens`**: también complementaria. Se dispara para referencias a variables CSS en
+  el shorthand de paréntesis `prefix-(--name)` / `prefix-[var(--name)]` cuando no existe un
+  equivalente bracket — ese es el caso solo-heurístico que esta regla rechaza explícitamente (ver el
+  guard de `getNamedEquivalent`).
+- **`no-deprecated-classes`**: ortogonal. Los nombres deprecados como `flex-grow` no tienen valores
+  arbitrarios, así que las dos reglas nunca tocan la misma clase.
 
 ## Cuándo desactivarla
 
-- **A propósito mantienes valores arbitrarios por legibilidad** —
-  algunos equipos prefieren `w-[200px]` a un alias de token cuando el
-  valor es one-off o pixel-precise. Desactiva la regla y apóyate en
-  `prefer-theme-tokens` + `enforce-canonical` para los casos que sí
-  quieres marcar.
-- **Migrando desde otro toolchain** que generaba valores arbitrarios
-  para todo — corrila como `warn` hasta terminar el cleanup, después
-  súbela a `error`.
-
+- **A propósito mantienes valores arbitrarios por legibilidad** — algunos equipos prefieren
+  `w-[200px]` a un alias de token cuando el valor es one-off o pixel-precise. Desactiva la regla y
+  apóyate en `prefer-theme-tokens` + `enforce-canonical` para los casos que sí quieres marcar.
+- **Migrando desde otro toolchain** que generaba valores arbitrarios para todo — corrila como `warn`
+  hasta terminar el cleanup, después súbela a `error`.

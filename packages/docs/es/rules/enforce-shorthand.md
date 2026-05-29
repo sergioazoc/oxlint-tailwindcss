@@ -4,29 +4,24 @@
 
 ## Qué hace esta regla
 
-Combina utilities por-eje de Tailwind en sus equivalentes shorthand
-cuando todos los ejes llevan el mismo valor. El caso más común:
-`mt-2 mr-2 mb-2 ml-2` colapsa a `m-2`. La regla cubre márgenes,
-paddings, sizing de width/height, y radios de esquina — todas las
-combinaciones donde Tailwind tiene un shorthand de una clase para la
-forma multi-clase. El autofix corre sobre cada patrón que matchea.
+Combina utilities por-eje de Tailwind en sus equivalentes shorthand cuando todos los ejes llevan el
+mismo valor. El caso más común: `mt-2 mr-2 mb-2 ml-2` colapsa a `m-2`. La regla cubre márgenes,
+paddings, sizing de width/height, y radios de esquina — todas las combinaciones donde Tailwind tiene
+un shorthand de una clase para la forma multi-clase. El autofix corre sobre cada patrón que matchea.
 
-DS-independiente — funciona sin `settings.tailwindcss.entryPoint`. La
-tabla de mapeo es estática, y el parseo de valores viene de un solo
-regex; no se necesita lookup en el design system.
+DS-independiente — funciona sin `settings.tailwindcss.entryPoint`. La tabla de mapeo es estática, y
+el parseo de valores viene de un solo regex; no se necesita lookup en el design system.
 
-Caso especial: `w-X h-X` → `size-X` solo dispara cuando ambos lados
-resuelven a la misma dimensión CSS. Las unidades de viewport
-(`screen`, `dvw`, `dvh`, `svw`, `svh`, `lvw`, `lvh`) se excluyen
-porque `w-screen` y `h-screen` referencian ejes distintos (`100vw`
-vs `100vh`) y no serían equivalentes a `size-screen`.
+Caso especial: `w-X h-X` → `size-X` solo dispara cuando ambos lados resuelven a la misma dimensión
+CSS. Las unidades de viewport (`screen`, `dvw`, `dvh`, `svw`, `svh`, `lvw`, `lvh`) se excluyen
+porque `w-screen` y `h-screen` referencian ejes distintos (`100vw` vs `100vh`) y no serían
+equivalentes a `size-screen`.
 
 ## Opciones
 
-Esta regla no tiene opciones. El set de pares shorthand está fijado
-por la superficie de utilities propia de Tailwind — cualquier cosa
-que dejáramos configurable acá es más bien un laburo para el proyecto
-upstream de Tailwind.
+Esta regla no tiene opciones. El set de pares shorthand está fijado por la superficie de utilities
+propia de Tailwind — cualquier cosa que dejáramos configurable acá es más bien un laburo para el
+proyecto upstream de Tailwind.
 
 ## Ejemplos
 
@@ -71,23 +66,18 @@ upstream de Tailwind.
 
 ## Interacciones con otras reglas
 
-- **`enforce-sort-order`**: ejecuta shorthand primero así el shorthand
-  participa del sort con su propia prioridad. Si no, el sort ubica
-  `mt-2 mr-2 mb-2 ml-2` en posiciones separadas y el fix del
+- **`enforce-sort-order`**: ejecuta shorthand primero así el shorthand participa del sort con su
+  propia prioridad. Si no, el sort ubica `mt-2 mr-2 mb-2 ml-2` en posiciones separadas y el fix del
   shorthand las colapsa después.
-- **`enforce-logical` / `enforce-physical`**: los pares shorthand de
-  acá (`m-*`, `p-*`, `size-*`, `rounded-*`) son direction-neutral,
-  así que ninguna regla direccional interfiere.
-- **`enforce-consistent-important-position`**: el shorthand respeta
-  la convención de posición del `!` de las clases mergeadas. Si las
-  cuatro usan prefijo, el shorthand queda con prefijo; lo mismo para
-  sufijo.
+- **`enforce-logical` / `enforce-physical`**: los pares shorthand de acá (`m-*`, `p-*`, `size-*`,
+  `rounded-*`) son direction-neutral, así que ninguna regla direccional interfiere.
+- **`enforce-consistent-important-position`**: el shorthand respeta la convención de posición del
+  `!` de las clases mergeadas. Si las cuatro usan prefijo, el shorthand queda con prefijo; lo mismo
+  para sufijo.
 
 ## Cuándo desactivarla
 
-- **Quieres valores explícitos por eje para readability**, sobre todo
-  en libraries de componentes de design system donde los reviewers
-  encuentran `mt-2 mr-2 mb-2 ml-2` más claro que `m-2`.
-- **Generación de código** donde cada utility se emite a propósito y
-  colapsarlas escondería la intención.
-
+- **Quieres valores explícitos por eje para readability**, sobre todo en libraries de componentes de
+  design system donde los reviewers encuentran `mt-2 mr-2 mb-2 ml-2` más claro que `m-2`.
+- **Generación de código** donde cada utility se emite a propósito y colapsarlas escondería la
+  intención.

@@ -1,16 +1,13 @@
 ## Qué hace esta regla
 
-Tailwind v4 soporta dos sintaxis para el modificador `!important`:
-prefijo (`!flex`, la forma de la era v3) y sufijo (`flex!`, la forma
-canónica de v4). Las dos producen el mismo CSS, pero mezclarlas
-dentro de un proyecto deja el codebase inconsistente y rompe el
-copy-paste entre archivos. Esta regla elige una posición y reescribe
-cada ofensor para que matchee. Autofix sobre el primer hit por
+Tailwind v4 soporta dos sintaxis para el modificador `!important`: prefijo (`!flex`, la forma de la
+era v3) y sufijo (`flex!`, la forma canónica de v4). Las dos producen el mismo CSS, pero mezclarlas
+dentro de un proyecto deja el codebase inconsistente y rompe el copy-paste entre archivos. Esta
+regla elige una posición y reescribe cada ofensor para que matchee. Autofix sobre el primer hit por
 location, sugerencia de editor sobre los siguientes.
 
-DS-independiente — funciona sin `settings.tailwindcss.entryPoint`. Es
-una transformación de string pura, así que corre en todos lados,
-incluyendo proyectos que todavía no cablearon el design system.
+DS-independiente — funciona sin `settings.tailwindcss.entryPoint`. Es una transformación de string
+pura, así que corre en todos lados, incluyendo proyectos que todavía no cablearon el design system.
 
 ## Opciones
 
@@ -18,19 +15,17 @@ incluyendo proyectos que todavía no cablearon el design system.
 
 `'prefix' | 'suffix'`, default `'suffix'`.
 
-`'suffix'` es la forma canónica de Tailwind v4 (`flex!`,
-`hover:text-red!`) y matchea lo que produciría `enforce-canonical`,
-así que es la elección recomendada para proyectos nuevos. `'prefix'`
-mantiene la forma de v3 (`!flex`, `hover:!text-red`) — elegila solo
-si tu codebase todavía está en el spelling de v3 y no quieres migrar
-todavía.
+`'suffix'` es la forma canónica de Tailwind v4 (`flex!`, `hover:text-red!`) y matchea lo que
+produciría `enforce-canonical`, así que es la elección recomendada para proyectos nuevos. `'prefix'`
+mantiene la forma de v3 (`!flex`, `hover:!text-red`) — elegila solo si tu codebase todavía está en
+el spelling de v3 y no quieres migrar todavía.
 
 ```jsonc
 { "tailwindcss/enforce-consistent-important-position": ["error", { "position": "suffix" }] }
 ```
 
-Nota: setear `position: 'prefix'` va a entrar en conflicto con
-`enforce-canonical`, que normaliza a sufijo. Usa una o la otra.
+Nota: setear `position: 'prefix'` va a entrar en conflicto con `enforce-canonical`, que normaliza a
+sufijo. Usa una o la otra.
 
 ## Ejemplos
 
@@ -64,20 +59,17 @@ Nota: setear `position: 'prefix'` va a entrar en conflicto con
 
 ## Interacciones con otras reglas
 
-- **`enforce-canonical`**: con `position: 'suffix'` (el default) las
-  dos reglas concuerdan. Con `position: 'prefix'` se pelean —
-  canonical reescribe a sufijo en cada pasada del fix. Quedate con
+- **`enforce-canonical`**: con `position: 'suffix'` (el default) las dos reglas concuerdan. Con
+  `position: 'prefix'` se pelean — canonical reescribe a sufijo en cada pasada del fix. Quedate con
   sufijo a menos que tengas una razón fuerte.
-- **`enforce-sort-order`**: independiente de la posición del
-  important. Tanto la forma prefijo como la sufijo ordenan igual.
-- **`no-unknown-classes`**: hace lookup de la utility bare, sacando
-  `!` de cualquier lado, así que ninguna forma la dispara.
+- **`enforce-sort-order`**: independiente de la posición del important. Tanto la forma prefijo como
+  la sufijo ordenan igual.
+- **`no-unknown-classes`**: hace lookup de la utility bare, sacando `!` de cualquier lado, así que
+  ninguna forma la dispara.
 
 ## Cuándo desactivarla
 
-- **El codebase mezcla las dos formas a propósito** (e.g. archivos
-  legacy de v3 conviviendo con archivos frescos de v4 durante una
-  migración). Reactivala cuando termine la migración.
-- **Ya estás corriendo `enforce-canonical`** y confías en que
-  normalice la posición del `!` como parte de la canonicalización —
-  dejar esta regla activada es inocuo pero redundante.
+- **El codebase mezcla las dos formas a propósito** (e.g. archivos legacy de v3 conviviendo con
+  archivos frescos de v4 durante una migración). Reactivala cuando termine la migración.
+- **Ya estás corriendo `enforce-canonical`** y confías en que normalice la posición del `!` como
+  parte de la canonicalización — dejar esta regla activada es inocuo pero redundante.

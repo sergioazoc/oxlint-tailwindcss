@@ -34,7 +34,8 @@ function formatDefaultOptions(opts: unknown[] | undefined): string {
 }
 
 function formatSchema(schema: unknown): string {
-  if (!Array.isArray(schema) || schema.length === 0) return '_(no schema — this rule takes no options)_\n'
+  if (!Array.isArray(schema) || schema.length === 0)
+    return '_(no schema — this rule takes no options)_\n'
   const first = schema[0]
   if (!first || typeof first !== 'object') return '_(opaque schema)_\n'
   const props = (first as { properties?: Record<string, unknown> }).properties

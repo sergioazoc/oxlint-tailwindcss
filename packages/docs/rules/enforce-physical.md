@@ -1,23 +1,21 @@
 # enforce-physical
 
-> Enforce physical Tailwind CSS properties instead of logical ones for consistency in LTR-only projects
+> Enforce physical Tailwind CSS properties instead of logical ones for consistency in LTR-only
+> projects
 
 ## What this rule does
 
-The mirror of `enforce-logical`. Rewrites logical, writing-direction
-aware utilities (`ms-4`, `pe-2`, `start-0`, `rounded-ss-md`, …) into
-their physical equivalents (`ml-4`, `pr-2`, `left-0`,
-`rounded-tl-md`, …). Use this in LTR-only codebases where logical
-utilities add cognitive overhead without a payoff — `ml-4` is more
-direct than `ms-4` when there's no RTL story. Autofix on the first
+The mirror of `enforce-logical`. Rewrites logical, writing-direction aware utilities (`ms-4`,
+`pe-2`, `start-0`, `rounded-ss-md`, …) into their physical equivalents (`ml-4`, `pr-2`, `left-0`,
+`rounded-tl-md`, …). Use this in LTR-only codebases where logical utilities add cognitive overhead
+without a payoff — `ml-4` is more direct than `ms-4` when there's no RTL story. Autofix on the first
 offender per location, editor suggestion on subsequent ones.
 
-DS-independent — works without `settings.tailwindcss.entryPoint`.
-Shares the static mapping table with `enforce-logical` and inverts
-it.
+DS-independent — works without `settings.tailwindcss.entryPoint`. Shares the static mapping table
+with `enforce-logical` and inverts it.
 
-`enforce-physical` and `enforce-logical` are sibling rules. Enable
-**only one at a time** — running both produces an autofix loop.
+`enforce-physical` and `enforce-logical` are sibling rules. Enable **only one at a time** — running
+both produces an autofix loop.
 
 ## Options
 
@@ -25,9 +23,8 @@ it.
 
 `'inline' | 'block' | 'both'`, default `'both'`.
 
-Restricts conversion to one axis. Today every mapping is inline-axis,
-so `'block'` effectively disables the rule. Future-proofing for when
-Tailwind ships block-axis logical utilities.
+Restricts conversion to one axis. Today every mapping is inline-axis, so `'block'` effectively
+disables the rule. Future-proofing for when Tailwind ships block-axis logical utilities.
 
 ```jsonc
 { "tailwindcss/enforce-physical": ["error", { "direction": "inline" }] }
@@ -37,9 +34,8 @@ Tailwind ships block-axis logical utilities.
 
 `string[]`, default `[]`.
 
-Regex patterns (compiled lazily, invalid ones silently skipped).
-Classes whose full string matches any pattern bypass the rewrite.
-Useful when a specific logical utility is intentional even in an
+Regex patterns (compiled lazily, invalid ones silently skipped). Classes whose full string matches
+any pattern bypass the rewrite. Useful when a specific logical utility is intentional even in an
 otherwise-LTR codebase (e.g. one component that has to support RTL).
 
 ```jsonc
@@ -78,19 +74,14 @@ otherwise-LTR codebase (e.g. one component that has to support RTL).
 
 ## Interactions with other rules
 
-- **`enforce-logical`**: the inverse. Pick **one**. Running both
-  simultaneously rewrites in a loop.
-- **`enforce-canonical`**: orthogonal. Canonical normalizes utility
-  shape; this rule swaps logical for physical along one axis.
-- **`enforce-shorthand`**: runs on direction-neutral `m-*` / `p-*`
-  shorthands, so no overlap.
+- **`enforce-logical`**: the inverse. Pick **one**. Running both simultaneously rewrites in a loop.
+- **`enforce-canonical`**: orthogonal. Canonical normalizes utility shape; this rule swaps logical
+  for physical along one axis.
+- **`enforce-shorthand`**: runs on direction-neutral `m-*` / `p-*` shorthands, so no overlap.
 
 ## When to disable it
 
-- **The app supports RTL** (Arabic, Hebrew, Farsi, …): use
-  `enforce-logical` instead, otherwise the rule's autofix breaks
-  RTL layouts.
-- **You don't have a strong preference**: leaving both disabled is
-  fine. The two rules exist to express team conventions, not to
-  enforce correctness.
-
+- **The app supports RTL** (Arabic, Hebrew, Farsi, …): use `enforce-logical` instead, otherwise the
+  rule's autofix breaks RTL layouts.
+- **You don't have a strong preference**: leaving both disabled is fine. The two rules exist to
+  express team conventions, not to enforce correctness.

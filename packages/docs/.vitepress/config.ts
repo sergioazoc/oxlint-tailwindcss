@@ -31,7 +31,10 @@ export default defineConfig({
           {
             text: 'v1.0.0',
             items: [
-              { text: 'Changelog', link: 'https://github.com/sergioazoc/oxlint-tailwindcss/blob/main/packages/oxlint-tailwindcss/CHANGELOG.md' },
+              {
+                text: 'Changelog',
+                link: 'https://github.com/sergioazoc/oxlint-tailwindcss/blob/main/packages/oxlint-tailwindcss/CHANGELOG.md',
+              },
               { text: 'npm', link: 'https://www.npmjs.com/package/oxlint-tailwindcss' },
             ],
           },
@@ -116,8 +119,7 @@ export default defineConfig({
     ],
     search: { provider: 'local' },
     editLink: {
-      pattern:
-        'https://github.com/sergioazoc/oxlint-tailwindcss/edit/main/packages/docs/:path',
+      pattern: 'https://github.com/sergioazoc/oxlint-tailwindcss/edit/main/packages/docs/:path',
     },
     footer: {
       message: 'Released under the MIT License.',

@@ -1,8 +1,8 @@
 # Setup
 
-Todo lo necesario para tener `oxlint-tailwindcss` corriendo en un
-proyecto, en una sola página. Elige la sección que coincida con la
-forma de tu repo — proyecto simple o monorepo — y copia el snippet.
+Todo lo necesario para tener `oxlint-tailwindcss` corriendo en un proyecto, en una sola página.
+Elige la sección que coincida con la forma de tu repo — proyecto simple o monorepo — y copia el
+snippet.
 
 ## 1. Instalación
 
@@ -13,9 +13,8 @@ pnpm add -D oxlint oxlint-tailwindcss
 Requisitos:
 
 - **oxlint 1.43.0** o posterior.
-- **Tailwind CSS v4**. El plugin carga tu design system vía
-  `@tailwindcss/node` y solo entiende sintaxis v4 (`@import
-  "tailwindcss";`, `@theme { ... }`).
+- **Tailwind CSS v4**. El plugin carga tu design system vía `@tailwindcss/node` y solo entiende
+  sintaxis v4 (`@import "tailwindcss";`, `@theme { ... }`).
 - **Node.js 22** o posterior para el proceso del linter.
 
 ## 2. Configuración mínima
@@ -41,20 +40,16 @@ Crea o extiende tu `.oxlintrc.json` en la raíz del proyecto:
 }
 ```
 
-`settings.tailwindcss.entryPoint` es **obligatorio** en v1.0.0 y debe
-apuntar al archivo CSS donde haces `@import "tailwindcss";` y
-(opcionalmente) declaras tus tokens `@theme { ... }`. El plugin lee
-ese archivo para construir el design system que todas las reglas
-consultan.
+`settings.tailwindcss.entryPoint` es **obligatorio** en v1.0.0 y debe apuntar al archivo CSS donde
+haces `@import "tailwindcss";` y (opcionalmente) declaras tus tokens `@theme { ... }`. El plugin lee
+ese archivo para construir el design system que todas las reglas consultan.
 
-Eso es todo. Ejecuta `oxlint` y el plugin va a lintear cada archivo
-JS / TS / JSX / TSX / Vue / Svelte del proyecto contra el design
-system cargado desde `src/styles.css`.
+Eso es todo. Ejecuta `oxlint` y el plugin va a lintear cada archivo JS / TS / JSX / TSX / Vue /
+Svelte del proyecto contra el design system cargado desde `src/styles.css`.
 
 ## 3. Conjunto de reglas recomendado
 
-Si quieres un set "bendecido" que detecte problemas reales sin ser
-ruidoso, activa estas:
+Si quieres un set "bendecido" que detecte problemas reales sin ser ruidoso, activa estas:
 
 ```jsonc
 {
@@ -87,16 +82,13 @@ ruidoso, activa estas:
 
 Agrega reglas extra a medida que las necesites:
 
-- `enforce-logical` / `enforce-physical` si tienes una preferencia de
-  dirección.
-- `no-arbitrary-value`, `no-hardcoded-colors`, `no-restricted-classes`
-  si quieres enforcement de design-system.
-- `prefer-theme-tokens` para preferir utilidades nombradas sobre
-  referencias `var()`.
+- `enforce-logical` / `enforce-physical` si tienes una preferencia de dirección.
+- `no-arbitrary-value`, `no-hardcoded-colors`, `no-restricted-classes` si quieres enforcement de
+  design-system.
+- `prefer-theme-tokens` para preferir utilidades nombradas sobre referencias `var()`.
 
-El catálogo completo está en [Reglas](/es/rules/). Cada página
-documenta el comportamiento exacto, las opciones disponibles, y
-ejemplos ✓ / ✗.
+El catálogo completo está en [Reglas](/es/rules/). Cada página documenta el comportamiento exacto,
+las opciones disponibles, y ejemplos ✓ / ✗.
 
 ## 4. Verifica el setup
 
@@ -106,20 +98,18 @@ La prueba más rápida es escribir mal una clase a propósito:
 <div className="flx items-cetner" />
 ```
 
-oxlint debería marcar ambas clases con `no-unknown-classes`, y las
-sugerencias `flex` / `items-center` aparecer en tu editor.
+oxlint debería marcar ambas clases con `no-unknown-classes`, y las sugerencias `flex` /
+`items-center` aparecer en tu editor.
 
-Si en cambio ves un diagnóstico `designSystemUnavailable`, significa
-que `entryPoint` no está configurado o apunta a un archivo que el
-plugin no puede leer. El mensaje del diagnóstico te dice exactamente
-qué ruta intentó — copia esa en tu setting `entryPoint` (relativa al
-directorio donde corres `oxlint`).
+Si en cambio ves un diagnóstico `designSystemUnavailable`, significa que `entryPoint` no está
+configurado o apunta a un archivo que el plugin no puede leer. El mensaje del diagnóstico te dice
+exactamente qué ruta intentó — copia esa en tu setting `entryPoint` (relativa al directorio donde
+corres `oxlint`).
 
 ## 5. Setups de monorepo
 
-Si tienes un solo `.oxlintrc.json` en la raíz y varios archivos CSS de
-Tailwind entre los packages, usa la forma de mapping — gana el primer
-glob que coincide:
+Si tienes un solo `.oxlintrc.json` en la raíz y varios archivos CSS de Tailwind entre los packages,
+usa la forma de mapping — gana el primer glob que coincide:
 
 ```jsonc
 {
@@ -136,21 +126,19 @@ glob que coincide:
 }
 ```
 
-Agrega un fallback `"**"` al final para que cualquier archivo fuera de
-los globs explícitos resuelva a uno por defecto.
+Agrega un fallback `"**"` al final para que cualquier archivo fuera de los globs explícitos resuelva
+a uno por defecto.
 
-Si en cambio cada package tiene su propio `.oxlintrc.json` extendiendo
-una base compartida, simplemente pon `entryPoint: "./src/styles.css"`
-(string) en los settings de cada package. Mira la [guía de
-monorepo](/es/monorepo) para ambos patrones lado a lado.
+Si en cambio cada package tiene su propio `.oxlintrc.json` extendiendo una base compartida,
+simplemente pon `entryPoint: "./src/styles.css"` (string) en los settings de cada package. Mira la
+[guía de monorepo](/es/monorepo) para ambos patrones lado a lado.
 
 ## 6. Coexistencia con oxfmt o prettier-plugin-tailwindcss
 
-`enforce-sort-order` coincide byte por byte con oxfmt y
-prettier-plugin-tailwindcss **si las tres herramientas leen el mismo
-CSS**. Por defecto, oxfmt y el plugin de prettier usan el
-`tailwindcss/theme.css` bundled — que no conoce tus tokens `@theme`
-personalizados. Apúntalos a tu CSS:
+`enforce-sort-order` coincide byte por byte con oxfmt y prettier-plugin-tailwindcss **si las tres
+herramientas leen el mismo CSS**. Por defecto, oxfmt y el plugin de prettier usan el
+`tailwindcss/theme.css` bundled — que no conoce tus tokens `@theme` personalizados. Apúntalos a tu
+CSS:
 
 ```jsonc
 // .oxfmtrc.json
@@ -163,24 +151,18 @@ personalizados. Apúntalos a tu CSS:
 }
 ```
 
-Lee la [guía completa de interop](/es/interop) para el porqué y los
-edge cases con tagged templates y plugins como
-`@tailwindcss/typography`.
+Lee la [guía completa de interop](/es/interop) para el porqué y los edge cases con tagged templates
+y plugins como `@tailwindcss/typography`.
 
 ## 7. Yendo más allá
 
-- **Ajustar extractors**: por defecto el plugin escanea `className` /
-  `class`, ~14 callees (`cn`, `clsx`, `cva`, `twMerge`, …), templates
-  con `tw`, y variables que matchean `/^(class|classes|style)s?$/`.
-  Agrega `attributes`, `callees`, `tags`, `variablePatterns`, o quita
-  defaults vía `exclude`. Mira la [referencia de
-  settings](/es/settings).
-- **Ajustar timeouts**: `settings.tailwindcss.timeout` (ms, default
-  60000) limita cuánto espera el plugin al child process que precomputa
-  el design system. CI lento puede necesitar subirlo.
-- **Logging de debug**: `settings.tailwindcss.debug: true` (o
-  `DEBUG=oxlint-tailwindcss`) loguea qué CSS entry point resolvió por
-  cada archivo lintado.
-- **¿Vienes de v0.x?** Lee la [guía de
-  migración](/es/migration/v0-to-v1) — `entryPoint` ahora es
+- **Ajustar extractors**: por defecto el plugin escanea `className` / `class`, ~14 callees (`cn`,
+  `clsx`, `cva`, `twMerge`, …), templates con `tw`, y variables que matchean
+  `/^(class|classes|style)s?$/`. Agrega `attributes`, `callees`, `tags`, `variablePatterns`, o quita
+  defaults vía `exclude`. Mira la [referencia de settings](/es/settings).
+- **Ajustar timeouts**: `settings.tailwindcss.timeout` (ms, default 60000) limita cuánto espera el
+  plugin al child process que precomputa el design system. CI lento puede necesitar subirlo.
+- **Logging de debug**: `settings.tailwindcss.debug: true` (o `DEBUG=oxlint-tailwindcss`) loguea qué
+  CSS entry point resolvió por cada archivo lintado.
+- **¿Vienes de v0.x?** Lee la [guía de migración](/es/migration/v0-to-v1) — `entryPoint` ahora es
   obligatorio y la forma legacy `string[]` fue removida.

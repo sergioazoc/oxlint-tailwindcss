@@ -1,20 +1,16 @@
 ## Qué hace esta regla
 
-El espejo de `enforce-logical`. Reescribe utilities lógicas
-conscientes del writing direction (`ms-4`, `pe-2`, `start-0`,
-`rounded-ss-md`, …) a sus equivalentes físicas (`ml-4`, `pr-2`,
-`left-0`, `rounded-tl-md`, …). Úsala en codebases LTR-only donde las
-utilities lógicas agregan carga cognitiva sin payoff — `ml-4` es más
-directo que `ms-4` cuando no hay historia de RTL. Autofix sobre el
-primer ofensor por location, sugerencia de editor sobre los
-siguientes.
+El espejo de `enforce-logical`. Reescribe utilities lógicas conscientes del writing direction
+(`ms-4`, `pe-2`, `start-0`, `rounded-ss-md`, …) a sus equivalentes físicas (`ml-4`, `pr-2`,
+`left-0`, `rounded-tl-md`, …). Úsala en codebases LTR-only donde las utilities lógicas agregan carga
+cognitiva sin payoff — `ml-4` es más directo que `ms-4` cuando no hay historia de RTL. Autofix sobre
+el primer ofensor por location, sugerencia de editor sobre los siguientes.
 
-DS-independiente — funciona sin `settings.tailwindcss.entryPoint`.
-Comparte la tabla estática de mapeo con `enforce-logical` y la
-invierte.
+DS-independiente — funciona sin `settings.tailwindcss.entryPoint`. Comparte la tabla estática de
+mapeo con `enforce-logical` y la invierte.
 
-`enforce-physical` y `enforce-logical` son reglas hermanas. Activa
-**solo una a la vez** — correr las dos produce un loop de autofix.
+`enforce-physical` y `enforce-logical` son reglas hermanas. Activa **solo una a la vez** — correr
+las dos produce un loop de autofix.
 
 ## Opciones
 
@@ -22,9 +18,8 @@ invierte.
 
 `'inline' | 'block' | 'both'`, default `'both'`.
 
-Restringe la conversión a un eje. Hoy todos los mapeos son del eje
-inline, así que `'block'` desactiva la regla efectivamente.
-Future-proofing para cuando Tailwind incluya utilities lógicas del
+Restringe la conversión a un eje. Hoy todos los mapeos son del eje inline, así que `'block'`
+desactiva la regla efectivamente. Future-proofing para cuando Tailwind incluya utilities lógicas del
 eje block.
 
 ```jsonc
@@ -35,11 +30,10 @@ eje block.
 
 `string[]`, default `[]`.
 
-Patrones regex (compilados lazy, los inválidos se saltean en
-silencio). Las clases cuyo string completo matchee algún patrón
-bypassean el rewrite. Útil cuando una utility lógica específica es
-intencional incluso en un codebase mayormente-LTR (e.g. un
-componente que sí tiene que soportar RTL).
+Patrones regex (compilados lazy, los inválidos se saltean en silencio). Las clases cuyo string
+completo matchee algún patrón bypassean el rewrite. Útil cuando una utility lógica específica es
+intencional incluso en un codebase mayormente-LTR (e.g. un componente que sí tiene que soportar
+RTL).
 
 ```jsonc
 { "tailwindcss/enforce-physical": ["error", { "allowlist": ["^ms-", "^pe-"] }] }
@@ -77,18 +71,16 @@ componente que sí tiene que soportar RTL).
 
 ## Interacciones con otras reglas
 
-- **`enforce-logical`**: la inversa. Elige **una**. Correr las dos
-  simultáneamente reescribe en loop.
-- **`enforce-canonical`**: ortogonal. Canonical normaliza la forma de
-  la utility; esta regla swappea lógico por físico en un eje.
-- **`enforce-shorthand`**: corre sobre shorthands `m-*` / `p-*`
-  direction-neutral, así que no se solapan.
+- **`enforce-logical`**: la inversa. Elige **una**. Correr las dos simultáneamente reescribe en
+  loop.
+- **`enforce-canonical`**: ortogonal. Canonical normaliza la forma de la utility; esta regla swappea
+  lógico por físico en un eje.
+- **`enforce-shorthand`**: corre sobre shorthands `m-*` / `p-*` direction-neutral, así que no se
+  solapan.
 
 ## Cuándo desactivarla
 
-- **La app soporta RTL** (árabe, hebreo, farsi, …): usa
-  `enforce-logical` en su lugar, si no el autofix de la regla rompe
-  los layouts en RTL.
-- **No tienes preferencia fuerte**: dejar las dos desactivadas está
-  bien. Las dos reglas existen para expresar convenciones de team,
-  no para enforzar correctness.
+- **La app soporta RTL** (árabe, hebreo, farsi, …): usa `enforce-logical` en su lugar, si no el
+  autofix de la regla rompe los layouts en RTL.
+- **No tienes preferencia fuerte**: dejar las dos desactivadas está bien. Las dos reglas existen
+  para expresar convenciones de team, no para enforzar correctness.

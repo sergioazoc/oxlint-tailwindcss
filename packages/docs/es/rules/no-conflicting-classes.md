@@ -4,44 +4,35 @@
 
 ## Qué hace esta regla
 
-Detecta pares de clases de Tailwind en el mismo elemento que escriben
-sobre las mismas propiedades CSS bajo la misma variante — la clase
-de conflicto donde la segunda clase gana en silencio y la primera
-queda como peso muerto. El chequeo es a nivel de propiedad CSS (no
-por patrón textual): la regla le pregunta al design system qué
-produce cada clase y compara los sets de propiedades.
+Detecta pares de clases de Tailwind en el mismo elemento que escriben sobre las mismas propiedades
+CSS bajo la misma variante — la clase de conflicto donde la segunda clase gana en silencio y la
+primera queda como peso muerto. El chequeo es a nivel de propiedad CSS (no por patrón textual): la
+regla le pregunta al design system qué produce cada clase y compara los sets de propiedades.
 
-Para evitar falsos positivos en utilities que comparten propiedades
-a propósito, la regla tiene dos escape hatches:
+Para evitar falsos positivos en utilities que comparten propiedades a propósito, la regla tiene dos
+escape hatches:
 
-- **`COMPLEMENTARY_GROUPS`** — familias por regex cuyos miembros
-  están diseñados para componerse, e.g. stops de gradiente
-  (`from-*` / `via-*` / `to-*` comparten `--tw-gradient-stops`),
-  piezas de transition, ejes de transform, gradientes de máscara,
-  modificadores de tamaño de `prose`.
-- **`COMPOSITION_PAIRS`** — pares explícitos que componen a pesar
-  de superponerse en una propiedad (e.g. `text-*` y `leading-*`,
-  ancho `border-*` y estilo `border-{solid,dashed,…}`, `divide-*`
-  estilando hijos mientras `border-*` estila el elemento,
-  `animate-in` inicializando las vars `--tw-enter-*` que sus
-  modificadores sobrescriben).
+- **`COMPLEMENTARY_GROUPS`** — familias por regex cuyos miembros están diseñados para componerse,
+  e.g. stops de gradiente (`from-*` / `via-*` / `to-*` comparten `--tw-gradient-stops`), piezas de
+  transition, ejes de transform, gradientes de máscara, modificadores de tamaño de `prose`.
+- **`COMPOSITION_PAIRS`** — pares explícitos que componen a pesar de superponerse en una propiedad
+  (e.g. `text-*` y `leading-*`, ancho `border-*` y estilo `border-{solid,dashed,…}`, `divide-*`
+  estilando hijos mientras `border-*` estila el elemento, `animate-in` inicializando las vars
+  `--tw-enter-*` que sus modificadores sobrescriben).
 
-También reconoce dos patrones estructurales automáticamente:
-composición vía custom properties CSS disjuntas (por eso `shadow-*` y
-`ring-*` conviven en el mismo `box-shadow` sin chocar) y narrowing
-overrides, donde el set de propiedades de la clase posterior es
-subconjunto estricto del de la anterior (`size-4 h-6`,
-`rounded-t-lg rounded-tl-sm`, `truncate text-clip`).
+También reconoce dos patrones estructurales automáticamente: composición vía custom properties CSS
+disjuntas (por eso `shadow-*` y `ring-*` conviven en el mismo `box-shadow` sin chocar) y narrowing
+overrides, donde el set de propiedades de la clase posterior es subconjunto estricto del de la
+anterior (`size-4 h-6`, `rounded-t-lg rounded-tl-sm`, `truncate text-clip`).
 
-DS-dependiente — requiere `settings.tailwindcss.entryPoint`. Cuando
-el design system no puede cargar, la regla emite un único
-diagnóstico fatal `designSystemUnavailable` por archivo en vez de
+DS-dependiente — requiere `settings.tailwindcss.entryPoint`. Cuando el design system no puede
+cargar, la regla emite un único diagnóstico fatal `designSystemUnavailable` por archivo en vez de
 pasar en silencio.
 
 ## Opciones
 
-(no tiene opciones más allá de `entryPoint`, que también puedes setear
-globalmente vía `settings.tailwindcss.entryPoint`.)
+(no tiene opciones más allá de `entryPoint`, que también puedes setear globalmente vía
+`settings.tailwindcss.entryPoint`.)
 
 ## Ejemplos
 
@@ -85,29 +76,23 @@ globalmente vía `settings.tailwindcss.entryPoint`.)
 
 ## Interacciones con otras reglas
 
-- **`no-duplicate-classes`**: complementaria. Los duplicados son la
-  misma clase repetida; los conflictos son clases distintas que
-  pegan en la misma propiedad. Mantén ambas activas.
-- **`enforce-sort-order`**: el orden define quién gana, pero no hace
-  desaparecer los conflictos. Ejecuta esta regla primero así el
-  diagnóstico apunta al solapamiento real y no a la que quedó última.
-- **`no-deprecated-classes`**: un alias deprecado y su equivalente
-  moderno (`flex-grow` + `grow`) van a chocar a nivel de propiedad.
-  Arreglar la deprecación suele resolver el conflicto.
-- **`enforce-canonical`**: reescribir a la forma canónica colapsa
-  pares trivialmente aliasados antes de que lleguen acá.
+- **`no-duplicate-classes`**: complementaria. Los duplicados son la misma clase repetida; los
+  conflictos son clases distintas que pegan en la misma propiedad. Mantén ambas activas.
+- **`enforce-sort-order`**: el orden define quién gana, pero no hace desaparecer los conflictos.
+  Ejecuta esta regla primero así el diagnóstico apunta al solapamiento real y no a la que quedó
+  última.
+- **`no-deprecated-classes`**: un alias deprecado y su equivalente moderno (`flex-grow` + `grow`)
+  van a chocar a nivel de propiedad. Arreglar la deprecación suele resolver el conflicto.
+- **`enforce-canonical`**: reescribir a la forma canónica colapsa pares trivialmente aliasados antes
+  de que lleguen acá.
 
 ## Cuándo desactivarla
 
-- **Listas de clases generadas** donde el orden importa a propósito
-  y dependes de la semántica de "gana la última" (e.g. patrón base +
-  override en un primitive del design system). Prefiere extraer el
-  override a un `cn()`/`twMerge()` para que el conflicto sea
-  explícito.
-- **Codebases donde la mayoría de los falsos positivos vienen de
-  entradas faltantes en `COMPLEMENTARY_GROUPS` / `COMPOSITION_PAIRS`**:
-  abrí un issue antes que desactivar — esas tablas son el punto de
-  extensión soportado.
-- **Tests / fixtures** que arman strings de clases en conflicto a
-  propósito para ejercitar otro tooling.
-
+- **Listas de clases generadas** donde el orden importa a propósito y dependes de la semántica de
+  "gana la última" (e.g. patrón base + override en un primitive del design system). Prefiere extraer
+  el override a un `cn()`/`twMerge()` para que el conflicto sea explícito.
+- **Codebases donde la mayoría de los falsos positivos vienen de entradas faltantes en
+  `COMPLEMENTARY_GROUPS` / `COMPOSITION_PAIRS`**: abrí un issue antes que desactivar — esas tablas
+  son el punto de extensión soportado.
+- **Tests / fixtures** que arman strings de clases en conflicto a propósito para ejercitar otro
+  tooling.

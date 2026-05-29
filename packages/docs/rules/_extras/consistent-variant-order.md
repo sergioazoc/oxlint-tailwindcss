@@ -1,25 +1,20 @@
 ## What this rule does
 
-Reorders the variant prefixes inside a single class so that the chain
-is always written the same way. `hover:dark:bg-red` and
-`dark:hover:bg-red` produce the same CSS in Tailwind v4, but
-inconsistent variant order makes grep, code review, and diffs noisy.
-This rule picks one canonical order and rewrites everything to match,
-with autofix on the first offender and editor suggestions on the
-rest.
+Reorders the variant prefixes inside a single class so that the chain is always written the same
+way. `hover:dark:bg-red` and `dark:hover:bg-red` produce the same CSS in Tailwind v4, but
+inconsistent variant order makes grep, code review, and diffs noisy. This rule picks one canonical
+order and rewrites everything to match, with autofix on the first offender and editor suggestions on
+the rest.
 
-Pseudo-elements (`before`, `after`, `file`, `placeholder`,
-`selection`, `marker`, `backdrop`, `first-line`, `first-letter`,
-`details-content`) are always pinned innermost — closest to the
-utility — because in Tailwind v4 a pseudo-element placed before an
-element-selecting variant produces broken CSS like
-`&::before { &>svg { … } }`.
+Pseudo-elements (`before`, `after`, `file`, `placeholder`, `selection`, `marker`, `backdrop`,
+`first-line`, `first-letter`, `details-content`) are always pinned innermost — closest to the
+utility — because in Tailwind v4 a pseudo-element placed before an element-selecting variant
+produces broken CSS like `&::before { &>svg { … } }`.
 
-DS-optional — when `settings.tailwindcss.entryPoint` is configured,
-the rule uses the design system's variant priority table. When it
-isn't, the rule falls back to a built-in static order. Both fallbacks
-are deterministic; this is the only DS-dependent rule that tolerates
-a missing entry point silently.
+DS-optional — when `settings.tailwindcss.entryPoint` is configured, the rule uses the design
+system's variant priority table. When it isn't, the rule falls back to a built-in static order. Both
+fallbacks are deterministic; this is the only DS-dependent rule that tolerates a missing entry point
+silently.
 
 ## Options
 
@@ -27,11 +22,10 @@ a missing entry point silently.
 
 `string[]`, optional.
 
-Custom priority list. Variants appear in the order you list them;
-anything not listed sorts after, in its original position. Use this
-when your team has a house style that differs from Tailwind's default
-(e.g. you prefer `dark:` outermost in every chain). The pseudo-element
-pin still applies regardless of where they appear in your list.
+Custom priority list. Variants appear in the order you list them; anything not listed sorts after,
+in its original position. Use this when your team has a house style that differs from Tailwind's
+default (e.g. you prefer `dark:` outermost in every chain). The pseudo-element pin still applies
+regardless of where they appear in your list.
 
 ```jsonc
 {
@@ -46,8 +40,8 @@ pin still applies regardless of where they appear in your list.
 
 `string`, optional.
 
-Per-rule override of `settings.tailwindcss.entryPoint`. Same semantics
-as the project-level setting; almost never needed.
+Per-rule override of `settings.tailwindcss.entryPoint`. Same semantics as the project-level setting;
+almost never needed.
 
 ## Examples
 
@@ -83,21 +77,17 @@ as the project-level setting; almost never needed.
 
 ## Interactions with other rules
 
-- **`enforce-sort-order`**: complementary. `enforce-sort-order` sorts
-  whole classes against each other; `consistent-variant-order` sorts
-  the prefixes inside one class. Run both.
-- **`enforce-canonical`**: orthogonal. Canonical normalizes the
-  utility shape (`m-0`, `bg-red-500/50`), not the variant chain.
-- **`no-unknown-classes`**: when a variant is reordered the resulting
-  class is still semantically equivalent, so unknown-class detection
-  doesn't see a difference.
+- **`enforce-sort-order`**: complementary. `enforce-sort-order` sorts whole classes against each
+  other; `consistent-variant-order` sorts the prefixes inside one class. Run both.
+- **`enforce-canonical`**: orthogonal. Canonical normalizes the utility shape (`m-0`,
+  `bg-red-500/50`), not the variant chain.
+- **`no-unknown-classes`**: when a variant is reordered the resulting class is still semantically
+  equivalent, so unknown-class detection doesn't see a difference.
 
 ## When to disable it
 
-- **You rely on `prettier-plugin-tailwindcss` for variant ordering
-  too**: the formatter handles it, the rule is redundant. Leaving
-  both on is safe but extra work.
-- **Custom variant order that's hard to express as a flat list**
-  (e.g. order depends on the utility): disable and rely on review.
-- **Generated code** where variant order encodes meaning you don't
-  want rewritten.
+- **You rely on `prettier-plugin-tailwindcss` for variant ordering too**: the formatter handles it,
+  the rule is redundant. Leaving both on is safe but extra work.
+- **Custom variant order that's hard to express as a flat list** (e.g. order depends on the
+  utility): disable and rely on review.
+- **Generated code** where variant order encodes meaning you don't want rewritten.

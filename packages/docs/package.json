@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm -C ../oxlint-tailwindcss build && node --experimental-strip-types scripts/generate-rules.ts && vitepress dev .",
-    "build": "pnpm -C ../oxlint-tailwindcss build && node --experimental-strip-types scripts/generate-rules.ts && vitepress build .",
+    "dev": "pnpm -C ../oxlint-tailwindcss build && pnpm generate && vitepress dev .",
+    "build": "pnpm -C ../oxlint-tailwindcss build && pnpm generate && vitepress build .",
     "preview": "vitepress preview .",
-    "generate": "node --experimental-strip-types scripts/generate-rules.ts"
+    "generate": "node --experimental-strip-types scripts/generate-rules.ts && oxfmt --write rules es/rules"
   },
   "devDependencies": {
     "oxlint-tailwindcss": "workspace:*",

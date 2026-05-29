@@ -4,9 +4,8 @@ Cada setting vive bajo `settings.tailwindcss` en tu `.oxlintrc.json`.
 
 ## `entryPoint` (obligatorio)
 
-Ruta al archivo CSS que tiene `@import "tailwindcss";` y
-(opcionalmente) tus customizaciones de `@theme { ... }`. El plugin
-lee este archivo para construir el design system que cada regla
+Ruta al archivo CSS que tiene `@import "tailwindcss";` y (opcionalmente) tus customizaciones de
+`@theme { ... }`. El plugin lee este archivo para construir el design system que cada regla
 consulta.
 
 Acepta dos formas:
@@ -29,37 +28,32 @@ Acepta dos formas:
 }
 ```
 
-Los globs se evalúan contra el path del archivo lintado relativo al
-directorio donde corre oxlint. Sintaxis soportada: `*` (cualquier
-caracter excepto `/`), `**` (cualquier profundidad), segmentos
-literales. El orden importa — el primer entry que matchea gana. Se
-recomienda agregar un fallback `"**"` para archivos fuera de los
-globs explícitos.
+Los globs se evalúan contra el path del archivo lintado relativo al directorio donde corre oxlint.
+Sintaxis soportada: `*` (cualquier caracter excepto `/`), `**` (cualquier profundidad), segmentos
+literales. El orden importa — el primer entry que matchea gana. Se recomienda agregar un fallback
+`"**"` para archivos fuera de los globs explícitos.
 
-**v0.x → v1.0.0**: la forma legacy `string[]` se removió. Pasarla en
-v1 lanza `DeprecatedEntryPointShapeError` con el snippet de migración
-incluido en el mensaje. Ver la [guía de migración](/es/migration/v0-to-v1).
+**v0.x → v1.0.0**: la forma legacy `string[]` se removió. Pasarla en v1 lanza
+`DeprecatedEntryPointShapeError` con el snippet de migración incluido en el mensaje. Ver la
+[guía de migración](/es/migration/v0-to-v1).
 
 ## `rootFontSize`
 
 `number`, default `16`.
 
-Tamaño de fuente en píxeles que `enforce-canonical` usa para convertir
-entre px y rem. Cambiá esto solo si tu proyecto define un root size
-distinto de 16 en `<html>`.
+Tamaño de fuente en píxeles que `enforce-canonical` usa para convertir entre px y rem. Cambiá esto
+solo si tu proyecto define un root size distinto de 16 en `<html>`.
 
 ## `timeout`
 
 `number` en milisegundos, default `60000`.
 
-Cuánto espera el plugin al proceso hijo que precalcula el design
-system. CI lentos pueden necesitar subirlo; no deberías necesitar
-bajarlo.
+Cuánto espera el plugin al proceso hijo que precalcula el design system. CI lentos pueden necesitar
+subirlo; no deberías necesitar bajarlo.
 
 ## `debug`
 
-`boolean`, default `false`. También se activa con la variable de
-entorno `DEBUG=oxlint-tailwindcss`.
+`boolean`, default `false`. También se activa con la variable de entorno `DEBUG=oxlint-tailwindcss`.
 
 Cuando está activo, el plugin loguea a stderr:
 
@@ -72,12 +66,12 @@ Cuando está activo, el plugin loguea a stderr:
 
 El plugin escanea estas ubicaciones por defecto:
 
-| Tipo | Defaults |
-|---|---|
-| Atributos | `className`, `class` (JSX) |
-| Callees | `cn`, `clsx`, `cva`, `twMerge`, `tv`, `cx`, `classnames`, `ctl`, `twJoin`, `cc`, `clb`, `cnb`, `objstr`, `classed` |
-| Tags | `` tw`...` `` (tagged template literals) |
-| Patrones de variable | `/^classNames?$/`, `/^classes$/`, `/^styles?$/` |
+| Tipo                 | Defaults                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Atributos            | `className`, `class` (JSX)                                                                                         |
+| Callees              | `cn`, `clsx`, `cva`, `twMerge`, `tv`, `cx`, `classnames`, `ctl`, `twJoin`, `cc`, `clb`, `cnb`, `objstr`, `classed` |
+| Tags                 | `` tw`...` `` (tagged template literals)                                                                           |
+| Patrones de variable | `/^classNames?$/`, `/^classes$/`, `/^styles?$/`                                                                    |
 
 Agrega más sin perder los defaults:
 
@@ -109,8 +103,7 @@ O quitá de los defaults:
 }
 ```
 
-Las exclusiones de `variablePatterns` matchean contra `RegExp.source`
-literal.
+Las exclusiones de `variablePatterns` matchean contra `RegExp.source` literal.
 
 ## Cheat sheet
 

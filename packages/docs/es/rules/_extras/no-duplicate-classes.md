@@ -1,33 +1,25 @@
 ## Qué hace esta regla
 
-Reporta la misma clase apareciendo más de una vez en la misma lista
-de clases, y autofixea quitando la segunda ocurrencia (y las que
-sigan). `flex flex` es siempre peso muerto — no hay discusión sobre
-cuál gana, no hay sombreo, no hay override; la segunda es puramente
-un accidente de tipeo.
+Reporta la misma clase apareciendo más de una vez en la misma lista de clases, y autofixea quitando
+la segunda ocurrencia (y las que sigan). `flex flex` es siempre peso muerto — no hay discusión sobre
+cuál gana, no hay sombreo, no hay override; la segunda es puramente un accidente de tipeo.
 
-La comparación es por token exacto, así que `hover:flex hover:flex`
-es un duplicado pero `flex hover:flex` NO lo es — el último es una
-clase distinta aunque compartan la utility (y es territorio de
-`no-contradicting-variants`). El fix preserva el whitespace que
-introdujo `enforce-consistent-line-wrapping`, así que un string de
-clases multilínea conserva su indentación.
+La comparación es por token exacto, así que `hover:flex hover:flex` es un duplicado pero
+`flex hover:flex` NO lo es — el último es una clase distinta aunque compartan la utility (y es
+territorio de `no-contradicting-variants`). El fix preserva el whitespace que introdujo
+`enforce-consistent-line-wrapping`, así que un string de clases multilínea conserva su indentación.
 
-La regla recorre la misma superficie de extracción que cualquier
-otra: atributos `className` / `class`, los 14 callees por defecto
-(`cn`, `clsx`, `cva`, `twMerge`, `tv`, `cx`, `classnames`, `ctl`,
-`twJoin`, `cc`, `clb`, `cnb`, `objstr`, `classed`), tagged templates
-como `` tw`...` ``, valores objeto en JSX
-(`classNames={ { root: "..." } }`) y variables que matchean los
-patrones de nombre por defecto (`className`, `classNames`,
-`classes`, `style`, `styles`). La extracción profunda para
-`cva` / `tv` / `classed` cubre `base`, `slots`, `variants`,
-`compoundVariants` y `compoundSlots`.
+La regla recorre la misma superficie de extracción que cualquier otra: atributos `className` /
+`class`, los 14 callees por defecto (`cn`, `clsx`, `cva`, `twMerge`, `tv`, `cx`, `classnames`,
+`ctl`, `twJoin`, `cc`, `clb`, `cnb`, `objstr`, `classed`), tagged templates como `` tw`...` ``,
+valores objeto en JSX (`classNames={ { root: "..." } }`) y variables que matchean los patrones de
+nombre por defecto (`className`, `classNames`, `classes`, `style`, `styles`). La extracción profunda
+para `cva` / `tv` / `classed` cubre `base`, `slots`, `variants`, `compoundVariants` y
+`compoundSlots`.
 
 ## Opciones
 
-(sin opciones — la superficie de extractor viene de
-`settings.tailwindcss`)
+(sin opciones — la superficie de extractor viene de `settings.tailwindcss`)
 
 ## Ejemplos
 
@@ -68,29 +60,21 @@ tv({ slots: { header: "p-2", body: "p-4" } })
 
 ## Interacciones con otras reglas
 
-- **`no-contradicting-variants`**: `flex flex` es esta regla;
-  `flex hover:flex` es `no-contradicting-variants`. Mantén ambas
-  activas — cubren shapes disjuntos.
-- **`no-conflicting-classes`**: un duplicado es un conflicto
-  degenerado (la misma clase pega en la misma propiedad,
-  trivialmente). El camino de duplicado acá es más rápido y produce
-  un mensaje más claro, así que esta regla reporta primero;
-  `no-conflicting-classes` no aporta nada arriba.
-- **`enforce-sort-order`**: ordenar después de deduplicar es el
-  pipeline natural. Ambas autofixean, así que pueden correr en la
-  misma pasada de lint.
-- **`enforce-consistent-line-wrapping`**: el autofix preserva los
-  newlines + la indentación que introdujo la regla de wrapping, así
-  que las dos componen limpio en strings de clases multilínea.
+- **`no-contradicting-variants`**: `flex flex` es esta regla; `flex hover:flex` es
+  `no-contradicting-variants`. Mantén ambas activas — cubren shapes disjuntos.
+- **`no-conflicting-classes`**: un duplicado es un conflicto degenerado (la misma clase pega en la
+  misma propiedad, trivialmente). El camino de duplicado acá es más rápido y produce un mensaje más
+  claro, así que esta regla reporta primero; `no-conflicting-classes` no aporta nada arriba.
+- **`enforce-sort-order`**: ordenar después de deduplicar es el pipeline natural. Ambas autofixean,
+  así que pueden correr en la misma pasada de lint.
+- **`enforce-consistent-line-wrapping`**: el autofix preserva los newlines + la indentación que
+  introdujo la regla de wrapping, así que las dos componen limpio en strings de clases multilínea.
 
 ## Cuándo desactivarla
 
-- **Básicamente nunca.** Un duplicado literal siempre está mal y el
-  fix es mecánico. Si la regla está marcando algo que no es un
-  duplicado real, el bug está en la config del extractor — ajustá
-  `settings.tailwindcss` (e.g. `exclude.attributes`,
-  `exclude.callees`, `exclude.variablePatterns`) para que el string
-  parecido no se trate como lista de clases.
-- **Código generado** en tests o fixtures que arma un duplicado a
-  propósito para ejercitar tooling downstream — desactiva por
-  archivo.
+- **Básicamente nunca.** Un duplicado literal siempre está mal y el fix es mecánico. Si la regla
+  está marcando algo que no es un duplicado real, el bug está en la config del extractor — ajustá
+  `settings.tailwindcss` (e.g. `exclude.attributes`, `exclude.callees`, `exclude.variablePatterns`)
+  para que el string parecido no se trate como lista de clases.
+- **Código generado** en tests o fixtures que arma un duplicado a propósito para ejercitar tooling
+  downstream — desactiva por archivo.

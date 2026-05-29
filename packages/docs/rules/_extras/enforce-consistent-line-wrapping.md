@@ -1,21 +1,17 @@
 ## What this rule does
 
-Flags long class strings so they don't sprawl past a sensible line
-length and, optionally, splits them into multiple lines when they
-contain more classes than your team agrees a single line should
-carry. Two independent triggers: a character-based print width (warn
-only) and a class-count budget per line (autofix on template
-literals).
+Flags long class strings so they don't sprawl past a sensible line length and, optionally, splits
+them into multiple lines when they contain more classes than your team agrees a single line should
+carry. Two independent triggers: a character-based print width (warn only) and a class-count budget
+per line (autofix on template literals).
 
-DS-independent — works without `settings.tailwindcss.entryPoint`. The
-rule operates on the raw class string and doesn't care what the
-classes mean.
+DS-independent — works without `settings.tailwindcss.entryPoint`. The rule operates on the raw class
+string and doesn't care what the classes mean.
 
-The autofix path preserves the indentation of the host node — when
-splitting a template literal across lines, the rule inserts `\n` +
-the column offset of the opening backtick. Other rules
-(`no-unnecessary-whitespace`, `enforce-sort-order`, …) are aware of
-this multiline shape and won't collapse it back.
+The autofix path preserves the indentation of the host node — when splitting a template literal
+across lines, the rule inserts `\n` + the column offset of the opening backtick. Other rules
+(`no-unnecessary-whitespace`, `enforce-sort-order`, …) are aware of this multiline shape and won't
+collapse it back.
 
 ## Options
 
@@ -23,10 +19,9 @@ this multiline shape and won't collapse it back.
 
 `number`, default `80`.
 
-Maximum total length of the class string. When exceeded, the rule
-reports `tooLong` but does **not** autofix — splitting a long string
-into a multiline literal is a judgment call (extract a component vs.
-just wrap it), so the rule surfaces the warning and lets you decide.
+Maximum total length of the class string. When exceeded, the rule reports `tooLong` but does **not**
+autofix — splitting a long string into a multiline literal is a judgment call (extract a component
+vs. just wrap it), so the rule surfaces the warning and lets you decide.
 
 ```jsonc
 { "tailwindcss/enforce-consistent-line-wrapping": ["error", { "printWidth": 100 }] }
@@ -36,12 +31,10 @@ just wrap it), so the rule surfaces the warning and lets you decide.
 
 `number`, optional. No default.
 
-Maximum number of classes on a single line. When exceeded inside a
-template literal (`` `…` ``), the rule autofixes by splitting the
-classes into chunks of `classesPerLine` separated by `\n` + indent.
-Inside string literals (`"…"`) the rule reports `tooManyPerLine` but
-doesn't autofix — string literals can't safely span lines without
-manual intervention.
+Maximum number of classes on a single line. When exceeded inside a template literal (`` `…` ``), the
+rule autofixes by splitting the classes into chunks of `classesPerLine` separated by `\n` + indent.
+Inside string literals (`"…"`) the rule reports `tooManyPerLine` but doesn't autofix — string
+literals can't safely span lines without manual intervention.
 
 ```jsonc
 { "tailwindcss/enforce-consistent-line-wrapping": ["error", { "classesPerLine": 5 }] }
@@ -77,26 +70,21 @@ const className = `flex items-center p-4
 
 ## Interactions with other rules
 
-- **`no-unnecessary-whitespace`**: deliberately preserves the
-  `\n` + indent introduced by this rule. The two were designed to
-  coexist; without that preservation, fixers would oscillate (issue
-  #14).
-- **`enforce-sort-order`**: rebuilds class strings from a token list
-  via `rebuildClassString`, which keeps the multiline separators. The
-  sort fixer and the wrap fixer run on the same string without
+- **`no-unnecessary-whitespace`**: deliberately preserves the `\n` + indent introduced by this rule.
+  The two were designed to coexist; without that preservation, fixers would oscillate (issue #14).
+- **`enforce-sort-order`**: rebuilds class strings from a token list via `rebuildClassString`, which
+  keeps the multiline separators. The sort fixer and the wrap fixer run on the same string without
   fighting.
-- **All extractor-driven rules**: `splitClassesWithSeparators` is
-  multiline-aware, so every other rule (`enforce-canonical`,
-  `enforce-shorthand`, …) reports against multiline class strings the
+- **All extractor-driven rules**: `splitClassesWithSeparators` is multiline-aware, so every other
+  rule (`enforce-canonical`, `enforce-shorthand`, …) reports against multiline class strings the
   same way it does against single-line ones.
 
 ## When to disable it
 
-- **You let `prettier` handle JSX line wrapping**: prettier breaks at
-  the JSX-attribute level, not inside the string. The two are
-  complementary, but if you don't want any in-string wrapping at all,
+- **You let `prettier` handle JSX line wrapping**: prettier breaks at the JSX-attribute level, not
+  inside the string. The two are complementary, but if you don't want any in-string wrapping at all,
   disable.
-- **Working with code generators** that emit very long class strings
-  intentionally (e.g. CMS-driven content classes).
-- **You use a different convention** like "always one class per
-  line": this rule's chunk-based wrapping doesn't model that.
+- **Working with code generators** that emit very long class strings intentionally (e.g. CMS-driven
+  content classes).
+- **You use a different convention** like "always one class per line": this rule's chunk-based
+  wrapping doesn't model that.
