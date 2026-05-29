@@ -3,20 +3,20 @@
  *
  * Under pnpm strict hoisting, the consumer's project root has no direct
  * access to `@tailwindcss/node` (it lives under
- * node_modules/.pnpm/oxlint-tailwindcss@…/node_modules). The child process
- * spawned by sync-loader.ts runs with cwd set to the CSS file's directory,
- * and Node's bare-specifier resolution would walk up from there — never
- * finding the module.
+ * node_modules/.pnpm/oxlint-tailwindcss@…/node_modules). The precompute
+ * worker_thread spawned by sync-loader.ts inherits the host cwd, and Node's
+ * bare-specifier resolution would walk up from there — never finding the
+ * module.
  *
  * The fix passes the absolute path resolved from the plugin's own install
- * location through env (TAILWIND_NODE_PATH) and the script requires that
+ * location through workerData (`tailwindNodePath`) and the script requires that
  * path directly. This file locks the fix down with two guards:
  *
- *   1. Static — the precompute script uses `process.env.TAILWIND_NODE_PATH`
- *      and not a bare `require('@tailwindcss/node')`.
+ *   1. Static — the precompute script requires the workerData-passed
+ *      `tailwindNodePath` and not a bare `require('@tailwindcss/node')`.
  *   2. Functional — `node -e "require(absolutePath)"` works from a cwd that
  *      has no node_modules at all, proving the resolution technique is
- *      sound regardless of the child's working directory.
+ *      sound regardless of the worker's working directory.
  *
  * A full pnpm-workspace e2e test would require materializing a workspace
  * with `.pnpm/`-style nested deps; that's out of scope for this suite.
@@ -43,7 +43,7 @@ describe('pnpm strict workspace isolation', () => {
     }
   })
 
-  it('PRECOMPUTE_SCRIPT requires @tailwindcss/node via env-passed absolute path', () => {
+  it('PRECOMPUTE_SCRIPT requires @tailwindcss/node via workerData-passed absolute path', () => {
     // Catches accidental regressions where someone re-introduces the bare
     // specifier in the script.
     const source = readFileSync(
@@ -51,7 +51,8 @@ describe('pnpm strict workspace isolation', () => {
       'utf-8',
     )
     expect(source).not.toMatch(/require\(['"]@tailwindcss\/node['"]\)/)
-    expect(source).toMatch(/require\(process\.env\.TAILWIND_NODE_PATH\)/)
+    expect(source).toMatch(/require\(tailwindNodePath\)/)
+    expect(source).toMatch(/const \{ workerData \} = require\('worker_threads'\)/)
   })
 
   it('node -e can require @tailwindcss/node by absolute path from an isolated cwd', () => {

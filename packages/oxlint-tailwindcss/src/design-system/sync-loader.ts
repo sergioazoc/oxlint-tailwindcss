@@ -1,25 +1,26 @@
 /**
- * Synchronous design system loader using execFileSync.
+ * Synchronous design system loader using a worker_thread.
  *
  * The problem: __unstable__loadDesignSystem is async, but oxlint's createOnce is sync.
- * The solution: spawn a child process that loads the design system, pre-computes all
- * data we need, and returns it as JSON via stdout. This runs ONCE at plugin init time.
+ * The solution: run the design-system load + precompute in a worker_thread that writes
+ * the result JSON straight to the disk cache and signals completion over a
+ * SharedArrayBuffer, while the main thread blocks on `Atomics.wait`. This runs ONCE per
+ * unique CSS entry point at plugin init time.
+ *
+ * Why a worker_thread and not a forked child process (the pre-1.1 design): `execFileSync`
+ * does `fork()` of the oxlint host (Rust + embedded Node). Under Linux overcommit
+ * accounting on memory-constrained CI runners, forking a large-RSS process is rejected
+ * with `spawnSync … ENOMEM` even though the child immediately `exec`s (#24). A
+ * worker_thread creates a thread in-process — no address-space duplication — so it is
+ * immune. This mirrors what `sort-service.ts` / `canonicalize-service.ts` already do.
  *
  * For arbitrary values (bg-[#123]) that aren't in the class list, we use heuristics.
  */
 
-import { execFileSync } from 'node:child_process'
+import { Worker, threadId } from 'node:worker_threads'
 import { createHash } from 'node:crypto'
-import {
-  closeSync,
-  mkdirSync,
-  openSync,
-  readFileSync,
-  statSync,
-  unlinkSync,
-  writeFileSync,
-} from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { closeSync, mkdirSync, openSync, readFileSync, statSync, unlinkSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { DesignSystemLoadError } from '../utils/fatal'
 import { TAILWIND_NODE_PATH, TAILWIND_NODE_VERSION } from './tailwind-node'
@@ -42,12 +43,33 @@ export interface PrecomputedData {
 }
 
 const PRECOMPUTE_SCRIPT = `
-// Resolve @tailwindcss/node via an absolute path passed in by the parent
-// process — bare-specifier lookup from this child's cwd fails under pnpm
-// strict workspaces (the module lives under node_modules/.pnpm/... which
-// is not on the resolution path from the consumer's project root).
-const { __unstable__loadDesignSystem } = require(process.env.TAILWIND_NODE_PATH);
-const { readFileSync } = require('fs');
+// Runs as a worker_thread (NOT a forked child process). Inputs arrive via
+// workerData; the result is written straight to the disk cache and completion
+// is signaled over the SharedArrayBuffer's control[2] (0=loading, 1=done,
+// -1=error), mirroring sort-service.ts / canonicalize-service.ts.
+const { workerData } = require('worker_threads');
+const { tailwindNodePath, cssPath: WD_CSS_PATH, cachePath: WD_CACHE_PATH, tmpPath: WD_TMP_PATH, sharedBuffer } = workerData;
+const control = new Int32Array(sharedBuffer, 0, 4);
+// On failure, write the error message into the data region so the main thread
+// can surface the real cause instead of a bare "undefined".
+const errLengthView = new DataView(sharedBuffer, 16, 4);
+const errDataArea = new Uint8Array(sharedBuffer, 20);
+function signalError(e) {
+  try {
+    const msg = Buffer.from(String((e && e.message) || e || 'unknown precompute error'), 'utf-8');
+    const n = Math.min(msg.length, errDataArea.length);
+    errDataArea.set(msg.subarray(0, n), 0);
+    errLengthView.setUint32(0, n);
+  } catch {}
+  Atomics.store(control, 2, -1);
+  Atomics.notify(control, 2);
+}
+// Resolve @tailwindcss/node via an absolute path passed in by the parent —
+// bare-specifier lookup from the worker's cwd fails under pnpm strict
+// workspaces (the module lives under node_modules/.pnpm/... which is not on the
+// resolution path from the consumer's project root).
+const { __unstable__loadDesignSystem } = require(tailwindNodePath);
+const { readFileSync, writeFileSync, renameSync } = require('fs');
 const { dirname, resolve } = require('path');
 
 function resolveImport(specifier, baseDir) {
@@ -124,7 +146,7 @@ function extractComponentClasses(cssPath, baseDir) {
 }
 
 async function main() {
-  const cssPath = process.env.TAILWIND_CSS_PATH;
+  const cssPath = WD_CSS_PATH;
   const css = readFileSync(cssPath, 'utf-8');
   const base = dirname(cssPath);
   const ds = await __unstable__loadDesignSystem(css, { base });
@@ -402,9 +424,15 @@ async function main() {
     }
   }
 
-  process.stdout.write(JSON.stringify({ validClasses, canonical, order, cssProps, variantOrder, componentClasses, arbitraryEquivalents }));
+  const json = JSON.stringify({ validClasses, canonical, order, cssProps, variantOrder, componentClasses, arbitraryEquivalents });
+  // Atomic write: write to a unique temp path then rename, so a peer isolate
+  // busy-waiting on the cache file never observes a half-written JSON.
+  writeFileSync(WD_TMP_PATH, json);
+  renameSync(WD_TMP_PATH, WD_CACHE_PATH);
 }
-main().catch(e => { process.stderr.write(e.message); process.exit(1); });
+main()
+  .then(() => { Atomics.store(control, 2, 1); Atomics.notify(control, 2); })
+  .catch((e) => signalError(e));
 `
 
 const CACHE_DIR = join(tmpdir(), 'oxlint-tailwindcss')
@@ -455,7 +483,7 @@ function getContentCachePath(contentHash: string): string {
 /**
  * The on-disk cache artifacts for a CSS entry point: the precomputed `json`
  * and the coordination `lock`. Exposed for tests that exercise the
- * cold-cache fork coordination (issue #24).
+ * cold-cache precompute coordination (issue #24).
  */
 export function cacheArtifactPaths(cssPath: string): { json: string; lock: string } {
   const content = readFileSync(resolve(cssPath), 'utf-8')
@@ -481,27 +509,17 @@ function tryReadRawCache(cachePath: string): string | null {
   }
 }
 
-function writeCacheFile(contentCachePath: string, data: string): void {
-  try {
-    mkdirSync(CACHE_DIR, { recursive: true })
-    writeFileSync(contentCachePath, data)
-  } catch {
-    // Non-fatal — cache is optional
-  }
-}
-
-// --- Cross-isolate fork coordination (issue #24) ---
+// --- Cross-isolate precompute coordination (issue #24) ---
 //
 // oxlint lints files across parallel isolates. On a cold cache they would all
-// reach `loadDesignSystemSync` for the same CSS at once, and each used to fork
-// its own `execFileSync` Node child to precompute the design system. A dozen
-// simultaneous forks — each loading `@tailwindcss/node` — exhausted memory on
-// constrained hosts (`spawnSync … ENOMEM`, reported on WSL).
+// reach `loadDesignSystemSync` for the same CSS at once, and each would spawn a
+// precompute worker that loads `@tailwindcss/node`. Letting a dozen run at once
+// wastes memory re-doing identical work.
 //
 // The fix: a content-hash-scoped file lock. The first isolate to create the
-// lock forks the precompute child and writes the cache; the others busy-wait
-// for the resulting `.json` instead of forking. Coordination is keyed by
-// content hash, so distinct CSS files still precompute in parallel.
+// lock runs the precompute worker (which writes the cache); the others busy-wait
+// for the resulting `.json` instead of spawning their own. Coordination is keyed
+// by content hash, so distinct CSS files still precompute in parallel.
 
 const LOCK_POLL_MS = 50
 
@@ -530,35 +548,135 @@ function tryUnlink(path: string): void {
   }
 }
 
-/** Fork the precompute child once. Throws `DesignSystemLoadError` on failure. */
-function runPrecompute(resolvedPath: string, tailwindNodePath: string, timeout: number): string {
+/** control[2] — the worker's ready/done signal (0=loading, 1=done, -1=error). */
+const PRECOMPUTE_SIGNAL_INDEX = 2
+
+// Control ints (16 B) + length (4 B) + room for an error message. The success
+// payload goes to disk, so 64 KB is far more than the failure path ever needs.
+const ERR_BUFFER_SIZE = 64 * 1024
+
+// Monotonic suffix so two precompute workers in the same process never collide
+// on the temp file they write before renaming it into place.
+let precomputeSeq = 0
+
+/**
+ * Choose the diagnostic hint based on the underlying error code. ENOMEM/EAGAIN
+ * is memory pressure, not a CSS or timeout problem — the legacy hint pointed
+ * users at the wrong levers (issue #24 / birdman CI report). Exported for tests.
+ */
+export function precomputeHint(cause: unknown): string {
+  const code = (cause as NodeJS.ErrnoException | undefined)?.code
+  const message = cause instanceof Error ? cause.message : ''
+  if (code === 'ENOMEM' || code === 'EAGAIN' || message.includes('ENOMEM')) {
+    return 'The host ran out of memory spawning the precompute worker. This is rare now that precompute runs in a worker thread; if it persists, lower oxlint concurrency (e.g. `--threads`) or give the machine/CI runner more memory.'
+  }
+  return 'Check the CSS file (and its imports) for syntax errors. If this looks like a timeout, raise `settings.tailwindcss.timeout`.'
+}
+
+function precomputeLoadError(resolvedPath: string, cause: unknown): DesignSystemLoadError {
+  const causeError = cause instanceof Error ? cause : undefined
+  const message = causeError?.message ?? String(cause)
+  return new DesignSystemLoadError(
+    `Failed to precompute design system from "${resolvedPath}": ${message}`,
+    precomputeHint(cause),
+    { cause: causeError },
+  )
+}
+
+/**
+ * Run the precompute in a worker_thread (not a forked child). The worker loads
+ * the design system in-process, writes the JSON straight to `cachePath`, and
+ * signals completion over a SharedArrayBuffer; the main thread blocks on
+ * `Atomics.wait`. Because worker_threads don't fork the host's address space,
+ * this avoids the `spawnSync … ENOMEM` the fork-based path hit on
+ * memory-constrained CI runners (#24).
+ *
+ * Throws `DesignSystemLoadError` on spawn failure, worker error, or timeout.
+ * The worker writes the result itself, so this returns nothing — callers read
+ * it back from `cachePath`.
+ */
+function runPrecomputeViaWorker(
+  resolvedPath: string,
+  tailwindNodePath: string,
+  cachePath: string,
+  timeout: number,
+): void {
+  // The precompute payload travels via the disk cache, so the buffer only needs
+  // room for the control ints plus an error message on the failure path:
+  //   [0..3]  Int32 control (index 2 = ready signal)
+  //   [16..19] Uint32 error-message length
+  //   [20..]   Uint8 error-message bytes
+  const sharedBuffer = new SharedArrayBuffer(ERR_BUFFER_SIZE)
+  const control = new Int32Array(sharedBuffer, 0, 4)
+  const errLengthView = new DataView(sharedBuffer, 16, 4)
+  const errDataArea = new Uint8Array(sharedBuffer, 20)
+  const tmpPath = `${cachePath}.tmp.${process.pid}.${threadId}.${precomputeSeq++}`
+
+  let worker: Worker
   try {
-    return execFileSync(process.execPath, ['-e', PRECOMPUTE_SCRIPT], {
-      encoding: 'utf-8',
-      timeout,
-      maxBuffer: 50 * 1024 * 1024,
-      env: {
-        ...process.env,
-        TAILWIND_CSS_PATH: resolvedPath,
-        TAILWIND_NODE_PATH: tailwindNodePath,
-      },
-      cwd: dirname(resolvedPath),
+    worker = new Worker(PRECOMPUTE_SCRIPT, {
+      eval: true,
+      workerData: { sharedBuffer, cssPath: resolvedPath, cachePath, tmpPath, tailwindNodePath },
     })
   } catch (cause) {
-    const causeError = cause instanceof Error ? cause : undefined
-    const message = causeError?.message ?? String(cause)
-    throw new DesignSystemLoadError(
-      `Failed to precompute design system from "${resolvedPath}": ${message}`,
-      'Check the CSS file for syntax errors. If this looks like a timeout, raise `settings.tailwindcss.timeout`.',
-      { cause: causeError },
-    )
+    throw precomputeLoadError(resolvedPath, cause)
+  }
+
+  // The main thread is blocked in `Atomics.wait`, so this handler can only run
+  // after the wait returns. It captures hard crashes that never signaled, so
+  // the `-1` branch below can report the real cause instead of a bare timeout.
+  let workerError: Error | undefined
+  worker.on('error', (err: Error) => {
+    workerError = err
+  })
+
+  try {
+    const result = Atomics.wait(control, PRECOMPUTE_SIGNAL_INDEX, 0, timeout)
+    if (result === 'timed-out') {
+      throw new DesignSystemLoadError(
+        `Timed out precomputing design system from "${resolvedPath}" after ${timeout}ms.`,
+        'Raise `settings.tailwindcss.timeout` if your machine or CI runner is slow, or verify the CSS imports resolve.',
+      )
+    }
+    if (control[PRECOMPUTE_SIGNAL_INDEX] === -1) {
+      // Prefer the message the worker wrote; fall back to a hard-crash error.
+      const len = errLengthView.getUint32(0)
+      const cause =
+        len > 0 ? new Error(Buffer.from(errDataArea.slice(0, len)).toString('utf-8')) : workerError
+      throw precomputeLoadError(resolvedPath, cause)
+    }
+    // Success: the worker wrote the cache file. Nothing else to do here.
+  } finally {
+    tryUnlink(tmpPath)
+    void worker.terminate()
   }
 }
 
 /**
- * Return the raw precompute JSON for `contentHash`, forking at most one child
- * across all isolates competing for the same hash. Whoever wins the lock
- * computes and writes the cache; the rest wait for that file.
+ * Run the precompute worker, then read back the JSON it wrote to `cachePath`.
+ * Used by both the lock-winner path and the uncoordinated degrade path.
+ */
+function precomputeAndRead(
+  resolvedPath: string,
+  tailwindNodePath: string,
+  cachePath: string,
+  timeout: number,
+): string {
+  runPrecomputeViaWorker(resolvedPath, tailwindNodePath, cachePath, timeout)
+  const raw = tryReadRawCache(cachePath)
+  if (raw === null) {
+    throw new DesignSystemLoadError(
+      `Precompute worker finished but wrote no cache file for "${resolvedPath}".`,
+      'This usually means the system temp directory is not writable; check its permissions.',
+    )
+  }
+  return raw
+}
+
+/**
+ * Return the raw precompute JSON for `contentHash`, spawning at most one
+ * precompute worker across all isolates competing for the same hash. Whoever
+ * wins the lock computes and writes the cache; the rest wait for that file.
  */
 function computeWithLock(
   resolvedPath: string,
@@ -568,8 +686,8 @@ function computeWithLock(
   timeout: number,
 ): string {
   const lockPath = join(CACHE_DIR, `${contentHash}.lock`)
-  // A healthy holder is busy inside execFileSync (up to `timeout`); only treat
-  // the lock as abandoned once it outlives that window plus a write margin.
+  // A healthy holder is busy inside the precompute worker (up to `timeout`);
+  // only treat the lock as abandoned once it outlives that window plus a margin.
   const staleMs = timeout + 30_000
 
   try {
@@ -577,7 +695,7 @@ function computeWithLock(
   } catch {
     // If we can't even create the cache dir, locking is impossible — fall back
     // to an uncoordinated compute rather than spin forever.
-    return runPrecompute(resolvedPath, tailwindNodePath, timeout)
+    return precomputeAndRead(resolvedPath, tailwindNodePath, cachePath, timeout)
   }
 
   const start = Date.now()
@@ -601,13 +719,12 @@ function computeWithLock(
         continue
       }
       // Lock dir not writable or similar — degrade to uncoordinated compute.
-      return runPrecompute(resolvedPath, tailwindNodePath, timeout)
+      return precomputeAndRead(resolvedPath, tailwindNodePath, cachePath, timeout)
     }
 
     try {
-      const stdout = runPrecompute(resolvedPath, tailwindNodePath, timeout)
-      writeCacheFile(cachePath, stdout)
-      return stdout
+      // The worker writes the cache file itself; read it back as the result.
+      return precomputeAndRead(resolvedPath, tailwindNodePath, cachePath, timeout)
     } finally {
       closeSync(lockFd)
       tryUnlink(lockPath)
@@ -618,8 +735,8 @@ function computeWithLock(
 /**
  * Synchronously load and precompute the design system for a CSS file.
  *
- * Throws `DesignSystemLoadError` on any failure (missing file, child
- * process error, missing `@tailwindcss/node`, etc.). Callers catch via
+ * Throws `DesignSystemLoadError` on any failure (missing file, worker
+ * error, missing `@tailwindcss/node`, etc.). Callers catch via
  * `reportFatalDsError` to surface a single Program-level diagnostic.
  */
 export function loadDesignSystemSync(cssPath: string, timeout?: number): PrecomputedData {
@@ -642,8 +759,8 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
   const cached = tryReadCache(contentCachePath)
   if (cached) return cached
 
-  // The child process receives @tailwindcss/node's absolute path via env.
-  // Bare-specifier resolution from the child's cwd would fail under pnpm
+  // The worker receives @tailwindcss/node's absolute path via workerData.
+  // Bare-specifier resolution from the worker's cwd would fail under pnpm
   // strict workspaces where the consumer's project root has no direct
   // access to the plugin's transitive deps.
   if (TAILWIND_NODE_PATH === null) {
@@ -653,10 +770,11 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
     )
   }
 
-  // Coordinate parallel isolates: at most one forks the precompute child for a
-  // given content hash; the rest wait for the cache file it writes. Prevents
-  // the cold-cache fork storm that exhausted memory on WSL (issue #24).
-  const stdout = computeWithLock(
+  // Coordinate parallel isolates: at most one spawns the precompute worker for a
+  // given content hash; the rest wait for the cache file it writes. The worker
+  // runs in-thread (no fork), so it can't trigger the cold-cache `spawnSync …
+  // ENOMEM` that the fork-based precompute hit on constrained CI runners (#24).
+  const raw = computeWithLock(
     resolvedPath,
     TAILWIND_NODE_PATH,
     contentHash,
@@ -665,7 +783,7 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
   )
 
   try {
-    return JSON.parse(stdout) as PrecomputedData
+    return JSON.parse(raw) as PrecomputedData
   } catch (cause) {
     throw new DesignSystemLoadError(
       `Precompute output for "${resolvedPath}" was not valid JSON.`,

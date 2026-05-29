@@ -6,6 +6,7 @@ import { relative, resolve } from 'node:path'
 import {
   DeprecatedEntryPointShapeError,
   DesignSystemLoadError,
+  isFatalError,
   MissingEntryPointError,
 } from '../utils/fatal'
 import type { EntryPointMapping } from '../types'
@@ -21,6 +22,18 @@ export interface LoadResult {
 type EntryPointSetting = string | EntryPointMapping[]
 
 const dsCache = new Map<string, { cache: DesignSystemCache; mtime: number }>()
+
+/**
+ * Memoizes DS-load FAILURES per entry point, keyed by `(resolvedPath, mtime)`.
+ *
+ * Without this, a single environmental failure (e.g. `spawnSync … ENOMEM` on a
+ * constrained CI runner) was re-attempted on every AST node × every rule ×
+ * every file — the storm that turned one failure into ~18k re-spawns and 21k
+ * per-class errors (issue #24 / birdman report). Caching the failure collapses
+ * it to one attempt per entry point per process. Keyed by mtime so fixing the
+ * CSS (mtime changes) invalidates the entry and a fresh load is attempted.
+ */
+const dsFailureCache = new Map<string, { error: Error; mtime: number }>()
 
 function isEntryPointMapping(v: unknown): v is EntryPointMapping {
   if (typeof v !== 'object' || v === null) return false
@@ -181,7 +194,20 @@ export function getLoadedDesignSystem(
   const cached = dsCache.get(resolvedPath)
   if (cached && cached.mtime === mtime) return { cache: cached.cache, entryPoint: resolvedPath }
 
-  const data = loadDesignSystemSync(resolvedPath, timeoutFromSettings(settings))
+  // A prior load for this exact (path, mtime) already failed — rethrow the
+  // cached error instead of paying the load cost again (issue #24 storm).
+  const failed = dsFailureCache.get(resolvedPath)
+  if (failed && failed.mtime === mtime) throw failed.error
+
+  let data
+  try {
+    data = loadDesignSystemSync(resolvedPath, timeoutFromSettings(settings))
+  } catch (err) {
+    // Memoize only plugin-fatal load errors; let genuine bugs propagate without
+    // poisoning the cache (mirrors `safeGetDS`'s fatal-vs-rethrow split).
+    if (isFatalError(err)) dsFailureCache.set(resolvedPath, { error: err, mtime })
+    throw err
+  }
   const cache = DesignSystemCache.fromPrecomputed(data)
   dsCache.set(resolvedPath, { cache, mtime })
   debugLog(`Loaded design system from "${resolvedPath}"`)
@@ -214,15 +240,19 @@ export function createLazyLoader(context: {
   let debugInitialized = false
   let lastFilePath: string | undefined
   let lastResult: LoadResult | undefined
+  let lastError: Error | undefined
 
   return () => {
     const filePath = safeFilename(context)
 
     // Visitors fire on every AST node and the file is stable within a lint
-    // pass; once we have a result for this filename we can skip the entire
-    // resolve → stat → cache-lookup chain.
-    if (filePath !== undefined && filePath === lastFilePath && lastResult) {
-      return lastResult
+    // pass; once we have a result (or a failure) for this filename we can skip
+    // the entire resolve → stat → cache-lookup chain. Caching the failure here
+    // is what stops a single fatal error from re-running per node (issue #24);
+    // `getLoadedDesignSystem` memoizes it across rules, this does it per rule.
+    if (filePath !== undefined && filePath === lastFilePath) {
+      if (lastError) throw lastError
+      if (lastResult) return lastResult
     }
 
     const ruleOptionEntry = safeOptions<{ entryPoint?: string }>(context)?.entryPoint
@@ -233,11 +263,17 @@ export function createLazyLoader(context: {
       setDebugEnabled(isDebugEnabled(settings))
     }
 
-    const settingsEntry = entryPointFromSettings(settings)
-    const cssPath = resolveEntryPointForFile(ruleOptionEntry, settingsEntry, filePath)
-
     lastFilePath = filePath
-    lastResult = getLoadedDesignSystem(cssPath, settings)
+    lastResult = undefined
+    lastError = undefined
+    try {
+      const settingsEntry = entryPointFromSettings(settings)
+      const cssPath = resolveEntryPointForFile(ruleOptionEntry, settingsEntry, filePath)
+      lastResult = getLoadedDesignSystem(cssPath, settings)
+    } catch (err) {
+      if (isFatalError(err) && err instanceof Error) lastError = err
+      throw err
+    }
     if (filePath) {
       debugLog(
         `${relative(process.cwd(), filePath)} → ${relative(process.cwd(), lastResult.entryPoint)}`,
@@ -284,5 +320,6 @@ export function resolveEntryPointForFile(
 /** Reset all DS caches (useful for tests). */
 export function resetDesignSystem(): void {
   dsCache.clear()
+  dsFailureCache.clear()
   resetDebug()
 }

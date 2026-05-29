@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.1
+
+Fixes the cold-cache `spawnSync … node ENOMEM` that collapsed linting on memory-constrained CI runners ([#24](https://github.com/sergioazoc/oxlint-tailwindcss/issues/24)).
+
+### Bug fixes
+
+- **Precompute no longer forks the host process.** The design-system precompute ran via `execFileSync`, which `fork()`s the oxlint host (Rust + embedded Node). On memory-constrained Linux CI runners (e.g. GitHub `ubuntu-latest`, 2 vCPU / ~7 GB / no swap), overcommit accounting rejects forking a large-RSS process with `spawnSync … node ENOMEM` — even though the child immediately `exec`s and never touches the copied pages. The v1.0.0 content-hash lock reduced this from a fork _storm_ to a single fork, but a single fork was still enough to trip the limit. The precompute now runs in a **worker_thread** (the same mechanism `sort-service` / `canonicalize-service` already use), which creates a thread in-process with no address-space duplication and is therefore immune. The worker writes the precomputed JSON straight to the disk cache (atomic temp-write + rename) and signals completion over a SharedArrayBuffer; the cross-isolate lock and stale-lock reclaim are unchanged.
+- **A single design-system load failure no longer storms into thousands of errors.** `getLoadedDesignSystem` / `createLazyLoader` only cached _successful_ loads, so when a load failed (e.g. the ENOMEM above) every DS-dependent rule re-attempted it on every AST node of every file — turning one environmental failure into ~18k re-spawns and 21k per-class errors. Failures are now memoized per `(entryPoint, mtime)` (fatal errors only, auto-invalidated when the CSS changes) plus a per-rule sticky error, collapsing a failure to one attempt per entry point per process — i.e. one `designSystemUnavailable` diagnostic per file, as documented.
+- **`ENOMEM`/`EAGAIN` now get a memory-specific hint.** The precompute load error previously always advised "check the CSS file for syntax errors / raise `settings.tailwindcss.timeout`" — both wrong levers for a memory failure. The hint is now classified by the underlying error code and points at memory pressure / oxlint concurrency / runner memory when appropriate.
+
 ## 1.0.0
 
 Major release. v1.0.0 pivots `oxlint-tailwindcss` to a deterministic, explicit-config philosophy aligned with the rest of the Tailwind ecosystem (prettier-plugin-tailwindcss, oxfmt, better-tailwindcss). The premise: a _good_ DX is not "zero config", it's **"configure once, never fails again"**. See the [migration guide](https://oxlint-tailwindcss.pages.dev/migration/v0-to-v1) for the full delta.
