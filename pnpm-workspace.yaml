@@ -5,3 +5,8 @@ catalog:
   oxlint: ^1.67.0
 allowBuilds:
   esbuild: true
+  # wrangler-action runs `pnpm add wrangler` for the Cloudflare Pages deploy;
+  # wrangler pulls workerd, whose build script pnpm 11.4 would otherwise treat
+  # as an undecided build and fail with ERR_PNPM_IGNORED_BUILDS. We don't need
+  # workerd compiled for a static Pages upload — `false` skips it without error.
+  workerd: false
