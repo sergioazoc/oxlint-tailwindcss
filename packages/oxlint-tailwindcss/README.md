@@ -522,6 +522,8 @@ Suggests shorthand classes when all axes have the same value.
 "pt-4 pr-4 pb-4 pl-4"  → "p-4"
 "pt-4 pb-4"             → "py-4"
 "pl-4 pr-4"             → "px-4"
+"px-4 py-4"             → "p-4"
+"mx-2 my-2"             → "m-2"
 "w-full h-full"         → "size-full"
 "rounded-tl-lg rounded-tr-lg rounded-br-lg rounded-bl-lg" → "rounded-lg"
 ```
