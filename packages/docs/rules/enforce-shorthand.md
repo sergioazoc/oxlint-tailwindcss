@@ -39,6 +39,8 @@ is more a job for the upstream Tailwind project.
 // Two-axis (vertical, horizontal)
 <div className="mt-2 mb-2" />  →  my-2
 <div className="ml-2 mr-2" />  →  mx-2
+<div className="px-4 py-4" />  →  p-4
+<div className="mx-2 my-2" />  →  m-2
 
 // Width + height with the same value
 <div className="w-full h-full" />
@@ -64,8 +66,9 @@ is more a job for the upstream Tailwind project.
 // Partial coverage — needs all four sides for m-*
 <div className="mt-2 mr-2" />
 
-// Different variants — rule doesn't merge across variant chains
+// Different variants on each part — no merge (same variant prefix required)
 <div className="hover:mt-2 focus:mb-2" />
+<div className="sm:px-4 md:py-4" />
 ```
 
 ## Interactions with other rules
