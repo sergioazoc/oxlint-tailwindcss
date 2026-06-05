@@ -84,7 +84,16 @@ export const enforceSortOrder = defineRule({
           for (const [name] of ordered) groupClasses.push(name)
         }
 
-        const sortedGroupKeys = [...groups.keys()].sort((a, b) => {
+        // Normalize the project prefix out of the group key so the base group
+        // (`tw:` → '') sorts first and the first REAL variant drives ordering.
+        // Without this every prefixed group collapses to first variant `tw`
+        // (priority MAX) and the order between groups is unstable.
+        const stripKey = (k: string): string =>
+          cache.prefix && k.startsWith(cache.prefix + ':') ? k.slice(cache.prefix.length + 1) : k
+
+        const sortedGroupKeys = [...groups.keys()].sort((ka, kb) => {
+          const a = stripKey(ka)
+          const b = stripKey(kb)
           if (a === '' && b !== '') return -1
           if (a !== '' && b === '') return 1
           if (a === '' && b === '') return 0

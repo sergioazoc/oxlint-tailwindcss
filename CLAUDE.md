@@ -196,6 +196,22 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `getCssProperties`, `getNamedEquivalent`) handle `!` internally. Hand-rolled regexes here are a
   smell — they were removed in v1 (the old `/^[a-z0-9[\]*@-]*:!/` in `enforce-canonical` was
   bracket-non-aware).
+- **Tailwind v4 project prefix (`prefix(...)`, #29)**: when the entry point declares a prefix
+  (`@import "tailwindcss" prefix(tw)`), `getClassList()` still returns names WITHOUT the prefix, but
+  `candidatesToCss`/`getClassOrder`/`canonicalizeCandidates` only resolve the PREFIXED form
+  (`tw:flex`) — and the prefix goes FIRST in the chain (`tw:hover:underline`, never
+  `hover:tw:underline`). Invariant: the precompute applies the prefix ONLY when calling DS APIs and
+  strips it back off before storing — every `PrecomputedData` structure stays prefix-free; the new
+  scalar `PrecomputedData.prefix` is the single source of truth. `DesignSystemCache` holds `_prefix`
+  and strips/re-applies it at the method boundary (`getOrder` strips it so variant synthesis isn't
+  skewed; `canonicalize` already reconstructs it via `extractUtility`). `cache.isValid` stays
+  TOLERANT (other rules — e.g. `prefer-theme-tokens` — call it with prefix-free candidates); the
+  STRICT prefix check lives in `cache.classValidity` (`valid`/`missing-prefix`/`unknown`), used only
+  by `no-unknown-classes`, which distinguishes Tailwind utilities (prefix required) from component
+  classes (`componentSet`, prefix optional). `consistent-variant-order` and `enforce-sort-order`
+  (strict) split the prefix off before reordering/grouping so it never moves out of first position.
+  Worker services need no changes — they pass the full class to the DS, which understands the prefix
+  natively. All prefix-handling is gated on `_prefix !== ''`, so no-prefix projects are unaffected.
 - **Disk cache (v1)**: `sync-loader.ts` caches precomputed DS JSON in
   `os.tmpdir()/oxlint-tailwindcss/` keyed **only** by content hash. The legacy two-level
   mtime-index + content-cache scheme is gone; mtime is tracked in memory inside `loader.ts` for the

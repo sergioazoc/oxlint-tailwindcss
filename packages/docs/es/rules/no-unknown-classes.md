@@ -18,6 +18,20 @@ DS-dependiente — requiere `settings.tailwindcss.entryPoint`. Cuando el design 
 cargar, la regla emite un único diagnóstico fatal `designSystemUnavailable` por archivo en vez de
 pasar en silencio.
 
+## Prefijo de proyecto (`prefix(...)`)
+
+Si tu entry point declara un prefijo de Tailwind v4 — `@import "tailwindcss" prefix(tw)` — cada
+utility debe escribirse con ese prefijo (`tw:flex`, `tw:hover:underline`). La regla es consciente
+del prefijo:
+
+- Una utility correctamente prefijada (`tw:flex`) es válida.
+- Una utility de Tailwind escrita **sin** el prefijo (`flex`) no produce CSS, así que se reporta
+  como que le falta el prefijo, con un quick-fix que lo agrega (`flex` → `tw:flex`).
+- Las component classes de `@layer components` (`btn`, `card`) no llevan prefijo y siguen siendo
+  válidas en cualquier caso — solo las utilities generadas por Tailwind lo requieren.
+
+El prefijo se detecta automáticamente desde tu `entryPoint`; no hay nada extra que configurar.
+
 ## Opciones
 
 ### `allowlist`

@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.2.0
+
+Adds support for the Tailwind v4 project prefix
+([#29](https://github.com/sergioazoc/oxlint-tailwindcss/issues/29)). Previously, an entry point that
+declared a prefix (`@import "tailwindcss" prefix(tw)`) made the design system precompute empty, so
+`no-unknown-classes` flagged **every** class — including correctly prefixed ones (`tw:flex`) — as
+invalid. Thanks to [@beckerei](https://github.com/beckerei) for the report.
+
+### Features
+
+- **Tailwind v4 `prefix(...)` support.** The precompute now reads `ds.theme.prefix` and validates
+  the prefixed candidate against the design system (the prefix goes first: `tw:hover:underline`).
+  The prefix is detected automatically from your `entryPoint` — nothing extra to configure. All
+  cached structures stay prefix-free; the cache strips/re-applies the prefix at its method boundary.
+- **`no-unknown-classes` is prefix-aware (strict).** Under a prefix, `tw:flex` is valid; a Tailwind
+  utility written without the prefix (`flex`) is reported with a new `missingPrefix` message and a
+  quick-fix that adds it (`flex` → `tw:flex`). Component classes from `@layer components` (`btn`)
+  carry no prefix and stay valid.
+
+### Bug fixes
+
+- **`consistent-variant-order`** no longer reorders the project prefix out of first position
+  (`tw:sm:hover:flex` → `tw:hover:sm:flex`, never `hover:tw:sm:flex`, which produces no CSS).
+- **`enforce-sort-order` (strict mode)** now sorts prefixed groups stably instead of collapsing
+  every prefixed group to the same priority.
+
 ## 1.1.0
 
 Extends `enforce-shorthand` with variant-aware merges and the axis-pair → full shorthand step

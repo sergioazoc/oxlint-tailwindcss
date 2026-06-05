@@ -17,6 +17,13 @@ export class DesignSystemCache {
   private _validClasses: string[] = []
   private _knownPrefixes: Set<string> | null = null
   private _maxOrder = 0n
+  // Tailwind v4 project prefix ('' when none). All maps store prefix-free names;
+  // this is consulted to strip/re-apply the prefix at the public-method boundary.
+  private _prefix = ''
+  // Component classes (`@layer components`, `[class~]`) — valid WITH or WITHOUT
+  // the prefix. Kept separate from validitySet so `classValidity` can tell a
+  // Tailwind utility (prefix-required) apart from a user component class.
+  private componentSet = new Set<string>()
 
   static fromPrecomputed(data: PrecomputedData): DesignSystemCache {
     const cache = new DesignSystemCache()
@@ -49,8 +56,11 @@ export class DesignSystemCache {
     if (data.componentClasses) {
       for (const cls of data.componentClasses) {
         cache.validitySet.add(cls)
+        cache.componentSet.add(cls)
       }
     }
+
+    cache._prefix = data.prefix ?? ''
 
     if (data.arbitraryEquivalents) {
       for (const [arb, named] of Object.entries(data.arbitraryEquivalents)) {
@@ -67,6 +77,11 @@ export class DesignSystemCache {
 
   get maxOrder(): bigint {
     return this._maxOrder
+  }
+
+  /** Tailwind v4 project prefix (e.g. 'tw'); '' when none is configured. */
+  get prefix(): string {
+    return this._prefix
   }
 
   canonicalize(className: string): string {
@@ -232,7 +247,47 @@ export class DesignSystemCache {
     return false
   }
 
+  /**
+   * Strict validity for `no-unknown-classes`, prefix-aware.
+   *
+   * - `'valid'`         — usable as written.
+   * - `'missing-prefix'`— a real Tailwind utility written WITHOUT the required
+   *   project prefix (`flex` under `prefix(tw)`); generates no CSS.
+   * - `'unknown'`       — not a recognized class.
+   *
+   * When no prefix is configured this collapses to the tolerant `isValid`
+   * behavior. `isValid` itself stays tolerant (other rules call it with
+   * prefix-free candidates), so the strict check lives here.
+   */
+  classValidity(className: string): 'valid' | 'missing-prefix' | 'unknown' {
+    if (!this._prefix) return this.isValid(className) ? 'valid' : 'unknown'
+
+    const tag = this._prefix + ':'
+    const hadPrefix = className.startsWith(tag)
+    const body = hadPrefix ? className.slice(tag.length) : className
+
+    // Base utility (no variants, no important, no slash modifier) to classify
+    // component-vs-utility. Component classes are valid with or without prefix.
+    let baseUtility = splitImportant(extractUtility(body)).bare
+    const slashIdx = baseUtility.lastIndexOf('/')
+    if (slashIdx > 0) baseUtility = baseUtility.slice(0, slashIdx)
+    if (this.componentSet.has(baseUtility)) return 'valid'
+
+    // Tailwind utility? Validate the unprefixed body via the tolerant path,
+    // reusing the dynamic-numeric / arbitrary / slash / important logic.
+    if (this.isValid(body)) return hadPrefix ? 'valid' : 'missing-prefix'
+
+    return 'unknown'
+  }
+
   getOrder(className: string): bigint | null {
+    // Strip the project prefix so the variant-synthesis below sees the real
+    // variant chain. Otherwise `tw` counts as the first variant and distorts
+    // the synthesized order for prefixed classes (orderMap is prefix-free).
+    if (this._prefix && className.startsWith(this._prefix + ':')) {
+      className = className.slice(this._prefix.length + 1)
+    }
+
     const cached = this.orderMap.get(className)
     if (cached !== undefined) return cached
 

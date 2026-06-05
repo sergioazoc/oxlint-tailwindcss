@@ -40,6 +40,8 @@ export const noUnknownClasses = defineRule({
       unknown: '"{{className}}" is not a valid Tailwind class.',
       unknownWithSuggestion:
         '"{{className}}" is not a valid Tailwind class. Did you mean "{{suggestion}}"?',
+      missingPrefix:
+        '"{{className}}" needs the "{{prefix}}:" prefix to produce CSS. Did you mean "{{suggestion}}"?',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
       ...DS_UNAVAILABLE_MESSAGE,
     },
@@ -78,11 +80,37 @@ export const noUnknownClasses = defineRule({
         for (const cls of classes) {
           if (shouldIgnore(cls)) continue
 
-          const stripped = stripModifiers(cls)
-          if (cache.isValid(stripped)) continue
+          const validity = cache.classValidity(cls)
+          if (validity === 'valid') continue
 
+          const stripped = stripModifiers(cls)
           // Don't report deprecated classes — no-deprecated-classes handles those
           if (DEPRECATED_MAP[stripped]) continue
+
+          // A real Tailwind utility written without the required project prefix:
+          // suggest the prefixed form rather than a Levenshtein neighbor.
+          if (validity === 'missing-prefix') {
+            const fixed = `${cache.prefix}:${cls}`
+            const fixedValue = rebuildClassString(
+              split,
+              classes.map((c) => (c === cls ? fixed : c)),
+            )
+            context.report({
+              node: loc.node,
+              messageId: 'missingPrefix',
+              data: { className: cls, prefix: cache.prefix, suggestion: fixed },
+              suggest: [
+                {
+                  messageId: 'suggestReplace',
+                  data: { className: cls, replacement: fixed },
+                  fix(fixer) {
+                    return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
+                  },
+                },
+              ],
+            })
+            continue
+          }
 
           const suggestion = findBestSuggestion(stripped, cache.validClasses)
 

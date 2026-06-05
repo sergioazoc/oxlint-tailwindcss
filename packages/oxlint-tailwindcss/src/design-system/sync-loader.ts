@@ -40,6 +40,12 @@ export interface PrecomputedData {
   componentClasses: string[]
   /** arbitraryForm → namedClass for unnecessary arbitrary value detection */
   arbitraryEquivalents: Record<string, string>
+  /**
+   * Tailwind v4 project prefix (e.g. 'tw' for `@import "tailwindcss" prefix(tw)`).
+   * Empty string when no prefix is configured. All other fields store class
+   * names WITHOUT the prefix; this is the single source of truth for it.
+   */
+  prefix: string
 }
 
 const PRECOMPUTE_SCRIPT = `
@@ -151,6 +157,16 @@ async function main() {
   const base = dirname(cssPath);
   const ds = await __unstable__loadDesignSystem(css, { base });
 
+  // Tailwind v4 project prefix (\`@import "tailwindcss" prefix(tw)\`). getClassList()
+  // returns names WITHOUT the prefix, but candidatesToCss/getClassOrder/
+  // canonicalizeCandidates only resolve the PREFIXED form (\`tw:flex\`). We apply
+  // the prefix only when calling the DS and strip it back off before storing, so
+  // every structure stays prefix-free. The prefix is alphanumeric (no ':' '-' '['
+  // ']' '/'), so \`prefix + ':'\` is an unambiguous separator.
+  const prefix = (ds.theme && ds.theme.prefix) || '';
+  const pfx = (c) => prefix ? prefix + ':' + c : c;
+  const unpfx = (c) => (prefix && c.startsWith(prefix + ':')) ? c.slice(prefix.length + 1) : c;
+
   const entries = ds.getClassList();
   const classNames = entries.map(e => e[0]);
 
@@ -158,8 +174,10 @@ async function main() {
   const classNameIndex = new Map();
   for (let i = 0; i < classNames.length; i++) classNameIndex.set(classNames[i], i);
 
-  // Validity: which classes produce CSS
-  const cssResults = ds.candidatesToCss(classNames);
+  // Validity: which classes produce CSS. Validate the prefixed form, but keep
+  // cssResults aligned positionally to the unprefixed classNames so the later
+  // cssProps / arbitraryEquivalents phases keep indexing by position.
+  const cssResults = ds.candidatesToCss(classNames.map(pfx));
   const validClasses = classNames.filter((_, i) => cssResults[i] != null);
 
   // Expand: validate extra candidates not in getClassList() but valid in v4
@@ -181,7 +199,7 @@ async function main() {
     }
   }
   if (extraCandidates.length > 0) {
-    const extraResults = ds.candidatesToCss(extraCandidates);
+    const extraResults = ds.candidatesToCss(extraCandidates.map(pfx));
     for (let i = 0; i < extraCandidates.length; i++) {
       if (extraResults[i] != null) {
         validClasses.push(extraCandidates[i]);
@@ -210,9 +228,11 @@ async function main() {
   // NOTE: canonicalizeCandidates deduplicates, so we must call it one class at a time
   const canonical = {};
   for (const cls of classNames) {
-    const result = ds.canonicalizeCandidates([cls]);
-    if (result[0] && result[0] !== cls) {
-      canonical[cls] = result[0];
+    const result = ds.canonicalizeCandidates([pfx(cls)]);
+    const canon = result[0] ? unpfx(result[0]) : null;
+    // Compare unprefixed-vs-unprefixed so the prefix itself never reads as a change.
+    if (canon && canon !== cls) {
+      canonical[cls] = canon;
     }
   }
 
@@ -243,13 +263,14 @@ async function main() {
   }
   const legacyToProcess = legacyCandidates.filter(cls => !validSet.has(cls));
   if (legacyToProcess.length > 0) {
-    const legacyCssResults = ds.candidatesToCss(legacyToProcess);
+    const legacyCssResults = ds.candidatesToCss(legacyToProcess.map(pfx));
     for (let i = 0; i < legacyToProcess.length; i++) {
       if (legacyCssResults[i] == null) continue;
       const cls = legacyToProcess[i];
-      const result = ds.canonicalizeCandidates([cls]);
-      if (result[0] && result[0] !== cls) {
-        canonical[cls] = result[0];
+      const result = ds.canonicalizeCandidates([pfx(cls)]);
+      const canon = result[0] ? unpfx(result[0]) : null;
+      if (canon && canon !== cls) {
+        canonical[cls] = canon;
       }
       // Mark as valid so no-unknown-classes doesn't flag legacy spellings.
       validClasses.push(cls);
@@ -263,9 +284,9 @@ async function main() {
     if (!classNameIndex.has(cls)) allForOrder.push(cls);
   }
   const order = {};
-  const orderResults = ds.getClassOrder(allForOrder);
+  const orderResults = ds.getClassOrder(allForOrder.map(pfx));
   for (const [name, val] of orderResults) {
-    if (val !== null) order[name] = val.toString();
+    if (val !== null) order[unpfx(name)] = val.toString();
   }
 
   // CSS properties per class — extract only from the ROOT selector, not descendant selectors.
@@ -354,7 +375,9 @@ async function main() {
 
   for (let i = 0; i < classNames.length; i++) {
     if (cssResults[i]) {
-      const props = extractRootCssProps(cssResults[i], classNames[i]);
+      // Match against the prefixed selector (the CSS emits \`.tw\\:flex\`), but
+      // store under the unprefixed key. extractRootCssProps CSS-escapes the ':'.
+      const props = extractRootCssProps(cssResults[i], pfx(classNames[i]));
       if (props.length > 0) cssProps[classNames[i]] = props;
     }
   }
@@ -380,7 +403,8 @@ async function main() {
       let acm;
       attrClassRe.lastIndex = 0;
       while ((acm = attrClassRe.exec(cssResults[i])) !== null) {
-        componentClasses.push(acm[1]);
+        // Typography-style plugins emit \`[class~="tw:not-prose"]\` under a prefix.
+        componentClasses.push(unpfx(acm[1]));
       }
     }
   }
@@ -415,7 +439,10 @@ async function main() {
   }
   if (candidates.length > 0) {
     const arbForms = candidates.map(c => c.arbitraryForm);
-    const arbResults = ds.candidatesToCss(arbForms);
+    // Prefix only the validation; keys/values stored stay prefix-free. The
+    // declaration block extractDeclarations compares is identical with or
+    // without the prefix (the prefix only affects the selector).
+    const arbResults = ds.candidatesToCss(arbForms.map(pfx));
     for (let i = 0; i < candidates.length; i++) {
       if (!arbResults[i]) continue;
       if (extractDeclarations(arbResults[i]) === extractDeclarations(candidates[i].namedCss)) {
@@ -424,7 +451,7 @@ async function main() {
     }
   }
 
-  const json = JSON.stringify({ validClasses, canonical, order, cssProps, variantOrder, componentClasses, arbitraryEquivalents });
+  const json = JSON.stringify({ validClasses, canonical, order, cssProps, variantOrder, componentClasses, arbitraryEquivalents, prefix });
   // Atomic write: write to a unique temp path then rename, so a peer isolate
   // busy-waiting on the cache file never observes a half-written JSON.
   writeFileSync(WD_TMP_PATH, json);

@@ -181,8 +181,28 @@ export const consistentVariantOrder = defineRule({
       return (v) => map.get(v) ?? fallback
     })
 
+    // The project prefix (`tw:`) is structurally a variant but MUST stay first
+    // (`hover:tw:flex` produces no CSS). Split it off before reordering and
+    // re-attach it. '' when no DS / no prefix → behavior is unchanged.
+    const getPrefix = createLazyOptions<Options, string>(context, () => {
+      try {
+        return getDS().cache.prefix
+      } catch (err) {
+        if (!isFatalError(err)) throw err
+        return ''
+      }
+    })
+
     function reorderClass(cls: string): string | null {
-      const variants = extractVariants(cls)
+      const prefix = getPrefix()
+      let pfx = ''
+      let body = cls
+      if (prefix && cls.startsWith(prefix + ':')) {
+        pfx = prefix + ':'
+        body = cls.slice(prefix.length + 1)
+      }
+
+      const variants = extractVariants(body)
       if (variants.length < 2) return null
 
       const priorityOf = getPriority()
@@ -203,8 +223,8 @@ export const consistentVariantOrder = defineRule({
 
       if (variants.every((v, i) => v === final[i])) return null
 
-      const utility = extractUtility(cls)
-      return final.join(':') + ':' + utility
+      const utility = extractUtility(body)
+      return pfx + final.join(':') + ':' + utility
     }
 
     function check(locations: ClassLocation[]) {

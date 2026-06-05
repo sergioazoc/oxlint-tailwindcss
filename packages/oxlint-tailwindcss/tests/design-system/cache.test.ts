@@ -21,6 +21,7 @@ function makeData(overrides: Partial<PrecomputedData> = {}): PrecomputedData {
     variantOrder: { hover: 10, focus: 20, dark: 30, sm: 40, md: 50 },
     componentClasses: ['prose', 'not-prose'],
     arbitraryEquivalents: { 'p-[1rem]': 'p-4', 'bg-[#3b82f6]': 'bg-blue-500' },
+    prefix: '',
     ...overrides,
   }
 }
@@ -227,5 +228,77 @@ describe('hasVariantOrder', () => {
   it('returns false when variant order is empty', () => {
     const cache = DesignSystemCache.fromPrecomputed(makeData({ variantOrder: {} }))
     expect(cache.hasVariantOrder()).toBe(false)
+  })
+})
+
+// Tailwind v4 project prefix (`@import "tailwindcss" prefix(tw)`). All stored
+// structures remain prefix-free; the cache strips/re-applies the prefix at the
+// public-method boundary. These unit tests use synthetic prefix-free data with
+// `prefix: 'tw'` to lock the boundary behavior independently of a real DS load.
+describe('project prefix', () => {
+  const prefixed = () => DesignSystemCache.fromPrecomputed(makeData({ prefix: 'tw' }))
+
+  it('exposes the prefix and keeps validClasses prefix-free', () => {
+    const cache = prefixed()
+    expect(cache.prefix).toBe('tw')
+    expect(cache.validClasses).toContain('flex')
+    expect(cache.validClasses).not.toContain('tw:flex')
+  })
+
+  it('defaults prefix to empty string', () => {
+    expect(DesignSystemCache.fromPrecomputed(makeData()).prefix).toBe('')
+  })
+
+  describe('classValidity (strict, prefix configured)', () => {
+    it('accepts correctly prefixed Tailwind utilities', () => {
+      const cache = prefixed()
+      expect(cache.classValidity('tw:flex')).toBe('valid')
+      expect(cache.classValidity('tw:items-center')).toBe('valid')
+      expect(cache.classValidity('tw:hover:flex')).toBe('valid')
+      expect(cache.classValidity('tw:!flex')).toBe('valid')
+      expect(cache.classValidity('tw:flex!')).toBe('valid')
+    })
+
+    it('flags Tailwind utilities written without the prefix', () => {
+      const cache = prefixed()
+      expect(cache.classValidity('flex')).toBe('missing-prefix')
+      expect(cache.classValidity('items-center')).toBe('missing-prefix')
+      expect(cache.classValidity('hover:flex')).toBe('missing-prefix')
+    })
+
+    it('treats component classes as valid with or without the prefix', () => {
+      const cache = prefixed()
+      expect(cache.classValidity('prose')).toBe('valid')
+      expect(cache.classValidity('not-prose')).toBe('valid')
+      expect(cache.classValidity('tw:prose')).toBe('valid')
+      expect(cache.classValidity('hover:prose')).toBe('valid')
+    })
+
+    it('reports genuinely unknown classes', () => {
+      const cache = prefixed()
+      expect(cache.classValidity('tw:totally-fake')).toBe('unknown')
+      expect(cache.classValidity('totally-fake')).toBe('unknown')
+    })
+  })
+
+  it('classValidity collapses to tolerant isValid when no prefix is set', () => {
+    const cache = DesignSystemCache.fromPrecomputed(makeData())
+    expect(cache.classValidity('flex')).toBe('valid')
+    expect(cache.classValidity('totally-fake')).toBe('unknown')
+  })
+
+  it('canonicalize preserves the prefix', () => {
+    const cache = prefixed()
+    expect(cache.canonicalize('tw:flex-grow')).toBe('tw:grow')
+    expect(cache.canonicalize('tw:flex')).toBe('tw:flex')
+  })
+
+  it('getOrder resolves prefixed classes and orders variants after base', () => {
+    const cache = prefixed()
+    const base = cache.getOrder('tw:flex')
+    const variant = cache.getOrder('tw:hover:flex')
+    expect(base).not.toBeNull()
+    expect(variant).not.toBeNull()
+    expect(variant! > base!).toBe(true)
   })
 })

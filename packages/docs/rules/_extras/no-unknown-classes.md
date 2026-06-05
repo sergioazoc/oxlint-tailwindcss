@@ -13,6 +13,20 @@ custom CSS you wrote inline.
 DS-dependent — requires `settings.tailwindcss.entryPoint`. When the design system can't load, the
 rule emits a single fatal `designSystemUnavailable` diagnostic per file instead of silently passing.
 
+## Project prefix (`prefix(...)`)
+
+If your entry point declares a Tailwind v4 prefix — `@import "tailwindcss" prefix(tw)` — every
+utility must be written with that prefix (`tw:flex`, `tw:hover:underline`). The rule is
+prefix-aware:
+
+- A correctly prefixed utility (`tw:flex`) is valid.
+- A Tailwind utility written **without** the prefix (`flex`) produces no CSS, so it's reported as
+  needing the prefix, with a quick-fix that adds it (`flex` → `tw:flex`).
+- Component classes from `@layer components` (`btn`, `card`) carry no prefix and stay valid either
+  way — only Tailwind-generated utilities require it.
+
+The prefix is detected automatically from your `entryPoint`; there is nothing extra to configure.
+
 ## Options
 
 ### `allowlist`
