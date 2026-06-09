@@ -60,13 +60,9 @@ export const enforceSortOrder = defineRule({
 
       function sortStrict(classes: string[]): string[] {
         const groups = new Map<string, string[]>()
-        const groupOrder: string[] = []
         for (const cls of classes) {
           const { variant } = splitUtilityAndVariant(cls)
-          if (!groups.has(variant)) {
-            groups.set(variant, [])
-            groupOrder.push(variant)
-          }
+          if (!groups.has(variant)) groups.set(variant, [])
           groups.get(variant)!.push(cls)
         }
 

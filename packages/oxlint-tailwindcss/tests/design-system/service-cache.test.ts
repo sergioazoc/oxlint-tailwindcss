@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 import { resolve } from 'node:path'
 import {
   canonicalizeClassesSync,
@@ -8,11 +8,14 @@ import {
 const DEFAULT_CSS = resolve(__dirname, '../fixtures/default.css')
 const ALT_CSS = resolve(__dirname, '../fixtures/with-typography.css')
 
+// Resetting the service tears down the worker; the next call re-loads the
+// design system in-thread (~2.5s). A blanket beforeEach/afterEach reset paid
+// that cost on EVERY test. Instead we share one warm worker across tests and
+// reset only where the test's meaning demands a cold worker (the "first call is
+// slow" timing test and the explicit "reset clears" test). Vitest runs tests in
+// declaration order within a file, so the shared state is deterministic.
 describe('canonicalize-service cache', () => {
-  beforeEach(() => {
-    resetCanonicalizeService()
-  })
-  afterEach(() => {
+  afterAll(() => {
     resetCanonicalizeService()
   })
 
@@ -27,6 +30,8 @@ describe('canonicalize-service cache', () => {
   })
 
   it('second call with the same class is much faster than the first', () => {
+    // Needs a cold worker so the first call pays the init cost we're comparing.
+    resetCanonicalizeService()
     const classes = ['p-[16px]', 'm-[8px]', 'flex', 'bg-[#3b82f6]']
 
     const t1 = performance.now()

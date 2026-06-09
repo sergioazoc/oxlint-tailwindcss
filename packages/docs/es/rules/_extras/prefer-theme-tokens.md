@@ -4,7 +4,7 @@ Detecta utilities escritas como referencia cruda a una variable CSS — `border-
 `bg-[var(--primary)]`, `text-(--background)/80` — y las reescribe a la utility de theme-token con
 nombre cuando existe en tu design system. Así `border-(--border)` se convierte en `border-border`,
 `hover:bg-[var(--primary)]/50` en `hover:bg-primary/50`, y `bg-(--red-500)` (cuando el usuario
-salteó el prefijo `--color-`) en `bg-red-500`. Tanto el shorthand de paréntesis (`prefix-(--name)`)
+omitió el prefijo `--color-`) en `bg-red-500`. Tanto el shorthand de paréntesis (`prefix-(--name)`)
 como la forma bracket (`prefix-[var(--name)]`) se reconocen, y los modificadores de opacidad
 (`/80`), variants y `!` (important) se preservan.
 
@@ -65,7 +65,7 @@ Asumiendo un theme estilo shadcn con tokens como `--border`, `--primary`, `--bac
 - **`no-unnecessary-arbitrary-value`**: emparejadas a propósito. Cuando la forma bracket es
   CSS-equivalente a una utility con nombre, esa regla gana y esta se queda en silencio (guard de
   `getNamedEquivalent`). Así `bg-[var(--color-red-500)]` → `bg-red-500` es propiedad de aquella;
-  `border-(--border)` → `border-border` vive acá.
+  `border-(--border)` → `border-border` vive aquí.
 - **`enforce-canonical`**: también parte del trío arbitrario→nombrado. Maneja casos donde la
   canonicalización produce una shape CSS distinta vía tus tokens. Las tres reglas parten el espacio
   para que cada forma arbitraria tenga exactamente un dueño.
@@ -80,4 +80,4 @@ Asumiendo un theme estilo shadcn con tokens como `--border`, `--primary`, `--bac
   (casos CSS-equivalentes) pero desactiva esta.
 - **Tu design system usa variables CSS que no están registradas como utilities con nombre** en
   `@theme` — la regla no se va a disparar con esas, pero si tu codebase mezcla los dos patrones y no
-  quieres presión gradual para exponer más tokens, desactivala.
+  quieres presión gradual para exponer más tokens, desactívala.

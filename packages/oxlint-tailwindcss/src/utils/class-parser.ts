@@ -187,6 +187,56 @@ export function reattachImportant(bare: string, position: ImportantPosition): st
 }
 
 /**
+ * Pseudo-element variants. They select a generated box (`::before`, `::marker`,
+ * …) rather than the element itself, so they must sit innermost in the variant
+ * chain (closest to the utility). Canonical home shared by
+ * `consistent-variant-order` (partitions them last) and
+ * `no-contradicting-variants` (they can't contradict a base class).
+ */
+export const PSEUDO_ELEMENT_VARIANTS = new Set([
+  'before',
+  'after',
+  'file',
+  'placeholder',
+  'selection',
+  'marker',
+  'backdrop',
+  'first-line',
+  'first-letter',
+  'details-content',
+])
+
+export function isPseudoElementVariant(variant: string): boolean {
+  return PSEUDO_ELEMENT_VARIANTS.has(variant)
+}
+
+/**
+ * Selector barriers: variants that re-point the selector at a *different*
+ * element than the ones around them — child (`*`), descendant (`**`),
+ * arbitrary selectors (`[&>svg]`) and compound child selectors (`*:data-[…]`).
+ *
+ * Unlike pseudo-elements, these are NOT free to move to the end of the chain:
+ * `hover:*:flex` (`&:hover > *`) and `*:hover:flex` (`& > *:hover`) target
+ * different elements. `consistent-variant-order` treats them as hard
+ * reordering barriers — variants never cross them.
+ */
+export function isSelectorBarrier(variant: string): boolean {
+  if (variant === '*' || variant === '**') return true
+  if (variant.startsWith('[') && variant.endsWith(']')) return true
+  if (variant.startsWith('*:')) return true
+  return false
+}
+
+/**
+ * Whether a variant changes the selector target (pseudo-element OR selector
+ * barrier). Such variants don't impose a condition on the same element, so they
+ * can't make a variant class contradict/duplicate a base class.
+ */
+export function changesTarget(variant: string): boolean {
+  return isPseudoElementVariant(variant) || isSelectorBarrier(variant)
+}
+
+/**
  * Fully parses a Tailwind class into its components.
  */
 export function parseClass(cls: string): ParsedClass {

@@ -160,6 +160,6 @@ Para tener shape-parity con `enforce-logical`:
 
 - Lee la [referencia de settings](/es/settings) para cada opción.
 - Mira la [guía de monorepo](/es/monorepo) para setups multi-CSS.
-- Abrí un issue en
+- Abre un issue en
   [github.com/sergioazoc/oxlint-tailwindcss](https://github.com/sergioazoc/oxlint-tailwindcss/issues)
   con tu config si la migración deja algo sin claridad.

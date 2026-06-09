@@ -1,3 +1,17 @@
+// Hot path: called per class string per AST node. A char comparison avoids the
+// per-character `/\s/.test()` regex object churn (R-B1). ASCII whitespace is
+// all Tailwind class strings ever contain.
+function isWhitespace(char: string): boolean {
+  return (
+    char === ' ' ||
+    char === '\t' ||
+    char === '\n' ||
+    char === '\r' ||
+    char === '\f' ||
+    char === '\v'
+  )
+}
+
 /**
  * Splits a Tailwind class string respecting:
  * - Nested brackets: bg-[url('...')], h-[calc(100%+2rem)]
@@ -23,10 +37,12 @@ export function splitClasses(classString: string): string[] {
 
     if (!inSingleQuote && !inDoubleQuote) {
       if (char === '[') bracketDepth++
-      if (char === ']') bracketDepth--
+      // Clamp at 0 so a stray ']' (typo like `w-[5px]]`) degrades gracefully
+      // instead of going negative and gluing the rest of the string together.
+      if (char === ']') bracketDepth = Math.max(0, bracketDepth - 1)
     }
 
-    if (/\s/.test(char) && bracketDepth === 0) {
+    if (isWhitespace(char) && bracketDepth === 0) {
       if (current.length > 0) {
         classes.push(current)
         current = ''
@@ -80,10 +96,10 @@ export function splitClassesWithSeparators(classString: string): ClassSplit {
 
     if (!inSingleQuote && !inDoubleQuote) {
       if (char === '[') bracketDepth++
-      if (char === ']') bracketDepth--
+      if (char === ']') bracketDepth = Math.max(0, bracketDepth - 1)
     }
 
-    if (/\s/.test(char) && bracketDepth === 0) {
+    if (isWhitespace(char) && bracketDepth === 0) {
       if (current.length > 0) {
         classes.push(current)
         separators.push(currentSep)

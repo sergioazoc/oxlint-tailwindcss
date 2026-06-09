@@ -52,10 +52,15 @@ export const noRestrictedClasses = defineRule({
       { restrictedClasses: Set<string>; patterns: Array<{ regex: RegExp; message?: string }> }
     >(context, (o) => ({
       restrictedClasses: new Set(o?.classes ?? []),
-      patterns: (o?.patterns ?? []).map((p) => ({
-        regex: new RegExp(p.pattern),
-        message: p.message,
-      })),
+      // Skip patterns with an invalid regex source rather than throwing a raw
+      // SyntaxError from inside a visitor and crashing the lint (SEC-B1).
+      patterns: (o?.patterns ?? []).flatMap((p) => {
+        try {
+          return [{ regex: new RegExp(p.pattern), message: p.message }]
+        } catch {
+          return []
+        }
+      }),
     }))
 
     function check(locations: ClassLocation[]) {

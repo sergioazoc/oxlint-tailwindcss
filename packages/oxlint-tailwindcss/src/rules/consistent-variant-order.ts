@@ -1,7 +1,12 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
-import { extractVariants, extractUtility } from '../utils/class-parser'
+import {
+  extractVariants,
+  extractUtility,
+  isPseudoElementVariant,
+  isSelectorBarrier,
+} from '../utils/class-parser'
 import { createLazyOptions } from '../utils/context'
 import { createLazyLoader } from '../design-system/loader'
 import type { DesignSystemCache } from '../design-system/cache'
@@ -11,23 +16,6 @@ interface Options {
   entryPoint?: string
   order?: string[]
 }
-
-// Pseudo-element variants — must always be innermost (closest to the utility).
-// In Tailwind v4 variants apply left-to-right, so pseudo-elements placed before
-// element-selecting variants (arbitrary selectors, has-[], aria-*, etc.) produce
-// broken CSS (e.g. `&::before { &>svg { ... } }` — pseudo-elements have no children).
-const PSEUDO_ELEMENTS = new Set([
-  'before',
-  'after',
-  'file',
-  'placeholder',
-  'selection',
-  'marker',
-  'backdrop',
-  'first-line',
-  'first-letter',
-  'details-content',
-])
 
 // Default variant ordering: responsive → features → color scheme → container →
 // group/peer → interactive states → form states → content → pseudo elements
@@ -147,54 +135,72 @@ export const consistentVariantOrder = defineRule({
   },
   createOnce(context) {
     const getDS = createLazyLoader(context)
+    const getOptions = createLazyOptions<Options, { order?: string[] }>(context, (o) => ({
+      order: o?.order,
+    }))
 
-    // consistent-variant-order is the one DS-optional rule in v1: its static
-    // fallback is also fully deterministic, so when no entryPoint is
-    // configured we silently fall back to it instead of erroring. Only
-    // plugin-fatal errors are swallowed — anything else is rethrown so real
-    // bugs stay visible.
-    const getPriority = createLazyOptions<Options, (variant: string) => number>(context, (o) => {
-      let dsCache: DesignSystemCache | null = null
-      try {
-        dsCache = getDS().cache
-      } catch (err) {
-        if (!isFatalError(err)) throw err
-      }
-
-      if (o?.order) {
+    function buildPriority(
+      order: string[] | undefined,
+      dsCache: DesignSystemCache | null,
+    ): (variant: string) => number {
+      if (order) {
         const map = new Map<string, number>()
-        for (let i = 0; i < o.order.length; i++) map.set(o.order[i], i)
-        const fallback = o.order.length
+        for (let i = 0; i < order.length; i++) map.set(order[i], i)
+        const fallback = order.length
         return (v) => map.get(v) ?? fallback
       }
-
       if (dsCache && dsCache.hasVariantOrder()) {
         const ds = dsCache
         return (v) => ds.getVariantPriority(v) ?? Number.MAX_SAFE_INTEGER
       }
-
       const map = new Map<string, number>()
       for (let i = 0; i < DEFAULT_VARIANT_ORDER.length; i++) {
         map.set(DEFAULT_VARIANT_ORDER[i], i)
       }
       const fallback = DEFAULT_VARIANT_ORDER.length
       return (v) => map.get(v) ?? fallback
-    })
+    }
 
-    // The project prefix (`tw:`) is structurally a variant but MUST stay first
-    // (`hover:tw:flex` produces no CSS). Split it off before reordering and
-    // re-attach it. '' when no DS / no prefix → behavior is unchanged.
-    const getPrefix = createLazyOptions<Options, string>(context, () => {
+    // Memoize priority + prefix PER RESOLVED ENTRY POINT, not once per context.
+    // createLazyLoader re-resolves the entry per file, so in a monorepo with a
+    // mapping array where one package uses prefix(tw) and another doesn't (or
+    // they declare different variant orders), a single context-wide memo would
+    // pin every file after the first to the first DS's prefix/order (R-M6).
+    const priorityByEntry = new Map<string, (variant: string) => number>()
+    const prefixByEntry = new Map<string, string>()
+
+    // consistent-variant-order is the one DS-optional rule in v1: its static
+    // fallback is also fully deterministic, so when no entryPoint is configured
+    // we silently fall back to it. Only plugin-fatal errors are swallowed —
+    // anything else is rethrown so real bugs stay visible.
+    function resolveForFile(): { priorityOf: (variant: string) => number; prefix: string } {
+      let dsCache: DesignSystemCache | null = null
+      let entryKey = ''
       try {
-        return getDS().cache.prefix
+        const ds = getDS()
+        dsCache = ds.cache
+        entryKey = ds.entryPoint
       } catch (err) {
         if (!isFatalError(err)) throw err
-        return ''
       }
-    })
+
+      let priorityOf = priorityByEntry.get(entryKey)
+      if (!priorityOf) {
+        priorityOf = buildPriority(getOptions().order, dsCache)
+        priorityByEntry.set(entryKey, priorityOf)
+      }
+      let prefix = prefixByEntry.get(entryKey)
+      if (prefix === undefined) {
+        // The project prefix (`tw:`) is structurally a variant but MUST stay
+        // first (`hover:tw:flex` produces no CSS). '' when no DS / no prefix.
+        prefix = dsCache?.prefix ?? ''
+        prefixByEntry.set(entryKey, prefix)
+      }
+      return { priorityOf, prefix }
+    }
 
     function reorderClass(cls: string): string | null {
-      const prefix = getPrefix()
+      const { priorityOf, prefix } = resolveForFile()
       let pfx = ''
       let body = cls
       if (prefix && cls.startsWith(prefix + ':')) {
@@ -205,21 +211,46 @@ export const consistentVariantOrder = defineRule({
       const variants = extractVariants(body)
       if (variants.length < 2) return null
 
-      const priorityOf = getPriority()
-      const sorted = [...variants].sort((a, b) => priorityOf(a) - priorityOf(b))
-
-      // Pseudo-elements must always be innermost (last in the variant chain).
-      // Partition sorted variants: non-pseudo-elements first, pseudo-elements last.
-      const nonPseudo: string[] = []
+      // Two ordering rules with different scopes:
+      //
+      // 1. Pseudo-elements (`before`, `after`, …) always go innermost (last),
+      //    even across a selector barrier: `before:[&>svg]` (`&::before > svg`,
+      //    a ::before has no svg child) is wrong; `[&>svg]:before`
+      //    (`& > svg::before`) is right. So pseudo-elements are pulled out and
+      //    appended at the end (issue #12).
+      //
+      // 2. State variants (`hover`, `focus`, `sm`, …) must NOT cross a selector
+      //    barrier (`*`, `**`, `[&>svg]`, `*:…`): `hover:[&>svg]` (`&:hover >
+      //    svg`) and `[&>svg]:hover` (`& > svg:hover`) target different
+      //    elements (R-A2). So we segment the non-pseudo variants at each
+      //    barrier and only reorder within a segment.
       const pseudo: string[] = []
-      for (const v of sorted) {
-        if (PSEUDO_ELEMENTS.has(v)) {
-          pseudo.push(v)
+      const rest: string[] = []
+      for (const v of variants) {
+        if (isPseudoElementVariant(v)) pseudo.push(v)
+        else rest.push(v)
+      }
+
+      const reorderedRest: string[] = []
+      let segment: string[] = []
+      const flushSegment = () => {
+        if (segment.length === 0) return
+        segment.sort((a, b) => priorityOf(a) - priorityOf(b))
+        reorderedRest.push(...segment)
+        segment = []
+      }
+      for (const v of rest) {
+        if (isSelectorBarrier(v)) {
+          flushSegment()
+          reorderedRest.push(v)
         } else {
-          nonPseudo.push(v)
+          segment.push(v)
         }
       }
-      const final = nonPseudo.length > 0 && pseudo.length > 0 ? [...nonPseudo, ...pseudo] : sorted
+      flushSegment()
+
+      pseudo.sort((a, b) => priorityOf(a) - priorityOf(b))
+      const final = [...reorderedRest, ...pseudo]
 
       if (variants.every((v, i) => v === final[i])) return null
 

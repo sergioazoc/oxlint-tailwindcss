@@ -52,15 +52,11 @@ describe('precompute via worker_thread', () => {
     expect(source).toMatch(/from\s+['"]node:worker_threads['"]/)
   })
 
-  it('loads a real design system through the worker', () => {
-    resetDesignSystem()
-    const css = uniqueCss('nofork')
-    const result = loadDesignSystemSync(css)
-    expect(result.validClasses.length).toBeGreaterThan(1000)
-    cleanup(css)
-  })
-
-  it('writes valid JSON to the disk cache and leaves no temp file behind', () => {
+  // Loads a real design system through the worker AND checks the disk-write
+  // contract in one cold compute — the prior standalone "loads a real DS" test
+  // re-ran an identical worker load just to assert validClasses > 1000, which
+  // this test already covers.
+  it('loads a real DS, writes valid JSON to the disk cache, leaves no temp file', () => {
     resetDesignSystem()
     const css = uniqueCss('diskcontract')
     const { json } = cacheArtifactPaths(css)

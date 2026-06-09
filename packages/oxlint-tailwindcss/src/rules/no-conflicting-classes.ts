@@ -103,8 +103,11 @@ export const noConflictingClasses = defineRule({
     ],
     defaultOptions: [{}],
     messages: {
+      // Don't claim the later class in the attribute "wins": CSS precedence is
+      // decided by order in the generated stylesheet, not by order in the class
+      // attribute (R-M3). Tell the user to remove one instead.
       conflict:
-        '"{{classA}}" and "{{classB}}" affect {{properties}}. "{{winner}}" takes precedence (appears later).',
+        '"{{classA}}" and "{{classB}}" both affect {{properties}}. Only one applies — which wins depends on the generated stylesheet order, not the attribute order. Remove one.',
       ...DS_UNAVAILABLE_MESSAGE,
     },
   },
@@ -146,12 +149,16 @@ export const noConflictingClasses = defineRule({
 
             for (let j = i + 1; j < variantClasses.length; j++) {
               const classB = variantClasses[j]
+              // An exact duplicate isn't a conflict with itself — that's
+              // no-duplicate-classes' job (R-B9). Skip it here.
+              if (classA === classB) continue
               const propsB = propsMap.get(classB) ?? []
 
               // Skip pairs that share CSS properties but target different elements/roles
               if (shouldSkipPair(classA, classB, propsA, propsB)) continue
 
-              const overlap = propsA.filter((p) => propsB.includes(p))
+              const propsBSet = new Set(propsB)
+              const overlap = propsA.filter((p) => propsBSet.has(p))
               if (overlap.length > 0) {
                 const propList =
                   overlap.length <= 3
@@ -165,7 +172,6 @@ export const noConflictingClasses = defineRule({
                     classA,
                     classB,
                     properties: propList,
-                    winner: classB,
                   },
                 })
               }

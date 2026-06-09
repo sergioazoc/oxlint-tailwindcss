@@ -14,6 +14,13 @@ ruleTester.run('no-dark-without-light', noDarkWithoutLight, {
       filename: 'test.tsx',
     },
     { code: '<div className="hover:bg-blue-500" />', filename: 'test.tsx' },
+    // R-M5: display/position utilities share a property under different bare
+    // names — `block`/`hidden` group together, so the idiomatic show/hide
+    // pattern must NOT report a missing base.
+    { code: '<div className="block dark:hidden" />', filename: 'test.tsx' },
+    { code: '<div className="hidden dark:block" />', filename: 'test.tsx' },
+    { code: '<div className="flex dark:hidden" />', filename: 'test.tsx' },
+    { code: '<div className="relative dark:absolute" />', filename: 'test.tsx' },
   ],
   invalid: [
     {

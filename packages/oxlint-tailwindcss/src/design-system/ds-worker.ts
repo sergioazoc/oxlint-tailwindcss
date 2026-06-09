@@ -29,9 +29,91 @@ import { TAILWIND_NODE_PATH } from './tailwind-node'
 
 const BUFFER_SIZE = 4 * 1024 * 1024 // 4 MB
 const HEADER_INTS = 4
-const DATA_OFFSET = HEADER_INTS * 4 + 4 // 20 bytes
+const LENGTH_OFFSET = HEADER_INTS * 4 // 16 bytes
+const DATA_OFFSET = LENGTH_OFFSET + 4 // 20 bytes
 const INIT_TIMEOUT = 60_000 // 60 s to load DS (raised in v1 to avoid spurious timeouts on slow CI)
 const REQUEST_TIMEOUT = 30_000 // 30 s per request
+
+/**
+ * Build the worker script shared by `sort-service` and `canonicalize-service`.
+ * Owns the entire SharedArrayBuffer protocol (offsets derived from the same
+ * constants the host uses, so they can't drift), the design-system load with
+ * error propagation (DS-M4: the real cause is written into the buffer so the
+ * host can surface it, not a generic "failed to load"), the ready signal, and
+ * the request loop. `handlerExpr` is a function expression `(ds, request) =>
+ * result` — the only part that differs between services.
+ */
+export function makeWorkerScript(handlerExpr: string): string {
+  return `
+const { workerData } = require('worker_threads');
+async function main() {
+  const { sharedBuffer, cssPath } = workerData;
+  const control = new Int32Array(sharedBuffer, 0, ${HEADER_INTS});
+  const lengthView = new DataView(sharedBuffer, ${LENGTH_OFFSET}, 4);
+  const dataArea = new Uint8Array(sharedBuffer, ${DATA_OFFSET});
+
+  // On load failure, write the real cause into the data region so the host can
+  // report it instead of a bare "failed to load the design system".
+  function signalLoadError(e) {
+    try {
+      const msg = Buffer.from(String((e && e.message) || e || 'unknown design-system load error'), 'utf-8');
+      const n = Math.min(msg.length, dataArea.length);
+      dataArea.set(msg.subarray(0, n), 0);
+      lengthView.setUint32(0, n);
+    } catch {}
+    Atomics.store(control, 2, -1);
+    Atomics.notify(control, 2);
+  }
+
+  let ds;
+  try {
+    const { __unstable__loadDesignSystem } = require(workerData.tailwindNodePath);
+    const { readFileSync } = require('fs');
+    const { dirname } = require('path');
+    const css = readFileSync(cssPath, 'utf-8');
+    ds = await __unstable__loadDesignSystem(css, { base: dirname(cssPath) });
+  } catch (e) {
+    signalLoadError(e);
+    return;
+  }
+
+  Atomics.store(control, 2, 1);
+  Atomics.notify(control, 2);
+
+  const handler = ${handlerExpr};
+
+  while (true) {
+    Atomics.wait(control, 0, 0);
+    const len = lengthView.getUint32(0);
+    const requestStr = Buffer.from(dataArea.slice(0, len)).toString('utf-8');
+    Atomics.store(control, 0, 0);
+
+    let response;
+    try {
+      const request = JSON.parse(requestStr);
+      const result = handler(ds, request);
+      response = Buffer.from(JSON.stringify(result), 'utf-8');
+    } catch {
+      response = Buffer.from('null', 'utf-8');
+    }
+
+    // DS-M6: if the response doesn't fit the shared buffer, reply with a
+    // sentinel the host reads as a rejected request, instead of letting
+    // dataArea.set throw and kill the worker (which would hang the caller
+    // until the request timeout and then report a misleading timeout).
+    if (response.length > dataArea.length) {
+      response = Buffer.from('null', 'utf-8');
+    }
+
+    dataArea.set(response, 0);
+    lengthView.setUint32(0, response.length);
+    Atomics.store(control, 1, 1);
+    Atomics.notify(control, 1);
+  }
+}
+main().catch(() => {});
+`
+}
 
 interface ReadyState {
   worker: Worker
@@ -51,8 +133,22 @@ export interface DesignSystemWorkerOptions {
 export class DesignSystemWorker<Req, Res> {
   private ready: ReadyState | null = null
   private lastError: SortServiceError | null = null
+  // The cssPath the sticky error belongs to. Checking `this.ready?.cssPath`
+  // (the old guard) never worked: every failure path leaves `ready === null`
+  // (init failures throw before assigning it; request failures call cleanup),
+  // so the next call re-ran the full init — re-paying the 60 s timeout (or
+  // respawning the worker) per call. Tracking the path separately makes the
+  // error genuinely sticky (DS-A1).
+  private lastErrorCssPath: string | null = null
 
   constructor(private readonly opts: DesignSystemWorkerOptions) {}
+
+  /** Record an error as sticky for `cssPath` and return it for `throw`. */
+  private remember(cssPath: string, err: SortServiceError): SortServiceError {
+    this.lastError = err
+    this.lastErrorCssPath = cssPath
+    return err
+  }
 
   /**
    * Ensure the worker is running and pointed at `cssPath`. Returns the
@@ -61,18 +157,21 @@ export class DesignSystemWorker<Req, Res> {
    * cssPath rethrow without retrying.
    */
   private ensure(cssPath: string): ReadyState {
-    if (this.lastError && this.ready?.cssPath === cssPath) throw this.lastError
+    if (this.lastError && this.lastErrorCssPath === cssPath) throw this.lastError
     if (this.ready && this.ready.cssPath === cssPath) return this.ready
 
     if (this.ready) this.cleanup()
     this.lastError = null
+    this.lastErrorCssPath = null
 
     if (TAILWIND_NODE_PATH === null) {
-      this.lastError = new SortServiceError(
-        `Could not resolve '@tailwindcss/node' for the ${this.opts.serviceName} worker.`,
-        "Install '@tailwindcss/node' (or upgrade oxlint-tailwindcss) and re-run.",
+      throw this.remember(
+        cssPath,
+        new SortServiceError(
+          `Could not resolve '@tailwindcss/node' for the ${this.opts.serviceName} worker.`,
+          "Install '@tailwindcss/node' (or upgrade oxlint-tailwindcss) and re-run.",
+        ),
       )
-      throw this.lastError
     }
 
     const sharedBuffer = new SharedArrayBuffer(BUFFER_SIZE)
@@ -87,12 +186,14 @@ export class DesignSystemWorker<Req, Res> {
         workerData: { sharedBuffer, cssPath, tailwindNodePath: TAILWIND_NODE_PATH },
       })
     } catch (cause) {
-      this.lastError = new SortServiceError(
-        `Failed to spawn ${this.opts.serviceName} worker for "${cssPath}".`,
-        'This is unexpected; please open an issue with the error details.',
-        { cause: cause instanceof Error ? cause : undefined },
+      throw this.remember(
+        cssPath,
+        new SortServiceError(
+          `Failed to spawn ${this.opts.serviceName} worker for "${cssPath}".`,
+          'This is unexpected; please open an issue with the error details.',
+          { cause: cause instanceof Error ? cause : undefined },
+        ),
       )
-      throw this.lastError
     }
 
     worker.unref()
@@ -102,25 +203,38 @@ export class DesignSystemWorker<Req, Res> {
         'The worker will not be restarted in this process. Restart the lint session.',
         { cause: err },
       )
+      this.lastErrorCssPath = cssPath
     })
 
     // Wait for DS to load
     const result = Atomics.wait(controlArray, 2, 0, INIT_TIMEOUT)
     if (result === 'timed-out') {
-      this.lastError = new SortServiceError(
-        `${this.opts.serviceName} worker timed out loading the design system from "${cssPath}" after ${INIT_TIMEOUT}ms.`,
-        'Raise settings.tailwindcss.timeout if your machine is slow, or verify the CSS imports resolve.',
-      )
       this.terminateWorker(worker)
-      throw this.lastError
+      throw this.remember(
+        cssPath,
+        new SortServiceError(
+          `${this.opts.serviceName} worker timed out loading the design system from "${cssPath}" after ${INIT_TIMEOUT}ms.`,
+          // This timeout is a fixed internal limit, NOT settings.tailwindcss.timeout
+          // (which only governs the precompute loader). Don't send users chasing a
+          // setting that won't move it.
+          'Verify the CSS imports resolve; this can also happen if the machine or CI runner is heavily loaded.',
+        ),
+      )
     }
     if (controlArray[2] === -1) {
-      this.lastError = new SortServiceError(
-        `${this.opts.serviceName} worker failed to load the design system from "${cssPath}".`,
-        'Verify @tailwindcss/node is installed and the CSS file (and its imports) is valid.',
-      )
+      // The worker wrote the real cause into the data region (DS-M4).
+      const len = lengthView.getUint32(0)
+      const detail = len > 0 ? Buffer.from(dataArea.slice(0, len)).toString('utf-8') : ''
       this.terminateWorker(worker)
-      throw this.lastError
+      throw this.remember(
+        cssPath,
+        new SortServiceError(
+          `${this.opts.serviceName} worker failed to load the design system from "${cssPath}".${
+            detail ? ` ${detail}` : ''
+          }`,
+          'Verify @tailwindcss/node is installed and the CSS file (and its imports) is valid.',
+        ),
+      )
     }
 
     this.ready = { worker, controlArray, lengthView, dataArea, cssPath }
@@ -150,12 +264,15 @@ export class DesignSystemWorker<Req, Res> {
 
     const result = Atomics.wait(state.controlArray, 1, 0, REQUEST_TIMEOUT)
     if (result === 'timed-out') {
-      this.lastError = new SortServiceError(
-        `${this.opts.serviceName} worker request timed out after ${REQUEST_TIMEOUT}ms.`,
-        'Raise settings.tailwindcss.timeout if your machine is slow.',
-      )
       this.cleanup()
-      throw this.lastError
+      throw this.remember(
+        cssPath,
+        new SortServiceError(
+          `${this.opts.serviceName} worker request timed out after ${REQUEST_TIMEOUT}ms.`,
+          // Fixed internal limit, not settings.tailwindcss.timeout.
+          'This is unexpected for typical class lists; please open an issue if it persists.',
+        ),
+      )
     }
 
     const responseLen = state.lengthView.getUint32(0)
@@ -166,22 +283,26 @@ export class DesignSystemWorker<Req, Res> {
     try {
       parsed = JSON.parse(responseStr)
     } catch (cause) {
-      this.lastError = new SortServiceError(
-        `${this.opts.serviceName} worker returned non-JSON response.`,
-        'This is a bug; please open an issue.',
-        { cause: cause instanceof Error ? cause : undefined },
-      )
       this.cleanup()
-      throw this.lastError
+      throw this.remember(
+        cssPath,
+        new SortServiceError(
+          `${this.opts.serviceName} worker returned non-JSON response.`,
+          'This is a bug; please open an issue.',
+          { cause: cause instanceof Error ? cause : undefined },
+        ),
+      )
     }
 
     if (parsed === null) {
-      this.lastError = new SortServiceError(
-        `${this.opts.serviceName} worker returned null — request body was rejected.`,
-        'This is a bug; please open an issue with the input that triggered it.',
-      )
       this.cleanup()
-      throw this.lastError
+      throw this.remember(
+        cssPath,
+        new SortServiceError(
+          `${this.opts.serviceName} worker returned null — the request body was rejected or its response did not fit the buffer.`,
+          'This is a bug; please open an issue with the input that triggered it.',
+        ),
+      )
     }
 
     return parsed as Res
@@ -190,6 +311,7 @@ export class DesignSystemWorker<Req, Res> {
   reset(): void {
     this.cleanup()
     this.lastError = null
+    this.lastErrorCssPath = null
   }
 
   private cleanup(): void {

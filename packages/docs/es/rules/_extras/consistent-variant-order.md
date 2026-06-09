@@ -88,6 +88,6 @@ proyecto; casi nunca se necesita.
 - **Confías en `prettier-plugin-tailwindcss` también para ordenar variants**: el formatter lo hace,
   la regla es redundante. Dejar ambas activadas es seguro pero es trabajo extra.
 - **Orden custom de variants que es difícil de expresar como una lista plana** (e.g. el orden
-  depende de la utility): desactivala y confiá en el review.
+  depende de la utility): desactívala y confía en el review.
 - **Código generado** donde el orden de variants codifica un significado que no quieres que se
   reescriba.

@@ -33,6 +33,9 @@ Sintaxis soportada: `*` (cualquier caracter excepto `/`), `**` (cualquier profun
 literales. El orden importa — el primer entry que matchea gana. Se recomienda agregar un fallback
 `"**"` para archivos fuera de los globs explícitos.
 
+`files` también acepta un arreglo de globs (`string[]`): el entry matchea si el archivo lintado
+coincide con cualquiera de ellos.
+
 **v0.x → v1.0.0**: la forma legacy `string[]` se removió. Pasarla en v1 lanza
 `DeprecatedEntryPointShapeError` con el snippet de migración incluido en el mensaje. Ver la
 [guía de migración](/es/migration/v0-to-v1).
@@ -41,14 +44,14 @@ literales. El orden importa — el primer entry que matchea gana. Se recomienda 
 
 `number`, default `16`.
 
-Tamaño de fuente en píxeles que `enforce-canonical` usa para convertir entre px y rem. Cambiá esto
+Tamaño de fuente en píxeles que `enforce-canonical` usa para convertir entre px y rem. Cambia esto
 solo si tu proyecto define un root size distinto de 16 en `<html>`.
 
 ## `timeout`
 
 `number` en milisegundos, default `60000`.
 
-Cuánto espera el plugin al proceso hijo que precalcula el design system. CI lentos pueden necesitar
+Cuánto espera el plugin al worker (hilo) que precalcula el design system. CI lentos pueden necesitar
 subirlo; no deberías necesitar bajarlo.
 
 ## `debug`
@@ -88,7 +91,7 @@ Agrega más sin perder los defaults:
 }
 ```
 
-O quitá de los defaults:
+O quita de los defaults:
 
 ```jsonc
 {

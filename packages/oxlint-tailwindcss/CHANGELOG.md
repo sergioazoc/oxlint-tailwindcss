@@ -1,6 +1,67 @@
 # Changelog
 
-## 1.2.0
+## 1.3.0 (2026-06-09)
+
+A correctness, robustness, and security pass from a full project audit. Two autofixes that could
+corrupt source code are fixed, the design-system cache layer is hardened against corruption and
+unsafe shared-tmpdir use, and several rules get more accurate. No runtime dependency changed
+(`tailwindcss` / `@tailwindcss/node` stay `^4.3.0`); the plugin API and `settings` are unchanged.
+
+### Bug fixes
+
+- **`enforce-negative-arbitrary-values` no longer corrupts `calc()`/`var()` values.** Tailwind v4
+  negates wrapped values by emitting `calc(<value> * -1)`, so `-top-[calc(100%-4px)]` is valid; the
+  old fix rewrote it to `top-[-calc(100%-4px)]` — invalid CSS that silently dropped the style. The
+  fix now applies only to plain numeric dimensions.
+- **`consistent-variant-order` no longer reorders variants that change the selector target.**
+  `hover:[&>svg]` (`&:hover > svg`) and `[&>svg]:hover` (`& > svg:hover`) target different elements,
+  so they (and `*` / `**`) are now treated as reordering barriers. Pseudo-elements still move
+  innermost as before.
+- **`enforce-canonical`** rounds rem/em/px floats on the worker path too, so the autofix can no
+  longer write values like `2.4000000000000004rem` into source.
+- **`no-unknown-classes`** suggestions now preserve the `!` modifier (`flexx!` → `flex!`) and work
+  behind variants (`hover:flexx` → `hover:flex`), which previously produced no suggestion.
+- **`no-dark-without-light`** no longer false-positives on the idiomatic `block dark:hidden` (and
+  other display/position pairs that set the same property under different names).
+- **`consistent-variant-order`** resolves the prefix and variant order per entry point, fixing
+  monorepos where packages declare different `prefix(...)` or variant orders.
+- **`no-conflicting-classes`** no longer claims the later class in the attribute "wins" (CSS
+  precedence is decided by the generated stylesheet order, not attribute order) and no longer flags
+  an exact duplicate as conflicting with itself.
+- Invalid user regexes in `settings.tailwindcss.variablePatterns` and `no-restricted-classes`
+  `patterns` are now skipped instead of crashing the lint with a raw `SyntaxError`.
+
+### Behavior changes
+
+- **`enforce-logical` / `enforce-physical` now convert negative utilities** (`-ml-2` → `-ms-2`,
+  `-left-4` → `-start-4`), which they previously skipped. Projects that use negative
+  physical/logical utilities may see new reports.
+- **`no-hardcoded-colors` dropped its no-op `entryPoint` option.** The rule is fully static and
+  never read it; configs that set it should remove it.
+
+### Robustness & security
+
+- **Disk cache hardening.** The precompute cache directory is now namespaced per user and created
+  with mode `0o700`, and every cache read is schema-validated. A corrupt, truncated, or poisoned
+  cache file is detected, removed, and recomputed instead of wedging the loader or crashing — closes
+  a shared-`/tmp` cache-poisoning vector that fed autofixes.
+- **Cache invalidates on `@import` changes.** The cache key now folds in locally-imported CSS, so
+  editing a file pulled in via `@import "./theme.css"` no longer serves a stale design system.
+- **Sticky load errors are now genuinely sticky** per entry point, so a failed design-system load is
+  retried once per process instead of re-paying the init cost on every call.
+- **Worker robustness.** A synchronous failure in the precompute worker (e.g. a broken
+  `@tailwindcss/node`) now reports its real cause instead of a misleading timeout; the sort and
+  canonicalize workers propagate load-failure causes and guard against oversized responses; stale
+  precompute locks are reclaimed by exclusive rename to avoid a coordination race.
+
+### Internal
+
+- Updated dev tooling: oxlint/`@oxlint/plugins` 1.69.0, oxfmt 0.54.0 (no formatting changes), plus
+  patch bumps to `@types/node` and `@tailwindcss/typography`.
+- Shared `changesTarget` / selector-barrier helpers centralized in `class-parser`; the sort and
+  canonicalize worker scripts now share a single `makeWorkerScript` builder.
+
+## 1.2.0 (2026-06-05)
 
 Adds support for the Tailwind v4 project prefix
 ([#29](https://github.com/sergioazoc/oxlint-tailwindcss/issues/29)). Previously, an entry point that
@@ -26,7 +87,7 @@ invalid. Thanks to [@beckerei](https://github.com/beckerei) for the report.
 - **`enforce-sort-order` (strict mode)** now sorts prefixed groups stably instead of collapsing
   every prefixed group to the same priority.
 
-## 1.1.0
+## 1.1.0 (2026-05-29)
 
 Extends `enforce-shorthand` with variant-aware merges and the axis-pair → full shorthand step
 ([#27](https://github.com/sergioazoc/oxlint-tailwindcss/issues/27),
@@ -55,7 +116,7 @@ Extends `enforce-shorthand` with variant-aware merges and the axis-pair → full
   appends the merged shorthand when other classes are present — ordering remains
   `enforce-sort-order`'s job.
 
-## 1.0.1
+## 1.0.1 (2026-05-28)
 
 Fixes the cold-cache `spawnSync … node ENOMEM` that collapsed linting on memory-constrained CI
 runners ([#24](https://github.com/sergioazoc/oxlint-tailwindcss/issues/24)).
@@ -85,7 +146,7 @@ runners ([#24](https://github.com/sergioazoc/oxlint-tailwindcss/issues/24)).
   levers for a memory failure. The hint is now classified by the underlying error code and points at
   memory pressure / oxlint concurrency / runner memory when appropriate.
 
-## 1.0.0
+## 1.0.0 (2026-05-21)
 
 Major release. v1.0.0 pivots `oxlint-tailwindcss` to a deterministic, explicit-config philosophy
 aligned with the rest of the Tailwind ecosystem (prettier-plugin-tailwindcss, oxfmt,

@@ -9,21 +9,37 @@ on:
     # before publishing.
     branches: [main, release]
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      # See all platform/version failures at once instead of stopping early.
+      fail-fast: false
       matrix:
-        node-version: [22]
+        os: [ubuntu-latest]
+        node-version: [20, 22, 24]
+        # The sync-loader relies on Atomics, file-locks (openSync 'wx'),
+        # os.tmpdir() and worker_threads, which are platform-sensitive. Cover
+        # macOS and Windows on the primary Node version so the cross-platform
+        # paths are exercised without exploding the matrix. The workflow steps
+        # are pnpm-driven (no raw unix-only shell), so they run on Windows too.
+        include:
+          - os: macos-latest
+            node-version: 22
+          - os: windows-latest
+            node-version: 22
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
           version: 11.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm

@@ -5,7 +5,7 @@ partir del CSS que apuntas con `entryPoint` — si esa clase existe. Si no exist
 reporta. Cuando la clase parece un typo de una conocida (distancia Levenshtein ≤ 2), el diagnóstico
 incluye una sugerencia y un quick-fix de editor para reemplazarla.
 
-El design system acá significa **todo lo que Tailwind generaría para tu stylesheet**: las utilities
+El design system aquí significa **todo lo que Tailwind generaría para tu stylesheet**: las utilities
 core (`flex`, `bg-red-500`, `hover:underline`), cualquier token `@theme` que definiste (`bg-card`,
 `text-brand-foreground`), cualquier clase registrada por plugins (`prose`, `animate-in`, etc.), y
 cualquier CSS custom que escribiste inline.

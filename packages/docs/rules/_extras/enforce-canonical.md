@@ -4,7 +4,7 @@ Asks the design system for the canonical form of every utility in your code and 
 that aren't already canonical. "Canonical" is whatever `canonicalizeCandidates()` from
 `@tailwindcss/node` returns — the same source of truth used by prettier-plugin-tailwindcss, oxfmt,
 and the official Tailwind tooling. Examples: `-m-0` → `m-0` (no negative is needed for a zero),
-`bg- gradient-to-r` → `bg-linear-to-r`, `break-words` → `wrap-break-word`, `start-2` → `inset-s-2`,
+`bg-gradient-to-r` → `bg-linear-to-r`, `break-words` → `wrap-break-word`, `start-2` → `inset-s-2`,
 `flex-grow-1` → `grow`, `p-[2px]` → `p-0.5` (arbitrary value normalized to a named token via your
 `--spacing` scale), `text-[var(--color-text)]/90` → `text-(--color-text)/90`. Auto- fix lands the
 first hit, suggestions cover the rest in the same string.
@@ -72,7 +72,7 @@ for the whole project instead of per-rule whenever possible.
   safe; the autofixes agree. Keep `no-deprecated-classes` if you want a fast, hardcoded, DS-free
   pass.
 - **`enforce-consistent-important-position`**: this rule preserves the `!` position you wrote
-  (prefix vs suffix vs none). `enforce- consistent-important-position` is the single source of truth
+  (prefix vs suffix vs none). `enforce-consistent-important-position` is the single source of truth
   for enforcing a particular position.
 
 ## When to disable it

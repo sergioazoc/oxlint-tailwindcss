@@ -9,7 +9,7 @@ sobre el nombre viejo. Ejemplos: `flex-grow` → `grow`, `flex-shrink` → `shri
 
 DS-dependiente — requiere `settings.tailwindcss.entryPoint`. La regla usa el design system para
 saber contra qué archivo está trabajando y así jugar bien con el resto del plugin (en particular,
-`no-unknown- classes` omite las clases que esta regla marca para que no veas dos diagnósticos por el
+`no-unknown-classes` omite las clases que esta regla marca para que no veas dos diagnósticos por el
 mismo token). Si el design system no puede cargar, la regla emite un único diagnóstico fatal
 `designSystemUnavailable` por archivo en vez de pasar en silencio.
 
@@ -60,7 +60,7 @@ para todo el proyecto en vez de por-regla cuando puedas.
 - **`enforce-canonical`**: cubre un conjunto estrictamente más grande que esta regla — reescribe
   formas válidas-pero-no-canónicas (`-m-0` → `m-0`, `start-2` → `inset-s-2`) y también atrapa todas
   las deprecaciones. Correr ambas está bien; los autofixes no conflictúan. Elige
-  `no-deprecated-classes` cuando quieres un pase rápido, hardcodeado y sin DS; elige
+  `no-deprecated-classes` cuando quieres un pase rápido sobre la lista fija de renames v3→v4; elige
   `enforce-canonical` para el cleanup completo con DS.
 - **`no-restricted-classes`**: ortogonal. Esa la usas para bloquear clases válidas; esta solo se
   dispara con la lista fija de renames v3→v4.
@@ -69,6 +69,6 @@ para todo el proyecto en vez de por-regla cuando puedas.
 
 - **Sigues en Tailwind v3** y los nombres nuevos no resuelven contra tu design system. Fija el
   plugin y desactiva esta regla hasta que migres.
-- **Manténs a propósito una capa de clases v3-compatibles** al lado de v4 (por ejemplo, una librería
-  compartida que apunta a ambos). En ese caso prefiere un `eslint-disable` puntual en el archivo
-  antes que un disable a nivel proyecto.
+- **Mantienes a propósito una capa de clases v3-compatibles** al lado de v4 (por ejemplo, una
+  librería compartida que apunta a ambos). En ese caso prefiere un `eslint-disable` puntual en el
+  archivo antes que un disable a nivel proyecto.

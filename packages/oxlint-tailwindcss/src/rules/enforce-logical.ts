@@ -106,12 +106,18 @@ export function createDirectionalMapper(
 
     const { utility, variant } = splitUtilityAndVariant(cls)
     const { bare: bareUtility, position } = splitImportant(utility)
+    // Negative utilities (`-ml-2`, `-left-4`) keep a leading `-` that the
+    // mapping keys (`ml`, `left`) don't carry — strip it before matching and
+    // re-prepend it on the replacement, else negatives never convert (R-M4).
+    const negative = bareUtility.startsWith('-')
+    const core = negative ? bareUtility.slice(1) : bareUtility
 
     for (const { from, to, axis } of opts.mappings) {
       if (direction !== 'both' && direction !== axis) continue
-      if (bareUtility === from || bareUtility.startsWith(`${from}-`)) {
-        const suffix = bareUtility.slice(from.length)
-        return `${variant}${reattachImportant(to + suffix, position)}`
+      if (core === from || core.startsWith(`${from}-`)) {
+        const suffix = core.slice(from.length)
+        const replacement = `${negative ? '-' : ''}${to}${suffix}`
+        return `${variant}${reattachImportant(replacement, position)}`
       }
     }
     return null

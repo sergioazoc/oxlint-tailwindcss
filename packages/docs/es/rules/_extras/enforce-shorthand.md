@@ -16,7 +16,7 @@ equivalentes a `size-screen`.
 ## Opciones
 
 Esta regla no tiene opciones. El set de pares shorthand está fijado por la superficie de utilities
-propia de Tailwind — cualquier cosa que dejáramos configurable acá es más bien un laburo para el
+propia de Tailwind — cualquier cosa que dejáramos configurable aquí es más bien un trabajo para el
 proyecto upstream de Tailwind.
 
 ## Ejemplos
@@ -65,7 +65,7 @@ proyecto upstream de Tailwind.
 - **`enforce-sort-order`**: ejecuta shorthand primero así el shorthand participa del sort con su
   propia prioridad. Si no, el sort ubica `mt-2 mr-2 mb-2 ml-2` en posiciones separadas y el fix del
   shorthand las colapsa después.
-- **`enforce-logical` / `enforce-physical`**: los pares shorthand de acá (`m-*`, `p-*`, `size-*`,
+- **`enforce-logical` / `enforce-physical`**: los pares shorthand de aquí (`m-*`, `p-*`, `size-*`,
   `rounded-*`) son direction-neutral, así que ninguna regla direccional interfiere.
 - **`enforce-consistent-important-position`**: el shorthand respeta la convención de posición del
   `!` de las clases mergeadas. Si las cuatro usan prefijo, el shorthand queda con prefijo; lo mismo

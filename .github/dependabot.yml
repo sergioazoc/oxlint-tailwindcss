@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Keep the pinned GitHub Actions (by SHA) current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  # Root workspace dependencies (oxlint/oxfmt catalog tooling, etc.).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+
+  # The published plugin package.
+  - package-ecosystem: npm
+    directory: /packages/oxlint-tailwindcss
+    schedule:
+      interval: weekly
