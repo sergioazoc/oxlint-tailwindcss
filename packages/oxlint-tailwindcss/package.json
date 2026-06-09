@@ -58,7 +58,7 @@
     "@oxlint/plugins": "catalog:",
     "@tailwindcss/typography": "^0.5.20",
     "@types/node": "^25.9.2",
-    "@typescript/native-preview": "7.0.0-dev.20260608.1",
+    "@typescript/native-preview": "7.0.0-dev.20260609.1",
     "oxlint": "catalog:",
     "tailwindcss-animate": "^1.0.7",
     "tsdown": "^0.22.2",
