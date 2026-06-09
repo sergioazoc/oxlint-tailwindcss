@@ -71,6 +71,6 @@ for the whole project instead of per-rule whenever possible.
 
 - **You intentionally keep arbitrary values for readability** — some teams prefer `w-[200px]` to a
   token alias when the value is one-off or pixel-precise. Disable the rule and rely on
-  `prefer-theme- tokens` + `enforce-canonical` for the cases you do want flagged.
+  `prefer-theme-tokens` + `enforce-canonical` for the cases you do want flagged.
 - **Migrating from a different tooling chain** that produced arbitrary values for everything — run
   as `warn` until cleanup is complete, then bump to `error`.

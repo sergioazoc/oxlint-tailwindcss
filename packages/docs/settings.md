@@ -31,6 +31,9 @@ Globs are evaluated against the linted file's path relative to the oxlint workin
 Supported syntax: `*` (any chars except `/`), `**` (any depth), literal segments. Order matters —
 the first matching entry wins. Add a `"**"` fallback to handle files outside the explicit globs.
 
+`files` also accepts an array of globs (`string[]`): the entry matches if the linted file matches
+any of them.
+
 **v0.x → v1.0.0**: the legacy `string[]` shape was removed. Passing it in v1 throws
 `DeprecatedEntryPointShapeError` with the migration snippet inline. See the
 [migration guide](/migration/v0-to-v1).
@@ -46,7 +49,7 @@ only if your project sets a non-16 root size on `<html>`.
 
 `number` in milliseconds, default `60000`.
 
-How long the plugin waits for the child process that precomputes the design system. Slow CI machines
+How long the plugin waits for the worker thread that precomputes the design system. Slow CI machines
 may need this raised; you should not need it lowered.
 
 ## `debug`

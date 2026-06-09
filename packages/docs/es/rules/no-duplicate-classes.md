@@ -67,7 +67,7 @@ tv({ slots: { header: "p-2", body: "p-4" } })
 - **`no-contradicting-variants`**: `flex flex` es esta regla; `flex hover:flex` es
   `no-contradicting-variants`. Mantén ambas activas — cubren shapes disjuntos.
 - **`no-conflicting-classes`**: un duplicado es un conflicto degenerado (la misma clase pega en la
-  misma propiedad, trivialmente). El camino de duplicado acá es más rápido y produce un mensaje más
+  misma propiedad, trivialmente). El camino de duplicado aquí es más rápido y produce un mensaje más
   claro, así que esta regla reporta primero; `no-conflicting-classes` no aporta nada arriba.
 - **`enforce-sort-order`**: ordenar después de deduplicar es el pipeline natural. Ambas autofixean,
   así que pueden correr en la misma pasada de lint.
@@ -77,7 +77,7 @@ tv({ slots: { header: "p-2", body: "p-4" } })
 ## Cuándo desactivarla
 
 - **Básicamente nunca.** Un duplicado literal siempre está mal y el fix es mecánico. Si la regla
-  está marcando algo que no es un duplicado real, el bug está en la config del extractor — ajustá
+  está marcando algo que no es un duplicado real, el bug está en la config del extractor — ajusta
   `settings.tailwindcss` (e.g. `exclude.attributes`, `exclude.callees`, `exclude.variablePatterns`)
   para que el string parecido no se trate como lista de clases.
 - **Código generado** en tests o fixtures que arma un duplicado a propósito para ejercitar tooling

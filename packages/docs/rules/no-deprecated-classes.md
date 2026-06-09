@@ -13,7 +13,7 @@ both sides of the rewrite.
 
 DS-dependent — requires `settings.tailwindcss.entryPoint`. The rule uses the design system to know
 which file it's working against so it plays nicely with the rest of the plugin (in particular,
-`no-unknown- classes` skips classes flagged here so you don't get two diagnostics for the same
+`no-unknown-classes` skips classes flagged here so you don't get two diagnostics for the same
 token). If the design system can't load, the rule emits a single fatal `designSystemUnavailable`
 diagnostic per file instead of silently passing.
 
@@ -63,9 +63,9 @@ for the whole project instead of per-rule whenever possible.
   on.
 - **`enforce-canonical`**: covers a strictly larger set than this rule — it rewrites
   valid-but-non-canonical forms (`-m-0` → `m-0`, `start-2` → `inset-s-2`) and also catches every
-  deprecation. Running both is fine; the autofixes don't conflict. Pick `no-deprecated- classes`
-  when you want a fast, hardcoded, DS-free pass; pick `enforce-canonical` for the full DS-backed
-  cleanup.
+  deprecation. Running both is fine; the autofixes don't conflict. Pick `no-deprecated-classes` when
+  you want a fast pass over the fixed v3→v4 rename list; pick `enforce-canonical` for the full
+  DS-backed cleanup.
 - **`no-restricted-classes`**: orthogonal. Use that one to ban valid classes; this one only triggers
   on the fixed v3→v4 rename list.
 

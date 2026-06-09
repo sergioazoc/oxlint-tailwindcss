@@ -41,6 +41,14 @@ describe('consistent-variant-order (static fallback)', () => {
       { code: '<div className="sm:[&>svg]:after:text-red-500" />', filename: 'test.tsx' },
       { code: '<div className="hover:[&>svg]:before:text-red-500" />', filename: 'test.tsx' },
       { code: '<div className="dark:has-[.active]:before:text-red-500" />', filename: 'test.tsx' },
+      // R-A2: state variants must NOT cross a selector barrier — these target
+      // different elements depending on order, so both orderings are valid and
+      // must be left untouched (no reordering hover ↔ [&>svg] / * / **).
+      { code: '<div className="hover:[&>svg]:w-4" />', filename: 'test.tsx' },
+      { code: '<div className="[&>svg]:hover:w-4" />', filename: 'test.tsx' },
+      { code: '<div className="hover:*:flex" />', filename: 'test.tsx' },
+      { code: '<div className="*:hover:flex" />', filename: 'test.tsx' },
+      { code: '<div className="focus:**:underline" />', filename: 'test.tsx' },
     ],
     invalid: [
       {

@@ -19,9 +19,17 @@
 
 import { Worker, threadId } from 'node:worker_threads'
 import { createHash } from 'node:crypto'
-import { closeSync, mkdirSync, openSync, readFileSync, statSync, unlinkSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { tmpdir } from 'node:os'
+import {
+  closeSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+} from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { tmpdir, userInfo } from 'node:os'
 import { DesignSystemLoadError } from '../utils/fatal'
 import { TAILWIND_NODE_PATH, TAILWIND_NODE_VERSION } from './tailwind-node'
 
@@ -70,6 +78,12 @@ function signalError(e) {
   Atomics.store(control, 2, -1);
   Atomics.notify(control, 2);
 }
+// Everything below — including the top-level require()s — runs inside this try
+// so any SYNCHRONOUS module-scope failure (a broken @tailwindcss/node install,
+// missing fs/path) is routed through signalError. Without it the worker would
+// die unsignaled and the main thread would block until the full timeout, then
+// report a misleading "timed out" instead of the real cause.
+try {
 // Resolve @tailwindcss/node via an absolute path passed in by the parent —
 // bare-specifier lookup from the worker's cwd fails under pnpm strict
 // workspaces (the module lives under node_modules/.pnpm/... which is not on the
@@ -460,9 +474,30 @@ async function main() {
 main()
   .then(() => { Atomics.store(control, 2, 1); Atomics.notify(control, 2); })
   .catch((e) => signalError(e));
+} catch (e) {
+  signalError(e);
+}
 `
 
-const CACHE_DIR = join(tmpdir(), 'oxlint-tailwindcss')
+// Namespace the cache dir by the current user. `os.tmpdir()` is per-user on
+// macOS but shared (`/tmp`) on Linux and CI runners. A shared, predictably
+// named dir lets a local attacker pre-plant a `<hash>.json` that we would
+// deserialize and feed into autofixes that rewrite the user's source. A
+// per-uid dir created with mode 0o700 (below) keeps the cache private to its
+// owner. Combined with schema validation on read (`isPrecomputedData`), a
+// poisoned or corrupt entry can no longer reach the rule layer.
+function cacheDirName(): string {
+  try {
+    const info = userInfo()
+    // uid is -1 on Windows; fall back to the username there.
+    const id = typeof info.uid === 'number' && info.uid >= 0 ? String(info.uid) : info.username
+    return `oxlint-tailwindcss-${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}`
+  } catch {
+    return 'oxlint-tailwindcss'
+  }
+}
+
+const CACHE_DIR = join(tmpdir(), cacheDirName())
 
 /**
  * Cache key derived from:
@@ -503,6 +538,53 @@ function computeContentHash(content: string): string {
   return createHash('md5').update(`${CACHE_KEY}:${content}`).digest('hex')
 }
 
+// Captures the target of `@import "..."`, `@import '...'` and `@import url("...")`.
+const IMPORT_RE = /@import\s+(?:url\(\s*)?['"]([^'"]+)['"]/g
+
+/**
+ * Concatenate the entry CSS with the content of its locally-imported files, so
+ * the cache key invalidates when an `@import`'d file changes — not only when the
+ * entry itself does (DS-A2). Without this, editing a `@theme`/component file
+ * pulled in via `@import "./theme.css"` served a stale design system until the
+ * entry was touched or the Tailwind version changed.
+ *
+ * Resolves RELATIVE imports (`./`, `../`) recursively up to a small depth;
+ * package imports (`@import "tailwindcss"`, `tw-animate-css`) are already
+ * covered by the `@tailwindcss/node` version baked into CACHE_KEY. Best-effort:
+ * an unreadable import contributes nothing (it can't affect the DS either).
+ */
+function hashableContent(entryPath: string, entryContent: string): string {
+  const parts: string[] = [entryContent]
+  const seen = new Set<string>([resolve(entryPath)])
+
+  const visit = (cssPath: string, content: string, depth: number): void => {
+    if (depth <= 0) return
+    const baseDir = dirname(cssPath)
+    IMPORT_RE.lastIndex = 0
+    const specifiers: string[] = []
+    let m: RegExpExecArray | null
+    while ((m = IMPORT_RE.exec(content)) !== null) {
+      if (m[1].startsWith('.')) specifiers.push(m[1])
+    }
+    for (const spec of specifiers) {
+      const importPath = resolve(baseDir, spec.split('?')[0])
+      if (seen.has(importPath)) continue
+      seen.add(importPath)
+      let importContent: string
+      try {
+        importContent = readFileSync(importPath, 'utf-8')
+      } catch {
+        continue
+      }
+      parts.push(importContent)
+      visit(importPath, importContent, depth - 1)
+    }
+  }
+
+  visit(resolve(entryPath), entryContent, 4)
+  return parts.join('\0')
+}
+
 function getContentCachePath(contentHash: string): string {
   return join(CACHE_DIR, `${contentHash}.json`)
 }
@@ -513,19 +595,46 @@ function getContentCachePath(contentHash: string): string {
  * cold-cache precompute coordination (issue #24).
  */
 export function cacheArtifactPaths(cssPath: string): { json: string; lock: string } {
-  const content = readFileSync(resolve(cssPath), 'utf-8')
-  const hash = computeContentHash(content)
+  const resolved = resolve(cssPath)
+  const content = readFileSync(resolved, 'utf-8')
+  const hash = computeContentHash(hashableContent(resolved, content))
   return { json: getContentCachePath(hash), lock: join(CACHE_DIR, `${hash}.lock`) }
+}
+
+/**
+ * Minimal shape check for a cache payload. Guards against (a) a poisoned file
+ * planted by a local attacker and (b) a corrupt/half-written or version-skewed
+ * file. A `{}` that is valid JSON but missing fields would otherwise blow up
+ * later in `DesignSystemCache.fromPrecomputed` with a raw TypeError that isn't
+ * plugin-fatal, breaking the lint with no diagnostic. We don't deep-validate
+ * every entry — just enough that `fromPrecomputed` can rely on the fields.
+ */
+function isPrecomputedData(data: unknown): data is PrecomputedData {
+  if (typeof data !== 'object' || data === null) return false
+  const d = data as Record<string, unknown>
+  const isObject = (v: unknown) => typeof v === 'object' && v !== null
+  return (
+    Array.isArray(d.validClasses) &&
+    Array.isArray(d.componentClasses) &&
+    typeof d.prefix === 'string' &&
+    isObject(d.canonical) &&
+    isObject(d.order) &&
+    isObject(d.cssProps) &&
+    isObject(d.variantOrder) &&
+    isObject(d.arbitraryEquivalents)
+  )
 }
 
 function tryReadCache(cachePath: string): PrecomputedData | null {
   const raw = tryReadRawCache(cachePath)
   if (raw === null) return null
+  let data: unknown
   try {
-    return JSON.parse(raw) as PrecomputedData
+    data = JSON.parse(raw)
   } catch {
     return null
   }
+  return isPrecomputedData(data) ? data : null
 }
 
 function tryReadRawCache(cachePath: string): string | null {
@@ -573,6 +682,24 @@ function tryUnlink(path: string): void {
   } catch {
     // Already gone, or not ours to remove — either way, nothing to do.
   }
+}
+
+/**
+ * Reclaim a stale lock by exclusive rename rather than unlink (DS-M1). Two
+ * waiters that both judge the lock stale would otherwise both `unlink` it — and
+ * the second unlink could delete a FRESH lock a third isolate just created,
+ * letting two precomputes run in parallel (the very amplification the lock
+ * exists to prevent, #24). `renameSync` moves the file atomically: only one
+ * waiter wins the move; the loser gets ENOENT and loops back to re-check.
+ */
+function reclaimStaleLock(lockPath: string): void {
+  const reclaimPath = `${lockPath}.reclaim.${process.pid}.${threadId}.${precomputeSeq++}`
+  try {
+    renameSync(lockPath, reclaimPath)
+  } catch {
+    return // someone else already reclaimed or released it
+  }
+  tryUnlink(reclaimPath)
 }
 
 /** control[2] — the worker's ready/done signal (0=loading, 1=done, -1=error). */
@@ -649,13 +776,12 @@ function runPrecomputeViaWorker(
     throw precomputeLoadError(resolvedPath, cause)
   }
 
-  // The main thread is blocked in `Atomics.wait`, so this handler can only run
-  // after the wait returns. It captures hard crashes that never signaled, so
-  // the `-1` branch below can report the real cause instead of a bare timeout.
-  let workerError: Error | undefined
-  worker.on('error', (err: Error) => {
-    workerError = err
-  })
+  // Swallow worker 'error' events so an unhandled one can't tear down the
+  // oxlint host. We don't read it for the cause: the main thread is blocked in
+  // `Atomics.wait` and reads the signal synchronously the instant it returns —
+  // the event loop never turns, so this handler hasn't run yet. The real cause
+  // travels through the SharedArrayBuffer via signalError instead.
+  worker.on('error', () => {})
 
   try {
     const result = Atomics.wait(control, PRECOMPUTE_SIGNAL_INDEX, 0, timeout)
@@ -666,10 +792,16 @@ function runPrecomputeViaWorker(
       )
     }
     if (control[PRECOMPUTE_SIGNAL_INDEX] === -1) {
-      // Prefer the message the worker wrote; fall back to a hard-crash error.
+      // signalError wrote the real message into the buffer. len === 0 only if
+      // the worker died before signaling at all (e.g. OS-killed under memory
+      // pressure) — give a cause that says so instead of a bare "undefined".
       const len = errLengthView.getUint32(0)
       const cause =
-        len > 0 ? new Error(Buffer.from(errDataArea.slice(0, len)).toString('utf-8')) : workerError
+        len > 0
+          ? new Error(Buffer.from(errDataArea.slice(0, len)).toString('utf-8'))
+          : new Error(
+              'precompute worker exited without reporting a cause (it may have been killed by the OS, e.g. under memory pressure)',
+            )
       throw precomputeLoadError(resolvedPath, cause)
     }
     // Success: the worker wrote the cache file. Nothing else to do here.
@@ -680,24 +812,27 @@ function runPrecomputeViaWorker(
 }
 
 /**
- * Run the precompute worker, then read back the JSON it wrote to `cachePath`.
- * Used by both the lock-winner path and the uncoordinated degrade path.
+ * Run the precompute worker, then read back and validate the JSON it wrote to
+ * `cachePath`. Used by both the lock-winner path and the uncoordinated degrade
+ * path. Returns the validated `PrecomputedData` (never a raw string), so a
+ * malformed payload surfaces as a clear diagnostic here instead of crashing
+ * later in `DesignSystemCache.fromPrecomputed`.
  */
 function precomputeAndRead(
   resolvedPath: string,
   tailwindNodePath: string,
   cachePath: string,
   timeout: number,
-): string {
+): PrecomputedData {
   runPrecomputeViaWorker(resolvedPath, tailwindNodePath, cachePath, timeout)
-  const raw = tryReadRawCache(cachePath)
-  if (raw === null) {
+  const data = tryReadCache(cachePath)
+  if (data === null) {
     throw new DesignSystemLoadError(
-      `Precompute worker finished but wrote no cache file for "${resolvedPath}".`,
-      'This usually means the system temp directory is not writable; check its permissions.',
+      `Precompute worker finished but wrote no valid cache file for "${resolvedPath}".`,
+      'This usually means the system temp directory is not writable, or the output was malformed; check its permissions and free space.',
     )
   }
-  return raw
+  return data
 }
 
 /**
@@ -711,14 +846,15 @@ function computeWithLock(
   contentHash: string,
   cachePath: string,
   timeout: number,
-): string {
+): PrecomputedData {
   const lockPath = join(CACHE_DIR, `${contentHash}.lock`)
   // A healthy holder is busy inside the precompute worker (up to `timeout`);
   // only treat the lock as abandoned once it outlives that window plus a margin.
   const staleMs = timeout + 30_000
 
   try {
-    mkdirSync(CACHE_DIR, { recursive: true })
+    // mode 0o700: the cache dir is private to its owner (see cacheDirName).
+    mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 })
   } catch {
     // If we can't even create the cache dir, locking is impossible — fall back
     // to an uncoordinated compute rather than spin forever.
@@ -727,9 +863,11 @@ function computeWithLock(
 
   const start = Date.now()
   for (;;) {
-    // A peer may have finished while we looped.
-    const raw = tryReadRawCache(cachePath)
-    if (raw !== null) return raw
+    // A peer may have finished while we looped. `tryReadCache` validates the
+    // payload, so a corrupt/poisoned file reads as a miss and we fall through
+    // to recompute (deleting it once we hold the lock, below).
+    const cached = tryReadCache(cachePath)
+    if (cached) return cached
 
     let lockFd: number
     try {
@@ -739,7 +877,7 @@ function computeWithLock(
         // Someone else holds it. Reclaim if stale, or if we've waited well past
         // the point a healthy holder should have produced the cache.
         if (lockAgeMs(lockPath) > staleMs || Date.now() - start > staleMs * 2) {
-          tryUnlink(lockPath)
+          reclaimStaleLock(lockPath)
         } else {
           syncSleep(LOCK_POLL_MS)
         }
@@ -750,6 +888,10 @@ function computeWithLock(
     }
 
     try {
+      // We hold the lock. If a cache file is present here it failed validation
+      // above (corrupt, half-written by a crashed peer, or poisoned) — remove
+      // it so the worker writes a clean one instead of us reading it forever.
+      tryUnlink(cachePath)
       // The worker writes the cache file itself; read it back as the result.
       return precomputeAndRead(resolvedPath, tailwindNodePath, cachePath, timeout)
     } finally {
@@ -780,7 +922,7 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
     )
   }
 
-  const contentHash = computeContentHash(content)
+  const contentHash = computeContentHash(hashableContent(resolvedPath, content))
   const contentCachePath = getContentCachePath(contentHash)
 
   const cached = tryReadCache(contentCachePath)
@@ -801,23 +943,14 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
   // given content hash; the rest wait for the cache file it writes. The worker
   // runs in-thread (no fork), so it can't trigger the cold-cache `spawnSync …
   // ENOMEM` that the fork-based precompute hit on constrained CI runners (#24).
-  const raw = computeWithLock(
+  // Returns validated `PrecomputedData` — malformed payloads are caught inside.
+  return computeWithLock(
     resolvedPath,
     TAILWIND_NODE_PATH,
     contentHash,
     contentCachePath,
     timeout ?? DEFAULT_LOAD_TIMEOUT_MS,
   )
-
-  try {
-    return JSON.parse(raw) as PrecomputedData
-  } catch (cause) {
-    throw new DesignSystemLoadError(
-      `Precompute output for "${resolvedPath}" was not valid JSON.`,
-      'This is likely a bug in oxlint-tailwindcss. Please open an issue with the CSS that triggered it.',
-      { cause: cause instanceof Error ? cause : undefined },
-    )
-  }
 }
 
 // validateCandidatesSync removed — runtime child process calls were too slow.

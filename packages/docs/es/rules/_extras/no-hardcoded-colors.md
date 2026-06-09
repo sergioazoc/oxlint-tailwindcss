@@ -39,11 +39,6 @@ ocasional mandado por brand en un único componente de assets.
 }
 ```
 
-### `entryPoint`
-
-`string`, opcional. Está en el schema por compatibilidad futura pero la regla todavía no lo usa —
-`no-hardcoded-colors` corre sin design system. Lo puedes ignorar.
-
 ## Ejemplos
 
 ### ✗ Incorrecto
@@ -92,7 +87,7 @@ ocasional mandado por brand en un único componente de assets.
 - **Páginas de marketing/brand** con hex pinzados a mano que genuinamente no pertenecen al design
   system compartido. Prefiere `allow` con los strings de clase específicos.
 - **Contenido generado** (e.g. avatares inline coloreados desde un hash) donde el color se determina
-  en runtime y se renderea como inline style igual — esos no van a aparecer acá, pero si aparecen,
+  en runtime y se renderiza como inline style igual — esos no van a aparecer aquí, pero si aparecen,
   desactiva la línea.
 - **Librerías de componentes que publican ejemplos** que deliberadamente demuestran uso de colores
   arbitrarios en su doc.

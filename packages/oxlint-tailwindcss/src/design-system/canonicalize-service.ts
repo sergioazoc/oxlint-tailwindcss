@@ -14,68 +14,28 @@
  * subsequent lookup is O(1).
  */
 
-import { DesignSystemWorker } from './ds-worker'
+import { DesignSystemWorker, makeWorkerScript } from './ds-worker'
 import { SortServiceError } from '../utils/fatal'
+import { roundRemValue } from '../utils/floating-point'
 
 interface CanonicalizeRequest {
   classes: string[]
   rem?: number
 }
 
-const WORKER_SCRIPT = `
-const { workerData } = require('worker_threads');
+// Handler: canonicalize each class. canonicalizeCandidates deduplicates its
+// input, so we call it one class at a time to preserve order/length (see
+// sync-loader.ts). The shared protocol/load/loop lives in makeWorkerScript.
+const CANONICALIZE_HANDLER = `(ds, request) => {
+  const { classes, rem } = request;
+  const options = rem ? { rem } : undefined;
+  return classes.map((cls) => {
+    const r = ds.canonicalizeCandidates([cls], options);
+    return r[0] ?? cls;
+  });
+}`
 
-async function main() {
-  const { sharedBuffer, cssPath } = workerData;
-  const control = new Int32Array(sharedBuffer, 0, 4);
-  const lengthView = new DataView(sharedBuffer, 4 * 4, 4);
-  const dataArea = new Uint8Array(sharedBuffer, 4 * 4 + 4);
-
-  let ds;
-  try {
-    const { __unstable__loadDesignSystem } = require(workerData.tailwindNodePath);
-    const { readFileSync } = require('fs');
-    const { dirname } = require('path');
-    const css = readFileSync(cssPath, 'utf-8');
-    ds = await __unstable__loadDesignSystem(css, { base: dirname(cssPath) });
-  } catch {
-    Atomics.store(control, 2, -1);
-    Atomics.notify(control, 2);
-    return;
-  }
-
-  Atomics.store(control, 2, 1);
-  Atomics.notify(control, 2);
-
-  while (true) {
-    Atomics.wait(control, 0, 0);
-    const len = lengthView.getUint32(0);
-    const requestStr = Buffer.from(dataArea.slice(0, len)).toString('utf-8');
-    Atomics.store(control, 0, 0);
-
-    let response;
-    try {
-      const { classes, rem } = JSON.parse(requestStr);
-      const options = rem ? { rem } : undefined;
-      // canonicalizeCandidates deduplicates its input, so we must call it
-      // one class at a time to preserve order/length. See sync-loader.ts.
-      const result = classes.map((cls) => {
-        const r = ds.canonicalizeCandidates([cls], options);
-        return r[0] ?? cls;
-      });
-      response = Buffer.from(JSON.stringify(result), 'utf-8');
-    } catch {
-      response = Buffer.from('null', 'utf-8');
-    }
-
-    dataArea.set(response, 0);
-    lengthView.setUint32(0, response.length);
-    Atomics.store(control, 1, 1);
-    Atomics.notify(control, 1);
-  }
-}
-main();
-`
+const WORKER_SCRIPT = makeWorkerScript(CANONICALIZE_HANDLER)
 
 const canonWorker = new DesignSystemWorker<CanonicalizeRequest, string[]>({
   workerScript: WORKER_SCRIPT,
@@ -142,7 +102,10 @@ export function canonicalizeClassesSync(
 
   for (let j = 0; j < missing.length; j++) {
     const cls = missing[j]
-    const value = freshByClass.get(cls) ?? cls
+    // Round rem/em/px floats so the worker path matches the precomputed map
+    // (cache.ts does the same): canonicalizing arbitrary values can yield
+    // `2.4000000000000004rem`, which must never reach the user's source.
+    const value = roundRemValue(freshByClass.get(cls) ?? cls)
     canonCache.set(cachePrefix + cls, value)
     out[missingIdx[j]] = value
   }

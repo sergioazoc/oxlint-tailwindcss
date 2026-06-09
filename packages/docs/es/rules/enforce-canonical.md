@@ -88,4 +88,4 @@ para todo el proyecto en vez de por-regla cuando puedas.
 - **Lint runs sensibles a la performance** donde el costo de inicializar el worker molesta. El cache
   hace que las corridas siguientes sean baratas, pero el primer hit paga el startup de
   `@tailwindcss/node`. La mayoría de proyectos no lo van a notar.
-- **No migraste a Tailwind v4 todavía**: las formas canónicas producidas acá asumen semántica v4.
+- **No migraste a Tailwind v4 todavía**: las formas canónicas producidas aquí asumen semántica v4.

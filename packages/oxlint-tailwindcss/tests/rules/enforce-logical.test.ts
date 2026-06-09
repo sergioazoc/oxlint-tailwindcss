@@ -29,6 +29,25 @@ ruleTester.run('enforce-logical', enforceLogical, {
       errors: [{ messageId: 'useLogical' }],
       output: '<div className="hover:ms-4" />',
     },
+    // R-M4: negative utilities keep their leading `-` through the conversion
+    {
+      code: '<div className="-ml-2" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'useLogical' }],
+      output: '<div className="-ms-2" />',
+    },
+    {
+      code: '<div className="-left-4" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'useLogical' }],
+      output: '<div className="-start-4" />',
+    },
+    {
+      code: '<div className="hover:-scroll-ml-3" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'useLogical' }],
+      output: '<div className="hover:-scroll-ms-3" />',
+    },
     // Multiple physical properties in same string
     {
       code: '<div className="ml-4 mr-4 flex" />',

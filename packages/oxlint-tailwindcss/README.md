@@ -29,7 +29,8 @@ Read the story behind this plugin:
 - **Lightweight** — Only 2 runtime dependencies: `@tailwindcss/node` and `tailwindcss`.
 - **23 rules** — Correctness, style, complexity, and restriction rules with autofixes where
   possible.
-- **Variable detection** — Lints variables named `className`, `classes`, `style` automatically.
+- **Variable detection** — Lints variables matching `/^classNames?$/`, `/^classes$/`, `/^styles?$/`
+  (e.g. `className`, `classNames`, `classes`, `styles`) automatically.
 - **Customizable** — Extend class detection with custom attributes, callees, tags, and variable
   patterns.
 - **Component class support** — Recognizes `@layer components { .btn {} }` in your CSS.
@@ -419,6 +420,14 @@ Deprecated class mappings:
 | `overflow-ellipsis` | `text-ellipsis`        |
 | `decoration-slice`  | `box-decoration-slice` |
 | `decoration-clone`  | `box-decoration-clone` |
+| `bg-gradient-to-t`  | `bg-linear-to-t`       |
+| `bg-gradient-to-tr` | `bg-linear-to-tr`      |
+| `bg-gradient-to-r`  | `bg-linear-to-r`       |
+| `bg-gradient-to-br` | `bg-linear-to-br`      |
+| `bg-gradient-to-b`  | `bg-linear-to-b`       |
+| `bg-gradient-to-bl` | `bg-linear-to-bl`      |
+| `bg-gradient-to-l`  | `bg-linear-to-l`       |
+| `bg-gradient-to-tl` | `bg-linear-to-tl`      |
 
 **Autofix:** Replaces with the modern equivalent.
 

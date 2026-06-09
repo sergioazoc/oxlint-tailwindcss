@@ -10,7 +10,6 @@ import {
 import { createLazyOptions } from '../utils/context'
 
 interface Options {
-  entryPoint?: string
   allow?: string[]
 }
 
@@ -89,7 +88,6 @@ export const noHardcodedColors = defineRule({
       {
         type: 'object',
         properties: {
-          entryPoint: { type: 'string' },
           allow: { type: 'array', items: { type: 'string' } },
         },
         additionalProperties: false,

@@ -107,5 +107,5 @@ cn("float-right")
 - **Excepciones legacy por archivo**: prefiere
   `// oxlint-disable-next-line tailwindcss/no-restricted-classes` antes que desactivar globalmente,
   así el resto del codebase mantiene el enforcement.
-- **Ventanas de migración** donde la ban list cambia día por medio: bajala a `warn`, terminá el
+- **Ventanas de migración** donde la ban list cambia día por medio: bájala a `warn`, termina el
   cleanup, y vuelve a `error` cuando la lista se estabilice.

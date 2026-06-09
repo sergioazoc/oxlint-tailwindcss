@@ -80,7 +80,7 @@ pasar en silencio.
 - **`no-deprecated-classes`**: un alias deprecado y su equivalente moderno (`flex-grow` + `grow`)
   van a chocar a nivel de propiedad. Arreglar la deprecación suele resolver el conflicto.
 - **`enforce-canonical`**: reescribir a la forma canónica colapsa pares trivialmente aliasados antes
-  de que lleguen acá.
+  de que lleguen aquí.
 
 ## Cuándo desactivarla
 
@@ -88,7 +88,7 @@ pasar en silencio.
   "gana la última" (e.g. patrón base + override en un primitive del design system). Prefiere extraer
   el override a un `cn()`/`twMerge()` para que el conflicto sea explícito.
 - **Codebases donde la mayoría de los falsos positivos vienen de entradas faltantes en
-  `COMPLEMENTARY_GROUPS` / `COMPOSITION_PAIRS`**: abrí un issue antes que desactivar — esas tablas
+  `COMPLEMENTARY_GROUPS` / `COMPOSITION_PAIRS`**: abre un issue antes que desactivar — esas tablas
   son el punto de extensión soportado.
 - **Tests / fixtures** que arman strings de clases en conflicto a propósito para ejercitar otro
   tooling.

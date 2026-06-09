@@ -4,6 +4,13 @@ import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
 import { splitUtilityAndVariant } from '../utils/class-parser'
 
+// Only a plain numeric dimension can be negated by prefixing `-` inside the
+// brackets. Tailwind v4 negates wrapped values (calc(), var(), expressions) by
+// emitting `calc(<value> * -1)`, so `-x-[calc(...)]` is valid; rewriting it to
+// `x-[-calc(...)]` would produce invalid CSS (`-calc(...)`/`-var(...)`) and
+// silently drop the style. Bail out unless the value is a bare number + unit.
+const SIMPLE_DIMENSION = /^\d*\.?\d+[a-z%]*$/
+
 function fixClass(cls: string): string | null {
   const { utility, variant } = splitUtilityAndVariant(cls)
 
@@ -26,6 +33,7 @@ function fixClass(cls: string): string | null {
 
   const innerValue = bare.slice(bracketOpen + 1, bracketClose)
   if (innerValue.startsWith('-')) return null
+  if (!SIMPLE_DIMENSION.test(innerValue)) return null
 
   const baseUtility = bare.slice(1, bracketOpen)
   return `${variant}${hasImportantPrefix ? '!' : ''}${baseUtility}[-${innerValue}]${hasImportantSuffix ? '!' : ''}`

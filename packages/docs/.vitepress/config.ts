@@ -1,5 +1,16 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
 import { RULE_NAMES } from '../scripts/rules'
+
+// Read the published package version so the nav label never drifts from the
+// real release. Resolved relative to this file, not the build cwd.
+const PKG_VERSION = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL('../../oxlint-tailwindcss/package.json', import.meta.url)),
+    'utf-8',
+  ),
+).version as string
 
 // Sidebar entries derive from the library's plugin registry — adding a rule
 // to `src/index.ts` makes it visible in both locales' sidebars with no
@@ -29,7 +40,7 @@ export default defineConfig({
           { text: 'Rules', link: '/rules/' },
           { text: 'Migration', link: '/migration/v0-to-v1' },
           {
-            text: 'v1.0.0',
+            text: `v${PKG_VERSION}`,
             items: [
               {
                 text: 'Changelog',

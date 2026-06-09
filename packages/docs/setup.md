@@ -154,11 +154,11 @@ plugins like `@tailwindcss/typography`.
 ## 7. Going further
 
 - **Adjust extractors**: by default the plugin scans `className` / `class`, ~14 callees (`cn`,
-  `clsx`, `cva`, `twMerge`, …), `tw` tagged templates, and variables matching
-  `/^(class|classes|style)s?$/`. Add `attributes`, `callees`, `tags`, `variablePatterns`, or remove
+  `clsx`, `cva`, `twMerge`, …), `tw` tagged templates, and variables matching `/^classNames?$/`,
+  `/^classes$/`, `/^styles?$/`. Add `attributes`, `callees`, `tags`, `variablePatterns`, or remove
   defaults via `exclude`. See [settings reference](/settings).
 - **Tune timeouts**: `settings.tailwindcss.timeout` (ms, default 60000) bounds how long the plugin
-  waits for the child process that precomputes the design system. Slow CI may need this raised.
+  waits for the worker thread that precomputes the design system. Slow CI may need this raised.
 - **Debug logging**: `settings.tailwindcss.debug: true` (or `DEBUG=oxlint-tailwindcss`) logs which
   CSS entry point resolved per linted file.
 - **Upgrading from v0.x?** Read the [migration guide](/migration/v0-to-v1) — `entryPoint` is now

@@ -12,6 +12,12 @@ ruleTester.run('enforce-negative-arbitrary-values', enforceNegativeArbitraryValu
     { code: '<div className="top-[-5px]" />', filename: 'test.tsx' },
     // No negative prefix
     { code: '<div className="w-[200px]" />', filename: 'test.tsx' },
+    // R-A1: calc()/var()/expressions must NOT be fixed — Tailwind negates them
+    // by wrapping (`calc(<v> * -1)`), so `x-[-calc(...)]` / `x-[-var(...)]`
+    // would be invalid CSS and silently drop the style.
+    { code: '<div className="-top-[calc(100%-4px)]" />', filename: 'test.tsx' },
+    { code: '<div className="-translate-x-[var(--x)]" />', filename: 'test.tsx' },
+    { code: '<div className="-mt-[min(10px,2rem)]" />', filename: 'test.tsx' },
   ],
   invalid: [
     {

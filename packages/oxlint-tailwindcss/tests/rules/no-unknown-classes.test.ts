@@ -77,6 +77,41 @@ runWithFixture(ruleTester, 'no-unknown-classes', noUnknownClasses, ENTRY_POINT, 
       filename: 'test.tsx',
       errors: [{ messageId: 'unknownWithSuggestion' }],
     },
+    // R-M2: suffix `!` must be preserved on the suggestion, not dropped
+    {
+      code: '<div className="flexx!" />',
+      filename: 'test.tsx',
+      errors: [
+        {
+          messageId: 'unknownWithSuggestion',
+          suggestions: [
+            {
+              messageId: 'suggestReplace',
+              data: { className: 'flexx!', replacement: 'flex!' },
+              output: '<div className="flex!" />',
+            },
+          ],
+        },
+      ],
+    },
+    // R-M2: a typo behind a variant must still get a suggestion (look up the
+    // bare utility, not the variant-prefixed string), and keep the variant
+    {
+      code: '<div className="hover:flexx" />',
+      filename: 'test.tsx',
+      errors: [
+        {
+          messageId: 'unknownWithSuggestion',
+          suggestions: [
+            {
+              messageId: 'suggestReplace',
+              data: { className: 'hover:flexx', replacement: 'hover:flex' },
+              output: '<div className="hover:flex" />',
+            },
+          ],
+        },
+      ],
+    },
     // Multiple unknown classes in same string
     {
       code: '<div className="itms-center fex bg-blu-500" />',

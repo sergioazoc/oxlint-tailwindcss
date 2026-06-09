@@ -10,7 +10,7 @@ modifiers (`/80`), variants, and `!` (important) are all preserved.
 
 The candidate `${prefix}-${varName}` has to be a real utility in your DS — the rule consults
 `cache.isValid(candidate)`. Then it explicitly skips any candidate that `cache.getNamedEquivalent`
-would also resolve, because that case is owned by `no-unnecessary-arbitrary- value` (same CSS, no
+would also resolve, because that case is owned by `no-unnecessary-arbitrary-value` (same CSS, no
 double-fire). What's left is exactly the heuristic-only space: the named utility exists in your
 theme but does not share a bracket-equivalent shape with the original.
 

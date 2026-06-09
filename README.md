@@ -100,8 +100,9 @@ options.
 `no-unnecessary-arbitrary-value` · `prefer-theme-tokens`
 
 Classes are detected in `className`/`class` attributes, 14 utility helpers (`cn`, `clsx`, `cva`,
-`tv`, `twMerge`, …), `tw` tagged templates, and `className`/`classes`/`style` variables — all
-extendable via `settings.tailwindcss`.
+`tv`, `twMerge`, …), `tw` tagged templates, and variables matching `/^classNames?$/`, `/^classes$/`,
+`/^styles?$/` (e.g. `className`, `classNames`, `classes`, `styles`) — all extendable via
+`settings.tailwindcss`.
 
 ## Requirements
 

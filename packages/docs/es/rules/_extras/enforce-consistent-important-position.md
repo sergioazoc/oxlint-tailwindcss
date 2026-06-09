@@ -70,6 +70,6 @@ sufijo. Usa una o la otra.
 ## Cuándo desactivarla
 
 - **El codebase mezcla las dos formas a propósito** (e.g. archivos legacy de v3 conviviendo con
-  archivos frescos de v4 durante una migración). Reactivala cuando termine la migración.
+  archivos frescos de v4 durante una migración). Reactívala cuando termine la migración.
 - **Ya estás corriendo `enforce-canonical`** y confías en que normalice la posición del `!` como
   parte de la canonicalización — dejar esta regla activada es inocuo pero redundante.

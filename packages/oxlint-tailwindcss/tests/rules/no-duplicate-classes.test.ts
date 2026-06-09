@@ -284,6 +284,20 @@ describe('custom extractor settings', () => {
     ],
   })
 
+  // TST-A2: the DEFAULT `tw` tag must be detected with no settings at all —
+  // nothing else in the suite exercised the built-in `tags: ['tw']` default.
+  settingsTester.run('no-duplicate-classes (default tw tag)', noDuplicateClasses, {
+    valid: [{ code: 'tw`flex items-center`', filename: 'test.tsx' }],
+    invalid: [
+      {
+        code: 'tw`flex flex items-center`',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'duplicate' }],
+        output: 'tw`flex items-center`',
+      },
+    ],
+  })
+
   // Custom variable patterns
   settingsTester.run('no-duplicate-classes (custom variablePatterns)', noDuplicateClasses, {
     valid: [

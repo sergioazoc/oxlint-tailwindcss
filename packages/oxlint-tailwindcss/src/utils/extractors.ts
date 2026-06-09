@@ -1,5 +1,6 @@
 import type { ESTree } from '@oxlint/plugins'
 import type { PluginSettings } from '../types'
+import { compileRegexList } from './allowlist'
 
 export interface ClassLocation {
   value: string
@@ -132,8 +133,11 @@ export function getExtractorConfig(context: {
     callees: mergeUnique(DEFAULT_EXTRACTOR_CONFIG.callees, tw.callees, exclude?.callees),
     tags: mergeUnique(DEFAULT_EXTRACTOR_CONFIG.tags, tw.tags, exclude?.tags),
     variablePatterns: [
+      // compileRegexList skips invalid sources instead of throwing, so a typo
+      // in a user `variablePatterns` entry degrades gracefully rather than
+      // crashing the lint with a raw SyntaxError from inside a visitor (SEC-B1).
       ...filteredPatterns,
-      ...(tw.variablePatterns ?? []).map((p) => new RegExp(p)),
+      ...compileRegexList(tw.variablePatterns),
     ],
   }
   configCache.set(context as ContextKey, resolved)

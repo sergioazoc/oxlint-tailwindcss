@@ -44,13 +44,52 @@ const KNOWN_PREFIXES = [
   'to',
 ]
 
+// Utilities that set the SAME CSS property under different bare names. The
+// prefix heuristic can't group these (`block` and `hidden` share no prefix), so
+// `block dark:hidden` — the idiomatic "show in light, hide in dark" — would
+// wrongly report a missing base. Map each to a shared property group (R-M5).
+const PROPERTY_GROUP_BY_UTILITY: Record<string, string> = {}
+for (const u of [
+  'block',
+  'inline-block',
+  'inline',
+  'flex',
+  'inline-flex',
+  'grid',
+  'inline-grid',
+  'flow-root',
+  'contents',
+  'table',
+  'inline-table',
+  'table-caption',
+  'table-cell',
+  'table-row',
+  'table-row-group',
+  'table-header-group',
+  'table-footer-group',
+  'table-column',
+  'table-column-group',
+  'list-item',
+  'hidden',
+]) {
+  PROPERTY_GROUP_BY_UTILITY[u] = 'display'
+}
+for (const u of ['static', 'fixed', 'absolute', 'relative', 'sticky']) {
+  PROPERTY_GROUP_BY_UTILITY[u] = 'position'
+}
+
 /**
- * Extracts the utility prefix (e.g. "bg" from "bg-gray-900", "text" from "text-white").
- * Used to group utilities by their property type.
+ * Maps a utility to a key identifying the CSS property it sets, so a base and a
+ * variant class for the same property group together. Exact-match equivalence
+ * groups (display, position) win; otherwise fall back to the prefix heuristic
+ * (e.g. "bg" from "bg-gray-900", "text" from "text-white").
  */
 function getUtilityPrefix(utility: string): string {
   let u = splitImportant(utility).bare
   if (u.startsWith('-')) u = u.slice(1)
+
+  const group = PROPERTY_GROUP_BY_UTILITY[u]
+  if (group) return group
 
   for (const prefix of KNOWN_PREFIXES) {
     if (u === prefix || u.startsWith(`${prefix}-`)) return prefix

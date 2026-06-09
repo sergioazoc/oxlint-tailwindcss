@@ -43,11 +43,6 @@ hex in a single brand-asset component.
 }
 ```
 
-### `entryPoint`
-
-`string`, optional. Present in the schema for forward compatibility but currently unused by the rule
-— `no-hardcoded-colors` runs without a design system. You can ignore it.
-
 ## Examples
 
 ### ✗ Incorrect

@@ -33,7 +33,7 @@ variants), así que entradas como `"grid-cols-"` permiten `grid-cols-[18rem_1fr]
 }
 ```
 
-Tip: arrancá con `[]` para ver dónde tu codebase realmente necesita escapes, después promové los
+Tip: empieza con `[]` para ver dónde tu codebase realmente necesita escapes, después promueve los
 legítimos a `allow` en vez de desactivar la regla entera.
 
 ## Ejemplos
@@ -86,7 +86,7 @@ legítimos a `allow` en vez de desactivar la regla entera.
 
 ## Cuándo desactivarla
 
-- **Prototipos / branches de spike** donde la velocidad le gana a la disciplina. Reactivala antes de
+- **Prototipos / branches de spike** donde la velocidad le gana a la disciplina. Reactívala antes de
   mergear.
 - **Archivos que genuinamente necesitan un arbitrary value** (landing pages one-off, shims de
   CSS-in-JS dinámico). Prefiere `allow` con una lista corta de prefijos, o desactiva por línea con

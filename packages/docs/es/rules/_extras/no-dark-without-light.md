@@ -22,7 +22,7 @@ variantes custom de data-attribute que tengas registradas, etc.) — mira la opc
 `string[]`, default `["dark"]`.
 
 Lista de variantes que requieren una base sin variante en el mismo prefijo de utility.
-Sobreescribilo cuando tu app usa otro mecanismo para cambiar de theme (e.g. `contrast-more:` para un
+Sobreescríbelo cuando tu app usa otro mecanismo para cambiar de theme (e.g. `contrast-more:` para un
 tema de alto contraste, o una variante custom `theme-foo:` definida en tu CSS).
 
 ```jsonc
