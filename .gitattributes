@@ -1,0 +1,13 @@
+# Normalize line endings to LF on checkout across all platforms. Without this,
+# Git on Windows checks files out with CRLF (core.autocrlf), and oxfmt — which
+# expects LF — reports every file as mis-formatted, failing `format:check` in CI.
+* text=auto eol=lf
+
+# Binary types Git must never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

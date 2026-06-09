@@ -20,7 +20,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        node-version: [20, 22, 24]
+        # Node 20 is intentionally not in the CI matrix: the dev toolchain
+        # (pnpm 11.4) fails to even start under Node 20 (ERR_UNKNOWN_BUILTIN_MODULE),
+        # so it can't be exercised here. The published plugin's runtime only uses
+        # worker_threads/Atomics/fs and still supports Node >=20 (per package
+        # `engines`); this matrix verifies the toolchain-supported versions.
+        node-version: [22, 24]
         # The sync-loader relies on Atomics, file-locks (openSync 'wx'),
         # os.tmpdir() and worker_threads, which are platform-sensitive. Cover
         # macOS and Windows on the primary Node version so the cross-platform
