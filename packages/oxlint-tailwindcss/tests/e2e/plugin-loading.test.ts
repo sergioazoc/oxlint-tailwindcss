@@ -5,16 +5,23 @@ import { existsSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs'
 
 const ROOT = resolve(__dirname, '../..')
 const DIST_CJS = resolve(ROOT, 'dist/index.cjs')
-const OXLINT = resolve(ROOT, 'node_modules/.bin/oxlint')
+// On Windows the npm bin shim is `oxlint.cmd`, and a `.cmd` can't be run via
+// execFileSync without a shell (Node refuses to spawn .cmd/.bat directly). Pick
+// the right shim per platform and only opt into the shell where it's needed.
+const IS_WINDOWS = process.platform === 'win32'
+const OXLINT = resolve(ROOT, 'node_modules/.bin', IS_WINDOWS ? 'oxlint.cmd' : 'oxlint')
 const E2E_DIR = resolve(__dirname, 'tmp')
 const FIXTURE_CSS = resolve(__dirname, '../fixtures/default.css')
 
 function runOxlint(configFile: string, targetFile: string): { stdout: string; exitCode: number } {
   try {
+    // configFile/targetFile are relative to cwd (E2E_DIR) so we don't pass
+    // absolute Windows paths (backslashes/spaces) through the shell.
     const stdout = execFileSync(OXLINT, ['-c', configFile, targetFile], {
       encoding: 'utf-8',
       cwd: E2E_DIR,
       timeout: 30_000,
+      shell: IS_WINDOWS,
     })
     return { stdout, exitCode: 0 }
   } catch (error: unknown) {
@@ -40,7 +47,9 @@ describe('E2E: oxlint plugin loading', () => {
       configPath,
       JSON.stringify(
         {
-          jsPlugins: [DIST_CJS],
+          // Forward slashes so the path survives JSON + oxlint resolution on
+          // Windows (backslashes would be JSON escape sequences).
+          jsPlugins: [DIST_CJS.split('\\').join('/')],
           rules: {
             'tailwindcss/no-duplicate-classes': 'error',
             'tailwindcss/no-unnecessary-whitespace': 'error',
@@ -85,7 +94,7 @@ describe('E2E: oxlint plugin loading', () => {
   })
 
   it('loads the plugin and detects errors', () => {
-    const { stdout, exitCode } = runOxlint(configPath, invalidFile)
+    const { stdout, exitCode } = runOxlint('.oxlintrc.json', 'invalid.tsx')
     expect(exitCode).not.toBe(0)
     expect(stdout).toContain('tailwindcss(no-duplicate-classes)')
     expect(stdout).toContain('tailwindcss(no-unnecessary-whitespace)')
@@ -93,7 +102,7 @@ describe('E2E: oxlint plugin loading', () => {
   })
 
   it('reports no errors on valid code', () => {
-    const { stdout } = runOxlint(configPath, validFile)
+    const { stdout } = runOxlint('.oxlintrc.json', 'valid.tsx')
     expect(stdout).not.toContain('tailwindcss(')
   })
 })
