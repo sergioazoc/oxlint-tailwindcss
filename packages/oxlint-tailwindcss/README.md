@@ -590,6 +590,13 @@ Converts physical properties to logical ones for LTR/RTL support.
 Also converts `border-l/r`, `rounded-l/r/tl/tr/bl/br`, and `scroll-ml/mr/pl/pr` to their logical
 equivalents.
 
+**Options:**
+
+| Option      | Type                                | Default  | Description                                   |
+| ----------- | ----------------------------------- | -------- | --------------------------------------------- |
+| `direction` | `"inline"` \| `"block"` \| `"both"` | `"both"` | Restrict conversion to one axis               |
+| `allowlist` | `string[]`                          | `[]`     | Regex patterns for classes to leave untouched |
+
 **Autofix:** Replaces with logical equivalent.
 
 ---
@@ -608,6 +615,13 @@ in LTR-only projects.
 "start-0" → "left-0"
 "end-0"   → "right-0"
 ```
+
+**Options:**
+
+| Option      | Type                                | Default  | Description                                   |
+| ----------- | ----------------------------------- | -------- | --------------------------------------------- |
+| `direction` | `"inline"` \| `"block"` \| `"both"` | `"both"` | Restrict conversion to one axis               |
+| `allowlist` | `string[]`                          | `[]`     | Regex patterns for classes to leave untouched |
 
 **Autofix:** Replaces with physical equivalent.
 

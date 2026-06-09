@@ -13,7 +13,7 @@ declaration order; the first glob matching the linted file wins.
 // /my-monorepo/.oxlintrc.json
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["tailwindcss"],
+  "jsPlugins": ["oxlint-tailwindcss"],
   "rules": {
     "tailwindcss/no-unknown-classes": "error"
   },

@@ -15,7 +15,7 @@ Requisitos:
 - **oxlint 1.43.0** o posterior.
 - **Tailwind CSS v4**. El plugin carga tu design system vía `@tailwindcss/node` y solo entiende
   sintaxis v4 (`@import "tailwindcss";`, `@theme { ... }`).
-- **Node.js 22** o posterior para el proceso del linter.
+- **Node.js 20** o posterior para el proceso del linter.
 
 ## 2. Configuración mínima
 
@@ -24,7 +24,7 @@ Crea o extiende tu `.oxlintrc.json` en la raíz del proyecto:
 ```jsonc
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["tailwindcss"],
+  "jsPlugins": ["oxlint-tailwindcss"],
   "rules": {
     "tailwindcss/no-unknown-classes": "error",
     "tailwindcss/no-conflicting-classes": "error",
@@ -54,7 +54,7 @@ Si quieres un set "bendecido" que detecte problemas reales sin ser ruidoso, acti
 ```jsonc
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["tailwindcss"],
+  "jsPlugins": ["oxlint-tailwindcss"],
   "rules": {
     // Correctness — atrapan bugs reales
     "tailwindcss/no-conflicting-classes": "error",
