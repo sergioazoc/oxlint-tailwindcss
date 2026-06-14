@@ -16,6 +16,7 @@ interface ContextLike {
   options?: readonly unknown[]
   settings?: Readonly<Record<string, unknown>>
   filename?: string
+  cwd?: string
 }
 
 /**
@@ -48,6 +49,20 @@ export function safeFilename(context: ContextLike): string | undefined {
     return context.filename ?? undefined
   } catch {
     return undefined
+  }
+}
+
+/**
+ * Safely read `context.cwd`, falling back to `process.cwd()`. Same try/catch
+ * pattern as the other accessors (the getter throws in `createOnce` on older
+ * oxlint). The fallback keeps relative-path resolution working even when the
+ * linter never populates `cwd`.
+ */
+export function safeCwd(context: ContextLike): string {
+  try {
+    return context.cwd ?? process.cwd()
+  } catch {
+    return process.cwd()
   }
 }
 

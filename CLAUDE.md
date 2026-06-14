@@ -180,6 +180,21 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
     shape is removed; supplying it throws `DeprecatedEntryPointShapeError` with the migration
     snippet inline. If nothing resolves, `MissingEntryPointError` is thrown and the rule emits a
     `designSystemUnavailable` diagnostic.
+- **Relative string `entryPoint` anchoring (#39)**: a relative **string** entry (rule option or
+  settings string — NOT the mapping shape) is resolved by `resolveStringEntryPoint` in `loader.ts`,
+  NOT against `process.cwd()`. oxlint doesn't expose the config path to plugins, so the loader walks
+  up from the linted file to the nearest enclosing `.oxlintrc.json` (`nearestConfigDir`, early-exit,
+  memoized in `nearestConfigDirCache`) — the config oxlint applies under nested discovery — and
+  anchors there. Deterministic **two-step** `[nearest config dir → CWD]`: use the config-dir
+  candidate if it exists on disk, else the CWD candidate, else resolve against the nearest config
+  dir so the `Could not stat` error names the package-local path (fail-loud, never silently reach
+  past the nearest config into an unrelated ancestor — that masked-typo non-determinism is exactly
+  why the legacy `string[]` heuristic was removed). Absolute entries pass through `resolve()`
+  untouched; mapping arrays stay CWD-relative. This makes editor (CWD = workspace root) and CLI (CWD
+  = package) runs agree in Pattern-B monorepos. Limitation: under `oxlint -c <config>` /
+  `--disable-nested-config` oxlint suppresses nested discovery but the plugin still walks the FS, so
+  the nearest `.oxlintrc.json` may diverge from the config oxlint used — docs steer those setups to
+  absolute paths.
 - **Multi-DS cache**: `loader.ts` uses `dsCache: Map<string, { cache, mtime }>` to store multiple
   design systems simultaneously. Each unique resolved CSS gets its own entry. In monorepos with the
   mapping shape, distinct globs can map to distinct CSS files in the same lint run.

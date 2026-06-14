@@ -1,8 +1,8 @@
 import { DesignSystemCache } from './cache'
 import { loadDesignSystemSync } from './sync-loader'
 import { debugLog, isDebugEnabled, setDebugEnabled, resetDebug } from './debug'
-import { statSync } from 'node:fs'
-import { relative, resolve } from 'node:path'
+import { existsSync, statSync } from 'node:fs'
+import { dirname, isAbsolute, relative, resolve } from 'node:path'
 import {
   DeprecatedEntryPointShapeError,
   DesignSystemLoadError,
@@ -10,7 +10,7 @@ import {
   MissingEntryPointError,
 } from '../utils/fatal'
 import type { EntryPointMapping } from '../types'
-import { safeFilename, safeOptions, safeSettings } from '../utils/context'
+import { safeCwd, safeFilename, safeOptions, safeSettings } from '../utils/context'
 
 export type { EntryPointMapping }
 
@@ -144,6 +144,90 @@ export function resolveByGlobMapping(
 }
 
 /**
+ * oxlint discovers nested configuration by walking up from each linted file
+ * looking for files with these names. We mirror that walk to find the config
+ * directory a relative `entryPoint` should be anchored to.
+ */
+const OXLINT_CONFIG_NAMES = ['.oxlintrc.json'] as const
+
+/** Memoizes the nearest-config walk per starting directory (cleared in tests). */
+const nearestConfigDirCache = new Map<string, string | null>()
+
+/**
+ * Find the directory of the **nearest** enclosing oxlint config, walking up
+ * from `filePath` toward the filesystem root. Returns `undefined` if none is
+ * found. This is the config oxlint applies to the file under its default
+ * nested-config discovery, so a relative `entryPoint` declared in it is meant
+ * to resolve relative to that directory — not the process CWD, which differs
+ * between the CLI (`cd package && oxlint`) and an editor (CWD = workspace
+ * root). See issue #39.
+ *
+ * Stops at the first match (early exit), so in the common case it touches only
+ * the file's package, not the whole path to root.
+ */
+function nearestConfigDir(filePath: string): string | undefined {
+  const start = dirname(resolve(filePath))
+  const cached = nearestConfigDirCache.get(start)
+  if (cached !== undefined) return cached ?? undefined
+
+  let dir = start
+  // Walk to the filesystem root; `dirname('/') === '/'` is the fixpoint.
+  for (;;) {
+    if (OXLINT_CONFIG_NAMES.some((name) => existsSync(resolve(dir, name)))) {
+      nearestConfigDirCache.set(start, dir)
+      return dir
+    }
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+  nearestConfigDirCache.set(start, null)
+  return undefined
+}
+
+/**
+ * Resolve a string `entryPoint` (from `settings` or a rule option) to an
+ * absolute path.
+ *
+ * Absolute paths are returned normalized and untouched. A **relative** path is
+ * anchored to the directory of the nearest enclosing `.oxlintrc.json` (the
+ * config oxlint applies to the file), with the CWD as a single fallback:
+ *
+ *   1. nearest config dir — if its candidate file exists, use it;
+ *   2. CWD — if its candidate file exists, use it;
+ *   3. otherwise resolve against the nearest config dir (else CWD) so the
+ *      downstream "could not stat" diagnostic names the package-local path the
+ *      user most likely intended — i.e. fail loud rather than silently reach
+ *      past the nearest config into an unrelated ancestor.
+ *
+ * Deliberately a two-step [config dir → CWD] resolution, NOT a walk through
+ * every ancestor config: the v1 charter is deterministic + fail-loud, and a
+ * multi-ancestor existence probe would let a coincidentally same-named CSS in
+ * an unrelated parent silently shadow a genuine misconfiguration.
+ *
+ * This makes resolution independent of where oxlint is launched from: the
+ * editor (CWD = workspace root) and the CLI (CWD = package dir) now agree on
+ * the same CSS file in a Pattern-B monorepo (issue #39).
+ */
+export function resolveStringEntryPoint(
+  entry: string,
+  filePath: string | undefined,
+  cwd: string,
+): string {
+  if (isAbsolute(entry)) return resolve(entry)
+
+  const configDir = filePath ? nearestConfigDir(filePath) : undefined
+  const bases = configDir && configDir !== cwd ? [configDir, cwd] : [cwd]
+
+  for (const base of bases) {
+    const candidate = resolve(base, entry)
+    if (existsSync(candidate)) return candidate
+  }
+  // Nothing exists — resolve against the most-specific base for the error.
+  return resolve(bases[0], entry)
+}
+
+/**
  * Extract `rootFontSize` from `settings.tailwindcss` (default: 16).
  */
 export function rootFontSizeFromSettings(settings?: Readonly<Record<string, unknown>>): number {
@@ -186,7 +270,7 @@ export function getLoadedDesignSystem(
   } catch (cause) {
     throw new DesignSystemLoadError(
       `Could not stat CSS entry point: ${resolvedPath}`,
-      'Check that the file exists and is readable. The path is resolved relative to the oxlint working directory.',
+      'Check that the file exists and is readable. A relative `entryPoint` is resolved against the nearest `.oxlintrc.json` directory, falling back to the oxlint working directory.',
       { cause: cause instanceof Error ? cause : undefined },
     )
   }
@@ -223,6 +307,10 @@ export function getLoadedDesignSystem(
  *   3. `settings.tailwindcss.entryPoint` as an `EntryPointMapping[]` —
  *      first matching glob (relative to CWD) wins.
  *
+ * A relative string entry (1 or 2) is anchored to the nearest enclosing
+ * `.oxlintrc.json` directory rather than the CWD, so editor and CLI runs agree
+ * in Pattern-B monorepos (issue #39); see `resolveStringEntryPoint`.
+ *
  * If none of those produce an entry point for the current file, throws
  * `MissingEntryPointError`. If the resolved CSS fails to load, throws
  * `DesignSystemLoadError`. Both extend `OxlintTailwindError` and are
@@ -236,6 +324,7 @@ export function createLazyLoader(context: {
   options?: readonly unknown[]
   settings?: Readonly<Record<string, unknown>>
   filename?: string
+  cwd?: string
 }): () => LoadResult {
   let debugInitialized = false
   let lastFilePath: string | undefined
@@ -268,7 +357,12 @@ export function createLazyLoader(context: {
     lastError = undefined
     try {
       const settingsEntry = entryPointFromSettings(settings)
-      const cssPath = resolveEntryPointForFile(ruleOptionEntry, settingsEntry, filePath)
+      const cssPath = resolveEntryPointForFile(
+        ruleOptionEntry,
+        settingsEntry,
+        filePath,
+        safeCwd(context),
+      )
       lastResult = getLoadedDesignSystem(cssPath, settings)
     } catch (err) {
       if (isFatalError(err) && err instanceof Error) lastError = err
@@ -284,8 +378,11 @@ export function createLazyLoader(context: {
 }
 
 /**
- * Pure resolution from (rule option, settings entry, file path) to a CSS
- * entry-point path. Exported for testability.
+ * Pure resolution from (rule option, settings entry, file path, cwd) to an
+ * absolute CSS entry-point path. Exported for testability.
+ *
+ * Relative string entries are anchored via `resolveStringEntryPoint` (nearest
+ * `.oxlintrc.json` dir, then `cwd`); mapping arrays match relative to `cwd`.
  *
  * Throws `MissingEntryPointError` if nothing resolves. The error message
  * names the file so the user knows which one tripped the configuration.
@@ -294,9 +391,11 @@ export function resolveEntryPointForFile(
   ruleOptionEntry: string | undefined,
   settingsEntry: EntryPointSetting | undefined,
   filePath: string | undefined,
+  cwd: string = process.cwd(),
 ): string {
-  if (ruleOptionEntry) return ruleOptionEntry
-  if (typeof settingsEntry === 'string') return settingsEntry
+  if (ruleOptionEntry) return resolveStringEntryPoint(ruleOptionEntry, filePath, cwd)
+  if (typeof settingsEntry === 'string')
+    return resolveStringEntryPoint(settingsEntry, filePath, cwd)
   if (Array.isArray(settingsEntry)) {
     if (!filePath) {
       throw new MissingEntryPointError(
@@ -304,7 +403,7 @@ export function resolveEntryPointForFile(
         'This usually means the rule ran outside the linter context. Open an issue if you see this in a real lint run.',
       )
     }
-    const matched = resolveByGlobMapping(settingsEntry, filePath, process.cwd())
+    const matched = resolveByGlobMapping(settingsEntry, filePath, cwd)
     if (matched) return matched
     throw new MissingEntryPointError(
       `No \`entryPoint\` mapping matched \`${filePath}\`.`,
@@ -321,5 +420,6 @@ export function resolveEntryPointForFile(
 export function resetDesignSystem(): void {
   dsCache.clear()
   dsFailureCache.clear()
+  nearestConfigDirCache.clear()
   resetDebug()
 }
