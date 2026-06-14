@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.3.1 (2026-06-13)
+
+Fixes `no-unknown-classes` false positives on valid Tailwind v4 utilities that `getClassList()`
+doesn't enumerate ([#37](https://github.com/sergioazoc/oxlint-tailwindcss/issues/37)). The reported
+case was `@container-size`; a registry-vs-`getClassList()` audit then found and closed the rest of
+that family. Patch bumps to `tailwindcss` / `@tailwindcss/node` 4.3.1. Thanks to
+[@zorrodg](https://github.com/zorrodg) for the report.
+
+### Bug fixes
+
+- **`no-unknown-classes` no longer flags valid v4 classes missing from `getClassList()`.** Validity
+  is built by filtering `getClassList()` through `candidatesToCss()`, so any class Tailwind compiles
+  but doesn't enumerate was reported as a typo (`@container-size` → "Did you mean `contain-size`?").
+  The precompute now reconciles three kinds of gap, each validated through `candidatesToCss()` (the
+  source of truth — so every addition self-prunes on a Tailwind version that doesn't emit it):
+  - **Special-cased compiler utilities** absent from `getClassList()` _and_ the utility registry:
+    `@container-size` (`container-type: size`), `filter-none` / `backdrop-filter-none`, and
+    `max-w-screen`. Added as a curated seed, with their CSS properties captured so they participate
+    in `no-conflicting-classes` like their enumerated siblings.
+  - **Negative utilities** whose negative form `getClassList()` omits: `-col-N`, `-row-N`,
+    `-hue-rotate-N`, `-backdrop-hue-rotate-N`. Auto-discovered by probing `-<prefix>-1` for every
+    known prefix; `candidatesToCss()` rejects utilities that don't support negation (`-p-1`), so
+    only genuinely negative-capable prefixes are added.
+  - **v3 background/object-position spellings** reordered axis-first in v4 (`bg-left-top`,
+    `object-right-bottom`, and the six others) — fed through the existing legacy-canonicalize pass.
+
+### Behavior changes
+
+- **`enforce-canonical` now rewrites the v3 position spellings** to their v4 form (`bg-left-top` →
+  `bg-top-left`, `object-right-bottom` → `object-bottom-right`, and the six others). Autofix.
+- **`no-conflicting-classes` now flags two `container-type` markers together**
+  (`@container @container-size`), consistent with the already-detected
+  `@container @container-normal` — `@container-size` now carries its `container-type` property like
+  its siblings.
+
+### Dependencies
+
+- `tailwindcss` 4.3.1, `@tailwindcss/node` 4.3.1, `@types/node` 25.9.3 (all patch). The 0.8.0
+  cache-invalidation note claimed `@container-size` started working after a tailwindcss upgrade — it
+  never did (the `getClassList()` gap above); now it does, on any 4.x. Test suite at 1134 passing.
+
 ## 1.3.0 (2026-06-09)
 
 A correctness, robustness, and security pass from a full project audit. Two autofixes that could

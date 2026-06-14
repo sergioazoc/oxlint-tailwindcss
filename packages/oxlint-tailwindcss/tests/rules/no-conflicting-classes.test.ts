@@ -202,6 +202,14 @@ runWithFixture(ruleTester, 'no-conflicting-classes', noConflictingClasses, ENTRY
       filename: 'test.tsx',
       errors: [{ messageId: 'conflict' }],
     },
+    // Container-type marking utilities all set `container-type`, so combining
+    // two of them conflicts. @container-size is absent from getClassList() (#37)
+    // but must behave like its @container / @container-normal siblings.
+    {
+      code: '<div className="@container @container-size" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'conflict' }],
+    },
   ],
 })
 

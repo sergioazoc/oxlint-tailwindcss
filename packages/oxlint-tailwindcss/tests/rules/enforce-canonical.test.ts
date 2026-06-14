@@ -30,6 +30,20 @@ runWithFixture(ruleTester, 'enforce-canonical', enforceCanonical, ENTRY_POINT, {
       errors: [{ messageId: 'nonCanonical' }],
       output: '<div className="m-0" />',
     },
+    // v3 background/object-position spellings reordered in v4 (#37):
+    // axis order flipped to vertical-first.
+    {
+      code: '<div className="bg-left-top" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'nonCanonical' }],
+      output: '<div className="bg-top-left" />',
+    },
+    {
+      code: '<div className="object-right-bottom" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'nonCanonical' }],
+      output: '<div className="object-bottom-right" />',
+    },
     {
       code: '<div className="flex -mt-0" />',
       filename: 'test.tsx',

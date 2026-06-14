@@ -201,6 +201,39 @@ async function main() {
     const dash = cls.lastIndexOf('-');
     if (dash > 0) knownPrefixes.add(cls.slice(0, dash));
   }
+  // Curated static utilities valid in v4 but absent from getClassList() (#37).
+  // These are special-cased in Tailwind's compiler, so they appear in neither
+  // getClassList() NOR the utility registry (\`utilities.keys('static')\`) — only
+  // an explicit probe surfaces them:
+  //   - \`@container-size\` (\`container-type: size\`) — sibling of the enumerated
+  //     \`@container\` / \`@container-normal\`; was flagged as a typo of \`contain-size\`.
+  //   - \`filter-none\` / \`backdrop-filter-none\` (\`filter: none\`) — the reset
+  //     utilities; their functional bases enumerate values but omit \`none\`.
+  //   - \`max-w-screen\` (\`max-width: 100vw\`).
+  // Validated via candidatesToCss (self-prunes on any Tailwind version that doesn't
+  // emit them) and their CSS is captured so the cssProps phase below treats them
+  // exactly like their getClassList siblings — otherwise no-conflicting-classes
+  // would flag \`@container @container-normal\` but silently accept
+  // \`@container @container-size\`. Named forms (\`@container-size/main\`) are covered
+  // by the slash-modifier path in cache.isValid once the base lands in validClasses.
+  const staticExtras = [
+    '@container-size',
+    'filter-none',
+    'backdrop-filter-none',
+    'max-w-screen',
+  ].filter((c) => !validSet.has(c));
+  const staticExtraCss = {};
+  if (staticExtras.length > 0) {
+    const staticResults = ds.candidatesToCss(staticExtras.map(pfx));
+    for (let i = 0; i < staticExtras.length; i++) {
+      if (staticResults[i] != null) {
+        validClasses.push(staticExtras[i]);
+        validSet.add(staticExtras[i]);
+        staticExtraCss[staticExtras[i]] = staticResults[i];
+      }
+    }
+  }
+
   const extraCandidates = [];
   const breakpoints = ['sm', 'md', 'lg', 'xl', '2xl'];
   for (const prefix of knownPrefixes) {
@@ -218,6 +251,27 @@ async function main() {
       if (extraResults[i] != null) {
         validClasses.push(extraCandidates[i]);
         validSet.add(extraCandidates[i]);
+      }
+    }
+  }
+
+  // Negative variants of utilities that support them (#37). getClassList()
+  // enumerates negatives for most (\`-m-4\`, \`-translate-x-2\`) but omits a few
+  // (\`-col-1\`, \`-row-1\`, \`-hue-rotate-45\`, \`-backdrop-hue-rotate-45\`). Probe
+  // \`-<prefix>-1\` for every known prefix lacking negative coverage; candidatesToCss
+  // self-prunes utilities that reject negatives (\`-p-1\` → null), so only genuinely
+  // negative-capable prefixes land in validClasses, giving isValid's / getOrder's
+  // numeric-prefix heuristic the \`-<prefix>\` it needs to accept any \`-<prefix>-<n>\`.
+  const negativeProbes = [];
+  for (const prefix of knownPrefixes) {
+    if (!knownPrefixes.has('-' + prefix)) negativeProbes.push('-' + prefix + '-1');
+  }
+  if (negativeProbes.length > 0) {
+    const negResults = ds.candidatesToCss(negativeProbes.map(pfx));
+    for (let i = 0; i < negativeProbes.length; i++) {
+      if (negResults[i] != null && !validSet.has(negativeProbes[i])) {
+        validClasses.push(negativeProbes[i]);
+        validSet.add(negativeProbes[i]);
       }
     }
   }
@@ -268,6 +322,11 @@ async function main() {
     'decoration-clone', 'decoration-slice',
     'bg-gradient-to-t', 'bg-gradient-to-tr', 'bg-gradient-to-r', 'bg-gradient-to-br',
     'bg-gradient-to-b', 'bg-gradient-to-bl', 'bg-gradient-to-l', 'bg-gradient-to-tl',
+    // v3 background/object-position spellings reordered in v4 (#37):
+    // \`bg-left-top\` -> \`bg-top-left\`. canonicalizeCandidates rewrites them, so
+    // enforce-canonical suggests the v4 form and no-unknown-classes accepts them.
+    'bg-left-top', 'bg-right-top', 'bg-left-bottom', 'bg-right-bottom',
+    'object-left-top', 'object-right-top', 'object-left-bottom', 'object-right-bottom',
   ];
   for (const cls of validClasses) {
     if (cls.startsWith('inset-s-')) legacyCandidates.push('start-' + cls.slice(8));
@@ -394,6 +453,14 @@ async function main() {
       const props = extractRootCssProps(cssResults[i], pfx(classNames[i]));
       if (props.length > 0) cssProps[classNames[i]] = props;
     }
+  }
+
+  // cssProps for the curated static extras (#37) so they participate in conflict
+  // detection exactly like their getClassList siblings (e.g. \`@container-size\` and
+  // \`@container\` both declaring \`container-type\`).
+  for (const name in staticExtraCss) {
+    const props = extractRootCssProps(staticExtraCss[name], pfx(name));
+    if (props.length > 0) cssProps[name] = props;
   }
 
   // Variant ordering from the design system
