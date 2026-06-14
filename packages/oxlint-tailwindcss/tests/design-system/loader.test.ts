@@ -108,8 +108,11 @@ describe('resolveByGlobMapping', () => {
 
 describe('resolveEntryPointForFile', () => {
   it('rule option entryPoint wins over everything', () => {
-    expect(resolveEntryPointForFile('/explicit.css', 'will-be-ignored.css', '/any/file.tsx')).toBe(
-      '/explicit.css',
+    // Use a `resolve()`d absolute path so the assertion holds on Windows too
+    // (a bare "/explicit.css" is normalized to "<drive>:\explicit.css").
+    const explicit = resolve('/explicit.css')
+    expect(resolveEntryPointForFile(explicit, 'will-be-ignored.css', '/any/file.tsx')).toBe(
+      explicit,
     )
   })
 
