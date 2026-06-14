@@ -27,9 +27,15 @@ Two shapes are supported:
 }
 ```
 
-Globs are evaluated against the linted file's path relative to the oxlint working directory.
-Supported syntax: `*` (any chars except `/`), `**` (any depth), literal segments. Order matters —
-the first matching entry wins. Add a `"**"` fallback to handle files outside the explicit globs.
+A **relative string** `entryPoint` (the single-project shape) is resolved against the directory of
+the nearest enclosing `.oxlintrc.json`, falling back to the oxlint working directory — so a
+per-package config resolves to the same CSS whether oxlint runs from the package (CLI) or the
+workspace root (editor). See [Monorepos](/monorepo).
+
+Globs (the mapping shape) are evaluated against the linted file's path relative to the oxlint
+working directory. Supported syntax: `*` (any chars except `/`), `**` (any depth), literal segments.
+Order matters — the first matching entry wins. Add a `"**"` fallback to handle files outside the
+explicit globs.
 
 `files` also accepts an array of globs (`string[]`): the entry matches if the linted file matches
 any of them.

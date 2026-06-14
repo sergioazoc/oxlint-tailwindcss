@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.3.2 (2026-06-14)
+
+Fixes a relative `entryPoint` resolving against the current working directory instead of the config
+file's location ([#39](https://github.com/sergioazoc/oxlint-tailwindcss/issues/39)). In a Pattern-B
+monorepo (one `.oxlintrc.json` per package), this made the plugin work from the CLI but fail in the
+editor — the same config resolved to different CSS depending on where oxlint was launched. Thanks to
+[@zorrodg](https://github.com/zorrodg) for the report.
+
+### Bug fixes
+
+- **A relative string `entryPoint` is now anchored to its config file's directory, not the CWD.**
+  oxlint doesn't expose the config path to plugins, so the plugin walks up from the linted file to
+  the nearest enclosing `.oxlintrc.json` (the config oxlint itself merges) and resolves the entry
+  there, falling back to the CWD if the file isn't found. The CLI (`cd packages/ui && oxlint`, CWD =
+  package) and editor extensions (CWD = workspace root) now load the same package-local CSS instead
+  of failing with `Could not stat CSS entry point`. Absolute `entryPoint`s and the
+  `EntryPointMapping[]` (glob) shape are unchanged — globs still match relative to the working
+  directory.
+
 ## 1.3.1 (2026-06-13)
 
 Fixes `no-unknown-classes` false positives on valid Tailwind v4 utilities that `getClassList()`

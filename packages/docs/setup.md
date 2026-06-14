@@ -102,7 +102,9 @@ suggestions should appear in your editor.
 
 If you see a `designSystemUnavailable` diagnostic instead, the `entryPoint` setting is missing or
 points at a file the plugin can't read. The diagnostic message tells you exactly which path it tried
-— copy that into your `entryPoint` setting (relative to the directory where you run `oxlint`).
+— copy that into your `entryPoint` setting. A relative `entryPoint` is resolved against the
+directory of the nearest enclosing `.oxlintrc.json` (the config that declares it), falling back to
+the directory where you run `oxlint`.
 
 ## 5. Monorepo setups
 

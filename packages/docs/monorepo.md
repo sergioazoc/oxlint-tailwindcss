@@ -70,6 +70,21 @@ my-monorepo/
 }
 ```
 
+A **relative** string `entryPoint` is resolved against the directory of the nearest enclosing
+`.oxlintrc.json` — i.e. the config that declares it — not the current working directory. So
+`./src/styles.css` points at `packages/ui/src/styles.css` whether oxlint runs from the package
+(`cd packages/ui && oxlint`, as on the CLI) or from the workspace root (as editor extensions like
+the VS Code oxlint plugin do). If the file isn't found there, resolution falls back to the CWD. This
+is what makes per-package configs behave the same in the terminal and the editor (issue #39).
+
+::: tip Explicit `-c` configs Anchoring uses the nearest `.oxlintrc.json` because that's the config
+oxlint applies under its default nested-config discovery. If you instead pass `oxlint -c <config>`
+(or disable nested configs), oxlint uses only that one file — and the plugin can't see which config
+that was (oxlint exposes the file path and CWD to plugins, never the config path). The
+nearest-config + CWD fallback still resolves correctly for the usual layout, but if you mix an
+explicit `-c` config with an unrelated nested `.oxlintrc.json` below the linted file, prefer an
+**absolute** `entryPoint` (or the mapping shape) to remove all ambiguity. :::
+
 When to use this:
 
 - Packages diverge significantly in rules, plugins, or globals.
