@@ -125,7 +125,9 @@ order:
 ```
 
 **Pattern B — one `.oxlintrc.json` per package**, each with its own string `entryPoint`. oxlint
-resolves the closest config to the file being linted.
+resolves the closest config to the file being linted, and a relative `entryPoint` is anchored to
+that config's directory (falling back to the working directory), so it resolves to the same CSS
+whether oxlint runs from the package (CLI) or the workspace root (editor).
 
 See the full [monorepo guide](https://oxlint-tailwindcss.pages.dev/monorepo) for examples of both.
 

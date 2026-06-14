@@ -1,5 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest'
 import { resolve } from 'node:path'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import {
   createLazyLoader,
   getLoadedDesignSystem,
@@ -132,5 +134,72 @@ describe('entryPoint mapping array — first match wins', () => {
       filename: '/somewhere/else/Component.tsx',
     }
     expect(() => createLazyLoader(context)()).toThrow(MissingEntryPointError)
+  })
+})
+
+// Issue #39: in a Pattern-B monorepo (one `.oxlintrc.json` per package with a
+// relative `entryPoint`), the editor (CWD = workspace root) and the CLI
+// (CWD = package dir) must load the SAME package-local CSS. Before the fix the
+// editor resolved `./styles.css` against the workspace root and failed with
+// `Could not stat CSS entry point`.
+describe('createLazyLoader — relative entryPoint anchored to config dir (#39)', () => {
+  let MONO: string
+  let workspaceRoot: string
+  let packageDir: string
+  let lintedFile: string
+  let expectedCss: string
+
+  beforeAll(() => {
+    MONO = mkdtempSync(resolve(tmpdir(), 'oxtw-lazy39-'))
+    workspaceRoot = MONO
+    packageDir = resolve(MONO, 'packages/ui')
+    lintedFile = resolve(packageDir, 'src/Button.tsx')
+    expectedCss = resolve(packageDir, 'styles.css')
+
+    mkdirSync(resolve(packageDir, 'src'), { recursive: true })
+    // `.oxlintrc.json` markers oxlint would discover; only existence matters.
+    writeFileSync(resolve(MONO, '.oxlintrc.json'), '{}')
+    writeFileSync(resolve(packageDir, '.oxlintrc.json'), '{}')
+    // A real, loadable Tailwind v4 entry point local to the package.
+    writeFileSync(expectedCss, '@import "tailwindcss";\n')
+    writeFileSync(lintedFile, 'export const C = () => null\n')
+  })
+
+  afterAll(() => {
+    try {
+      rmSync(MONO, { recursive: true, force: true })
+    } catch {}
+  })
+
+  beforeEach(() => resetDesignSystem())
+
+  function ctx(cwd: string) {
+    return {
+      options: [{}],
+      settings: { tailwindcss: { entryPoint: './styles.css' } },
+      filename: lintedFile,
+      cwd,
+    }
+  }
+
+  it('resolves to the package-local CSS when run from the workspace root (editor)', () => {
+    const result = createLazyLoader(ctx(workspaceRoot))()
+    expect(result.entryPoint).toBe(expectedCss)
+    expect(result.cache.isValid('flex')).toBe(true)
+  })
+
+  it('resolves to the same CSS when run from the package dir (CLI)', () => {
+    const result = createLazyLoader(ctx(packageDir))()
+    expect(result.entryPoint).toBe(expectedCss)
+    expect(result.cache.isValid('flex')).toBe(true)
+  })
+
+  it('agrees on the entry point across every CWD', () => {
+    const fromRoot = createLazyLoader(ctx(workspaceRoot))()
+    const fromPkg = createLazyLoader(ctx(packageDir))()
+    const fromElsewhere = createLazyLoader(ctx(resolve(MONO, 'packages')))()
+    expect(fromRoot.entryPoint).toBe(expectedCss)
+    expect(fromPkg.entryPoint).toBe(expectedCss)
+    expect(fromElsewhere.entryPoint).toBe(expectedCss)
   })
 })

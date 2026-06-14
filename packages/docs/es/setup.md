@@ -103,8 +103,9 @@ oxlint debería marcar ambas clases con `no-unknown-classes`, y las sugerencias 
 
 Si en cambio ves un diagnóstico `designSystemUnavailable`, significa que `entryPoint` no está
 configurado o apunta a un archivo que el plugin no puede leer. El mensaje del diagnóstico te dice
-exactamente qué ruta intentó — copia esa en tu setting `entryPoint` (relativa al directorio donde
-corres `oxlint`).
+exactamente qué ruta intentó — copia esa en tu setting `entryPoint`. Un `entryPoint` relativo se
+resuelve respecto al directorio del `.oxlintrc.json` más cercano que lo contiene (el config que lo
+declara), cayendo de vuelta al directorio donde corres `oxlint`.
 
 ## 5. Setups de monorepo
 
