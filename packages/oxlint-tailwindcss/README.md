@@ -930,10 +930,10 @@ The class parser correctly handles:
 
 - **`enforce-canonical`**: Named classes are canonicalized via the precomputed map (covers
   everything in `getClassList()` plus a curated list of legacy v3 spellings like `break-words`,
-  `flex-grow`, `start-N`, `bg-gradient-to-*`). Arbitrary/CSS-var forms (`p-[2px]`, `bg-(--c)`) are
-  canonicalized dynamically via the worker. Some valid v4 classes that don't appear in
-  `getClassList()` and have no canonical rewrite (e.g. `border-1` is valid as a dynamic numeric
-  value but isn't enumerated) are left untouched.
+  `flex-grow`, `start-N`, `bg-gradient-to-*`, `bg-left-top` → `bg-top-left`). Arbitrary/CSS-var
+  forms (`p-[2px]`, `bg-(--c)`) are canonicalized dynamically via the worker. Some valid v4 classes
+  that don't appear in `getClassList()` and have no canonical rewrite (e.g. `border-1` is valid as a
+  dynamic numeric value but isn't enumerated) are left untouched.
 - **`no-conflicting-classes`**: Uses exact CSS property name matching plus composition heuristics:
   CSS-var composition (`shadow` + `ring`), narrowing-override (later class is a strict subset of
   earlier — handles `size-4 h-6`, `rounded-t-lg rounded-tl-sm`, `truncate text-clip`), complementary

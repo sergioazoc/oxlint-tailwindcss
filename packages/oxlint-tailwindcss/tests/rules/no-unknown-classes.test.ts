@@ -37,6 +37,29 @@ runWithFixture(ruleTester, 'no-unknown-classes', noUnknownClasses, ENTRY_POINT, 
     // Opacity modifiers
     { code: '<div className="bg-black/80" />', filename: 'test.tsx' },
     { code: '<div className="bg-blue-500/50 text-white/90" />', filename: 'test.tsx' },
+    // Container query marking utilities (#37). Tailwind's getClassList() omits
+    // @container-size (container-type: size), but it is a valid v4 utility.
+    { code: '<div className="@container" />', filename: 'test.tsx' },
+    { code: '<div className="@container-normal" />', filename: 'test.tsx' },
+    { code: '<div className="@container-size" />', filename: 'test.tsx' },
+    {
+      code: '<div className="@container-size pointer-events-none absolute inset-0" />',
+      filename: 'test.tsx',
+    },
+    // Named containers via the /name slash modifier
+    { code: '<div className="@container/main" />', filename: 'test.tsx' },
+    { code: '<div className="@container-size/main" />', filename: 'test.tsx' },
+    // Container query variants resolve through their base utility
+    { code: '<div className="@sm:flex @max-md:flex-row" />', filename: 'test.tsx' },
+    // Other utilities valid in v4 but missing from getClassList() (#37):
+    // special-cased compiler utilities (filter:none reset, max-width:100vw)…
+    { code: '<div className="filter-none backdrop-filter-none" />', filename: 'test.tsx' },
+    { code: '<div className="max-w-screen" />', filename: 'test.tsx' },
+    // …negative utilities whose negative form getClassList() omits…
+    { code: '<div className="-hue-rotate-45 -backdrop-hue-rotate-30" />', filename: 'test.tsx' },
+    { code: '<div className="-col-1 -row-2 -col-13" />', filename: 'test.tsx' },
+    // …and v3 position spellings (still valid CSS; enforce-canonical rewrites them)
+    { code: '<div className="bg-left-top object-right-bottom" />', filename: 'test.tsx' },
   ],
   invalid: [
     {

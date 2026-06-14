@@ -258,13 +258,30 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   in `no-conflicting-classes.ts` whitelist the `animate-in`/`animate-out` ↔ modifier pairs.
 - **`canonicalizeCandidates()`**: Deduplicates results — must be called one class at a time, NOT in
   batch.
-- **`getClassList()` gaps**: Some valid classes (`grow-1`, `border-1`, `underline-offset-3`) are
-  missing from the list. `cache.getOrder()` falls back to prefix lookup for dynamic numeric values.
-  Arbitrary values handled by heuristic.
-- **Legacy v3 spellings in the canonical map** (issue #16): the precompute step in `sync-loader.ts`
-  feeds a hardcoded seed list plus dynamic `start-*`/`end-*` derived from existing `inset-{s,e}-*`
-  utilities into `canonicalizeCandidates()` and adds the diffs to the canonical map. Legacy classes
-  are also pushed into `validClasses` so `no-unknown-classes` doesn't flag them.
+- **`getClassList()` gaps** (issue #37): some valid v4 classes never appear in `getClassList()`. The
+  precompute reconciles three kinds, each validated through `candidatesToCss()` — the source of
+  truth for "produces CSS" — so every addition self-prunes on a Tailwind version that doesn't emit
+  it:
+  1. **Dynamic numeric values** (`grow-1`, `border-1`, `underline-offset-3`): not seeded; recovered
+     at lookup time by the prefix-and-number heuristic in `cache.isValid`/`getOrder` (falls back to
+     prefix lookup). Arbitrary values handled by heuristic too.
+  2. **Special-cased compiler utilities** absent from `getClassList()` AND the utility registry
+     (`ds.utilities.keys('static')`): `@container-size`, `filter-none`, `backdrop-filter-none`,
+     `max-w-screen`. A curated `staticExtras` seed in `sync-loader.ts` validates + pushes them to
+     `validClasses` and captures their CSS so they get `cssProps` (so `@container @container-size`
+     conflicts like `@container @container-normal`, not silently accepted).
+  3. **Negative utilities** whose negative form `getClassList()` omits (`-col-N`, `-row-N`,
+     `-hue-rotate-N`, `-backdrop-hue-rotate-N`): auto-discovered by probing `-<prefix>-1` for every
+     known prefix; `candidatesToCss()` rejects non-negatable prefixes (`-p-1` → null), so only real
+     negative-capable prefixes land in `validClasses` (→ `knownPrefixes` picks up `-col`, etc.). To
+     re-audit after a Tailwind bump: `keys('static')`/`keys('functional')` (+ `getCompletions`
+     `supportsNegative`) vs `getClassList()`, filter by `candidatesToCss != null && !cache.isValid`.
+- **Legacy v3 spellings in the canonical map** (issues #16, #37): the precompute step in
+  `sync-loader.ts` feeds a hardcoded seed list (v3 renames like `break-words` / `bg-gradient-to-*`,
+  plus the v4-reordered position spellings `bg-left-top`→`bg-top-left` /
+  `object-{left,right}-{top,bottom}`) plus dynamic `start-*`/`end-*` derived from existing
+  `inset-{s,e}-*` utilities into `canonicalizeCandidates()` and adds the diffs to the canonical map.
+  Legacy classes are also pushed into `validClasses` so `no-unknown-classes` doesn't flag them.
 - **Floating point**: All rem/em/px operations go through `roundRemValue()`.
 - **Variant reordering barriers**: `consistent-variant-order` pulls pseudo-elements innermost
   (closest to the utility), but also treats selector-changing variants — `*`, `**`, `[&>svg]`, `*:…`
