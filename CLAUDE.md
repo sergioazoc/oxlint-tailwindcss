@@ -43,6 +43,31 @@ features or non-breaking additions, major (X.0.0) for breaking changes.
 `packages/oxlint-tailwindcss/package.json` carries the published version; the root `package.json` is
 `private` and stays at `0.0.0`.
 
+## Releases
+
+`release.yml` runs on **push to the `release` branch** and does everything: lint/format/typecheck/
+build/test, deploy docs to Cloudflare Pages, publish to npm (idempotent — `npm view` skips the
+publish when the version already exists, so a docs-only release is fine), and create the GitHub
+Release. `main` is the dev branch; nothing publishes on a push to `main` (CI only).
+
+**To cut a release:**
+
+1. Land the version bump (`packages/oxlint-tailwindcss/package.json`) + `CHANGELOG.md` entry on
+   `main` via a normal PR (squash-merge is fine).
+2. `git push origin main:release`
+
+That's it — the push fast-forwards `release` to `main` and `release.yml` takes over.
+
+> **⚠️ Invariant: `release` is a pure fast-forward mirror of `main`. NEVER put a commit on `release`
+> that isn't on `main`** — no direct commits, no merges _into_ `release`, no cherry-picks, no
+> squash. The branch is only ever advanced by `git push origin main:release`. The moment `release`
+> gets a commit `main` doesn't have, the two diverge, `git push origin main:release` stops
+> fast-forwarding (non-fast-forward rejection), and — because `release` is a **protected branch with
+> `allow_force_pushes: false` and `enforce_admins: true`** — you can't just force it back.
+> Recovering then requires temporarily flipping `allow_force_pushes` to reset `release = main`, or a
+> conflict-resolving merge commit. This is exactly what happened around v1.3.1 (issue #39 work) and
+> cost a detour. Keep `release` clean and the one-liner keeps working.
+
 ## Architecture
 
 oxlint plugin with 23 Tailwind CSS v4 linting rules. Uses `@oxlint/plugins`' `createOnce` API (runs
