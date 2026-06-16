@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.3.3 (2026-06-16)
+
+Removes the need to install `@oxlint/plugins` separately
+([#50](https://github.com/sergioazoc/oxlint-tailwindcss/issues/50)). The README's install step was
+just `pnpm add -D oxlint-tailwindcss`, but the package declared `@oxlint/plugins` as a required peer
+dependency — so under package managers that don't auto-install peers, the plugin failed to load with
+an opaque module-not-found error. Thanks to [@ctjhoa](https://github.com/ctjhoa) for the report.
+
+### Bug fixes
+
+- **`@oxlint/plugins` is now bundled into the published package instead of being a peer
+  dependency.** We only consume `definePlugin`/`defineRule` (identity no-ops) and the `ESTree` types
+  from it — nothing with runtime state or coupling to the host oxlint version — so bundling them is
+  safe and carries no version-skew risk. `pnpm add -D oxlint-tailwindcss` now works out of the box
+  with no extra peer or runtime dependency to install. The two real runtime dependencies
+  (`@tailwindcss/node`, `tailwindcss`) stay external.
+
 ## 1.3.2 (2026-06-14)
 
 Fixes a relative `entryPoint` resolving against the current working directory instead of the config
