@@ -11,3 +11,7 @@ allowBuilds:
   # as an undecided build and fail with ERR_PNPM_IGNORED_BUILDS. We don't need
   # workerd compiled for a static Pages upload — `false` skips it without error.
   workerd: false
+  # wrangler@4 also pulls `sharp` (native image lib) with a build script. Same
+  # deal as workerd: we're uploading prebuilt static files, so sharp never runs.
+  # `false` decides it so pnpm doesn't fail with ERR_PNPM_IGNORED_BUILDS.
+  sharp: false
