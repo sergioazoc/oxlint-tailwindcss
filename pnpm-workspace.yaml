@@ -1,7 +1,7 @@
 packages:
   - 'packages/*'
 catalog:
-  '@oxlint/plugins': ^1.69.0
+  '@oxlint/plugins': ^1.70.0
   oxfmt: ^0.54.0
   oxlint: ^1.69.0
 allowBuilds:
