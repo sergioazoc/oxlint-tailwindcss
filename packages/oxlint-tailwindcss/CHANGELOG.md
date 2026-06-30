@@ -1,6 +1,14 @@
 # Changelog
 
-## 1.3.3 (2026-06-16)
+## 1.3.4 (2026-06-30)
+
+Dependency maintenance release — no rule behavior changes.
+
+### Dependencies
+
+- Bumped `tailwindcss` and `@tailwindcss/node` to `^4.3.2`.
+- Bumped the bundled `@oxlint/plugins` to `1.72.0` (re-bundled into the published package).
+- Dev tooling: `oxlint`/`oxfmt` and `@typescript/native-preview` updated to their latest releases.
 
 Removes the need to install `@oxlint/plugins` separately
 ([#50](https://github.com/sergioazoc/oxlint-tailwindcss/issues/50)). The README's install step was
