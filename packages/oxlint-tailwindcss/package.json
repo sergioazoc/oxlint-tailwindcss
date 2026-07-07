@@ -57,7 +57,7 @@
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
     "@tailwindcss/typography": "^0.5.20",
-    "@types/node": "^26.0.1",
+    "@types/node": "^26.1.0",
     "@typescript/native-preview": "7.0.0-dev.20260630.1",
     "oxlint": "catalog:",
     "tailwindcss-animate": "^1.0.7",
