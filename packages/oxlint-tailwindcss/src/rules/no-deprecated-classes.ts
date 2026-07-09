@@ -3,8 +3,6 @@ import { createExtractorVisitors, type ClassLocation } from '../utils/extractors
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
 import { reattachImportant, splitImportant, splitUtilityAndVariant } from '../utils/class-parser'
-import { createLazyLoader } from '../design-system/loader'
-import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 
 // Mapping of deprecated classes in TW v4 to their replacements
 export const DEPRECATED_MAP: Record<string, string> = {
@@ -36,6 +34,9 @@ export const noDeprecatedClasses = defineRule({
       {
         type: 'object',
         properties: {
+          // Accepted for backwards compat with configs from before the DS-guard
+          // was removed. This rule uses a hardcoded rename map and never reads
+          // the design system, so the option is ignored.
           entryPoint: { type: 'string' },
         },
         additionalProperties: false,
@@ -46,16 +47,11 @@ export const noDeprecatedClasses = defineRule({
     messages: {
       deprecated: '"{{className}}" is deprecated in Tailwind v4. Use "{{replacement}}" instead.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
-      ...DS_UNAVAILABLE_MESSAGE,
     },
   },
   createOnce(context) {
-    const getDS = createLazyLoader(context)
-
     function check(locations: ClassLocation[]) {
       if (locations.length === 0) return
-      const dsResult = safeGetDS(getDS, context, locations[0].node)
-      if (!dsResult) return
       for (const loc of locations) {
         const split = splitClassesWithSeparators(loc.value)
         const offending = split.classes.flatMap((cls) => {

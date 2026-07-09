@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Bug fixes
+
+- **`no-deprecated-classes`**: no longer requires `settings.tailwindcss.entryPoint`. The rule only
+  consults a hardcoded map of v3→v4 renames (`flex-grow` → `grow`, `bg-gradient-to-*` →
+  `bg-linear-to-*`, etc.) and never actually reads the design system, so gating it on a successful
+  design-system load produced a "design system unavailable" fatal diagnostic in projects that hadn't
+  configured `entryPoint` — even though the check itself needed nothing from the design system. The
+  rule now runs unconditionally. Existing configs that pass `entryPoint` as a rule option keep
+  working (the option is ignored).
+
 ## 1.3.4 (2026-06-30)
 
 Dependency maintenance release — no rule behavior changes.
