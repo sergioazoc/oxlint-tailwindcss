@@ -117,10 +117,12 @@ Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is 
    `sort-service`, and `canonicalize-service` all consume those constants — no per-call
    `require.resolve` dance.
 
-DS-dependent rules: `no-unknown-classes`, `no-conflicting-classes`, `no-deprecated-classes`,
-`enforce-canonical`, `enforce-sort-order`, `no-unnecessary-arbitrary-value`, `prefer-theme-tokens`.
+DS-dependent rules: `no-unknown-classes`, `no-conflicting-classes`, `enforce-canonical`,
+`enforce-sort-order`, `no-unnecessary-arbitrary-value`, `prefer-theme-tokens`.
 `consistent-variant-order` is the sole DS-optional rule — its static-order fallback is itself
-deterministic, so a missing entryPoint is tolerated silently there.
+deterministic, so a missing entryPoint is tolerated silently there. `no-deprecated-classes` is
+DS-independent outright (guard removed in #69): it consults only the hardcoded `DEPRECATED_MAP`, so
+it never loads the design system and never emits `designSystemUnavailable`.
 
 ## Extraction System
 
