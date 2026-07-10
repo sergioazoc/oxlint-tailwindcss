@@ -12,6 +12,14 @@
   rule now runs unconditionally. Existing configs that pass `entryPoint` as a rule option keep
   working (the option is ignored).
 
+### Dependencies
+
+- Updated dev/build tooling to their latest stable: `oxlint` & bundled `@oxlint/plugins` 1.73.0,
+  `oxfmt` 0.58.0, `vitest` 4.1.10, `@types/node` 26.1.1, `tsdown` 0.22.4,
+  `@typescript/native-preview` 20260707.2, and `vitepress` 2.0.0-alpha.18 (docs). Since
+  `@oxlint/plugins` is bundled into the published package, its bump ships in the build. Runtime
+  dependencies (`tailwindcss`, `@tailwindcss/node`) are unchanged at 4.3.2.
+
 ## 1.3.4 (2026-06-30)
 
 Dependency maintenance release — no rule behavior changes.
@@ -761,8 +769,9 @@ lock (#24)).
 - **`enforce-canonical` preserves `!` position** — Canonicalization no longer forces `!` to prefix.
   If the user wrote `-m-0!` it now canonicalizes to `m-0!` (not `!m-0`), respecting the original
   modifier position.
-- **`consistent-variant-order` supports
-  `*`/`**` selectors** — Child (`\*:`) and descendant (`\*\*:`) selectors are now included in the default variant order. Fixed arbitrary variant brackets (`[...]`) no longer getting priority `-1`.
+- **`consistent-variant-order` supports `*`/`**` selectors** — Child (`\*:`) and descendant
+  (`\*\*:`) selectors are now included in the default variant order. Fixed arbitrary variant
+  brackets (`[...]`) no longer getting priority `-1`.
 - **Dependencies updated** — tailwindcss 4.2.2, @oxlint/plugins 1.56.0, oxlint 1.56.0, oxfmt 0.41.0,
   tsdown 0.21.4, @typescript/native-preview 7.0.0-dev.20260318.1.
 - 545 tests (up from 536).
