@@ -205,11 +205,12 @@ Output:
 ```
 
 If no entry point is configured, the DS-dependent rules (`no-unknown-classes`,
-`no-conflicting-classes`, `no-deprecated-classes`, `enforce-canonical`, `enforce-sort-order`,
+`no-conflicting-classes`, `enforce-canonical`, `enforce-sort-order`,
 `no-unnecessary-arbitrary-value`, `prefer-theme-tokens`) emit a single `designSystemUnavailable`
-diagnostic per file with an actionable hint — no more silent skips. `consistent-variant-order` is
-the lone exception: its static fallback is itself deterministic, so a missing entryPoint is
-tolerated there. All non-DS rules work without an entry point.
+diagnostic per file with an actionable hint — no more silent skips. `consistent-variant-order`
+tolerates a missing entryPoint (its static fallback is itself deterministic), and
+`no-deprecated-classes` needs no design system at all (it only consults a hardcoded v3→v4 rename
+map). All non-DS rules work without an entry point.
 
 ## Custom class detection
 

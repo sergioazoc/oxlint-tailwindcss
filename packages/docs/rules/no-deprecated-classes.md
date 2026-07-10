@@ -11,17 +11,16 @@ deprecated name. Examples: `flex-grow` → `grow`, `flex-shrink` → `shrink`, `
 (and the rest of the gradient directions). Variants and `!` (important) modifiers are preserved on
 both sides of the rewrite.
 
-DS-dependent — requires `settings.tailwindcss.entryPoint`. The rule uses the design system to know
-which file it's working against so it plays nicely with the rest of the plugin (in particular,
-`no-unknown-classes` skips classes flagged here so you don't get two diagnostics for the same
-token). If the design system can't load, the rule emits a single fatal `designSystemUnavailable`
-diagnostic per file instead of silently passing.
+Needs **no** design system. The rule consults only the hardcoded `DEPRECATED_MAP`, so it runs even
+when `settings.tailwindcss.entryPoint` is not configured, and it never emits a
+`designSystemUnavailable` diagnostic. It still plays nicely with the rest of the plugin:
+`no-unknown-classes` recognizes the legacy v3 spellings, so `flex-grow` gets a single `deprecated`
+diagnostic here rather than that plus an "unknown class" from another rule.
 
 ## Options
 
-This rule has no per-rule options beyond the standard `entryPoint` override (string, defaults to
-`settings.tailwindcss.entryPoint`). Configure the entry point in `settings.tailwindcss.entryPoint`
-for the whole project instead of per-rule whenever possible.
+This rule has no options. For backwards compatibility it still accepts an `entryPoint` string (left
+over from when it loaded the design system), but the value is ignored — the rule never reads it.
 
 ## Examples
 
@@ -71,8 +70,8 @@ for the whole project instead of per-rule whenever possible.
 
 ## When to disable it
 
-- **You're still on Tailwind v3** and the new names don't resolve against your design system. Pin
-  the plugin and disable this rule until you migrate.
+- **You're still on Tailwind v3** and want to keep the v3 spellings. Disable this rule until you
+  migrate.
 - **You intentionally ship a v3-compatible class layer** alongside v4 (for example, a shared library
   that targets both). In that case prefer a targeted `eslint-disable` on the file rather than a
   project-wide disable.

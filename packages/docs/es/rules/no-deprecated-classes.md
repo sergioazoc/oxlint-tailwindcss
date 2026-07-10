@@ -11,17 +11,16 @@ sobre el nombre viejo. Ejemplos: `flex-grow` → `grow`, `flex-shrink` → `shri
 `bg-linear-to-r` (y el resto de las direcciones de gradient). Los variants y modificadores `!`
 (important) se preservan en ambos lados de la reescritura.
 
-DS-dependiente — requiere `settings.tailwindcss.entryPoint`. La regla usa el design system para
-saber contra qué archivo está trabajando y así jugar bien con el resto del plugin (en particular,
-`no-unknown-classes` omite las clases que esta regla marca para que no veas dos diagnósticos por el
-mismo token). Si el design system no puede cargar, la regla emite un único diagnóstico fatal
-`designSystemUnavailable` por archivo en vez de pasar en silencio.
+No necesita design system. La regla consulta solo el `DEPRECATED_MAP` hardcodeado, así que corre
+incluso cuando `settings.tailwindcss.entryPoint` no está configurado, y nunca emite un diagnóstico
+`designSystemUnavailable`. Igual juega bien con el resto del plugin: `no-unknown-classes` reconoce
+los spellings viejos de v3, así que `flex-grow` recibe un único diagnóstico `deprecated` acá en vez
+de ese más un "unknown class" de otra regla.
 
 ## Opciones
 
-Esta regla no tiene opciones propias más allá del override estándar `entryPoint` (string, defaultea
-a `settings.tailwindcss.entryPoint`). Configura el entry point en `settings.tailwindcss.entryPoint`
-para todo el proyecto en vez de por-regla cuando puedas.
+Esta regla no tiene opciones. Por compatibilidad hacia atrás todavía acepta un string `entryPoint`
+(sobrante de cuando cargaba el design system), pero el valor se ignora — la regla nunca lo lee.
 
 ## Ejemplos
 
@@ -71,8 +70,8 @@ para todo el proyecto en vez de por-regla cuando puedas.
 
 ## Cuándo desactivarla
 
-- **Sigues en Tailwind v3** y los nombres nuevos no resuelven contra tu design system. Fija el
-  plugin y desactiva esta regla hasta que migres.
+- **Sigues en Tailwind v3** y quieres mantener los spellings de v3. Desactiva esta regla hasta que
+  migres.
 - **Mantienes a propósito una capa de clases v3-compatibles** al lado de v4 (por ejemplo, una
   librería compartida que apunta a ambos). En ese caso prefiere un `eslint-disable` puntual en el
   archivo antes que un disable a nivel proyecto.
