@@ -43,6 +43,14 @@
   two-package run could spend far longer than linting the packages separately. Sticky worker errors
   are now tracked per entry point as well. Fixes
   [#77](https://github.com/sergioazoc/oxlint-tailwindcss/issues/77).
+- **Canonicalize cache is now persisted to disk.** Every `oxlint` invocation is a fresh process, so
+  the per-class canonicalize cache started empty each run and every unique dynamic class (`p-[2px]`,
+  `bg-(--c)`, …) paid a synchronous worker round-trip again — on arbitrary-value-heavy codebases
+  `enforce-canonical` dominated the whole lint run. The cache is now written next to the
+  design-system precompute artifact and keyed by the canonicalization logic (worker script +
+  rounding), so it invalidates together with the design system or a logic change, and is re-used
+  across runs. Measured on a production app (~1,470 files): ~7.0s → ~1.0s per run after the first.
+  Diagnostics are unchanged.
 
 ### Dependencies
 
@@ -52,6 +60,15 @@
 - Type-checking now runs on the stable `typescript` (`tsc`, `7.0.2`) directly. The
   `@typescript/native-preview` (`tsgo`) dev dependency — a preview of the native compiler before it
   shipped as TypeScript 7 — has been dropped. No effect on the published package.
+### Performance
+
+- **Canonicalize cache is now persisted to disk.** Every `oxlint` invocation is a fresh process, so
+  the per-class canonicalize cache started empty each run and every unique dynamic class (`p-[2px]`,
+  `bg-(--c)`, …) paid a synchronous worker round-trip again — on arbitrary-value-heavy codebases
+  `enforce-canonical` dominated the whole lint run. The cache is now written next to the
+  design-system precompute artifact (content-hash keyed, so it invalidates together with the design
+  system) and re-used across runs. Measured on a production app (~1,470 files): ~7.0s → ~1.0s per
+  run after the first. Diagnostics are unchanged.
 
 ## 1.3.5 (2026-07-10)
 

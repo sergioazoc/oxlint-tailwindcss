@@ -14,7 +14,9 @@
  * subsequent lookup is O(1).
  */
 
+import { readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { DesignSystemWorker, makeWorkerScript } from './ds-worker'
+import { cacheArtifactPaths } from './sync-loader'
 import { SortServiceError } from '../utils/fatal'
 import { roundRemValue } from '../utils/floating-point'
 
@@ -92,6 +94,85 @@ const canonWorker = new DesignSystemWorker<CanonicalizeRequest, CanonicalizeResu
 const canonCache = new Map<string, CanonicalizeResult>()
 
 /**
+ * ## Disk persistence (per design system + rem)
+ *
+ * Each `oxlint` invocation is a fresh process, so without persistence every
+ * unique dynamic class (`p-[2px]`, `bg-(--c)`, …) pays a synchronous worker
+ * round-trip again on every run — on arbitrary-value-heavy codebases this
+ * dominates the whole lint (seconds per run, issue: enforce-canonical perf).
+ *
+ * The canonical results are pure functions of the design system + rem, so we
+ * persist them next to the DS precompute artifact, deriving the filename from
+ * `cacheArtifactPaths(cssPath).json` (content-hash keyed). When the DS
+ * changes, the hash changes, and the canonical cache invalidates with it.
+ *
+ * Best-effort everywhere: a missing/corrupt/unwritable cache file must never
+ * break linting — it only costs worker round-trips.
+ */
+const CANON_CACHE_VERSION = 'v1'
+
+interface PersistState {
+  file: string
+  /** entries added since last flush; -1 = persistence unavailable */
+  dirty: number
+}
+
+/** One persistence state per `${cssPath}\0${rem}\0` cache prefix. */
+const persistStates = new Map<string, PersistState>()
+
+function persistFileFor(cssPath: string, rem?: number): string | null {
+  try {
+    const { json } = cacheArtifactPaths(cssPath)
+    const remKey = rem === undefined ? 'default' : String(rem)
+    return json.replace(/\.json$/, `.canon-${CANON_CACHE_VERSION}-${remKey}.json`)
+  } catch {
+    return null
+  }
+}
+
+/** Load the persisted map (if any) into `canonCache`, and set up flushing. */
+function ensurePersistLoaded(cssPath: string, rem: number | undefined, cachePrefix: string): void {
+  if (persistStates.has(cachePrefix)) return
+
+  const file = persistFileFor(cssPath, rem)
+  if (file === null) {
+    persistStates.set(cachePrefix, { file: '', dirty: -1 })
+    return
+  }
+  const state: PersistState = { file, dirty: 0 }
+  persistStates.set(cachePrefix, state)
+
+  try {
+    const data: unknown = JSON.parse(readFileSync(file, 'utf-8'))
+    if (typeof data === 'object' && data !== null) {
+      for (const [cls, canonical] of Object.entries(data)) {
+        if (typeof canonical === 'string') canonCache.set(cachePrefix + cls, canonical)
+      }
+    }
+  } catch {
+    // No cache yet, or unreadable/corrupt — start fresh.
+  }
+}
+
+/** Atomically write all cached entries for this prefix to disk. */
+function flushPersist(cachePrefix: string, state: PersistState): void {
+  if (state.dirty <= 0) return
+  try {
+    const out: Record<string, string> = {}
+    for (const [key, value] of canonCache) {
+      if (key.startsWith(cachePrefix)) out[key.slice(cachePrefix.length)] = value
+    }
+    const tmp = `${state.file}.${process.pid}.tmp`
+    writeFileSync(tmp, JSON.stringify(out))
+    renameSync(tmp, state.file)
+    state.dirty = 0
+  } catch {
+    // Unwritable cache dir — disable persistence for this prefix.
+    state.dirty = -1
+  }
+}
+
+/**
  * Canonicalize classes via the worker thread.
  *
  * Throws `SortServiceError` on any worker failure (init timeout, request
@@ -111,6 +192,8 @@ export function canonicalizeClassesSync(
   const missingIdx: number[] = []
   const missing: string[] = []
   const cachePrefix = `${cssPath}\0${rem ?? ''}\0`
+
+  ensurePersistLoaded(cssPath, rem, cachePrefix)
 
   for (let i = 0; i < classes.length; i++) {
     const key = cachePrefix + classes[i]
@@ -154,6 +237,17 @@ export function canonicalizeClassesSync(
     out[missingIdx[j]] = value
   }
 
+  // Write-through: flush after every batch that produced fresh results.
+  // Deliberately NOT an exit hook — these services must not register process
+  // listeners (see tests/design-system/exit-listeners.test.ts). The write is
+  // a few-KB atomic tmp+rename, negligible next to the worker round-trips it
+  // eliminates on the next run.
+  const state = persistStates.get(cachePrefix)
+  if (state && state.dirty >= 0) {
+    state.dirty += uniqueMissing.length
+    flushPersist(cachePrefix, state)
+  }
+
   return out
 }
 
@@ -161,4 +255,5 @@ export function canonicalizeClassesSync(
 export function resetCanonicalizeService(): void {
   canonWorker.reset()
   canonCache.clear()
+  persistStates.clear()
 }
