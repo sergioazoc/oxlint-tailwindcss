@@ -4,6 +4,7 @@ import { RuleTester } from 'oxlint/plugins-dev'
 import {
   noConflictingClasses,
   isCompositionViaCssVars,
+  isVarComposedProperty,
   isNarrowingOverride,
   shouldSkipPair,
 } from '../../src/rules/no-conflicting-classes'
@@ -58,6 +59,11 @@ runWithFixture(ruleTester, 'no-conflicting-classes', noConflictingClasses, ENTRY
     { code: '<div className="transition-colors duration-150" />', filename: 'test.tsx' },
     // border width + border style compose
     { code: '<div className="border border-dashed" />', filename: 'test.tsx' },
+    // outline width + outline style compose: outline-<n> READS --tw-outline-style
+    // (outline-style: var(--tw-outline-style)), outline-dashed WRITES it (#80-adjacent)
+    { code: '<div className="outline-1 outline-dashed" />', filename: 'test.tsx' },
+    { code: '<div className="outline-2 outline-solid" />', filename: 'test.tsx' },
+    { code: '<div className="outline-dashed outline-4" />', filename: 'test.tsx' },
     { code: '<div className="border-2 border-dotted" />', filename: 'test.tsx' },
     // transform axes compose (x + y are independent)
     { code: '<div className="translate-x-2 -translate-y-2" />', filename: 'test.tsx' },
@@ -114,6 +120,18 @@ runWithFixture(ruleTester, 'no-conflicting-classes', noConflictingClasses, ENTRY
     { code: '<div className="mask-add mask-linear-from-20%" />', filename: 'test.tsx' },
   ],
   invalid: [
+    {
+      // Two WRITERS of --tw-outline-style — a genuine conflict
+      code: '<div className="outline-dashed outline-solid" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'conflict' }],
+    },
+    {
+      // Two readers, but both also declare outline-width directly — conflict
+      code: '<div className="outline-1 outline-2" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'conflict' }],
+    },
     {
       code: '<div className="text-red-500 text-blue-500" />',
       filename: 'test.tsx',
@@ -290,6 +308,33 @@ describe('isCompositionViaCssVars', () => {
 
   it('returns false when neither side has custom properties', () => {
     expect(isCompositionViaCssVars(['color'], ['color'])).toBe(false)
+  })
+})
+
+describe('isVarComposedProperty', () => {
+  it('composes when exactly one side defines the matching --tw- variable', () => {
+    const outline1 = ['outline-style', 'outline-width']
+    const outlineDashed = ['--tw-outline-style', 'outline-style']
+    expect(isVarComposedProperty('outline-style', outline1, outlineDashed)).toBe(true)
+    expect(isVarComposedProperty('outline-style', outlineDashed, outline1)).toBe(true)
+  })
+
+  it('does not compose when both sides define the variable (two writers)', () => {
+    const dashed = ['--tw-outline-style', 'outline-style']
+    const solid = ['--tw-outline-style', 'outline-style']
+    expect(isVarComposedProperty('outline-style', dashed, solid)).toBe(false)
+  })
+
+  it('does not compose when neither side defines the variable', () => {
+    const a = ['outline-style', 'outline-width']
+    const b = ['outline-style', 'outline-width']
+    expect(isVarComposedProperty('outline-style', a, b)).toBe(false)
+  })
+
+  it('never treats custom properties themselves as composed', () => {
+    expect(
+      isVarComposedProperty('--tw-outline-style', ['--tw-outline-style'], ['outline-style']),
+    ).toBe(false)
   })
 })
 

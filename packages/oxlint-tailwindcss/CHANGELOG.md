@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Bug fixes
+
+- **`no-conflicting-classes`**: no longer reports Tailwind's writer/reader composition through
+  `--tw-*` custom properties as a conflict. `outline-1 outline-dashed` was flagged as both affecting
+  `outline-style`, but `outline-<n>` only READS the variable
+  (`outline-style: var(--tw-outline-style)`) that `outline-dashed` WRITES — the standard Tailwind
+  composition pattern. A shared property is now excluded from the conflict overlap when exactly one
+  of the two classes defines the matching `--tw-<property>`; two writers
+  (`outline-dashed outline-solid`) and two direct declarations (`outline-1 outline-2`) still report.
+
 ## 1.3.5 (2026-07-10)
 
 ### Bug fixes
