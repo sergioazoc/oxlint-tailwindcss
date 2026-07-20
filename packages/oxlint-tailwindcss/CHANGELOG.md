@@ -4,6 +4,25 @@
 
 ### Bug fixes
 
+- **`enforce-canonical`**: no longer rewrites a literal arbitrary value to a variable-backed named
+  token, which silently corrupted the design on projects that override a theme variable in `:root`
+  (the standard shadcn/ui `--radius` pattern, and likewise `--spacing`). `canonicalizeCandidates`
+  matches an arbitrary literal (`rounded-[4px]` = `4px`) against the compile-time theme default, so
+  it happily maps it to `rounded-lg` — but `rounded-lg` compiles to `var(--radius-lg)`, which the
+  `:root` override makes resolve to a different value (e.g. 14px). The rule now only reports a
+  canonicalization when the two forms emit byte-identical CSS. Value-preserving conversions still
+  apply: legacy renames (`break-words` → `wrap-break-word`), variable-syntax normalization
+  (`bg-[var(--x)]` → `bg-(--x)`, `rounded-[var(--radius-sm)]` → `rounded-sm`), and literal-valued
+  utilities (`z-[10]` → `z-10`, `flex-grow-[2]` → `grow-2`). Literal→token conversions such as
+  `p-[2px]` → `p-0.5` are no longer enforced (they are only coincidentally equal under the default
+  theme). Fixes [#78](https://github.com/sergioazoc/oxlint-tailwindcss/issues/78).
+- **`no-unknown-classes`**: no longer flags Tailwind v4's typed CSS-variable shorthand
+  (`border-(length:--stroke)`, `bg-(color:--c)`, `text-(length:--fs)`) as an unknown class. The
+  class-boundary scanners tracked `[]` bracket depth but not `()` paren depth, so the `:` type hint
+  inside the parentheses was mistaken for a variant separator, mangling the utility. This also
+  resolved a contradiction with `enforce-canonical`, which rewrites the `[type:var(--x)]` long form
+  into exactly the shorthand `no-unknown-classes` was rejecting. Fixes
+  [#76](https://github.com/sergioazoc/oxlint-tailwindcss/issues/76).
 - **`no-conflicting-classes`**: no longer reports Tailwind's writer/reader composition through
   `--tw-*` custom properties as a conflict. `outline-1 outline-dashed` was flagged as both affecting
   `outline-style`, but `outline-<n>` only READS the variable
@@ -11,6 +30,19 @@
   composition pattern. A shared property is now excluded from the conflict overlap when exactly one
   of the two classes defines the matching `--tw-<property>`; two writers
   (`outline-dashed outline-solid`) and two direct declarations (`outline-1 outline-2`) still report.
+  The same mechanism now also covers `outline-none`/`outline-hidden` and subsumes the hardcoded
+  `border` width/style pair. Fixes the false-positive half of
+  [#79](https://github.com/sergioazoc/oxlint-tailwindcss/issues/79).
+
+### Performance
+
+- **Monorepos with multiple entry points**: the sort/canonicalize worker services now keep one warm
+  worker **per** CSS entry point (LRU-bounded) instead of a single worker that was torn down and
+  reloaded whenever oxlint fed the plugin two consecutive files from different packages. Each
+  respawn re-paid the full design-system warmup (~200 ms load plus a cold first canonicalize), so a
+  two-package run could spend far longer than linting the packages separately. Sticky worker errors
+  are now tracked per entry point as well. Fixes
+  [#77](https://github.com/sergioazoc/oxlint-tailwindcss/issues/77).
 
 ## 1.3.5 (2026-07-10)
 
