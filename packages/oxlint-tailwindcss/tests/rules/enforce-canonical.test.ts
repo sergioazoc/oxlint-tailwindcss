@@ -22,6 +22,23 @@ runWithFixture(ruleTester, 'enforce-canonical', enforceCanonical, ENTRY_POINT, {
     // Important modifier: position is not enforce-canonical's concern
     { code: '<div className="!rounded-lg" />', filename: 'test.tsx' },
     { code: '<div className="rounded-lg!" />', filename: 'test.tsx' },
+    // #78: a literal arbitrary value is NOT canonicalized to a var-backed token.
+    // `p-0.5` compiles to `calc(var(--spacing) * 0.5)`, `rounded-sm` to
+    // `var(--radius-sm)`, etc. — canonicalizeCandidates matches them against the
+    // compile-time theme, but a `:root` override (the standard shadcn `--radius`
+    // /`--spacing` pattern) makes them non-equivalent, so autofixing would
+    // silently change the design. Only value-preserving (byte-equal CSS)
+    // conversions are enforced; these literal→token ones are left as written.
+    { code: '<div className="p-[2px]" />', filename: 'test.tsx' },
+    { code: '<div className="max-w-[400px]" />', filename: 'test.tsx' },
+    { code: '<div className="rounded-[4px]" />', filename: 'test.tsx' },
+    { code: '<div className="start-[10px]" />', filename: 'test.tsx' },
+    { code: '<div className="hover:p-[2px]" />', filename: 'test.tsx' },
+    { code: '<div className="!p-[2px]" />', filename: 'test.tsx' },
+    { code: '<div className="p-[2px] max-w-[400px] flex" />', filename: 'test.tsx' },
+    // theme(spacing.1) (compile-time literal 0.25rem) → --spacing(1) (runtime
+    // var(--spacing)) is the same literal→var hazard, so it is left as written.
+    { code: '<div className="[--w-padding:theme(spacing.1)]" />', filename: 'test.tsx' },
   ],
   invalid: [
     {
@@ -78,65 +95,14 @@ runWithFixture(ruleTester, 'enforce-canonical', enforceCanonical, ENTRY_POINT, {
       errors: [{ messageId: 'nonCanonical' }],
       output: '<div className="m-0!" />',
     },
-    // Issue #11: arbitrary values with named equivalents (px → named via rem conversion)
-    {
-      code: '<div className="p-[2px]" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="p-0.5" />',
-    },
-    {
-      code: '<div className="max-w-[400px]" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="max-w-100" />',
-    },
-    // Issue #11: var() syntax canonicalization with opacity modifier
+    // Issue #11: var() syntax canonicalization with opacity modifier. Value-safe
+    // (#78): both sides emit `color: color-mix(in oklab, var(--color-text) …)`,
+    // so this is a byte-equal syntax normalization, not a literal→token change.
     {
       code: '<div className="text-[var(--color-text)]/90" />',
       filename: 'test.tsx',
       errors: [{ messageId: 'nonCanonical' }],
       output: '<div className="text-(--color-text)/90" />',
-    },
-    // Issue #11: theme() function canonicalization
-    {
-      code: '<div className="[--w-padding:theme(spacing.1)]" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="[--w-padding:--spacing(1)]" />',
-    },
-    // Issue #11: with variant prefix
-    {
-      code: '<div className="hover:p-[2px]" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="hover:p-0.5" />',
-    },
-    // Issue #11: with important modifier
-    {
-      code: '<div className="!p-[2px]" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="!p-0.5" />',
-    },
-    // Issue #11: multiple in same string
-    {
-      code: '<div className="p-[2px] max-w-[400px] flex" />',
-      filename: 'test.tsx',
-      errors: [
-        { messageId: 'nonCanonical' },
-        {
-          messageId: 'nonCanonical',
-          suggestions: [
-            {
-              messageId: 'suggestReplace',
-              data: { className: 'max-w-[400px]', replacement: 'max-w-100' },
-              output: '<div className="p-0.5 max-w-100 flex" />',
-            },
-          ],
-        },
-      ],
-      output: '<div className="p-0.5 max-w-100 flex" />',
     },
     // Multiple non-canonical classes in same string
     {
@@ -260,15 +226,11 @@ runWithFixture(ruleTester, 'enforce-canonical', enforceCanonical, ENTRY_POINT, {
       errors: [{ messageId: 'nonCanonical' }],
       output: '<div className="bg-linear-to-r" />',
     },
-    // Arbitrary forms route through the worker (canonicalize-service)
-    {
-      code: '<div className="start-[10px]" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      // 10px = 0.625rem, which is spacing token 2.5 — the worker canonicalizes
-      // both the legacy prefix AND the arbitrary value in one pass.
-      output: '<div className="inset-s-2.5" />',
-    },
+    // Arbitrary forms route through the worker (canonicalize-service). This one
+    // is value-safe (#78): both `flex-grow-[2]` and `grow-2` emit
+    // `flex-grow: 2` (a literal), so the byte-equal check keeps the autofix.
+    // (`start-[10px]` → `inset-s-2.5` is NOT enforced — 10px vs
+    // `calc(var(--spacing) * 2.5)` differ — see the valid block above.)
     {
       code: '<div className="flex-grow-[2]" />',
       filename: 'test.tsx',
@@ -277,3 +239,42 @@ runWithFixture(ruleTester, 'enforce-canonical', enforceCanonical, ENTRY_POINT, {
     },
   ],
 })
+
+// #78 regression on a real shadcn theme: `@theme inline { --radius-lg:
+// var(--radius); … }` + `:root { --radius: 0.625rem }`. canonicalizeCandidates
+// still maps `rounded-[4px]` → `rounded-lg` against the compile-time default,
+// but `rounded-lg` resolves to 10px here — so the rule must NOT rewrite it.
+// Value-preserving conversions (the var-reference form) still fire.
+const SHADCN_ENTRY_POINT = resolve(__dirname, '../fixtures/shadcn.css')
+
+// Pre-warm shadcn alongside default WITHOUT resetting — the loader keeps
+// multiple design systems cached (keyed by entry point), and runWithFixture
+// injects each case's own entryPoint, so both fixtures coexist.
+beforeAll(() => {
+  getLoadedDesignSystem(SHADCN_ENTRY_POINT)
+})
+
+runWithFixture(
+  ruleTester,
+  'enforce-canonical (shadcn :root override)',
+  enforceCanonical,
+  SHADCN_ENTRY_POINT,
+  {
+    valid: [
+      // The design-corrupting conversion from the issue — must stay untouched.
+      { code: '<div className="rounded-[4px]" />', filename: 'test.tsx' },
+      { code: '<div className="rounded-[10px]" />', filename: 'test.tsx' },
+      { code: '<div className="p-[2px]" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      // Value-preserving (byte-equal) canonicalization still fires: the user
+      // already wrote the var, and `rounded-sm` emits the same `var(--radius-sm)`.
+      {
+        code: '<div className="rounded-[var(--radius-sm)]" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'nonCanonical' }],
+        output: '<div className="rounded-sm" />',
+      },
+    ],
+  },
+)

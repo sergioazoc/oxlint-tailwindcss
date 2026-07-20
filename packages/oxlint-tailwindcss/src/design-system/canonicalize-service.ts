@@ -23,21 +23,62 @@ interface CanonicalizeRequest {
   rem?: number
 }
 
+/**
+ * One canonicalization result.
+ *
+ * `safe` is the #78 guard: `true` only when the canonical form emits
+ * byte-identical CSS to the original. A canonicalization like
+ * `rounded-[4px]` → `rounded-lg` is UNSAFE because `rounded-lg` compiles to
+ * `border-radius: var(--radius-lg)`, whose value depends on a `:root`
+ * override that `canonicalizeCandidates` resolves against the compile-time
+ * theme default — so accepting it would silently change the design. The rule
+ * layer only rewrites when `safe` is true; unsafe results are left as written.
+ * Value-preserving canonicalizations (legacy renames, var-syntax
+ * normalization like `bg-[var(--x)]` → `bg-(--x)`, literal-valued utilities
+ * like `z-[10]` → `z-10`) all stay `safe: true`.
+ */
+export interface CanonicalizeResult {
+  canonical: string
+  safe: boolean
+}
+
 // Handler: canonicalize each class. canonicalizeCandidates deduplicates its
 // input, so we call it one class at a time to preserve order/length (see
 // sync-loader.ts). The shared protocol/load/loop lives in makeWorkerScript.
+//
+// `safe` (#78) is computed here, inside the worker, where the design system
+// lives: a rewrite is value-preserving iff the two classes emit byte-identical
+// CSS *declarations* (the selector differs by construction, so it is stripped —
+// everything between the first `{` and the last `}`). candidatesToCss is the
+// source of truth; when the canonical form resolves through a `var()`/`calc()`
+// whose value a `:root` override can change, the declarations differ and the
+// rewrite is flagged unsafe.
 const CANONICALIZE_HANDLER = `(ds, request) => {
   const { classes, rem } = request;
   const options = rem ? { rem } : undefined;
+  const declsOf = (cls) => {
+    let out;
+    try { out = ds.candidatesToCss([cls]); } catch (e) { return null; }
+    if (!out || !out[0]) return null;
+    const css = out[0];
+    const open = css.indexOf('{');
+    const close = css.lastIndexOf('}');
+    if (open < 0 || close < 0) return null;
+    return css.slice(open + 1, close).replace(/\\s+/g, ' ').trim();
+  };
   return classes.map((cls) => {
     const r = ds.canonicalizeCandidates([cls], options);
-    return r[0] ?? cls;
+    const canonical = r[0] ?? cls;
+    if (canonical === cls) return { canonical: cls, safe: true };
+    const a = declsOf(cls);
+    const b = declsOf(canonical);
+    return { canonical, safe: a !== null && b !== null && a === b };
   });
 }`
 
 const WORKER_SCRIPT = makeWorkerScript(CANONICALIZE_HANDLER)
 
-const canonWorker = new DesignSystemWorker<CanonicalizeRequest, string[]>({
+const canonWorker = new DesignSystemWorker<CanonicalizeRequest, CanonicalizeResult[]>({
   workerScript: WORKER_SCRIPT,
   serviceName: 'canonicalize',
 })
@@ -45,9 +86,10 @@ const canonWorker = new DesignSystemWorker<CanonicalizeRequest, string[]>({
 /**
  * Process-wide cache of canonicalized classes.
  * Key: `${cssPath}\0${rem}\0${className}` — isolates monorepos (multiple
- * DSs) and different rem settings. Value: canonicalized class string.
+ * DSs) and different rem settings. Value: the canonical form + its #78 `safe`
+ * flag.
  */
-const canonCache = new Map<string, string>()
+const canonCache = new Map<string, CanonicalizeResult>()
 
 /**
  * Canonicalize classes via the worker thread.
@@ -64,8 +106,8 @@ export function canonicalizeClassesSync(
   cssPath: string,
   classes: string[],
   rem?: number,
-): string[] {
-  const out: string[] = Array.from({ length: classes.length })
+): CanonicalizeResult[] {
+  const out: CanonicalizeResult[] = Array.from({ length: classes.length })
   const missingIdx: number[] = []
   const missing: string[] = []
   const cachePrefix = `${cssPath}\0${rem ?? ''}\0`
@@ -95,17 +137,19 @@ export function canonicalizeClassesSync(
     )
   }
 
-  const freshByClass = new Map<string, string>()
+  const freshByClass = new Map<string, CanonicalizeResult>()
   for (let k = 0; k < uniqueMissing.length; k++) {
     freshByClass.set(uniqueMissing[k], fresh[k])
   }
 
   for (let j = 0; j < missing.length; j++) {
     const cls = missing[j]
+    const raw = freshByClass.get(cls) ?? { canonical: cls, safe: true }
     // Round rem/em/px floats so the worker path matches the precomputed map
     // (cache.ts does the same): canonicalizing arbitrary values can yield
-    // `2.4000000000000004rem`, which must never reach the user's source.
-    const value = roundRemValue(freshByClass.get(cls) ?? cls)
+    // `2.4000000000000004rem`, which must never reach the user's source. The
+    // `safe` flag is decided in the worker and carried through unchanged.
+    const value: CanonicalizeResult = { canonical: roundRemValue(raw.canonical), safe: raw.safe }
     canonCache.set(cachePrefix + cls, value)
     out[missingIdx[j]] = value
   }
