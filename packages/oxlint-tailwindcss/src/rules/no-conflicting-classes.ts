@@ -25,6 +25,31 @@ export function isCompositionViaCssVars(
 }
 
 /**
+ * A shared declared property composes (rather than conflicts) when exactly one
+ * of the two classes also defines the matching `--tw-<property>` custom
+ * property. The definer WRITES the variable (its direct declaration is the
+ * fallback), while the other class READS it via `var(--tw-<property>)` —
+ * Tailwind's standard composition pattern. Example (Tailwind v4):
+ *
+ *   .outline-1      { outline-style: var(--tw-outline-style); outline-width: 1px; }
+ *   .outline-dashed { --tw-outline-style: dashed; outline-style: dashed; }
+ *
+ * Both declare `outline-style`, but they compose. Two definers (outline-dashed
+ * vs outline-solid) both write the variable — a real conflict. Two
+ * non-definers (outline-1 vs outline-2) both declare directly — also a real
+ * conflict (on outline-width). Only the writer/reader mix composes.
+ */
+export function isVarComposedProperty(
+  prop: string,
+  propsA: readonly string[],
+  propsB: readonly string[],
+): boolean {
+  if (prop.startsWith('--')) return false
+  const twVar = `--tw-${prop}`
+  return propsA.includes(twVar) !== propsB.includes(twVar)
+}
+
+/**
  * Detect a narrowing override: the later class's CSS properties are a strict
  * subset of the earlier class's, so the later class refines one of the
  * shorthand's properties (size-4 h-6, rounded-t-lg rounded-tl-sm, truncate
@@ -158,7 +183,9 @@ export const noConflictingClasses = defineRule({
               if (shouldSkipPair(classA, classB, propsA, propsB)) continue
 
               const propsBSet = new Set(propsB)
-              const overlap = propsA.filter((p) => propsBSet.has(p))
+              const overlap = propsA.filter(
+                (p) => propsBSet.has(p) && !isVarComposedProperty(p, propsA, propsB),
+              )
               if (overlap.length > 0) {
                 const propList =
                   overlap.length <= 3
