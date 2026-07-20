@@ -2,7 +2,10 @@
  * Parses a Tailwind class into its constituent parts:
  * variants, important modifier, negative prefix, utility name, and arbitrary value.
  *
- * Handles bracket-aware variant extraction (e.g., `[&>svg]:hover:w-4`).
+ * Handles bracket- and paren-aware variant extraction (e.g. `[&>svg]:hover:w-4`).
+ * The paren-awareness matters for Tailwind v4's typed CSS-variable shorthand:
+ * the `:` inside `border-(length:--stroke)` / `bg-(color:--c)` is a type hint,
+ * NOT a variant separator, so the boundary scanners must track `()` depth too.
  */
 
 export interface ParsedClass {
@@ -34,8 +37,8 @@ export function extractVariants(cls: string): string[] {
   let segmentStart = 0
 
   for (let i = 0; i < cls.length; i++) {
-    if (cls[i] === '[') depth++
-    else if (cls[i] === ']') depth--
+    if (cls[i] === '[' || cls[i] === '(') depth++
+    else if (cls[i] === ']' || cls[i] === ')') depth--
     else if (cls[i] === ':' && depth === 0) {
       variants.push(cls.slice(segmentStart, i))
       segmentStart = i + 1
@@ -60,8 +63,8 @@ export function extractUtility(cls: string): string {
   let depth = 0
   let lastColon = -1
   for (let i = 0; i < cls.length; i++) {
-    if (cls[i] === '[') depth++
-    else if (cls[i] === ']') depth--
+    if (cls[i] === '[' || cls[i] === '(') depth++
+    else if (cls[i] === ']' || cls[i] === ')') depth--
     else if (cls[i] === ':' && depth === 0) lastColon = i
   }
   return lastColon >= 0 ? cls.slice(lastColon + 1) : cls
@@ -76,8 +79,8 @@ export function getVariantPrefix(cls: string): string {
   let depth = 0
   let lastColon = -1
   for (let i = 0; i < cls.length; i++) {
-    if (cls[i] === '[') depth++
-    else if (cls[i] === ']') depth--
+    if (cls[i] === '[' || cls[i] === '(') depth++
+    else if (cls[i] === ']' || cls[i] === ')') depth--
     else if (cls[i] === ':' && depth === 0) lastColon = i
   }
   return lastColon >= 0 ? cls.slice(0, lastColon + 1) : ''
@@ -91,8 +94,8 @@ export function splitUtilityAndVariant(cls: string): { utility: string; variant:
   let depth = 0
   let lastColon = -1
   for (let i = 0; i < cls.length; i++) {
-    if (cls[i] === '[') depth++
-    else if (cls[i] === ']') depth--
+    if (cls[i] === '[' || cls[i] === '(') depth++
+    else if (cls[i] === ']' || cls[i] === ')') depth--
     else if (cls[i] === ':' && depth === 0) lastColon = i
   }
   return {

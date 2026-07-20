@@ -4,8 +4,10 @@ import {
   extractVariants,
   extractUtility,
   getVariantPrefix,
+  splitUtilityAndVariant,
   hasArbitraryValue,
   getArbitraryValue,
+  utilityHasDynamicValue,
   splitImportant,
   reattachImportant,
 } from '../../src/utils/class-parser'
@@ -163,6 +165,48 @@ describe('parseClass', () => {
     expect(result.negative).toBe(true)
     expect(result.utility).toBe('translate-x-[10px]')
     expect(result.arbitraryValue).toBe('10px')
+  })
+})
+
+// #76: the boundary scanners must track `()` depth, not just `[]`. The `:` in
+// Tailwind v4's typed CSS-variable shorthand (`border-(length:--stroke)`,
+// `bg-(color:--c)`) is a type hint, not a variant separator — mistaking it for
+// one mangled the utility and made `no-unknown-classes` reject a valid class it
+// `enforce-canonical` even recommends.
+describe('typed CSS-variable shorthand is paren-aware (#76)', () => {
+  it('extractVariants ignores the type-hint colon inside parens', () => {
+    expect(extractVariants('border-(length:--stroke)')).toEqual([])
+    expect(extractVariants('bg-(color:--c)')).toEqual([])
+    expect(extractVariants('hover:border-(length:--stroke)')).toEqual(['hover'])
+    expect(extractVariants('sm:focus:text-(length:--fs)')).toEqual(['sm', 'focus'])
+  })
+
+  it('extractUtility keeps the typed shorthand intact', () => {
+    expect(extractUtility('border-(length:--stroke)')).toBe('border-(length:--stroke)')
+    expect(extractUtility('hover:border-(length:--stroke)')).toBe('border-(length:--stroke)')
+    // plain (--var) form (no type hint) was already fine — regression guard
+    expect(extractUtility('border-(--stroke)')).toBe('border-(--stroke)')
+  })
+
+  it('getVariantPrefix / splitUtilityAndVariant split before the utility, not inside the parens', () => {
+    expect(getVariantPrefix('hover:border-(length:--stroke)')).toBe('hover:')
+    expect(getVariantPrefix('border-(length:--stroke)')).toBe('')
+    expect(splitUtilityAndVariant('sm:bg-(color:--c)')).toEqual({
+      utility: 'bg-(color:--c)',
+      variant: 'sm:',
+    })
+  })
+
+  it('parseClass resolves variants and utility for the typed shorthand', () => {
+    const result = parseClass('hover:border-(length:--stroke)')
+    expect(result.variants).toEqual(['hover'])
+    expect(result.variantPrefix).toBe('hover:')
+    expect(result.utility).toBe('border-(length:--stroke)')
+  })
+
+  it('utilityHasDynamicValue still routes the shorthand to the DS path', () => {
+    expect(utilityHasDynamicValue('border-(length:--stroke)')).toBe(true)
+    expect(utilityHasDynamicValue('bg-(color:--c)')).toBe(true)
   })
 })
 

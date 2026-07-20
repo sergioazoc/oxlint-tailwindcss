@@ -25,6 +25,15 @@ runWithFixture(ruleTester, 'no-unknown-classes', noUnknownClasses, ENTRY_POINT, 
     { code: '<div className="hover:bg-blue-700" />', filename: 'test.tsx' },
     { code: '<div className="bg-[#123456]" />', filename: 'test.tsx' },
     { code: '<div className="w-[200px]" />', filename: 'test.tsx' },
+    // Typed CSS-variable shorthand (#76): `(type:--var)` is a valid v4 utility
+    // (the `:` is a type hint, not a variant separator) — and it's the exact
+    // form enforce-canonical rewrites the `[type:var(--x)]` long form into, so
+    // no-unknown-classes must accept it or the two rules contradict each other.
+    { code: '<div className="border-(length:--stroke)" />', filename: 'test.tsx' },
+    { code: '<div className="bg-(color:--brand)" />', filename: 'test.tsx' },
+    { code: '<div className="text-(length:--fs)" />', filename: 'test.tsx' },
+    { code: '<div className="border-(--stroke)" />', filename: 'test.tsx' },
+    { code: '<div className="hover:border-(length:--stroke)" />', filename: 'test.tsx' },
     { code: 'cn("flex", "items-center")', filename: 'test.tsx' },
     // Variable: name doesn't match pattern — should be ignored
     { code: 'const foo = "fex"', filename: 'test.tsx' },
