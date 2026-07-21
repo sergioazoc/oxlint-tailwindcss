@@ -29,7 +29,7 @@ pnpm test:watch       # watch mode
 pnpm lint             # oxlint over the whole monorepo (root config)
 pnpm format           # oxfmt --write over the whole monorepo
 pnpm format:check     # oxfmt --check (verify only, no write)
-pnpm typecheck        # tsgo --noEmit
+pnpm typecheck        # tsc --noEmit
 pnpm -C packages/docs dev   # local docs site
 ```
 
