@@ -72,11 +72,12 @@ export const COMPOSITION_PAIRS: readonly CompositionPair[] = [
     b: /^tracking-/,
     reason: '`text-*` may set letter-spacing via its size token; `tracking-*` overrides it.',
   },
-  {
-    a: /^border(?:-[0-9]|$)/,
-    b: /^border-(?:solid|dashed|dotted|double|hidden|none)$/,
-    reason: '`border-*` (width) composes with `border-{solid,dashed,…}` (style).',
-  },
+  // NOTE: the former `border-*` (width) + `border-{solid,dashed,…}` (style)
+  // entry was removed — the general writer/reader mechanism
+  // (`isVarComposedProperty`) now subsumes it: `border` READS
+  // `border-style: var(--tw-border-style)` while `border-dashed` WRITES
+  // `--tw-border-style`, so their shared `border-style` is excluded from the
+  // overlap automatically (same shape as the `outline` family from #81).
   {
     a: /^divide-/,
     b: /^border(?:-[trblxyse])?-/,

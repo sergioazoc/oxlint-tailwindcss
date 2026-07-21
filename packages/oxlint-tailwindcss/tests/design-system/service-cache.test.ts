@@ -61,8 +61,9 @@ describe('canonicalize-service cache', () => {
   it('different cssPaths do not collide in the cache', () => {
     const classes = ['flex']
     const a = canonicalizeClassesSync(DEFAULT_CSS, classes, 16)
-    // Switching cssPath restarts the worker but the cache (keyed by cssPath)
-    // keeps entries from both design systems alive.
+    // #77: switching cssPath no longer tears down the worker — the service now
+    // keeps one warm worker per cssPath (LRU-bounded) — and the cache (keyed by
+    // cssPath) keeps entries from both design systems alive.
     const b = canonicalizeClassesSync(ALT_CSS, classes, 16)
     expect(a).not.toBeNull()
     expect(b).not.toBeNull()
@@ -70,6 +71,27 @@ describe('canonicalize-service cache', () => {
     // Going back to the original path must still return the same result.
     const aAgain = canonicalizeClassesSync(DEFAULT_CSS, classes, 16)
     expect(aAgain).toEqual(a)
+  })
+
+  it('keeps multiple cssPaths warm across interleaved calls (#77)', () => {
+    // Monorepo pattern: oxlint feeds files from two packages in arbitrary
+    // order, so the service sees the two entry points interleaved. Each call
+    // uses a DISTINCT arbitrary value (cache miss → real worker round-trip),
+    // so this exercises the per-cssPath worker map, not just the class cache.
+    // Before #77 this thrashed a singleton worker; it must now stay correct.
+    const results: Array<{ canonical: string }> = []
+    for (let i = 0; i < 4; i++) {
+      const [ra] = canonicalizeClassesSync(DEFAULT_CSS, [`p-[${i + 1}px]`], 16)
+      const [rb] = canonicalizeClassesSync(ALT_CSS, [`m-[${i + 1}px]`], 16)
+      expect(ra.canonical).toBeTypeOf('string')
+      expect(rb.canonical).toBeTypeOf('string')
+      results.push(ra, rb)
+    }
+    expect(results).toHaveLength(8)
+    // A previously-seen class on the first path is still served correctly after
+    // visiting the other path repeatedly (worker + cache both survived).
+    const [again] = canonicalizeClassesSync(DEFAULT_CSS, ['p-[1px]'], 16)
+    expect(again.canonical).toBe(results[0].canonical)
   })
 
   it('reset clears cached entries (new call takes worker path again)', () => {

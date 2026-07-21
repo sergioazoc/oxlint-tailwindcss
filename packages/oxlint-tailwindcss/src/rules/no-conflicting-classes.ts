@@ -38,6 +38,14 @@ export function isCompositionViaCssVars(
  * vs outline-solid) both write the variable — a real conflict. Two
  * non-definers (outline-1 vs outline-2) both declare directly — also a real
  * conflict (on outline-width). Only the writer/reader mix composes.
+ *
+ * The check is value-blind by design: the precomputed `cssProps` carry property
+ * NAMES, not values, so this is sound only while no utility declares a
+ * name-matched property CONCRETELY (a literal value) without also writing its
+ * `--tw-<property>`. Every Tailwind v4 family with this shape today (outline,
+ * border, content, font-weight) satisfies that: the only non-writers are width
+ * utilities that read `P: var(--tw-P)`. If a future utility broke that
+ * assumption it could over-suppress a real conflict — revisit here.
  */
 export function isVarComposedProperty(
   prop: string,

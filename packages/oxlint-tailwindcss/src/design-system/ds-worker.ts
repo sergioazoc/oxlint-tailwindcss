@@ -34,6 +34,15 @@ const DATA_OFFSET = LENGTH_OFFSET + 4 // 20 bytes
 const INIT_TIMEOUT = 60_000 // 60 s to load DS (raised in v1 to avoid spurious timeouts on slow CI)
 const REQUEST_TIMEOUT = 30_000 // 30 s per request
 
+// LRU bound on live workers (#77). In a monorepo linted in one oxlint run the
+// plugin can resolve several entry points, and oxlint feeds files in
+// nondeterministic order — a singleton worker tore itself down and re-loaded
+// the design system (~200 ms + a ~1.9 s cold canonicalize) on every switch. We
+// keep one warm worker PER cssPath instead. Each entry is a full design system
+// plus a 4 MB SharedArrayBuffer, so the count is capped and the
+// least-recently-used worker is evicted past the cap.
+const MAX_WORKERS = 8
+
 /**
  * Build the worker script shared by `sort-service` and `canonicalize-service`.
  * Owns the entire SharedArrayBuffer protocol (offsets derived from the same
@@ -131,22 +140,20 @@ export interface DesignSystemWorkerOptions {
 }
 
 export class DesignSystemWorker<Req, Res> {
-  private ready: ReadyState | null = null
-  private lastError: SortServiceError | null = null
-  // The cssPath the sticky error belongs to. Checking `this.ready?.cssPath`
-  // (the old guard) never worked: every failure path leaves `ready === null`
-  // (init failures throw before assigning it; request failures call cleanup),
-  // so the next call re-ran the full init — re-paying the 60 s timeout (or
-  // respawning the worker) per call. Tracking the path separately makes the
-  // error genuinely sticky (DS-A1).
-  private lastErrorCssPath: string | null = null
+  // One warm worker per cssPath (#77), insertion-ordered so the first key is
+  // the least-recently-used; `ensure` re-inserts on a hit to mark it MRU.
+  private workers = new Map<string, ReadyState>()
+  // Sticky errors keyed per cssPath. A failure for one entry point must not be
+  // forgotten when another entry point is linted in between — the old single
+  // lastError/lastErrorCssPath pair was cleared on ANY cssPath switch, so it
+  // never stayed sticky across the alternating-file pattern #77 describes.
+  private errors = new Map<string, SortServiceError>()
 
   constructor(private readonly opts: DesignSystemWorkerOptions) {}
 
   /** Record an error as sticky for `cssPath` and return it for `throw`. */
   private remember(cssPath: string, err: SortServiceError): SortServiceError {
-    this.lastError = err
-    this.lastErrorCssPath = cssPath
+    this.errors.set(cssPath, err)
     return err
   }
 
@@ -157,12 +164,17 @@ export class DesignSystemWorker<Req, Res> {
    * cssPath rethrow without retrying.
    */
   private ensure(cssPath: string): ReadyState {
-    if (this.lastError && this.lastErrorCssPath === cssPath) throw this.lastError
-    if (this.ready && this.ready.cssPath === cssPath) return this.ready
+    const sticky = this.errors.get(cssPath)
+    if (sticky) throw sticky
 
-    if (this.ready) this.cleanup()
-    this.lastError = null
-    this.lastErrorCssPath = null
+    const existing = this.workers.get(cssPath)
+    if (existing) {
+      // Mark most-recently-used: delete + re-insert moves it to the tail so
+      // the LRU eviction below always drops the coldest entry point.
+      this.workers.delete(cssPath)
+      this.workers.set(cssPath, existing)
+      return existing
+    }
 
     if (TAILWIND_NODE_PATH === null) {
       throw this.remember(
@@ -198,12 +210,20 @@ export class DesignSystemWorker<Req, Res> {
 
     worker.unref()
     worker.on('error', (err: Error) => {
-      this.lastError = new SortServiceError(
-        `${this.opts.serviceName} worker died: ${err.message}`,
-        'The worker will not be restarted in this process. Restart the lint session.',
-        { cause: err },
+      this.errors.set(
+        cssPath,
+        new SortServiceError(
+          `${this.opts.serviceName} worker died: ${err.message}`,
+          'The worker will not be restarted in this process. Restart the lint session.',
+          { cause: err },
+        ),
       )
-      this.lastErrorCssPath = cssPath
+      // Drop the corpse so a later ensure() for this cssPath doesn't reuse it.
+      // Guard on identity: an evicted worker's late error must not delete a
+      // fresh worker created for the same cssPath afterwards (terminateWorker
+      // also removes this listener, so an intentional teardown never fires it).
+      const current = this.workers.get(cssPath)
+      if (current && current.worker === worker) this.workers.delete(cssPath)
     })
 
     // Wait for DS to load
@@ -237,8 +257,21 @@ export class DesignSystemWorker<Req, Res> {
       )
     }
 
-    this.ready = { worker, controlArray, lengthView, dataArea, cssPath }
-    return this.ready
+    const state: ReadyState = { worker, controlArray, lengthView, dataArea, cssPath }
+    this.workers.set(cssPath, state)
+    this.evictIfNeeded()
+    return state
+  }
+
+  /** Evict least-recently-used workers past the cap (#77). */
+  private evictIfNeeded(): void {
+    while (this.workers.size > MAX_WORKERS) {
+      const oldestKey = this.workers.keys().next().value
+      if (oldestKey === undefined) break
+      const oldest = this.workers.get(oldestKey)
+      this.workers.delete(oldestKey)
+      if (oldest) this.terminateWorker(oldest.worker)
+    }
   }
 
   /**
@@ -264,7 +297,7 @@ export class DesignSystemWorker<Req, Res> {
 
     const result = Atomics.wait(state.controlArray, 1, 0, REQUEST_TIMEOUT)
     if (result === 'timed-out') {
-      this.cleanup()
+      this.dropWorker(cssPath)
       throw this.remember(
         cssPath,
         new SortServiceError(
@@ -283,7 +316,7 @@ export class DesignSystemWorker<Req, Res> {
     try {
       parsed = JSON.parse(responseStr)
     } catch (cause) {
-      this.cleanup()
+      this.dropWorker(cssPath)
       throw this.remember(
         cssPath,
         new SortServiceError(
@@ -295,7 +328,7 @@ export class DesignSystemWorker<Req, Res> {
     }
 
     if (parsed === null) {
-      this.cleanup()
+      this.dropWorker(cssPath)
       throw this.remember(
         cssPath,
         new SortServiceError(
@@ -309,20 +342,25 @@ export class DesignSystemWorker<Req, Res> {
   }
 
   reset(): void {
-    this.cleanup()
-    this.lastError = null
-    this.lastErrorCssPath = null
+    for (const state of this.workers.values()) this.terminateWorker(state.worker)
+    this.workers.clear()
+    this.errors.clear()
   }
 
-  private cleanup(): void {
-    if (this.ready) {
-      this.terminateWorker(this.ready.worker)
-      this.ready = null
+  /** Terminate and forget the worker for a single cssPath (on request failure). */
+  private dropWorker(cssPath: string): void {
+    const state = this.workers.get(cssPath)
+    if (state) {
+      this.workers.delete(cssPath)
+      this.terminateWorker(state.worker)
     }
   }
 
   private terminateWorker(worker: Worker): void {
     try {
+      // Remove the crash listener first so an intentional teardown (evict,
+      // drop, reset) never fires the sticky-error handler for this cssPath.
+      worker.removeAllListeners('error')
       worker.terminate()
     } catch {
       // Already dead — nothing to do.

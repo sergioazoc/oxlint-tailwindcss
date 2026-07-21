@@ -64,6 +64,11 @@ runWithFixture(ruleTester, 'no-conflicting-classes', noConflictingClasses, ENTRY
     { code: '<div className="outline-1 outline-dashed" />', filename: 'test.tsx' },
     { code: '<div className="outline-2 outline-solid" />', filename: 'test.tsx' },
     { code: '<div className="outline-dashed outline-4" />', filename: 'test.tsx' },
+    // outline-none/outline-hidden WRITE --tw-outline-style (: none); outline-<n>
+    // READS it — same writer/reader shape, so they intentionally compose (#81
+    // follow-up: locks this behavior change down).
+    { code: '<div className="outline-none outline-1" />', filename: 'test.tsx' },
+    { code: '<div className="outline-1 outline-hidden" />', filename: 'test.tsx' },
     { code: '<div className="border-2 border-dotted" />', filename: 'test.tsx' },
     // transform axes compose (x + y are independent)
     { code: '<div className="translate-x-2 -translate-y-2" />', filename: 'test.tsx' },
@@ -129,6 +134,14 @@ runWithFixture(ruleTester, 'no-conflicting-classes', noConflictingClasses, ENTRY
     {
       // Two readers, but both also declare outline-width directly — conflict
       code: '<div className="outline-1 outline-2" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'conflict' }],
+    },
+    {
+      // font-weight has the same --tw-* shape, but font-bold and font-normal
+      // both WRITE --tw-font-weight (two writers) — a genuine conflict that the
+      // composition exclusion must NOT suppress (#81 follow-up regression).
+      code: '<div className="font-bold font-normal" />',
       filename: 'test.tsx',
       errors: [{ messageId: 'conflict' }],
     },

@@ -112,7 +112,17 @@ export const enforceCanonical = defineRule({
           )
           if (!dynamic) return // worker fatal already reported; stop the check
           for (let k = 0; k < arbitrary.length; k++) {
-            canonicals[arbitraryIdx[k]] = preserveImportantPosition(arbitrary[k], dynamic[k])
+            const { canonical, safe } = dynamic[k]
+            // #78: only rewrite when the canonical form is CSS-value-equivalent.
+            // `canonicalizeCandidates` matches an arbitrary literal (e.g.
+            // `rounded-[4px]` = `4px`) against the compile-time theme, so it
+            // happily maps it to a var-backed token (`rounded-lg` =
+            // `var(--radius-lg)`) that a `:root` override makes NON-equivalent —
+            // autofixing that silently corrupts the design. When the emitted CSS
+            // isn't byte-identical the conversion is left as the user wrote it.
+            canonicals[arbitraryIdx[k]] = safe
+              ? preserveImportantPosition(arbitrary[k], canonical)
+              : arbitrary[k]
           }
         }
 
