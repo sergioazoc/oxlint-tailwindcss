@@ -44,6 +44,15 @@
   are now tracked per entry point as well. Fixes
   [#77](https://github.com/sergioazoc/oxlint-tailwindcss/issues/77).
 
+### Dependencies
+
+- Updated all dependencies to their latest stable releases. Runtime: `tailwindcss` and
+  `@tailwindcss/node` `4.3.3`. Build/dev tooling: the bundled `@oxlint/plugins` `1.74.0` (re-bundled
+  into the published package), `oxlint`/`oxfmt` `1.74.0`/`0.59.0`, and `tsdown` `0.22.12`.
+- Type-checking now runs on the stable `typescript` (`tsc`, `7.0.2`) directly. The
+  `@typescript/native-preview` (`tsgo`) dev dependency — a preview of the native compiler before it
+  shipped as TypeScript 7 — has been dropped. No effect on the published package.
+
 ## 1.3.5 (2026-07-10)
 
 ### Bug fixes
