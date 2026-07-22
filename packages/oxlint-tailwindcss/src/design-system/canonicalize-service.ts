@@ -15,7 +15,15 @@
  */
 
 import { createHash } from 'node:crypto'
-import { readFileSync, renameSync, writeFileSync } from 'node:fs'
+import {
+  closeSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { threadId } from 'node:worker_threads'
 import { DesignSystemWorker, makeWorkerScript } from './ds-worker'
 import { cacheArtifactPaths } from './sync-loader'
@@ -137,10 +145,15 @@ const CANON_LOGIC_HASH = createHash('md5')
 // on a subsequent run, consistent with the cache's cross-run convergence.
 export const FLUSH_THRESHOLD = 16
 
-// Per-(pid,thread) tmp-file counter. oxlint runs many worker threads in one
-// process, so the tmp name must include threadId + a sequence to avoid
+// Per-(pid,thread) tmp/reclaim-file counter. oxlint runs many worker threads in
+// one process, so temp names must include threadId + a sequence to avoid
 // collisions and renameSync races (mirrors sync-loader.ts).
 let tmpSeq = 0
+
+// A flush older than this is treated as abandoned (a crashed isolate that never
+// released its lock) and reclaimed, so a leaked lock can't disable persistence
+// forever. Generous: a real flush holds the lock for microseconds.
+const LOCK_STALE_MS = 10_000
 
 interface PersistState {
   file: string
@@ -150,6 +163,61 @@ interface PersistState {
 
 /** One persistence state per `${cssPath}\0${rem}\0` cache prefix. */
 const persistStates = new Map<string, PersistState>()
+
+function tryUnlink(path: string): void {
+  try {
+    unlinkSync(path)
+  } catch {
+    // Already gone, or not ours to remove — nothing to do.
+  }
+}
+
+/**
+ * Reclaim a stale lock via exclusive rename rather than unlink (mirrors
+ * sync-loader.ts): two isolates that both judge the lock stale would otherwise
+ * both unlink it, and the second could delete a FRESH lock a third isolate just
+ * created. `renameSync` has a single winner; the loser gets ENOENT and moves on.
+ */
+function reclaimStaleLock(lockPath: string): void {
+  let ageMs: number
+  try {
+    ageMs = Date.now() - statSync(lockPath).mtimeMs
+  } catch {
+    return // vanished already
+  }
+  if (ageMs < LOCK_STALE_MS) return
+  const reclaimPath = `${lockPath}.reclaim.${process.pid}.${threadId}.${tmpSeq++}`
+  try {
+    renameSync(lockPath, reclaimPath)
+  } catch {
+    return // someone else reclaimed/released it first
+  }
+  tryUnlink(reclaimPath)
+}
+
+type LockOutcome = 'acquired' | 'contended' | 'unavailable'
+
+/**
+ * Acquire the per-file flush lock by atomic exclusive create (`wx`). The lock
+ * serializes the read-merge-write below so concurrent isolates don't clobber
+ * each other's entries (last-writer-wins → the cache would otherwise only
+ * converge over several runs). Distinguishes contention (another isolate is
+ * mid-flush — skip and retry next threshold) from an unwritable dir (give up).
+ */
+function acquireFlushLock(lockPath: string): LockOutcome {
+  const tryCreate = (): LockOutcome => {
+    try {
+      closeSync(openSync(lockPath, 'wx'))
+      return 'acquired'
+    } catch (e) {
+      return (e as NodeJS.ErrnoException).code === 'EEXIST' ? 'contended' : 'unavailable'
+    }
+  }
+  const first = tryCreate()
+  if (first !== 'contended') return first
+  reclaimStaleLock(lockPath)
+  return tryCreate()
+}
 
 /** Exported for tests: the exact on-disk cache path for a (cssPath, rem). */
 export function persistFileFor(cssPath: string, rem?: number): string | null {
@@ -190,29 +258,65 @@ function ensurePersistLoaded(cssPath: string, rem: number | undefined, cachePref
   }
 }
 
-/** Atomically write all cached entries for this prefix to disk. */
+/**
+ * Persist this prefix's entries under a per-file lock, merging with whatever is
+ * already on disk first. oxlint worker threads are separate JS isolates, each
+ * with its own in-memory `canonCache`, so the file is their shared channel: a
+ * bare overwrite would clobber the entries other isolates persisted
+ * (last-writer-wins), leaving the cache to converge only over several runs.
+ * Read-merge-write under the lock makes it converge in one.
+ */
 function flushPersist(cachePrefix: string, state: PersistState): void {
   if (state.dirty <= 0) return
+
+  const lockPath = `${state.file}.lock`
+  const lock = acquireFlushLock(lockPath)
+  // Another isolate holds the lock: skip now, keep `dirty` so the next batch
+  // over-threshold retries. Unwritable dir: give up on persistence entirely.
+  if (lock === 'contended') return
+  if (lock === 'unavailable') {
+    state.dirty = -1
+    return
+  }
+
   try {
-    // Serialize as [canonical, safe] tuples — compact, and carries the #78
-    // safe flag through so a restored entry gates the autofix identically.
-    const out: Record<string, [string, boolean]> = {}
+    // Start from what is already on disk so we don't drop another isolate's
+    // (or a prior run's) entries; then overlay ours. Values are deterministic
+    // for a given DS + logic hash, so overlapping keys carry identical values.
+    const merged: Record<string, [string, boolean]> = {}
+    try {
+      const existing: unknown = JSON.parse(readFileSync(state.file, 'utf-8'))
+      if (typeof existing === 'object' && existing !== null) {
+        for (const [cls, entry] of Object.entries(existing)) {
+          if (
+            Array.isArray(entry) &&
+            typeof entry[0] === 'string' &&
+            typeof entry[1] === 'boolean'
+          ) {
+            merged[cls] = [entry[0], entry[1]]
+          }
+        }
+      }
+    } catch {
+      // No existing file, or corrupt — our entries alone become the new file.
+    }
     for (const [key, value] of canonCache) {
       if (key.startsWith(cachePrefix)) {
-        out[key.slice(cachePrefix.length)] = [value.canonical, value.safe]
+        merged[key.slice(cachePrefix.length)] = [value.canonical, value.safe]
       }
     }
-    // Unique per pid+thread+seq: oxlint runs many worker threads in one
-    // process, so a bare pid would collide and race on renameSync (mirrors
-    // sync-loader.ts). Threads still last-writer-win on the final file, so the
-    // cache converges over runs — correctness is unaffected.
+
+    // Unique tmp per pid+thread+seq, then atomic rename into place (the lock
+    // serializes writers; the unique name guards against any residual overlap).
     const tmp = `${state.file}.${process.pid}.${threadId}.${tmpSeq++}.tmp`
-    writeFileSync(tmp, JSON.stringify(out))
+    writeFileSync(tmp, JSON.stringify(merged))
     renameSync(tmp, state.file)
     state.dirty = 0
   } catch {
-    // Unwritable cache dir — disable persistence for this prefix.
+    // Write failed after acquiring the lock — disable persistence for this prefix.
     state.dirty = -1
+  } finally {
+    tryUnlink(lockPath)
   }
 }
 

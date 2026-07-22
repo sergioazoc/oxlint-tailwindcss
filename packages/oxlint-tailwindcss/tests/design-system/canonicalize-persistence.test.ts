@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { chmodSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { basename, dirname, resolve } from 'node:path'
 import {
   canonicalizeClassesSync,
@@ -157,9 +157,10 @@ describe('canonicalize cache disk persistence', () => {
     }
   })
 
-  it('never leaves a stray .tmp file across repeated flushes', () => {
+  it('never leaves a stray .tmp or .lock file across repeated flushes', () => {
     // Several flush-triggering batches; unique pid.thread.seq tmp names + atomic
-    // rename must leave exactly the final file and no partial temporaries.
+    // rename + finally-unlink must leave exactly the final file — no partial
+    // temporaries and no orphaned lock.
     for (let b = 0; b < 3; b++) {
       canonicalizeClassesSync(
         ENTRY_POINT,
@@ -168,8 +169,51 @@ describe('canonicalize cache disk persistence', () => {
     }
     const dir = dirname(cachePath())
     const base = basename(cachePath())
-    const leftovers = readdirSync(dir).filter((n) => n.startsWith(base) && n.endsWith('.tmp'))
+    const leftovers = readdirSync(dir).filter(
+      (n) => n.startsWith(base) && (n.endsWith('.tmp') || n.endsWith('.lock')),
+    )
     expect(leftovers).toEqual([])
     expect(() => readPersisted()).not.toThrow()
+  })
+
+  describe('read-merge-under-lock', () => {
+    const lockPath = () => `${cachePath()}.lock`
+
+    it('merges with on-disk entries instead of clobbering them', () => {
+      // Simulate entries another isolate/run already persisted.
+      writeFileSync(cachePath(), JSON.stringify({ 'w-[1px]': ['w-px', true] }))
+      resetCanonicalizeService()
+
+      // Flush a disjoint batch; the pre-existing key must survive the merge.
+      canonicalizeClassesSync(ENTRY_POINT, manyArbitrary())
+      const persisted = readPersisted()
+      expect(persisted['w-[1px]']).toEqual(['w-px', true]) // not clobbered
+      expect(persisted['p-[1px]']).toBeDefined() // ours added
+    })
+
+    it('skips the flush while another isolate holds a fresh lock', () => {
+      rmSync(cachePath(), { force: true })
+      writeFileSync(lockPath(), '') // fresh (non-stale) lock held by "someone else"
+      try {
+        canonicalizeClassesSync(ENTRY_POINT, manyArbitrary())
+        // Contended → we skip writing; no cache file is produced this run.
+        expect(readdirSync(dirname(cachePath()))).not.toContain(basename(cachePath()))
+      } finally {
+        rmSync(lockPath(), { force: true })
+      }
+    })
+
+    it('reclaims a stale lock and flushes', () => {
+      rmSync(cachePath(), { force: true })
+      writeFileSync(lockPath(), '')
+      const old = new Date(Date.now() - 60_000) // 60s > LOCK_STALE_MS
+      utimesSync(lockPath(), old, old)
+      try {
+        canonicalizeClassesSync(ENTRY_POINT, manyArbitrary())
+        expect(readPersisted()['p-[1px]']).toBeDefined() // stale lock reclaimed, flush succeeded
+      } finally {
+        rmSync(lockPath(), { force: true })
+      }
+    })
   })
 })
