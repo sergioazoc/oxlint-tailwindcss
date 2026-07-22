@@ -217,5 +217,36 @@ describe('canonicalize cache disk persistence', () => {
         rmSync(lockPath(), { force: true })
       }
     })
+
+    it('adopts entries a sibling isolate persisted after our load (in-memory re-seed)', () => {
+      // Warm this isolate's persistence state (initial load sees an empty disk).
+      canonicalizeClassesSync(ENTRY_POINT, ['p-[1px]'])
+      // Simulate a SIBLING isolate persisting a new entry after our load. Use a
+      // sentinel canonical the worker would never produce, so serving it proves
+      // it came from the disk merge, not a recompute.
+      const disk = readPersisted()
+      disk['w-[999px]'] = ['SENTINEL', true]
+      writeFileSync(cachePath(), JSON.stringify(disk))
+      // A fresh batch triggers a flush → read-merge, which now also re-seeds the
+      // in-memory cache from disk.
+      canonicalizeClassesSync(ENTRY_POINT, ['p-[2px]'])
+      // The sibling's entry is served from memory without a worker round-trip.
+      const [r] = canonicalizeClassesSync(ENTRY_POINT, ['w-[999px]'])
+      expect(r.canonical).toBe('SENTINEL')
+    })
+  })
+
+  it('treats a __proto__ cache key as data, not a prototype setter', () => {
+    // The merge target is Object.create(null), so a (valid-tuple) __proto__ key
+    // round-trips as data rather than hitting the prototype setter (which on a
+    // plain `{}` target silently swallows the entry). Crafted as a raw string —
+    // an object literal `{ __proto__: … }` would itself invoke the setter.
+    writeFileSync(cachePath(), '{"__proto__":["x-proto",true],"w-[1px]":["w-px",true]}')
+    resetCanonicalizeService()
+
+    canonicalizeClassesSync(ENTRY_POINT, manyArbitrary()) // triggers read-merge-write
+    const raw = JSON.parse(readFileSync(cachePath(), 'utf-8')) as Record<string, unknown>
+    expect(raw['w-[1px]']).toEqual(['w-px', true]) // legit entry preserved through the merge
+    expect(raw['__proto__']).toEqual(['x-proto', true]) // survived as data, not swallowed
   })
 })
