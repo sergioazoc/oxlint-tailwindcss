@@ -138,13 +138,6 @@ const CANON_LOGIC_HASH = createHash('md5')
   .digest('hex')
   .slice(0, 8)
 
-// Flush after this many newly-canonicalized classes accumulate, rather than
-// after every miss batch: rewriting the whole prefix map per batch is ~O(n²)
-// IO on a cold run. A sub-threshold tail is not force-flushed (we must not
-// register a process-exit listener — see exit-listeners.test.ts); it persists
-// on a subsequent run, consistent with the cache's cross-run convergence.
-export const FLUSH_THRESHOLD = 16
-
 // Per-(pid,thread) tmp/reclaim-file counter. oxlint runs many worker threads in
 // one process, so temp names must include threadId + a sequence to avoid
 // collisions and renameSync races (mirrors sync-loader.ts).
@@ -385,16 +378,18 @@ export function canonicalizeClassesSync(
     out[missingIdx[j]] = value
   }
 
-  // Debounced flush: accumulate the batch's fresh count and only write once it
-  // crosses FLUSH_THRESHOLD, to avoid the ~O(n²) IO of rewriting the whole
-  // prefix map after every batch. No exit hook force-flushes the sub-threshold
-  // tail (these services must not register process listeners — see
-  // exit-listeners.test.ts); it persists on a later run, consistent with the
-  // cache's documented cross-run convergence.
+  // Write-through: flush after every batch that produced fresh entries. A
+  // threshold-based debounce is deliberately NOT used — oxlint fans the work
+  // across many worker threads (separate isolates), so per-thread miss counts
+  // rarely reach any useful threshold on a warm run, and the residual would
+  // never persist: the cache stalls partway and never converges. The lock
+  // already throttles concurrent flushes, and whole-file rewrites are cheap at
+  // realistic sizes (a few hundred entries), so write-through is both correct
+  // (converges in one run) and inexpensive.
   const state = persistStates.get(cachePrefix)
   if (state && state.dirty >= 0) {
     state.dirty += uniqueMissing.length
-    if (state.dirty >= FLUSH_THRESHOLD) flushPersist(cachePrefix, state)
+    flushPersist(cachePrefix, state)
   }
 
   return out

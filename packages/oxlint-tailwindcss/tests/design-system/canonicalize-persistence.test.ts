@@ -3,12 +3,16 @@ import { chmodSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync
 import { basename, dirname, resolve } from 'node:path'
 import {
   canonicalizeClassesSync,
-  FLUSH_THRESHOLD,
   persistFileFor,
   resetCanonicalizeService,
 } from '../../src/design-system/canonicalize-service'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
+
+// A batch of distinct arbitrary classes. Writes are write-through (every batch
+// with fresh entries flushes), so any size triggers a flush; this just keeps
+// the tests exercising a realistic multi-class batch.
+const BATCH = 20
 
 /**
  * The canonicalize service persists its per-class cache to disk next to the
@@ -30,10 +34,8 @@ type Persisted = Record<string, [string, boolean]>
 const readPersisted = (rem?: number) =>
   JSON.parse(readFileSync(cachePath(rem), 'utf-8')) as Persisted
 
-// Enough distinct arbitrary classes to cross FLUSH_THRESHOLD in one call, so a
-// flush actually happens (a sub-threshold batch is intentionally not flushed).
-const manyArbitrary = (n = FLUSH_THRESHOLD + 4) =>
-  Array.from({ length: n }, (_, i) => `p-[${i + 1}px]`)
+// A batch of distinct arbitrary (worker-routed) classes.
+const manyArbitrary = (n = BATCH) => Array.from({ length: n }, (_, i) => `p-[${i + 1}px]`)
 
 /** Remove every `.canon-*` file this fixture may have produced (all rems/hashes). */
 function cleanCanonFiles(): void {
@@ -150,7 +152,7 @@ describe('canonicalize cache disk persistence', () => {
     try {
       // Must not throw even though every flush attempt fails.
       const results = canonicalizeClassesSync(ENTRY_POINT, manyArbitrary())
-      expect(results).toHaveLength(FLUSH_THRESHOLD + 4)
+      expect(results).toHaveLength(BATCH)
       expect(results[0].canonical).toBeTypeOf('string')
     } finally {
       chmodSync(dir, 0o700)
@@ -164,7 +166,7 @@ describe('canonicalize cache disk persistence', () => {
     for (let b = 0; b < 3; b++) {
       canonicalizeClassesSync(
         ENTRY_POINT,
-        Array.from({ length: FLUSH_THRESHOLD + 1 }, (_, i) => `m-[${b}-${i}px]`),
+        Array.from({ length: BATCH }, (_, i) => `m-[${b}-${i}px]`),
       )
     }
     const dir = dirname(cachePath())
