@@ -9,8 +9,9 @@
  * hits the warm disk cache (<500ms) and no per-file hook races a cold compute.
  */
 
-import { resolve } from 'node:path'
-import { loadDesignSystemSync } from '../src/design-system/sync-loader'
+import { readdirSync, rmSync } from 'node:fs'
+import { basename, dirname, resolve } from 'node:path'
+import { cacheArtifactPaths, loadDesignSystemSync } from '../src/design-system/sync-loader'
 
 // Every fixture used as an entry point by the suite. Pre-warming a fixture that
 // isn't a valid entry point would throw, so each load is isolated — a failure
@@ -34,6 +35,27 @@ export function setup() {
       loadDesignSystemSync(resolve(__dirname, 'fixtures', fixture))
     } catch {
       // Leave it cold; the owning test will report the real failure.
+    }
+  }
+}
+
+/**
+ * Remove the `.canon-*` cache files that rule tests (any suite that
+ * canonicalizes a fixture) leave in the shared, per-uid cache dir. Scoped
+ * precisely to fixture artifacts so a developer's real-project canon caches in
+ * the same tmpdir are never touched. Prevents cross-run cache-state leakage.
+ */
+export function teardown() {
+  for (const fixture of FIXTURES) {
+    try {
+      const { json } = cacheArtifactPaths(resolve(__dirname, 'fixtures', fixture))
+      const dir = dirname(json)
+      const canonPrefix = basename(json).replace(/\.json$/, '.canon-')
+      for (const name of readdirSync(dir)) {
+        if (name.startsWith(canonPrefix)) rmSync(resolve(dir, name), { force: true })
+      }
+    } catch {
+      // Fixture never canonicalized (no artifact) or dir gone — nothing to clean.
     }
   }
 }

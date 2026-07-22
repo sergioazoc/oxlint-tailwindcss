@@ -43,6 +43,15 @@
   two-package run could spend far longer than linting the packages separately. Sticky worker errors
   are now tracked per entry point as well. Fixes
   [#77](https://github.com/sergioazoc/oxlint-tailwindcss/issues/77).
+- **Canonicalize cache is now persisted to disk.** Every `oxlint` invocation is a fresh process, so
+  the per-class canonicalize cache started empty each run and every unique dynamic class (`p-[2px]`,
+  `bg-(--c)`, …) paid a synchronous worker round-trip again — on arbitrary-value-heavy codebases
+  `enforce-canonical` dominated the whole lint run. The cache is now written next to the
+  design-system precompute artifact and keyed by the canonicalization logic (worker script +
+  rounding), so it invalidates together with the design system or a logic change, and is re-used
+  across runs. Writes are merged under a per-file lock, so the parallel worker threads oxlint runs
+  converge on a fully warm cache in a single run rather than over several. Measured on a production
+  app (~1,470 files): ~7.0s → ~1.0s per run after the first. Diagnostics are unchanged.
 
 ### Dependencies
 
