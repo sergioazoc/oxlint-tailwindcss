@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { chmodSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs'
 import { basename, dirname, resolve } from 'node:path'
 import {
   canonicalizeClassesSync,
@@ -144,18 +152,25 @@ describe('canonicalize cache disk persistence', () => {
     for (const r of [a, b, c]) expect(r).toHaveProperty('safe')
   })
 
-  it('disables persistence (without throwing) when the cache dir is unwritable', () => {
-    const dir = dirname(cachePath())
-    canonicalizeClassesSync(ENTRY_POINT, ['p-[1px]']) // ensure dir exists
-    cleanCanonFiles()
-    chmodSync(dir, 0o500) // read + execute, no write
+  it('disables persistence (without throwing) when the cache file cannot be written', () => {
+    // Plant a NON-EMPTY DIRECTORY at the target cache path so the flush's atomic
+    // rename fails — persistence must disable itself, never throw. Scoped to
+    // THIS cache file rather than chmod-ing the shared per-uid cache dir, which
+    // would race with other test files running in parallel forks (a chmod there
+    // makes sibling suites' lock writes fail with EACCES).
+    const target = cachePath()
+    rmSync(target, { force: true })
+    mkdirSync(target, { recursive: true })
+    writeFileSync(resolve(target, 'blocker'), '') // non-empty → rename can't replace it
     try {
-      // Must not throw even though every flush attempt fails.
       const results = canonicalizeClassesSync(ENTRY_POINT, manyArbitrary())
       expect(results).toHaveLength(BATCH)
       expect(results[0].canonical).toBeTypeOf('string')
+      // The blocker directory is untouched — proving the flush's rename really
+      // failed (persistence disabled) rather than silently succeeding.
+      expect(statSync(target).isDirectory()).toBe(true)
     } finally {
-      chmodSync(dir, 0o700)
+      rmSync(target, { recursive: true, force: true })
     }
   })
 
