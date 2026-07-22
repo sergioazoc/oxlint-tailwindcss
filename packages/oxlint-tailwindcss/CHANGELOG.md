@@ -60,6 +60,7 @@
 - Type-checking now runs on the stable `typescript` (`tsc`, `7.0.2`) directly. The
   `@typescript/native-preview` (`tsgo`) dev dependency — a preview of the native compiler before it
   shipped as TypeScript 7 — has been dropped. No effect on the published package.
+
 ### Performance
 
 - **Canonicalize cache is now persisted to disk.** Every `oxlint` invocation is a fresh process, so

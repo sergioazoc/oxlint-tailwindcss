@@ -14,7 +14,9 @@
  * subsequent lookup is O(1).
  */
 
+import { createHash } from 'node:crypto'
 import { readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { threadId } from 'node:worker_threads'
 import { DesignSystemWorker, makeWorkerScript } from './ds-worker'
 import { cacheArtifactPaths } from './sync-loader'
 import { SortServiceError } from '../utils/fatal'
@@ -101,15 +103,44 @@ const canonCache = new Map<string, CanonicalizeResult>()
  * round-trip again on every run — on arbitrary-value-heavy codebases this
  * dominates the whole lint (seconds per run, issue: enforce-canonical perf).
  *
- * The canonical results are pure functions of the design system + rem, so we
- * persist them next to the DS precompute artifact, deriving the filename from
- * `cacheArtifactPaths(cssPath).json` (content-hash keyed). When the DS
- * changes, the hash changes, and the canonical cache invalidates with it.
+ * The canonical results are pure functions of the design system + rem + the
+ * canonicalization logic, so we persist them next to the DS precompute
+ * artifact, deriving the filename from `cacheArtifactPaths(cssPath).json`
+ * (content-hash keyed) plus `CANON_LOGIC_HASH` (below). When the DS changes,
+ * the artifact hash changes; when the canonicalization logic changes, the
+ * logic hash changes — either way the canonical cache invalidates with it, so
+ * no manual version bump is needed and stale values can never reach an autofix.
+ *
+ * We persist the full `CanonicalizeResult` (`canonical` + the #78 `safe`
+ * flag), not just the string: `safe` gates whether `enforce-canonical`
+ * actually applies the rewrite, so dropping it on restore would re-introduce
+ * the unsafe-autofix bug #78 fixed.
  *
  * Best-effort everywhere: a missing/corrupt/unwritable cache file must never
  * break linting — it only costs worker round-trips.
  */
-const CANON_CACHE_VERSION = 'v1'
+
+// Auto-invalidating cache-key component: md5 of the worker canonicalization
+// script + the rounding function source. Any change to how a class is
+// canonicalized (handler logic) or rounded flips this, so an old on-disk cache
+// simply isn't found — the same self-healing the DS precompute cache gets from
+// md5(PRECOMPUTE_SCRIPT). Replaces a hand-maintained version constant.
+const CANON_LOGIC_HASH = createHash('md5')
+  .update(WORKER_SCRIPT + roundRemValue.toString())
+  .digest('hex')
+  .slice(0, 8)
+
+// Flush after this many newly-canonicalized classes accumulate, rather than
+// after every miss batch: rewriting the whole prefix map per batch is ~O(n²)
+// IO on a cold run. A sub-threshold tail is not force-flushed (we must not
+// register a process-exit listener — see exit-listeners.test.ts); it persists
+// on a subsequent run, consistent with the cache's cross-run convergence.
+export const FLUSH_THRESHOLD = 16
+
+// Per-(pid,thread) tmp-file counter. oxlint runs many worker threads in one
+// process, so the tmp name must include threadId + a sequence to avoid
+// collisions and renameSync races (mirrors sync-loader.ts).
+let tmpSeq = 0
 
 interface PersistState {
   file: string
@@ -120,11 +151,12 @@ interface PersistState {
 /** One persistence state per `${cssPath}\0${rem}\0` cache prefix. */
 const persistStates = new Map<string, PersistState>()
 
-function persistFileFor(cssPath: string, rem?: number): string | null {
+/** Exported for tests: the exact on-disk cache path for a (cssPath, rem). */
+export function persistFileFor(cssPath: string, rem?: number): string | null {
   try {
     const { json } = cacheArtifactPaths(cssPath)
     const remKey = rem === undefined ? 'default' : String(rem)
-    return json.replace(/\.json$/, `.canon-${CANON_CACHE_VERSION}-${remKey}.json`)
+    return json.replace(/\.json$/, `.canon-${CANON_LOGIC_HASH}-${remKey}.json`)
   } catch {
     return null
   }
@@ -145,8 +177,12 @@ function ensurePersistLoaded(cssPath: string, rem: number | undefined, cachePref
   try {
     const data: unknown = JSON.parse(readFileSync(file, 'utf-8'))
     if (typeof data === 'object' && data !== null) {
-      for (const [cls, canonical] of Object.entries(data)) {
-        if (typeof canonical === 'string') canonCache.set(cachePrefix + cls, canonical)
+      for (const [cls, entry] of Object.entries(data)) {
+        // Persisted shape: [canonical, safe]. Validate strictly — a
+        // corrupt/old-shape entry is skipped, never trusted into an autofix.
+        if (Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'boolean') {
+          canonCache.set(cachePrefix + cls, { canonical: entry[0], safe: entry[1] })
+        }
       }
     }
   } catch {
@@ -158,11 +194,19 @@ function ensurePersistLoaded(cssPath: string, rem: number | undefined, cachePref
 function flushPersist(cachePrefix: string, state: PersistState): void {
   if (state.dirty <= 0) return
   try {
-    const out: Record<string, string> = {}
+    // Serialize as [canonical, safe] tuples — compact, and carries the #78
+    // safe flag through so a restored entry gates the autofix identically.
+    const out: Record<string, [string, boolean]> = {}
     for (const [key, value] of canonCache) {
-      if (key.startsWith(cachePrefix)) out[key.slice(cachePrefix.length)] = value
+      if (key.startsWith(cachePrefix)) {
+        out[key.slice(cachePrefix.length)] = [value.canonical, value.safe]
+      }
     }
-    const tmp = `${state.file}.${process.pid}.tmp`
+    // Unique per pid+thread+seq: oxlint runs many worker threads in one
+    // process, so a bare pid would collide and race on renameSync (mirrors
+    // sync-loader.ts). Threads still last-writer-win on the final file, so the
+    // cache converges over runs — correctness is unaffected.
+    const tmp = `${state.file}.${process.pid}.${threadId}.${tmpSeq++}.tmp`
     writeFileSync(tmp, JSON.stringify(out))
     renameSync(tmp, state.file)
     state.dirty = 0
@@ -237,15 +281,16 @@ export function canonicalizeClassesSync(
     out[missingIdx[j]] = value
   }
 
-  // Write-through: flush after every batch that produced fresh results.
-  // Deliberately NOT an exit hook — these services must not register process
-  // listeners (see tests/design-system/exit-listeners.test.ts). The write is
-  // a few-KB atomic tmp+rename, negligible next to the worker round-trips it
-  // eliminates on the next run.
+  // Debounced flush: accumulate the batch's fresh count and only write once it
+  // crosses FLUSH_THRESHOLD, to avoid the ~O(n²) IO of rewriting the whole
+  // prefix map after every batch. No exit hook force-flushes the sub-threshold
+  // tail (these services must not register process listeners — see
+  // exit-listeners.test.ts); it persists on a later run, consistent with the
+  // cache's documented cross-run convergence.
   const state = persistStates.get(cachePrefix)
   if (state && state.dirty >= 0) {
     state.dirty += uniqueMissing.length
-    flushPersist(cachePrefix, state)
+    if (state.dirty >= FLUSH_THRESHOLD) flushPersist(cachePrefix, state)
   }
 
   return out
