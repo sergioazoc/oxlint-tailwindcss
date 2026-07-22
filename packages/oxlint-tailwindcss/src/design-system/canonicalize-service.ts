@@ -276,7 +276,9 @@ function flushPersist(cachePrefix: string, state: PersistState): void {
     // Start from what is already on disk so we don't drop another isolate's
     // (or a prior run's) entries; then overlay ours. Values are deterministic
     // for a given DS + logic hash, so overlapping keys carry identical values.
-    const merged: Record<string, [string, boolean]> = {}
+    // Null-prototype target so a `__proto__` cache key is treated as plain data,
+    // never the prototype setter (which would silently swallow the entry).
+    const merged: Record<string, [string, boolean]> = Object.create(null)
     try {
       const existing: unknown = JSON.parse(readFileSync(state.file, 'utf-8'))
       if (typeof existing === 'object' && existing !== null) {
@@ -287,6 +289,13 @@ function flushPersist(cachePrefix: string, state: PersistState): void {
             typeof entry[1] === 'boolean'
           ) {
             merged[cls] = [entry[0], entry[1]]
+            // Adopt entries a sibling isolate persisted after our initial load
+            // into our own in-memory cache, so the rest of this run serves them
+            // without a worker round-trip. Values are deterministic for this
+            // (DS, logic hash), so a key we already hold is identical — never
+            // overwrite what we computed ourselves.
+            const key = cachePrefix + cls
+            if (!canonCache.has(key)) canonCache.set(key, { canonical: entry[0], safe: entry[1] })
           }
         }
       }
