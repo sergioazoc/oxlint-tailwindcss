@@ -1,4 +1,9 @@
 import { type PrecomputedData } from './sync-loader'
+import {
+  type CssDeclaration,
+  type CssDeclarationIndex,
+  createDeclarationDecoder,
+} from './css-declarations'
 import { roundRemValue } from '../utils/floating-point'
 import {
   extractUtility,
@@ -7,11 +12,20 @@ import {
   splitImportant,
 } from '../utils/class-parser'
 
+const EMPTY_DECLARATIONS: readonly CssDeclaration[] = []
+
 export class DesignSystemCache {
   private canonicalMap = new Map<string, string>()
   private validitySet = new Set<string>()
   private orderMap = new Map<string, bigint | null>()
-  private cssPropsMap = new Map<string, string[]>()
+  // Raw interned tables plus a per-class memo. Nothing is decoded up front: a
+  // linted file mentions hundreds of classes, not the 23 000 the design system
+  // knows, and eagerly building a map cost ~6 ms per design system for nothing.
+  private declIndex: CssDeclarationIndex | null = null
+  private decodeDecls: ((packed: string | undefined) => readonly CssDeclaration[]) | null = null
+  private declMemo = new Map<string, readonly CssDeclaration[]>()
+  private propsMemo = new Map<string, string[]>()
+  private partialSet = new Set<string>()
   private variantOrderMap = new Map<string, number>()
   private arbitraryEquivMap = new Map<string, string>()
   private _validClasses: string[] = []
@@ -43,8 +57,16 @@ export class DesignSystemCache {
       if (order > cache._maxOrder) cache._maxOrder = order
     }
 
-    for (const [cls, props] of Object.entries(data.cssProps)) {
-      cache.cssPropsMap.set(cls, props)
+    // Stored by reference, decoded on demand. Guarded rather than assumed: a
+    // cache artifact missing the field is rejected upstream by
+    // `isPrecomputedData`, so reaching here without it means a hand-built
+    // object, which should read as "no declarations known" instead of throwing.
+    if (data.cssDeclarations) {
+      cache.declIndex = data.cssDeclarations
+      cache.decodeDecls = createDeclarationDecoder(data.cssDeclarations)
+      for (const cls of data.cssDeclarations.partial ?? []) {
+        cache.partialSet.add(cls)
+      }
     }
 
     if (data.variantOrder) {
@@ -378,12 +400,62 @@ export class DesignSystemCache {
     return classes.map((cls) => [cls, this.getOrder(cls)])
   }
 
+  /**
+   * Every declaration the class emits, in emission order, not deduplicated.
+   * Includes declarations on pseudo-elements and (for classes that style only
+   * their descendants, like `space-x-*`) on descendants — each tagged with its
+   * scope, so callers never mistake one box for another.
+   */
+  getCssDeclarations(className: string): readonly CssDeclaration[] {
+    const key = this.stripProjectPrefix(className)
+    const memo = this.declMemo.get(key)
+    if (memo) return memo
+    const byClass = this.declIndex?.byClass
+    let packed = byClass?.[key]
+    if (packed === undefined) {
+      const { bare, position } = splitImportant(key)
+      if (position) packed = byClass?.[bare]
+    }
+    const decoded = this.decodeDecls?.(packed) ?? EMPTY_DECLARATIONS
+    this.declMemo.set(key, decoded)
+    return decoded
+  }
+
+  /**
+   * True when the class emits CSS we deliberately did not model in full
+   * (descendant rules alongside its own, or `@media`/`@supports` blocks). Such a
+   * class must never be reported as redundant.
+   */
+  isPartial(className: string): boolean {
+    return this.partialSet.has(this.stripProjectPrefix(className))
+  }
+
+  /**
+   * Property names the class declares on its OWN box, unconditionally.
+   * Deduplicated, in emission order.
+   */
   getCssProperties(className: string): string[] {
-    const result = this.cssPropsMap.get(className)
-    if (result) return result
-    const { bare, position } = splitImportant(className)
-    if (position) return this.cssPropsMap.get(bare) ?? []
-    return []
+    const key = this.stripProjectPrefix(className)
+    const memo = this.propsMemo.get(key)
+    if (memo) return memo
+    const seen = new Set<string>()
+    const props: string[] = []
+    for (const decl of this.getCssDeclarations(key)) {
+      if (decl.scope !== 'element' || decl.conditional) continue
+      if (seen.has(decl.prop)) continue
+      seen.add(decl.prop)
+      props.push(decl.prop)
+    }
+    this.propsMemo.set(key, props)
+    return props
+  }
+
+  /** Strips the Tailwind project prefix (`tw:flex` → `flex`), if configured. */
+  private stripProjectPrefix(className: string): string {
+    if (this._prefix && className.startsWith(this._prefix + ':')) {
+      return className.slice(this._prefix.length + 1)
+    }
+    return className
   }
 
   getVariantPriority(variant: string): number | null {

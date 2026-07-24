@@ -32,6 +32,7 @@ import { dirname, join, resolve } from 'node:path'
 import { tmpdir, userInfo } from 'node:os'
 import { DesignSystemLoadError } from '../utils/fatal'
 import { TAILWIND_NODE_PATH, TAILWIND_NODE_VERSION } from './tailwind-node'
+import { type CssDeclarationIndex, isCssDeclarationIndex } from './css-declarations'
 
 export interface PrecomputedData {
   /** All valid class names (candidatesToCss returned non-null) */
@@ -40,8 +41,15 @@ export interface PrecomputedData {
   canonical: Record<string, string>
   /** className → sort order as string (BigInt serialized) */
   order: Record<string, string>
-  /** className → CSS property names affected */
-  cssProps: Record<string, string[]>
+  /**
+   * Interned CSS declarations per class: property + value + variables read +
+   * which box it applies to. Replaced the old name-only `cssProps` map so
+   * `no-conflicting-classes` can tell a real conflict from two classes emitting
+   * the same declaration, from a `var()` reader composing with its writer, and
+   * from a declaration that applies to a pseudo-element or a descendant rather
+   * than to the element itself.
+   */
+  cssDeclarations: CssDeclarationIndex
   /** variant name → sort index from the design system */
   variantOrder: Record<string, number>
   /** Classes from @layer components and modifier classes referenced via [class~="..."] */
@@ -55,6 +63,169 @@ export interface PrecomputedData {
    */
   prefix: string
 }
+
+/**
+ * Declaration extractor, as source text, interpolated into PRECOMPUTE_SCRIPT.
+ *
+ * It lives in its own constant for two reasons: the benchmark in
+ * `tests/benchmarks/precompute-phases.test.ts` used to keep a hand-copied
+ * duplicate of the extractor that silently drifted from the real one, and it is
+ * interpolated (not concatenated at runtime), so its text still feeds the
+ * `CACHE_KEY` md5 and any edit here invalidates the disk cache automatically.
+ *
+ * Exports (in the worker scope): `walkDeclarations`, `scanVarReads`,
+ * `isPureVarRead`.
+ */
+export const DECL_EXTRACTOR_SOURCE = `
+// One declaration per line, '{' closing the selector line, '}' alone — the
+// shape candidatesToCss pretty-prints. Verified against every fixture: zero
+// unparsed declaration lines.
+const DECL_RE = /^([\\w-]+)\\s*:\\s*(.*?)\\s*;?$/;
+
+// Class-name characters, plus '\\\\' because escaped selectors continue the name
+// ('.w-1\\\\/2' must not be matched by the token '.w-1').
+function isNameChar(c) {
+  if (c === undefined) return false;
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+    || c === '-' || c === '_' || c === '\\\\';
+}
+
+// Classify what follows the class token inside a selector:
+//   '::name' → the declaration styles that pseudo-element's box
+//   '>'      → a combinator intervenes, so the class is not the subject
+//   ''       → the element's own box (pseudo-CLASSES land here)
+// The combinator scan is paren-aware: tw-animate-css emits
+// '&:where(:dir(ltr), [dir="ltr"], [dir="ltr"]*)', whose spaces and commas sit
+// inside :where(). A naive "is there a space" test would mislabel 92 rules as
+// descendant and silently stop reporting on the slide-in-* family.
+function classifyAfter(after) {
+  if (after.startsWith('::')) {
+    let e = 2;
+    while (e < after.length && isNameChar(after[e]) && after[e] !== '\\\\') e++;
+    return after.slice(0, e);
+  }
+  let depth = 0;
+  for (let x = 0; x < after.length; x++) {
+    const ch = after[x];
+    if (ch === '(') depth++;
+    else if (ch === ')') { if (depth > 0) depth--; }
+    else if (depth === 0) {
+      if (ch === '>' || ch === '+' || ch === '~' || ch === ' ' || ch === '\\t') return '>';
+      if (ch === ',') break;
+    }
+  }
+  return '';
+}
+
+// Find the token as a COMPLETE compound ('.rounded' must not match inside
+// '.rounded-lg'). Returns null when the token is absent, which the caller
+// treats as element scope: that is today's behaviour for selectors we cannot
+// attribute, and widening it to 'descendant' would blind the rule.
+function classifyTopLevel(sel, token) {
+  let from = 0;
+  for (;;) {
+    const i = sel.indexOf(token, from);
+    if (i < 0) return null;
+    if (!isNameChar(sel[i + token.length])) return classifyAfter(sel.slice(i + token.length));
+    from = i + 1;
+  }
+}
+
+// Nested block (CSS nesting). A selector that does not start with '&' is
+// implicitly '& <sel>', i.e. a descendant — that is what keeps prose's
+// ':where(p)' rules out of the element's declaration set.
+function classifyNested(sel) {
+  if (sel[0] !== '&') return '>';
+  return classifyAfter(sel.slice(1));
+}
+
+function walkDeclarations(cssText, className, sink) {
+  const token = '.' + className.replace(/([^\\w-])/g, '\\\\$1');
+  const stack = [];
+  let skipDepth = 0;
+  const lines = cssText.split('\\n');
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li].trim();
+    if (line === '') continue;
+    if (line === '}') { if (skipDepth > 0) skipDepth--; else stack.pop(); continue; }
+    if (line.charCodeAt(line.length - 1) === 123 /* { */) {
+      if (skipDepth > 0) { skipDepth++; continue; }
+      const sel = line.slice(0, -1).trim();
+      // @property blocks describe a variable, they don't style anything: skip
+      // the whole block (that also drops syntax/inherits/initial-value).
+      if (sel.startsWith('@property')) { skipDepth++; continue; }
+      stack.push(sel);
+      continue;
+    }
+    if (skipDepth > 0) continue;
+    const m = DECL_RE.exec(line);
+    if (!m) continue;
+    // Resolve the scope from the open block stack.
+    let conditional = false, scope = '', seenSubject = false;
+    for (let k = 0; k < stack.length; k++) {
+      const sel = stack[k];
+      if (sel.charCodeAt(0) === 64 /* @ */) { conditional = true; continue; }
+      if (!seenSubject) {
+        seenSubject = true;
+        const top = classifyTopLevel(sel, token);
+        scope = top === null ? '' : top;
+      } else {
+        const inner = classifyNested(sel);
+        if (inner === '>') scope = '>';
+        else if (inner !== '' && scope !== '>') scope = inner;
+      }
+    }
+    sink((conditional ? '@' : '') + scope, m[1], m[2]);
+  }
+}
+
+// Custom properties a value reads. 'primary' means "not inside another var()'s
+// fallback" — NOT "at paren depth 0": the vars inside linear-gradient(...) are
+// primary reads. Fallback reads are reported separately because a fallback is a
+// last resort, not the composition channel.
+function scanVarReads(value) {
+  const primary = [], fallback = [];
+  function walk(s, inFallback) {
+    let i = 0;
+    for (;;) {
+      const at = s.indexOf('var(', i);
+      if (at < 0) break;
+      let d = 1, j = at + 4;
+      while (j < s.length && d > 0) { if (s[j] === '(') d++; else if (s[j] === ')') d--; j++; }
+      const inner = s.slice(at + 4, j - 1);
+      let c = 0, comma = -1;
+      for (let x = 0; x < inner.length; x++) {
+        if (inner[x] === '(') c++;
+        else if (inner[x] === ')') c--;
+        else if (inner[x] === ',' && c === 0) { comma = x; break; }
+      }
+      const name = (comma < 0 ? inner : inner.slice(0, comma)).trim();
+      if (name.startsWith('--')) (inFallback ? fallback : primary).push(name);
+      if (comma >= 0) walk(inner.slice(comma + 1), true);
+      i = j;
+    }
+  }
+  walk(value, false);
+  return [[...new Set(primary)], [...new Set(fallback)]];
+}
+
+// A value is a pure var() read when, with every balanced var(...) group removed,
+// only separators remain. 'var(--tw-scale-x) var(--tw-scale-y)' is pure;
+// 'translateZ(0) var(--tw-rotate-x,)' is not (it contributes a value of its own).
+function isPureVarRead(value) {
+  let rest = '', i = 0;
+  while (i < value.length) {
+    if (value.startsWith('var(', i)) {
+      let d = 1, j = i + 4;
+      while (j < value.length && d > 0) { if (value[j] === '(') d++; else if (value[j] === ')') d--; j++; }
+      i = j;
+      continue;
+    }
+    rest += value[i++];
+  }
+  return /^[\\s,]*$/.test(rest);
+}
+`
 
 const PRECOMPUTE_SCRIPT = `
 // Runs as a worker_thread (NOT a forked child process). Inputs arrive via
@@ -165,6 +336,8 @@ function extractComponentClasses(cssPath, baseDir) {
   return [...new Set(result)];
 }
 
+${DECL_EXTRACTOR_SOURCE}
+
 async function main() {
   const cssPath = WD_CSS_PATH;
   const css = readFileSync(cssPath, 'utf-8');
@@ -194,6 +367,17 @@ async function main() {
   const cssResults = ds.candidatesToCss(classNames.map(pfx));
   const validClasses = classNames.filter((_, i) => cssResults[i] != null);
 
+  // className → its emitted CSS, for the declarations phase. Every phase that
+  // validates extra candidates feeds this map, so classes recovered outside
+  // getClassList() (bare utilities like \`rounded\`, negatives like \`-col-1\`,
+  // legacy v3 spellings) get declarations too. They used to be pushed into
+  // validClasses with their CSS thrown away, which left ~300 valid classes
+  // invisible to no-conflicting-classes (\`rounded rounded-lg\` never reported).
+  const declCss = {};
+  for (let i = 0; i < classNames.length; i++) {
+    if (cssResults[i] != null) declCss[classNames[i]] = cssResults[i];
+  }
+
   // Expand: validate extra candidates not in getClassList() but valid in v4
   const validSet = new Set(validClasses);
   const knownPrefixes = new Set();
@@ -222,14 +406,13 @@ async function main() {
     'backdrop-filter-none',
     'max-w-screen',
   ].filter((c) => !validSet.has(c));
-  const staticExtraCss = {};
   if (staticExtras.length > 0) {
     const staticResults = ds.candidatesToCss(staticExtras.map(pfx));
     for (let i = 0; i < staticExtras.length; i++) {
       if (staticResults[i] != null) {
         validClasses.push(staticExtras[i]);
         validSet.add(staticExtras[i]);
-        staticExtraCss[staticExtras[i]] = staticResults[i];
+        declCss[staticExtras[i]] = staticResults[i];
       }
     }
   }
@@ -251,6 +434,7 @@ async function main() {
       if (extraResults[i] != null) {
         validClasses.push(extraCandidates[i]);
         validSet.add(extraCandidates[i]);
+        declCss[extraCandidates[i]] = extraResults[i];
       }
     }
   }
@@ -272,6 +456,7 @@ async function main() {
       if (negResults[i] != null && !validSet.has(negativeProbes[i])) {
         validClasses.push(negativeProbes[i]);
         validSet.add(negativeProbes[i]);
+        declCss[negativeProbes[i]] = negResults[i];
       }
     }
   }
@@ -348,6 +533,7 @@ async function main() {
       // Mark as valid so no-unknown-classes doesn't flag legacy spellings.
       validClasses.push(cls);
       validSet.add(cls);
+      declCss[cls] = legacyCssResults[i];
     }
   }
 
@@ -362,106 +548,124 @@ async function main() {
     if (val !== null) order[unpfx(name)] = val.toString();
   }
 
-  // CSS properties per class — extract only from the ROOT selector, not descendant selectors.
-  // Plugin classes like "prose" generate CSS for both the root element (.prose { color: ...; })
-  // and descendant selectors (:where(.prose pre) { overflow-x: auto; }).
-  // Only root-level properties should be used for conflict detection.
-  const cssProps = {};
-  const atPropertyDescriptors = new Set(['syntax', 'inherits', 'initial-value']);
+  // CSS declarations per class, interned. The walker, the scope grammar and the
+  // var-read scanner live in DECL_EXTRACTOR_SOURCE above (shared with the
+  // benchmark so the two can no longer drift).
+  const scopeIds = new Map([['', 0]]);
+  const scopeTable = [''];
+  const propIds = new Map();
+  const propTable = [];
+  const valueIds = new Map();
+  const valueTable = [];
+  const declFreq = new Map();
+  const perClass = {};
+  const partial = [];
 
-  function extractRootCssProps(cssText, className) {
-    const rootProps = [];
-    const allProps = [];
-    // CSS-escape special chars in class name for selector matching
-    const escapedName = className.replace(/([^\\w-])/g, '\\\\$1');
-    const classSelector = '.' + escapedName;
-    const rawSelector = '.' + className;
-    const propRe = /^\\s+([\\w-]+)\\s*:/gm;
+  for (const cls in declCss) {
+    // Collect first, intern after, so the descendant-scope decision below can
+    // look at the whole class.
+    const raw = [];
+    let hasElement = false, hasDescendant = false, hasConditional = false;
+    walkDeclarations(declCss[cls], pfx(cls), (scopeTok, prop, value) => {
+      raw.push([scopeTok, prop, value]);
+      const conditional = scopeTok.charCodeAt(0) === 64;
+      const body = conditional ? scopeTok.slice(1) : scopeTok;
+      if (conditional) hasConditional = true;
+      if (body === '') hasElement = true;
+      else if (body === '>') hasDescendant = true;
+    });
 
-    function isRoot(sel) {
-      for (const s of [classSelector, rawSelector]) {
-        if (sel === s) return true;
-        if (sel.length > s.length && sel.startsWith(s) && sel[s.length] === ':') return true;
-      }
-      return false;
+    // A class whose CSS styles BOTH itself and its descendants (\`prose\` and its
+    // dozens of \`:where(p)\` rules) only advertises what it puts on the element:
+    // comparing descendant declarations would turn every \`prose prose-sm\` into
+    // ~40 conflicts. Classes that style ONLY descendants (\`space-x-*\`,
+    // \`divide-*\`) keep them — that is what makes \`space-x-4 space-x-2\` a
+    // conflict while \`ms-2 space-x-4\` is not. Pseudo-elements are always kept:
+    // they are a distinct box and there are few of them.
+    const dropDescendants = hasElement && hasDescendant;
+    // Anything we deliberately did not model. A class in here must never be
+    // called redundant: \`container\` looks like a plain \`width: 100%\` because its
+    // breakpoint \`max-width\`es live in @media, so "remove it" would be wrong.
+    if (dropDescendants || hasConditional) partial.push(cls);
+
+    const keys = [];
+    for (let r = 0; r < raw.length; r++) {
+      const scopeTok = raw[r][0], prop = raw[r][1], value = raw[r][2];
+      const body = scopeTok.charCodeAt(0) === 64 ? scopeTok.slice(1) : scopeTok;
+      if (dropDescendants && body === '>') continue;
+      let s = scopeIds.get(scopeTok);
+      if (s === undefined) { s = scopeTable.length; scopeTable.push(scopeTok); scopeIds.set(scopeTok, s); }
+      let p = propIds.get(prop);
+      if (p === undefined) { p = propTable.length; propTable.push(prop); propIds.set(prop, p); }
+      let v = valueIds.get(value);
+      if (v === undefined) { v = valueTable.length; valueTable.push(value); valueIds.set(value, v); }
+      const key = s + '|' + p + '|' + v;
+      declFreq.set(key, (declFreq.get(key) || 0) + 1);
+      keys.push(key);
     }
-
-    // Extract only top-level declarations from a block body (skip nested blocks).
-    // For CSS nesting like .prose { color: ...; :where(a) { color: ...; } },
-    // only extracts "color" from the top level, not from the nested :where(a) block.
-    function extractTopLevelProps(body) {
-      const props = [];
-      let depth = 0;
-      let lineStart = 0;
-      for (let i = 0; i <= body.length; i++) {
-        if (i === body.length || body[i] === '\\n') {
-          if (depth === 0) {
-            const line = body.slice(lineStart, i);
-            const m = /^\\s+([\\w-]+)\\s*:/.exec(line);
-            if (m && !atPropertyDescriptors.has(m[1])) props.push(m[1]);
-          }
-          lineStart = i + 1;
-        } else if (body[i] === '{') {
-          depth++;
-        } else if (body[i] === '}') {
-          depth--;
-        }
-      }
-      return props;
-    }
-
-    function processText(text) {
-      let i = 0;
-      while (i < text.length) {
-        while (i < text.length && /\\s/.test(text[i])) i++;
-        if (i >= text.length) break;
-        const braceIdx = text.indexOf('{', i);
-        if (braceIdx === -1) break;
-        const selector = text.slice(i, braceIdx).trim();
-        let depth = 1, j = braceIdx + 1;
-        while (j < text.length && depth > 0) {
-          if (text[j] === '{') depth++;
-          if (text[j] === '}') depth--;
-          j++;
-        }
-        const body = text.slice(braceIdx + 1, j - 1);
-        if (selector.startsWith('@media') || selector.startsWith('@supports') || selector.startsWith('@layer')) {
-          processText(body);
-        } else if (!selector.startsWith('@')) {
-          propRe.lastIndex = 0;
-          let m;
-          while ((m = propRe.exec(body)) !== null) {
-            if (!atPropertyDescriptors.has(m[1])) allProps.push(m[1]);
-          }
-          if (isRoot(selector)) rootProps.push(...extractTopLevelProps(body));
-        }
-        i = j;
-      }
-    }
-
-    processText(cssText);
-    // Use root-only properties when found; fall back to all for classes with
-    // escaped selectors or single-block output where root matching may miss.
-    const result = rootProps.length > 0 ? rootProps : allProps;
-    return [...new Set(result)];
+    // Kept in emission order and NOT deduplicated: a class that declares the
+    // same property twice (bg-linear-to-r does, once plainly and once inside
+    // @supports) keeps both. Within one block the LAST one wins, which is CSS
+    // semantics — the consumer applies that, the data keeps everything.
+    if (keys.length > 0) perClass[cls] = keys;
   }
 
-  for (let i = 0; i < classNames.length; i++) {
-    if (cssResults[i]) {
-      // Match against the prefixed selector (the CSS emits \`.tw\\:flex\`), but
-      // store under the unprefixed key. extractRootCssProps CSS-escapes the ':'.
-      const props = extractRootCssProps(cssResults[i], pfx(classNames[i]));
-      if (props.length > 0) cssProps[classNames[i]] = props;
+  // Hottest declarations get the shortest base36 ids. Ties break on the key so
+  // the artifact stays byte-reproducible for a given design system.
+  const sortedKeys = [...declFreq.keys()].sort((a, b) => {
+    const d = declFreq.get(b) - declFreq.get(a);
+    return d !== 0 ? d : (a < b ? -1 : a > b ? 1 : 0);
+  });
+  const declIds = new Map();
+  const table = [];
+  for (let i = 0; i < sortedKeys.length; i++) {
+    declIds.set(sortedKeys[i], i);
+    const parts = sortedKeys[i].split('|');
+    table.push(
+      Number(parts[0]).toString(36) + '|' + Number(parts[1]).toString(36) + '|' + Number(parts[2]).toString(36)
+    );
+  }
+  const byClass = {};
+  for (const cls in perClass) {
+    const ids = perClass[cls];
+    let packed = '';
+    for (let i = 0; i < ids.length; i++) {
+      packed += (i === 0 ? '' : ',') + declIds.get(ids[i]).toString(36);
     }
+    byClass[cls] = packed;
   }
 
-  // cssProps for the curated static extras (#37) so they participate in conflict
-  // detection exactly like their getClassList siblings (e.g. \`@container-size\` and
-  // \`@container\` both declaring \`container-type\`).
-  for (const name in staticExtraCss) {
-    const props = extractRootCssProps(staticExtraCss[name], pfx(name));
-    if (props.length > 0) cssProps[name] = props;
+  // Which variables a value reads is a property of the VALUE, so it is computed
+  // once per interned value (~2.7k) instead of once per declaration (~55k).
+  const varIds = new Map();
+  const varTable = [];
+  const valueVars = {};
+  const valueFallbackVars = {};
+  const pureValues = [];
+  function internVar(name) {
+    let id = varIds.get(name);
+    if (id === undefined) { id = varTable.length; varTable.push(name); varIds.set(name, id); }
+    return id;
   }
+  for (let v = 0; v < valueTable.length; v++) {
+    const reads = scanVarReads(valueTable[v]);
+    if (reads[0].length > 0) valueVars[v] = reads[0].map(internVar);
+    if (reads[1].length > 0) valueFallbackVars[v] = reads[1].map(internVar);
+    if (isPureVarRead(valueTable[v])) pureValues.push(v);
+  }
+
+  const cssDeclarations = {
+    partial,
+    scopes: scopeTable,
+    props: propTable,
+    values: valueTable,
+    vars: varTable,
+    valueVars,
+    valueFallbackVars,
+    pureValues,
+    table,
+    byClass,
+  };
 
   // Variant ordering from the design system
   const variantOrder = {};
@@ -532,7 +736,7 @@ async function main() {
     }
   }
 
-  const json = JSON.stringify({ validClasses, canonical, order, cssProps, variantOrder, componentClasses, arbitraryEquivalents, prefix });
+  const json = JSON.stringify({ validClasses, canonical, order, cssDeclarations, variantOrder, componentClasses, arbitraryEquivalents, prefix });
   // Atomic write: write to a unique temp path then rename, so a peer isolate
   // busy-waiting on the cache file never observes a half-written JSON.
   writeFileSync(WD_TMP_PATH, json);
@@ -686,7 +890,10 @@ function isPrecomputedData(data: unknown): data is PrecomputedData {
     typeof d.prefix === 'string' &&
     isObject(d.canonical) &&
     isObject(d.order) &&
-    isObject(d.cssProps) &&
+    // Validated in depth, unlike its siblings: a `cssDeclarations: {}` that
+    // slipped through would leave `no-conflicting-classes` silent, and a rule
+    // that quietly stops reporting is exactly the failure mode v1 forbids.
+    isCssDeclarationIndex(d.cssDeclarations) &&
     isObject(d.variantOrder) &&
     isObject(d.arbitraryEquivalents)
   )

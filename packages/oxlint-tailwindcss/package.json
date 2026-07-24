@@ -46,7 +46,7 @@
     "dev": "tsdown --watch",
     "test": "vitest run --exclude 'tests/benchmarks/**'",
     "test:watch": "vitest --exclude 'tests/benchmarks/**'",
-    "bench": "vitest run tests/benchmarks --reporter=verbose",
+    "bench": "vitest run --config vitest.bench.config.ts --reporter=verbose",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm run build"
   },
