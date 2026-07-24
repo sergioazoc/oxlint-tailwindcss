@@ -2,6 +2,75 @@
 
 ## Unreleased
 
+### Breaking-ish
+
+- **`no-conflicting-classes`** now reports two kinds of finding instead of one, and one of them is
+  new: `redundant`, for two classes that declare the same property with the SAME value. Those used
+  to be reported as conflicts (with the misleading "which wins depends on the stylesheet order"
+  advice) or, in a few cases, not reported at all. Pairs like `shadow shadow-sm`, `ring ring-1`,
+  `grayscale grayscale-100`, `h-4 size-4`, `container w-full` and `block line-clamp-none` will now
+  surface under this new messageId, which can fail a CI run that passes today. Set
+  `reportRedundant: false` to opt out. Nothing else reports these — the design system canonicalizes
+  them to themselves — so they are not silenced by default.
+
+### Bug fixes
+
+- **`no-conflicting-classes`**: decides conflicts from the CSS the design system actually emits
+  instead of from the NAMES of the properties each class declares. Name-only comparison cannot tell
+  a conflict from a composition, so the rule reported combinations Tailwind's own documentation
+  presents as correct usage: `mask-b-from-50% mask-b-from-black`,
+  `drop-shadow-xl drop-shadow-indigo-500`, `scale-3d scale-x-110`, `translate-3d translate-x-4`,
+  `transform-gpu rotate-x-45`, `text-gray-900 placeholder-gray-400`, `ms-2 space-x-4`,
+  `rounded-t-lg rounded-l-lg` — and, with `tailwind-scrollbar` installed,
+  `scrollbar-thin scrollbar-thumb-* scrollbar-track-*`. A shared property is now a conflict only
+  when the declaration that loses the cascade carries something the winner does not reproduce: equal
+  values never clash, a `var()` forwarder does not clash with the class supplying the variable
+  (matched by the real variable name, so a plugin's `--scrollbar-*` works exactly like Tailwind's
+  `--tw-*`), a custom property reset to `initial` carries no information, and declarations on a
+  pseudo-element or on descendants are not declarations on the element. Fixes
+  [#93](https://github.com/sergioazoc/oxlint-tailwindcss/issues/93).
+- **`no-conflicting-classes`**: the diagnostic names which class wins, asked of the design system
+  rather than guessed from the class attribute. That also settles an inconsistency: `size-4 h-6` was
+  accepted while `h-6 size-4` was reported, though both compile to identical CSS.
+- **`no-conflicting-classes`**: no longer silent on classes whose value the user wrote. `p-4 p-6`
+  reported while `p-4 p-[5px]`, `w-[10px] w-[20px]`, `border-1 border-2`, `gap-13 gap-15` and
+  `bg-red-500/50 bg-blue-500` were accepted, because those classes had no precomputed data at all.
+  They are now resolved from the design system at lint time. Their stylesheet position is not
+  knowable, so those diagnostics report the clash without naming a winner.
+- **`no-conflicting-classes`**: three false negatives closed —
+  `mask-linear-from-20% mask-b-from-50%` (both write `--tw-mask-linear` with different values, and
+  the old mask table hid it), `sr-only not-sr-only` (seven clobbered declarations, hidden because
+  one property set is a subset of the other), and `rounded rounded-lg` / `blur blur-sm` (bare
+  utilities had no precomputed properties).
+- **`prefer-theme-tokens`**: no longer proposes — and autofixes — a rewrite that changes the design.
+  `bg-(--primary)` → `bg-primary` was suggested whenever a class by that name existed, which is
+  right for shadcn/ui's `@theme inline { --color-primary: var(--primary) }` and wrong for a project
+  with a literal `--color-primary` plus an unrelated `--primary`. The rewrite now requires the token
+  to resolve back to the variable written, or that variable to be undefined (in which case the
+  current declaration is dead CSS).
+
+### Features
+
+- **`no-conflicting-classes`**: new `allow` option. A bare pattern silences every pair involving a
+  matching class, a two-element pattern silences one combination. It is the supported way to handle
+  a composition this plugin cannot derive, without waiting for a release.
+
+### Internal
+
+- The precompute stores CSS declarations (property + value + variables read + which box they apply
+  to) instead of property names. Everything is interned, so the disk-cache artifact SHRANK from 3.27
+  MB to 2.66 MB while carrying strictly more, declarations decode lazily per class instead of
+  building a 23 000-entry map on every load, and the extraction phase got faster (94 ms → 75 ms).
+  `cssProps` is gone from `PrecomputedData`; `cache.getCssProperties` is derived from the element's
+  own declarations.
+- ~300 valid classes had their CSS discarded by the precompute (bare utilities like `rounded`,
+  negatives like `-col-1`, legacy v3 spellings). Only `group` and `peer`, which emit no CSS, now
+  lack declarations.
+- `pnpm bench` had been reporting "No test files found" instead of measuring anything: a CLI path
+  filter does not override vitest's `exclude`, and `--exclude` appends to it. Benchmarks now have
+  their own config. That is also how the benchmark's hand-copied duplicate of the declaration
+  extractor drifted unnoticed; it now interpolates the same source the worker uses.
+
 ### Bug fixes
 
 - **`enforce-canonical`**: no longer rewrites a literal arbitrary value to a variable-backed named

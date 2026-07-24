@@ -1,25 +1,39 @@
 ## Qué hace esta regla
 
-Detecta pares de clases de Tailwind en el mismo elemento que escriben sobre las mismas propiedades
-CSS bajo la misma variante — la clase de conflicto donde la segunda clase gana en silencio y la
-primera queda como peso muerto. El chequeo es a nivel de propiedad CSS (no por patrón textual): la
-regla le pregunta al design system qué produce cada clase y compara los sets de propiedades.
+Detecta pares de clases de Tailwind en el mismo elemento, bajo la misma variante, cuyas
+declaraciones CSS chocan — donde una de las dos se descarta en silencio. La comparación se hace
+contra el CSS que el design system emite de verdad, valores incluidos: los nombres de propiedad por
+sí solos no distinguen un conflicto de una composición.
 
-Para evitar falsos positivos en utilities que comparten propiedades a propósito, la regla tiene dos
-escape hatches:
+Una propiedad compartida es conflicto solo cuando la declaración que PIERDE la cascada aporta algo
+que la ganadora no reproduce. Es decir, esto **no** es conflicto, y ninguno de estos casos está
+tratado a mano:
 
-- **`COMPLEMENTARY_GROUPS`** — familias por regex cuyos miembros están diseñados para componerse,
-  e.g. stops de gradiente (`from-*` / `via-*` / `to-*` comparten `--tw-gradient-stops`), piezas de
-  transition, ejes de transform, gradientes de máscara, modificadores de tamaño de `prose`.
-- **`COMPOSITION_PAIRS`** — pares explícitos que componen a pesar de superponerse en una propiedad
-  (e.g. `text-*` y `leading-*`, ancho `border-*` y estilo `border-{solid,dashed,…}`, `divide-*`
-  estilando hijos mientras `border-*` estila el elemento, `animate-in` inicializando las vars
-  `--tw-enter-*` que sus modificadores sobrescriben).
+- **el mismo valor en ambos lados** — `mask-b-from-50% mask-b-from-black` comparten cuatro
+  declaraciones byte a byte idénticas, así que gane quien gane el resultado es el mismo;
+- **un reenviador `var()` y la clase que suministra la variable** — `outline-2` declara
+  `outline-style: var(--tw-outline-style)` y no aporta valor propio; el match es por el nombre real
+  de la variable, así que el `--scrollbar-*` de un plugin se comporta igual que el `--tw-*` de
+  Tailwind;
+- **una ganadora que sigue arrastrando a la perdedora** — `drop-shadow-indigo-500` lee el
+  `--tw-drop-shadow-size` que escribe `drop-shadow-xl`, y la cadena se sigue transitivamente (así
+  compone `from-*` / `via-*` / `to-*`);
+- **una custom property reseteada a `initial`** — `animate-in` inicializa cada `--tw-enter-*` para
+  que sus modificadores la sobrescriban;
+- **declaraciones en cajas distintas** — `placeholder-*` estila `::placeholder`, `space-x-*` estila
+  los hijos, y ninguna estila el elemento.
 
-También reconoce dos patrones estructurales automáticamente: composición vía custom properties CSS
-disjuntas (por eso `shadow-*` y `ring-*` conviven en el mismo `box-shadow` sin chocar) y narrowing
-overrides, donde el set de propiedades de la clase posterior es subconjunto estricto del de la
-anterior (`size-4 h-6`, `rounded-t-lg rounded-tl-sm`, `truncate text-clip`).
+Dos clases que declaran la misma propiedad con el mismo valor se reportan como **`redundant`**: no
+es un conflicto, pero una de las dos es peso muerto. Con `reportRedundant: false` se desactiva.
+
+Cuál gana se le pregunta al design system, no se deduce del orden en que escribiste las clases — la
+salida de Tailwind no depende de ese orden. Cuando la posición no se puede conocer (una clase cuyo
+valor escribiste tú, como `w-[10px]`), el diagnóstico reporta el choque sin nombrar ganadora.
+
+Solo dos composiciones no se pueden derivar del CSS, y quedan declaradas en el código con el motivo:
+las variantes de tamaño de `prose` y `prose` + `max-w-*` (el plugin pretende el override y el CSS
+emitido es indistinguible de un accidente), y los modos de `mask-composite`. Para una composición
+que produzcan tus propios plugins, usa la opción **`allow`** en vez de esperar un release.
 
 DS-dependiente — requiere `settings.tailwindcss.entryPoint`. Cuando el design system no puede
 cargar, la regla emite un único diagnóstico fatal `designSystemUnavailable` por archivo en vez de
@@ -27,15 +41,32 @@ pasar en silencio.
 
 ## Opciones
 
-(no tiene opciones más allá de `entryPoint`, que también puedes setear globalmente vía
-`settings.tailwindcss.entryPoint`.)
+| Opción            | Tipo                             | Por defecto | Descripción                                                                                                                                                        |
+| ----------------- | -------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `reportRedundant` | `boolean`                        | `true`      | Reporta como `redundant` dos clases que declaran la misma propiedad con el mismo valor.                                                                            |
+| `allow`           | `(string \| [string, string])[]` | `[]`        | Patrones a silenciar. Uno simple silencia cualquier par que involucre una clase que haga match; uno de dos elementos silencia esa combinación, en cualquier orden. |
+| `entryPoint`      | `string`                         | —           | Override por regla de `settings.tailwindcss.entryPoint`.                                                                                                           |
+
+```jsonc
+{
+  "rules": {
+    "tailwindcss/no-conflicting-classes": [
+      "error",
+      {
+        // Tu plugin compone de una forma que el CSS emitido no puede mostrar.
+        "allow": [["^gutter-thin$", "^gutter-(thumb|track)-"]],
+      },
+    ],
+  },
+}
+```
 
 ## Ejemplos
 
 ### ✗ Incorrecto
 
 ```tsx
-// Misma propiedad, gana la segunda
+// Misma propiedad, valor distinto: una de las dos se descarta
 <div className="text-red-500 text-blue-500" />
 
 // El conflicto sobrevive bajo la misma variante

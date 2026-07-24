@@ -379,14 +379,18 @@ duplicates (different variants).
 
 #### `no-conflicting-classes`
 
-Detects classes that set the same CSS property. Reports which property conflicts and which class
-wins.
+Detects classes whose CSS declarations clash, by comparing the CSS the design system actually emits
+— values included, not just property names. Reports which property clashes and which class wins,
+asked of the design system rather than inferred from the order you wrote the classes in.
+
+Two classes that declare the same property with the SAME value are reported separately, as
+`redundant`: not a conflict, but one of them is dead weight. Set `reportRedundant: false` to opt
+out.
 
 ```tsx
 // ❌ Bad
 <div className="text-red-500 text-blue-500" />
-// "text-red-500" and "text-blue-500" affect "color".
-// "text-blue-500" takes precedence (appears later).
+// "text-red-500" overrides "text-blue-500" on "color".
 
 <div className="mt-2 mt-4" />
 // "mt-2" and "mt-4" affect "margin-top".
@@ -937,14 +941,15 @@ The class parser correctly handles:
   forms (`p-[2px]`, `bg-(--c)`) are canonicalized dynamically via the worker. Some valid v4 classes
   that don't appear in `getClassList()` and have no canonical rewrite (e.g. `border-1` is valid as a
   dynamic numeric value but isn't enumerated) are left untouched.
-- **`no-conflicting-classes`**: Uses exact CSS property name matching plus composition heuristics:
-  CSS-var composition (`shadow` + `ring`), narrowing-override (later class is a strict subset of
-  earlier — handles `size-4 h-6`, `rounded-t-lg rounded-tl-sm`, `truncate text-clip`), complementary
-  groups (gradient stops, transition family, transform axes, mask gradient family across
-  edges/axes/`linear`/`radial`/`conic`), and composition pairs (e.g. `mask-add` + any mask
-  gradient). Shorthand vs longhand cases where Tailwind emits the shorthand and Tailwind's longhand
-  has a different CSS property name (e.g., `p-4` vs `px-2`: `padding` vs
-  `padding-left`/`padding-right`) are still not detected.
+- **`no-conflicting-classes`**: compares the emitted declarations (property, value, the custom
+  properties each value reads, and which box it applies to), so compositions are derived rather than
+  enumerated. Two exceptions cannot be derived and stay declared in the source: `prose` variants and
+  `prose` + `max-w-*` (the plugin intends the override, and the CSS looks identical to an accident),
+  and `mask-composite` modes. Use the `allow` option for a composition your own plugins produce.
+  Still not detected: shorthand vs longhand under different property names (`p-4` vs `px-2` —
+  `padding` vs `padding-left`/`padding-right`), and, for classes whose value you wrote (`w-[10px]`),
+  the stylesheet position is unknowable, so those diagnostics report the clash without naming a
+  winner.
 - **`no-dark-without-light`**: Groups by utility prefix heuristic. May not perfectly match all
   multi-part utility prefixes.
 - **`no-unnecessary-arbitrary-value`**: Only detects equivalences for classes with a single CSS
@@ -959,15 +964,17 @@ point — `@plugin '...'` or `@import '...'` — is recognized automatically by 
 following are exercised by the test suite:
 
 - **[`@tailwindcss/typography`](https://github.com/tailwindlabs/tailwindcss-typography)** — `prose`,
-  `prose-sm/lg/xl`, `not-prose`. `no-conflicting-classes` extracts only root-level CSS properties
-  from `prose`, so utilities like `prose overflow-x-auto` aren't reported as conflicts.
+  `prose-sm/lg/xl`, `not-prose`. `prose` styles both itself and its descendants, and
+  `no-conflicting-classes` only compares what a class declares on its own box, so
+  `prose overflow-x-auto` is not a conflict.
 - **[`tailwindcss-animate`](https://github.com/jamiebuilds/tailwindcss-animate)** — `animate-in`,
   `animate-out`, `fade-{in,out}-*`, `zoom-{in,out}-*`, `spin-{in,out}-*`,
   `slide-{in-from,out-to}-*`, `duration-*`, `delay-*`, `ease-*`, `direction-*`, `fill-mode-*`,
   `repeat-*`, `running`, `paused`. `animate-in`/`animate-out` initialize all `--tw-enter-*` /
   `--tw-exit-*` custom properties to `initial`, and modifiers (`fade-in`, `zoom-in`,
-  `slide-in-from-*`, etc.) each override one of them; this composition is recognized by
-  `no-conflicting-classes`.
+  `slide-in-from-*`, etc.) each override one of them. `no-conflicting-classes` derives that from the
+  emitted CSS — a custom property reset to `initial` carries no information — so it holds for any
+  plugin built the same way, not just these two.
 - **[`tw-animate-css`](https://github.com/Wombosvideo/tw-animate-css)** — v4-native rewrite of
   `tailwindcss-animate`. Adds `blur-{in,out}-*`, logical (RTL-aware)
   `slide-{in-from,out-to}-{start,end}-*`, `play-state-*`, `animation-duration-*`, and the

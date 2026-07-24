@@ -289,15 +289,29 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   errors only) plus a per-rule sticky `lastError`, collapsing a failure to one attempt per entry
   point per process. Hint is now cause-classified (`precomputeHint`): ENOMEM/EAGAIN →
   memory-pressure guidance, not the misleading "check CSS syntax / raise timeout".
-- **CSS property extraction**: `extractRootCssProps()` in PRECOMPUTE_SCRIPT parses CSS blocks with
-  brace-depth tracking. For plugin classes with nesting (e.g. `prose`), only top-level declarations
-  are extracted.
+- **CSS declaration extraction**: `DECL_EXTRACTOR_SOURCE` in `sync-loader.ts` (interpolated into
+  PRECOMPUTE_SCRIPT, and into the `declaration-service` worker, so there is ONE extractor) walks the
+  emitted CSS line by line with a block stack and emits `(scope, property, value)` per declaration
+  plus, per interned value, the custom properties it reads (direct reads kept apart from `var()`
+  fallbacks) and whether it is a pure `var()` forward. Scope is `element` / `::pseudo-element` /
+  descendant, detected from the selector with a PAREN-AWARE combinator scan (`tw-animate-css` emits
+  `&:where(:dir(ltr), …)`, and a naive space test would mislabel 92 rules as descendant). Descendant
+  declarations are kept only for classes that style nothing else (`space-*`, `divide-*`); a class
+  that styles both itself and its descendants (`prose`) advertises only its own box, and is flagged
+  `partial` so it is never called redundant.
 - **Modifier class detection**: Classes referenced via `[class~="..."]` attribute selectors in CSS
   output (e.g. `not-prose`) are added to `componentClasses` so `no-unknown-classes` recognizes them.
-- **Animate plugin composition** (`tailwindcss-animate`, `tw-animate-css`):
-  `animate-in`/`animate-out` initialize all `--tw-enter-*`/`--tw-exit-*` custom properties to
-  `initial`, and modifiers each override one of those vars. Two explicit `COMPOSITION_PAIRS` entries
-  in `no-conflicting-classes.ts` whitelist the `animate-in`/`animate-out` ↔ modifier pairs.
+- **`no-conflicting-classes` decides from the emitted CSS**
+  (`rules/no-conflicting-classes/decide.ts`): a shared `(box, property)` is a conflict only when the
+  declaration that LOSES the cascade carries something the winner does not reproduce — equal value
+  ids never clash, the winner absorbing the loser is followed transitively through the group's
+  surviving writer, a pure `var()` forwarder whose variables the group supplies carries nothing of
+  its own, and a custom property reset to `initial` carries no information (that last one is what
+  covers the animate plugins, derived rather than whitelisted). The winner comes from
+  `cache.getOrder`, and `!` beats it; an order synthesised from a prefix sibling counts as unknown,
+  so the message never names a winner it cannot know. `spec.ts` holds ONLY what no CSS comparison
+  can infer (prose variants, prose + max-w, mask-composite), and `allow` is the user's escape hatch
+  — do not grow `spec.ts` with third-party knowledge.
 - **`canonicalizeCandidates()`**: Deduplicates results — must be called one class at a time, NOT in
   batch.
 - **`getClassList()` gaps** (issue #37): some valid v4 classes never appear in `getClassList()`. The
