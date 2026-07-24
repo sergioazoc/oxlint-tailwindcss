@@ -1,23 +1,30 @@
 /**
- * Declarative spec for `no-conflicting-classes`.
+ * The exceptions `no-conflicting-classes` cannot derive.
  *
- * The rule's logic stays in `../no-conflicting-classes.ts`; this module holds
- * the data-only tables it consumes (plus a `reason` string for each entry).
- * The reason field is what the docs site renders in the rule's reference
- * page so users can see at a glance why a given combination composes.
+ * The rule decides conflicts by comparing the CSS the design system actually
+ * emits (see `decide.ts`): equal declarations don't clash, a `var()` forwarder
+ * doesn't clash with the class supplying the variable, and declarations on
+ * different boxes never clash. That mechanism replaced the regex tables that
+ * used to enumerate composing families — gradients, transitions, transform axes,
+ * masks, `text-*`/`leading-*`, `text-*`/`tracking-*`, `divide-*`/`border-*` — all
+ * of which are now derived, along with the `animate-in`/`animate-out` families
+ * whose modifiers reset `--tw-enter-*`/`--tw-exit-*` to `initial`.
  *
- * v1 extracted these tables out of the rule body so the docs build can
- * import them as plain data without pulling in oxlint's plugin runtime.
+ * What is left is plugin INTENT: pairs whose values genuinely differ, where one
+ * deliberately overrides the other and no comparison of the generated CSS can
+ * tell that apart from an accident. Every entry must say why it cannot be
+ * derived; if a future entry can be, it belongs in `decide.ts` instead.
+ *
+ * Users who need to silence a combination this table doesn't cover should not
+ * wait for a release — that is what the rule's `allow` option is for.
  */
 
 export interface ComplementaryGroup {
   /**
    * Regex that matches utilities that may compose within the group. If the
    * regex has a capture group, two utilities match-compose ONLY when their
-   * captured prefixes differ (e.g. `from-red-500` and `to-blue-500` compose,
-   * but `from-red-500` and `from-blue-500` fall through to the overlap
-   * check and end up flagged as conflicting). No capture group means "any
-   * pair that matches this regex composes" (e.g. `prose prose-sm`).
+   * captured prefixes differ. No capture group means "any pair that matches this
+   * regex composes" (e.g. `prose prose-sm`).
    */
   pattern: RegExp
   /** Human-readable explanation rendered by the docs site. */
@@ -35,26 +42,10 @@ export interface CompositionPair {
 
 export const COMPLEMENTARY_GROUPS: readonly ComplementaryGroup[] = [
   {
-    pattern: /^(from|via|to)-/,
-    reason:
-      'Gradient stops (`from-*`, `via-*`, `to-*`) share `--tw-gradient-stops`; different prefixes compose, same prefix conflicts.',
-  },
-  {
-    pattern: /^(transition|duration|ease|delay)(?:-|$)/,
-    reason:
-      '`transition-*` composes with `duration-*`, `ease-*`, `delay-*` — `transition-all` itself has no `--tw-*` vars so the heuristic misses it.',
-  },
-  {
-    pattern: /^-?(translate|scale|rotate|skew)-/,
-    reason:
-      'Transform axes (translate / scale / rotate / skew) compose into a single `transform`; the overlap is not captured in `cssProps`.',
-  },
-  {
-    pattern: /^-?mask-((?:linear|radial|conic|[trblxy])(?:-(?:from|via|to|at))?)(?:-|$)/,
-    reason:
-      'Mask gradients: different families (e.g. `mask-linear-*` vs `mask-radial-*`) or roles (`from`/`via`/`to`/`at`) compose; same family+role conflicts.',
-  },
-  {
+    // NOT DERIVABLE: `prose` and `prose-sm` both declare `font-size` and
+    // `line-height` on the element with different values, so the generated CSS
+    // is indistinguishable from a real clobber. That `prose-sm` is *meant* to
+    // win exists only in the plugin's design.
     pattern: /^prose(?:-|$)/,
     reason:
       '`prose` + `prose-sm`/`prose-lg`/`prose-xl` modify the same scope and are designed to compose.',
@@ -63,44 +54,17 @@ export const COMPLEMENTARY_GROUPS: readonly ComplementaryGroup[] = [
 
 export const COMPOSITION_PAIRS: readonly CompositionPair[] = [
   {
-    a: /^text-/,
-    b: /^leading-/,
-    reason: '`text-*` sets line-height via its size token; `leading-*` overrides it.',
-  },
-  {
-    a: /^text-/,
-    b: /^tracking-/,
-    reason: '`text-*` may set letter-spacing via its size token; `tracking-*` overrides it.',
-  },
-  // NOTE: the former `border-*` (width) + `border-{solid,dashed,…}` (style)
-  // entry was removed — the general writer/reader mechanism
-  // (`isVarComposedProperty`) now subsumes it: `border` READS
-  // `border-style: var(--tw-border-style)` while `border-dashed` WRITES
-  // `--tw-border-style`, so their shared `border-style` is excluded from the
-  // overlap automatically (same shape as the `outline` family from #81).
-  {
-    a: /^divide-/,
-    b: /^border(?:-[trblxyse])?-/,
-    reason: '`divide-*` styles direct children; `border-*` styles the element itself.',
-  },
-  {
+    // NOT DERIVABLE: `prose` sets `max-width: 65ch` and `max-w-*` sets another
+    // length. A real override, intended, with no var() or equal-value trace.
     a: /^prose(?:-|$)/,
     b: /^max-w-/,
     reason: '`prose` sets a default max-width; `max-w-*` overrides it.',
   },
   {
-    a: /^animate-in$/,
-    b: /^(?:fade|spin|zoom|blur)-in(?:-|$)|^slide-in-from-/,
-    reason:
-      '`animate-in` initializes all `--tw-enter-*` vars; `*-in` modifiers each override one. (`tailwindcss-animate` / `tw-animate-css`.)',
-  },
-  {
-    a: /^animate-out$/,
-    b: /^(?:fade|spin|zoom|blur)-out(?:-|$)|^slide-out-to-/,
-    reason:
-      '`animate-out` initializes all `--tw-exit-*` vars; `*-out` modifiers each override one.',
-  },
-  {
+    // NOT DERIVABLE: every mask-gradient utility emits a literal
+    // `mask-composite: intersect`, and `mask-add` overrides it with `add`. The
+    // values differ and neither reads a variable, so nothing in the CSS says
+    // `intersect` was a default the user is deliberately replacing.
     a: /^mask-(?:add|subtract|intersect|exclude)$/,
     b: /^-?mask-(?:linear|radial|conic|[trblxy])-/,
     reason:

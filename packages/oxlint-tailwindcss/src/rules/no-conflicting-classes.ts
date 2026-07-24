@@ -2,96 +2,55 @@ import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import { extractUtility, getVariantPrefix, splitImportant } from '../utils/class-parser'
+import { type CssDeclaration } from '../design-system/css-declarations'
 import { createLazyLoader } from '../design-system/loader'
+import { createLazyOptions } from '../utils/context'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 import { COMPLEMENTARY_GROUPS, COMPOSITION_PAIRS } from './no-conflicting-classes/spec'
+import {
+  type ClassFacts,
+  type DeclKey,
+  collectFacts,
+  decidePair,
+  declKey,
+  isImportant,
+  keyProp,
+  keyScopeLabel,
+  redundantSide,
+} from './no-conflicting-classes/decide'
 
 export { COMPLEMENTARY_GROUPS, COMPOSITION_PAIRS } from './no-conflicting-classes/spec'
+export {
+  decidePair,
+  loserOnlyForwards,
+  neededVars,
+  resolveWinner,
+  winnerAbsorbsLoser,
+} from './no-conflicting-classes/decide'
 
-/**
- * Two utilities compose via CSS custom properties if both define their own
- * --tw-* properties that don't overlap — they each contribute to a shared
- * shorthand (e.g. `shadow` and `ring` both end up in `box-shadow` via
- * different intermediate vars).
- */
-export function isCompositionViaCssVars(
-  propsA: readonly string[],
-  propsB: readonly string[],
-): boolean {
-  const customA = propsA.filter((p) => p.startsWith('--'))
-  const customB = propsB.filter((p) => p.startsWith('--'))
-  if (customA.length === 0 || customB.length === 0) return false
-  return !customA.some((p) => customB.includes(p))
+interface Options {
+  entryPoint?: string
+  reportRedundant?: boolean
 }
 
 /**
- * A shared declared property composes (rather than conflicts) when exactly one
- * of the two classes also defines the matching `--tw-<property>` custom
- * property. The definer WRITES the variable (its direct declaration is the
- * fallback), while the other class READS it via `var(--tw-<property>)` —
- * Tailwind's standard composition pattern. Example (Tailwind v4):
+ * Returns true if two classes (within the same variant) should NOT be compared
+ * at all, despite sharing CSS properties. Pure: regex tables are passed in (or
+ * default to the module-level constants).
  *
- *   .outline-1      { outline-style: var(--tw-outline-style); outline-width: 1px; }
- *   .outline-dashed { --tw-outline-style: dashed; outline-style: dashed; }
- *
- * Both declare `outline-style`, but they compose. Two definers (outline-dashed
- * vs outline-solid) both write the variable — a real conflict. Two
- * non-definers (outline-1 vs outline-2) both declare directly — also a real
- * conflict (on outline-width). Only the writer/reader mix composes.
- *
- * The check is value-blind by design: the precomputed `cssProps` carry property
- * NAMES, not values, so this is sound only while no utility declares a
- * name-matched property CONCRETELY (a literal value) without also writing its
- * `--tw-<property>`. Every Tailwind v4 family with this shape today (outline,
- * border, content, font-weight) satisfies that: the only non-writers are width
- * utilities that read `P: var(--tw-P)`. If a future utility broke that
- * assumption it could over-suppress a real conflict — revisit here.
- */
-export function isVarComposedProperty(
-  prop: string,
-  propsA: readonly string[],
-  propsB: readonly string[],
-): boolean {
-  if (prop.startsWith('--')) return false
-  const twVar = `--tw-${prop}`
-  return propsA.includes(twVar) !== propsB.includes(twVar)
-}
-
-/**
- * Detect a narrowing override: the later class's CSS properties are a strict
- * subset of the earlier class's, so the later class refines one of the
- * shorthand's properties (size-4 h-6, rounded-t-lg rounded-tl-sm, truncate
- * text-clip). Direction-sensitive: the inverse means the wider later class
- * clobbers a prior narrower override.
- */
-export function isNarrowingOverride(
-  propsEarlier: readonly string[],
-  propsLater: readonly string[],
-): boolean {
-  if (propsLater.length === 0 || propsLater.length >= propsEarlier.length) return false
-  const setEarlier = new Set(propsEarlier)
-  return propsLater.every((p) => setEarlier.has(p))
-}
-
-/**
- * Returns true if two classes (within the same variant) should NOT be reported
- * as conflicting despite sharing CSS properties. Pure: regex tables are passed
- * in (or default to the module-level constants).
+ * These tables are the exception, not the mechanism: everything a comparison of
+ * the generated CSS can decide is decided in `decide.ts`. What survives here is
+ * plugin intent that no CSS comparison can see — see `spec.ts` for why each
+ * entry cannot be derived.
  */
 export function shouldSkipPair(
   a: string,
   b: string,
-  propsA: readonly string[],
-  propsB: readonly string[],
   rules: {
     complementaryGroups?: readonly RegExp[]
     compositionPairs?: readonly (readonly [RegExp, RegExp])[]
   } = {},
 ): boolean {
-  if (isCompositionViaCssVars(propsA, propsB)) return true
-  // Narrowing override (shorthand → longhand on one of its props)
-  if (isNarrowingOverride(propsA, propsB)) return true
-
   const ua = splitImportant(extractUtility(a)).bare
   const ub = splitImportant(extractUtility(b)).bare
 
@@ -105,7 +64,7 @@ export function shouldSkipPair(
     if (!ma || !mb) continue
     // No capture group: always compose within group (e.g. prose)
     if (ma[1] === undefined) return true
-    // Different prefix: compose; same prefix: fall through to overlap check
+    // Different prefix: compose; same prefix: fall through to the CSS comparison
     if (ma[1] !== mb[1]) return true
   }
 
@@ -119,6 +78,31 @@ export function shouldSkipPair(
   return false
 }
 
+/**
+ * `"color"` / `"color", "width"` / `3 CSS properties`, naming the box when it
+ * isn't the element. A pair can clash on several boxes at once (a plugin utility
+ * that styles itself and a `::-webkit-scrollbar` pseudo-element), so the label
+ * goes per property unless every property shares the same box.
+ */
+function formatProperties(keys: readonly DeclKey[]): string {
+  const scopes = new Set(keys.map(keyScopeLabel))
+  if (scopes.size > 1) {
+    const labelled = [
+      ...new Set(
+        keys.map((key) => {
+          const scope = keyScopeLabel(key)
+          return scope ? `"${keyProp(key)}" (${scope})` : `"${keyProp(key)}"`
+        }),
+      ),
+    ]
+    return labelled.length <= 3 ? labelled.join(', ') : `${labelled.length} CSS properties`
+  }
+  const props = [...new Set(keys.map(keyProp))]
+  const list = props.length <= 3 ? `"${props.join('", "')}"` : `${props.length} CSS properties`
+  const scope = [...scopes][0]
+  return scope ? `${list} (${scope})` : list
+}
+
 export const noConflictingClasses = defineRule({
   meta: {
     type: 'problem',
@@ -130,33 +114,46 @@ export const noConflictingClasses = defineRule({
         type: 'object',
         properties: {
           entryPoint: { type: 'string' },
+          reportRedundant: { type: 'boolean' },
         },
         additionalProperties: false,
       },
     ],
-    defaultOptions: [{}],
+    defaultOptions: [{ reportRedundant: true }],
     messages: {
-      // Don't claim the later class in the attribute "wins": CSS precedence is
-      // decided by order in the generated stylesheet, not by order in the class
-      // attribute (R-M3). Tell the user to remove one instead.
+      // The design system tells us the physical order of the generated
+      // stylesheet, and that order — not the order of the class attribute —
+      // decides the winner. So the message names it instead of hedging (R-M3).
       conflict:
+        '"{{winner}}" overrides "{{loser}}" on {{properties}}. "{{winner}}" comes later in the generated stylesheet, so it wins no matter how the class attribute is ordered. Remove one.',
+      // Fallback for when the design system cannot place one of the two classes
+      // in the stylesheet: the clash is visible, the winner is not.
+      conflictUnordered:
         '"{{classA}}" and "{{classB}}" both affect {{properties}}. Only one applies — which wins depends on the generated stylesheet order, not the attribute order. Remove one.',
+      redundant:
+        '"{{loser}}" has no effect: "{{winner}}" declares {{properties}} with the same value. Remove "{{loser}}".',
       ...DS_UNAVAILABLE_MESSAGE,
     },
   },
   createOnce(context) {
     const getDS = createLazyLoader(context)
+    const getOptions = createLazyOptions<Options, { reportRedundant: boolean }>(context, (o) => ({
+      reportRedundant: o?.reportRedundant ?? true,
+    }))
 
     function check(locations: ClassLocation[]) {
       if (locations.length === 0) return
       const ds = safeGetDS(getDS, context, locations[0].node)
       if (!ds) return
       const { cache } = ds
+      const { reportRedundant } = getOptions()
+
       for (const loc of locations) {
         const classes = splitClasses(loc.value)
         if (classes.length < 2) continue
 
-        // Group classes by variant prefix (bracket-aware)
+        // Group by variant prefix (bracket-aware): classes under different
+        // variants apply in different states and never compete.
         const byVariant = new Map<string, string[]>()
         for (const cls of classes) {
           const variant = getVariantPrefix(cls)
@@ -168,45 +165,79 @@ export const noConflictingClasses = defineRule({
         for (const [, variantClasses] of byVariant) {
           if (variantClasses.length < 2) continue
 
-          // For each pair of classes in the same variant, compare CSS properties
-          const propsMap = new Map<string, string[]>()
-          for (const cls of variantClasses) {
-            const props = cache.getCssProperties(splitImportant(extractUtility(cls)).bare)
-            propsMap.set(cls, props)
-          }
+          const facts: ClassFacts[] = variantClasses.map((cls) => {
+            const utility = extractUtility(cls)
+            const bare = splitImportant(utility).bare
+            const declarations = cache.getCssDeclarations(bare)
+            const decls = new Map<DeclKey, CssDeclaration>()
+            const writes = new Map<string, number>()
+            for (const decl of declarations) {
+              // Conditional declarations (`@media`, `@supports`) are not
+              // comparable: they apply under conditions we don't model.
+              if (decl.conditional) continue
+              // Last one wins, which is CSS semantics inside a rule.
+              decls.set(declKey(decl), decl)
+              if (decl.prop.startsWith('--')) writes.set(decl.prop, decl.valueId)
+            }
+            return {
+              className: cls,
+              decls,
+              writes,
+              order: cache.getOrder(cls),
+              important: isImportant(utility),
+              partial: cache.isPartial(bare),
+            }
+          })
 
-          // Detect conflicts
-          for (let i = 0; i < variantClasses.length; i++) {
-            const classA = variantClasses[i]
-            const propsA = propsMap.get(classA) ?? []
+          const group = collectFacts(facts)
 
-            for (let j = i + 1; j < variantClasses.length; j++) {
-              const classB = variantClasses[j]
+          for (let i = 0; i < facts.length; i++) {
+            for (let j = i + 1; j < facts.length; j++) {
+              const a = facts[i]
+              const b = facts[j]
               // An exact duplicate isn't a conflict with itself — that's
-              // no-duplicate-classes' job (R-B9). Skip it here.
-              if (classA === classB) continue
-              const propsB = propsMap.get(classB) ?? []
+              // no-duplicate-classes' job (R-B9).
+              if (a.className === b.className) continue
+              if (shouldSkipPair(a.className, b.className)) continue
 
-              // Skip pairs that share CSS properties but target different elements/roles
-              if (shouldSkipPair(classA, classB, propsA, propsB)) continue
+              const verdict = decidePair(a, b, group)
 
-              const propsBSet = new Set(propsB)
-              const overlap = propsA.filter(
-                (p) => propsBSet.has(p) && !isVarComposedProperty(p, propsA, propsB),
-              )
-              if (overlap.length > 0) {
-                const propList =
-                  overlap.length <= 3
-                    ? `"${overlap.join('", "')}"`
-                    : `${overlap.length} CSS properties`
+              if (verdict.conflicts.length > 0) {
+                const properties = formatProperties(verdict.conflicts)
+                context.report(
+                  verdict.orderKnown
+                    ? {
+                        node: loc.node,
+                        messageId: 'conflict',
+                        data: {
+                          winner: verdict.winner.className,
+                          loser: verdict.loser.className,
+                          properties,
+                        },
+                      }
+                    : {
+                        node: loc.node,
+                        messageId: 'conflictUnordered',
+                        data: {
+                          classA: a.className,
+                          classB: b.className,
+                          properties,
+                        },
+                      },
+                )
+                continue
+              }
 
+              if (!reportRedundant) continue
+              const dead = redundantSide(verdict)
+              if (dead) {
                 context.report({
                   node: loc.node,
-                  messageId: 'conflict',
+                  messageId: 'redundant',
                   data: {
-                    classA,
-                    classB,
-                    properties: propList,
+                    loser: dead.loser.className,
+                    winner: dead.winner.className,
+                    properties: formatProperties(verdict.duplicates),
                   },
                 })
               }
