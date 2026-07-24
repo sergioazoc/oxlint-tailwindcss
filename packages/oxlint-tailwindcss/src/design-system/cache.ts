@@ -41,6 +41,8 @@ export class DesignSystemCache {
   // the prefix. Kept separate from validitySet so `classValidity` can tell a
   // Tailwind utility (prefix-required) apart from a user component class.
   private componentSet = new Set<string>()
+  private themeRefs = new Map<string, string[]>()
+  private definedVarSet = new Set<string>()
 
   static fromPrecomputed(data: PrecomputedData): DesignSystemCache {
     const cache = new DesignSystemCache()
@@ -82,6 +84,16 @@ export class DesignSystemCache {
       for (const cls of data.componentClasses) {
         cache.validitySet.add(cls)
         cache.componentSet.add(cls)
+      }
+    }
+
+    for (const name of data.definedVars ?? []) {
+      cache.definedVarSet.add(name)
+    }
+
+    if (data.themeRefs) {
+      for (const [name, refs] of Object.entries(data.themeRefs)) {
+        cache.themeRefs.set(name, refs)
       }
     }
 
@@ -519,6 +531,26 @@ export class DesignSystemCache {
       return className.slice(this._prefix.length + 1)
     }
     return className
+  }
+
+  /**
+   * Whether `varName` resolves to `target` through theme indirection.
+   *
+   * `@theme inline { --color-primary: var(--primary) }` makes `bg-primary` and
+   * `bg-(--primary)` the same declaration; a literal `--color-primary: oklch(…)`
+   * makes them different colours. Only the theme table can tell those apart.
+   */
+  themeVarResolvesTo(varName: string, target: string, depth = 4): boolean {
+    if (varName === target) return true
+    if (depth <= 0) return false
+    const refs = this.themeRefs.get(varName)
+    if (!refs) return false
+    return refs.some((ref) => this.themeVarResolvesTo(ref, target, depth - 1))
+  }
+
+  /** Whether the project defines this custom property (theme or plain CSS). */
+  definesVar(varName: string): boolean {
+    return this.definedVarSet.has(varName) || this.themeRefs.has(varName)
   }
 
   getVariantPriority(variant: string): number | null {

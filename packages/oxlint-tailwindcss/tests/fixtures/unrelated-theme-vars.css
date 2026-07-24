@@ -1,0 +1,14 @@
+@import 'tailwindcss';
+
+/*
+ * The dangerous shape prefer-theme-tokens must refuse: a theme token with a
+ * LITERAL value plus an unrelated project variable of a similar name. Rewriting
+ * bg-(--primary) to bg-primary here would change the colour.
+ */
+:root {
+  --primary: #ff0000;
+}
+
+@theme {
+  --color-primary: oklch(0.55 0.2 260);
+}

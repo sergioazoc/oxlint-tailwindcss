@@ -57,6 +57,21 @@ export interface PrecomputedData {
   /** arbitraryForm → namedClass for unnecessary arbitrary value detection */
   arbitraryEquivalents: Record<string, string>
   /**
+   * Theme variable → the custom properties its value references, for the
+   * variables that reference any (`--color-primary: var(--primary)`, the
+   * `@theme inline` indirection shadcn/ui builds on). Sparse: literal-valued
+   * theme variables are absent, which is precisely what tells a safe
+   * `bg-(--primary)` → `bg-primary` rewrite from one that changes the design.
+   */
+  themeRefs?: Record<string, string[]>
+  /**
+   * Custom properties the project defines anywhere in the entry CSS. Used to
+   * tell "the variable the user referenced does not exist, so the declaration is
+   * dead and suggesting a token can only improve it" from "it exists and means
+   * something else, so suggesting a token would change the design".
+   */
+  definedVars?: string[]
+  /**
    * Tailwind v4 project prefix (e.g. 'tw' for `@import "tailwindcss" prefix(tw)`).
    * Empty string when no prefix is configured. All other fields store class
    * names WITHOUT the prefix; this is the single source of truth for it.
@@ -736,7 +751,28 @@ async function main() {
     }
   }
 
-  const json = JSON.stringify({ validClasses, canonical, order, cssDeclarations, variantOrder, componentClasses, arbitraryEquivalents, prefix });
+  // Theme variables that dereference to another custom property. Only the
+  // referencing ones are stored (~a handful), and the reference list reuses the
+  // same balanced scanner the declaration values go through.
+  // Custom properties the project defines. The entry file covers the standard
+  // ':root { --x: ... }' pattern; definitions inside @imported files are not
+  // scanned, so an unseen definition reads as "undefined" — which only ever makes
+  // prefer-theme-tokens more willing to suggest, never less accurate about a
+  // definition it can see.
+  const definedVars = [...new Set(css.match(/--[\\w-]+(?=\\s*:)/g) || [])];
+
+  const themeRefs = {};
+  if (ds.theme && typeof ds.theme.entries === 'function') {
+    for (const [name, entry] of ds.theme.entries()) {
+      const value = entry && typeof entry.value === 'string' ? entry.value : '';
+      if (!value.includes('var(')) continue;
+      const reads = scanVarReads(value);
+      const all = [...new Set([...reads[0], ...reads[1]])];
+      if (all.length > 0) themeRefs[name] = all;
+    }
+  }
+
+  const json = JSON.stringify({ validClasses, canonical, order, cssDeclarations, variantOrder, componentClasses, arbitraryEquivalents, themeRefs, definedVars, prefix });
   // Atomic write: write to a unique temp path then rename, so a peer isolate
   // busy-waiting on the cache file never observes a half-written JSON.
   writeFileSync(WD_TMP_PATH, json);
