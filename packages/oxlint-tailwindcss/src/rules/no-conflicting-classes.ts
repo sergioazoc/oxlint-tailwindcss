@@ -5,6 +5,7 @@ import { extractUtility, getVariantPrefix, splitImportant } from '../utils/class
 import { type CssDeclaration } from '../design-system/css-declarations'
 import { createLazyLoader } from '../design-system/loader'
 import { createLazyOptions } from '../utils/context'
+import { compileRegexList, matchesAny } from '../utils/allowlist'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 import { COMPLEMENTARY_GROUPS, COMPOSITION_PAIRS } from './no-conflicting-classes/spec'
 import {
@@ -31,6 +32,40 @@ export {
 interface Options {
   entryPoint?: string
   reportRedundant?: boolean
+  allow?: (string | [string, string])[]
+}
+
+interface CompiledOptions {
+  reportRedundant: boolean
+  /** Classes to never report at all. */
+  allowClasses: RegExp[]
+  /** Pairs declared as composing by the user. */
+  allowPairs: [RegExp, RegExp][]
+}
+
+/**
+ * Compiles the `allow` option.
+ *
+ * A bare pattern silences every pair involving a matching class; a two-element
+ * pattern silences that specific combination. This is the supported way to teach
+ * the rule about a stack we cannot derive — nobody should have to wait for a
+ * release of this plugin to silence a combination their own plugins produce.
+ */
+function compileAllow(
+  allow: Options['allow'],
+): Pick<CompiledOptions, 'allowClasses' | 'allowPairs'> {
+  const allowClasses: string[] = []
+  const allowPairs: [RegExp, RegExp][] = []
+  for (const entry of allow ?? []) {
+    if (typeof entry === 'string') {
+      allowClasses.push(entry)
+      continue
+    }
+    const [a, b] = compileRegexList(entry)
+    // Both sides must compile, or the pair would silence more than it says.
+    if (a && b) allowPairs.push([a, b])
+  }
+  return { allowClasses: compileRegexList(allowClasses), allowPairs }
 }
 
 /**
@@ -78,6 +113,19 @@ export function shouldSkipPair(
   return false
 }
 
+/** Whether the user's `allow` option silences this pair. */
+function isAllowed(
+  a: string,
+  b: string,
+  allowClasses: readonly RegExp[],
+  allowPairs: readonly [RegExp, RegExp][],
+): boolean {
+  if (matchesAny(a, allowClasses) || matchesAny(b, allowClasses)) return true
+  return allowPairs.some(
+    ([reA, reB]) => (reA.test(a) && reB.test(b)) || (reA.test(b) && reB.test(a)),
+  )
+}
+
 /**
  * `"color"` / `"color", "width"` / `3 CSS properties`, naming the box when it
  * isn't the element. A pair can clash on several boxes at once (a plugin utility
@@ -115,6 +163,15 @@ export const noConflictingClasses = defineRule({
         properties: {
           entryPoint: { type: 'string' },
           reportRedundant: { type: 'boolean' },
+          allow: {
+            type: 'array',
+            items: {
+              oneOf: [
+                { type: 'string' },
+                { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 2 },
+              ],
+            },
+          },
         },
         additionalProperties: false,
       },
@@ -137,8 +194,9 @@ export const noConflictingClasses = defineRule({
   },
   createOnce(context) {
     const getDS = createLazyLoader(context)
-    const getOptions = createLazyOptions<Options, { reportRedundant: boolean }>(context, (o) => ({
+    const getOptions = createLazyOptions<Options, CompiledOptions>(context, (o) => ({
       reportRedundant: o?.reportRedundant ?? true,
+      ...compileAllow(o?.allow),
     }))
 
     function check(locations: ClassLocation[]) {
@@ -146,7 +204,7 @@ export const noConflictingClasses = defineRule({
       const ds = safeGetDS(getDS, context, locations[0].node)
       if (!ds) return
       const { cache } = ds
-      const { reportRedundant } = getOptions()
+      const { reportRedundant, allowClasses, allowPairs } = getOptions()
 
       for (const loc of locations) {
         const classes = splitClasses(loc.value)
@@ -199,6 +257,7 @@ export const noConflictingClasses = defineRule({
               // no-duplicate-classes' job (R-B9).
               if (a.className === b.className) continue
               if (shouldSkipPair(a.className, b.className)) continue
+              if (isAllowed(a.className, b.className, allowClasses, allowPairs)) continue
 
               const verdict = decidePair(a, b, group)
 

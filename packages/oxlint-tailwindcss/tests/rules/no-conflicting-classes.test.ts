@@ -608,3 +608,65 @@ describe('redundant classes', () => {
     },
   )
 })
+
+// --- User escape hatch ---
+
+describe('allow option', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(ENTRY_POINT)
+  })
+
+  runWithFixture(
+    new RuleTester(),
+    'no-conflicting-classes (allow)',
+    noConflictingClasses,
+    ENTRY_POINT,
+    {
+      valid: [
+        // A bare pattern silences everything involving a matching class — the
+        // answer to "my plugin composes in a way you cannot derive".
+        {
+          code: '<div className="flex-row flex-col" />',
+          filename: 'test.tsx',
+          options: [{ allow: ['^flex-'] }],
+        },
+        // A two-element pattern silences just that combination.
+        {
+          code: '<div className="p-4 p-6" />',
+          filename: 'test.tsx',
+          options: [{ allow: [['^p-4$', '^p-6$']] }],
+        },
+        // Orientation does not matter.
+        {
+          code: '<div className="p-6 p-4" />',
+          filename: 'test.tsx',
+          options: [{ allow: [['^p-4$', '^p-6$']] }],
+        },
+      ],
+      invalid: [
+        // An unrelated allow entry must not silence anything else.
+        {
+          code: '<div className="w-4 w-8" />',
+          filename: 'test.tsx',
+          options: [{ allow: ['^flex-'] }],
+          errors: [{ messageId: 'conflict' }],
+        },
+        // A pair entry is not a licence for either class on its own.
+        {
+          code: '<div className="p-4 p-8" />',
+          filename: 'test.tsx',
+          options: [{ allow: [['^p-4$', '^p-6$']] }],
+          errors: [{ messageId: 'conflict' }],
+        },
+        // An invalid regex is skipped, not thrown, and silences nothing.
+        {
+          code: '<div className="w-4 w-8" />',
+          filename: 'test.tsx',
+          options: [{ allow: ['[unclosed'] }],
+          errors: [{ messageId: 'conflict' }],
+        },
+      ],
+    },
+  )
+})
