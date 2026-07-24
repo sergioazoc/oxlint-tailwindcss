@@ -3,6 +3,7 @@ import {
   type CssDeclaration,
   type CssDeclarationIndex,
   createDeclarationDecoder,
+  parseScopeToken,
 } from './css-declarations'
 import { roundRemValue } from '../utils/floating-point'
 import {
@@ -26,6 +27,8 @@ export class DesignSystemCache {
   private declMemo = new Map<string, readonly CssDeclaration[]>()
   private propsMemo = new Map<string, string[]>()
   private partialSet = new Set<string>()
+  // Reverse of `declIndex.values`, built on first lint-time interning.
+  private valueIdByText: Map<string, number> | null = null
   private variantOrderMap = new Map<string, number>()
   private arbitraryEquivMap = new Map<string, string>()
   private _validClasses: string[] = []
@@ -396,6 +399,19 @@ export class DesignSystemCache {
     )
   }
 
+  /**
+   * Whether the stylesheet order for this exact class is known, as opposed to
+   * approximated from a prefix sibling. Callers that name a winner must not do
+   * so from an approximation: `w-[10px]` and `w-[20px]` both borrow the order of
+   * the first `w-*` class, which says nothing about their real positions.
+   */
+  hasExactOrder(className: string): boolean {
+    const key = this.stripProjectPrefix(className)
+    if (this.orderMap.get(key) != null) return true
+    const { bare, position } = splitImportant(key)
+    return position !== null && this.orderMap.get(bare) != null
+  }
+
   getClassOrder(classes: string[]): [string, bigint | null][] {
     return classes.map((cls) => [cls, this.getOrder(cls)])
   }
@@ -419,6 +435,53 @@ export class DesignSystemCache {
     const decoded = this.decodeDecls?.(packed) ?? EMPTY_DECLARATIONS
     this.declMemo.set(key, decoded)
     return decoded
+  }
+
+  /**
+   * Adds declarations resolved at lint time (for classes the precompute never
+   * saw — arbitrary values, slash modifiers, off-scale numbers) and memoizes
+   * them like any other class.
+   *
+   * Values are interned against the SAME table the precompute filled, which is
+   * the point: `p-4`'s value id has to be comparable with `p-[1rem]`'s, or the
+   * two could never be told apart from a genuine conflict.
+   */
+  internDeclarations(
+    className: string,
+    raws: readonly (readonly [string, string, string])[],
+    valueFacts: Record<string, { p: string[]; f: string[]; u: boolean }>,
+  ): readonly CssDeclaration[] {
+    const index = this.declIndex
+    if (!index) return EMPTY_DECLARATIONS
+    if (!this.valueIdByText) {
+      this.valueIdByText = new Map(index.values.map((value, id) => [value, id]))
+    }
+    const decls: CssDeclaration[] = []
+    for (const [scopeToken, prop, value] of raws) {
+      let valueId = this.valueIdByText.get(value)
+      if (valueId === undefined) {
+        valueId = index.values.length
+        index.values.push(value)
+        this.valueIdByText.set(value, valueId)
+      }
+      const facts = valueFacts[value]
+      const { scope, pseudo, conditional } = parseScopeToken(scopeToken)
+      decls.push({
+        prop,
+        value,
+        valueId,
+        scope,
+        pseudo,
+        conditional,
+        readsVars: facts?.p ?? [],
+        readsFallbackVars: facts?.f ?? [],
+        pureVarRead: facts?.u ?? false,
+      })
+    }
+    const key = this.stripProjectPrefix(className)
+    this.declMemo.set(key, decls)
+    this.propsMemo.delete(key)
+    return decls
   }
 
   /**

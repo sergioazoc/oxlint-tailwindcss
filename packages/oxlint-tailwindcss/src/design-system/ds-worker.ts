@@ -52,8 +52,9 @@ const MAX_WORKERS = 8
  * the request loop. `handlerExpr` is a function expression `(ds, request) =>
  * result` — the only part that differs between services.
  */
-export function makeWorkerScript(handlerExpr: string): string {
+export function makeWorkerScript(handlerExpr: string, preamble = ''): string {
   return `
+${preamble}
 const { workerData } = require('worker_threads');
 async function main() {
   const { sharedBuffer, cssPath } = workerData;
@@ -135,8 +136,8 @@ interface ReadyState {
 export interface DesignSystemWorkerOptions {
   /** JS source passed to `new Worker(..., { eval: true })`. */
   workerScript: string
-  /** Human-readable name shown in error messages — `'sort'` or `'canonicalize'`. */
-  serviceName: 'sort' | 'canonicalize'
+  /** Human-readable name shown in error messages. */
+  serviceName: 'sort' | 'canonicalize' | 'declarations'
 }
 
 export class DesignSystemWorker<Req, Res> {
