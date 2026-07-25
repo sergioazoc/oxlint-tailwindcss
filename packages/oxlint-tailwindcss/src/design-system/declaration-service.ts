@@ -15,6 +15,7 @@
  * the host never has to reimplement it.
  */
 
+import { type DesignSystemCache } from './cache'
 import { DesignSystemWorker, makeWorkerScript } from './ds-worker'
 import { DECL_EXTRACTOR_SOURCE } from './sync-loader'
 import { SortServiceError } from '../utils/fatal'
@@ -44,12 +45,22 @@ export interface DeclarationResponse {
 const DECLARATION_HANDLER = `(ds, request) => {
   const decls = {};
   const values = {};
-  const css = ds.candidatesToCss(request.classes);
+  // A prefixed design system only resolves the PREFIXED form (\`tw:p-[5px]\`), and
+  // the host asks with prefix-free names — \`extractUtility\` strips the project
+  // prefix along with the variants. Same invariant the precompute follows: apply
+  // the prefix only when talking to the design system, key everything returned
+  // prefix-free. Without this the service resolved NOTHING in a prefixed project,
+  // so every user-written value went silently uncompared.
+  const prefix = (ds.theme && ds.theme.prefix) || '';
+  const pfx = (c) => (prefix && !c.startsWith(prefix + ':')) ? prefix + ':' + c : c;
+  const css = ds.candidatesToCss(request.classes.map(pfx));
   for (let i = 0; i < request.classes.length; i++) {
     if (!css[i]) continue;
     const cls = request.classes[i];
     const list = [];
-    walkDeclarations(css[i], cls, (scope, prop, value) => {
+    // The selector carries the prefix, so the scope classifier needs the
+    // prefixed name even though the result is keyed by the bare one.
+    walkDeclarations(css[i], pfx(cls), (scope, prop, value) => {
       list.push([scope, prop, value]);
       if (!(value in values)) {
         const reads = scanVarReads(value);
@@ -69,17 +80,23 @@ const declWorker = new DesignSystemWorker<DeclarationRequest, DeclarationRespons
 })
 
 /**
- * Classes already asked about, per entry point. A miss is cached as an empty
- * result: a class the design system produces no CSS for must not be re-queried
- * on every AST node it appears in.
+ * Classes already asked about, per design-system CACHE — not per entry point. A
+ * miss is remembered too: a class the design system produces no CSS for must not
+ * be re-queried on every AST node it appears in.
+ *
+ * The lifetime has to match the cache's, because that is where the answers are
+ * interned. Keyed by path, a rebuilt cache (an mtime bump in a long-lived editor
+ * process, or `resetDesignSystem()`) inherited a fully-populated set and could
+ * never re-learn: the rule went permanently blind to user-written values with no
+ * diagnostic. A WeakMap also means there is nothing to reset.
  */
-const queried = new Map<string, Set<string>>()
+const queried = new WeakMap<DesignSystemCache, Set<string>>()
 
-function queriedFor(cssPath: string): Set<string> {
-  let set = queried.get(cssPath)
+function queriedFor(cache: DesignSystemCache): Set<string> {
+  let set = queried.get(cache)
   if (!set) {
     set = new Set()
-    queried.set(cssPath, set)
+    queried.set(cache, set)
   }
   return set
 }
@@ -94,9 +111,10 @@ function queriedFor(cssPath: string): Set<string> {
  */
 export function resolveDeclarationsSync(
   cssPath: string,
+  cache: DesignSystemCache,
   classes: string[],
 ): DeclarationResponse | null {
-  const seen = queriedFor(cssPath)
+  const seen = queriedFor(cache)
   const pending = classes.filter((cls) => !seen.has(cls))
   if (pending.length === 0) return null
   for (const cls of pending) seen.add(cls)
@@ -109,8 +127,7 @@ export function resolveDeclarationsSync(
   }
 }
 
-/** Test hook: drops the per-entry-point query memo and the warm workers. */
+/** Test hook: drops the warm workers. The query memo dies with its cache. */
 export function resetDeclarationService(): void {
-  queried.clear()
   declWorker.reset()
 }

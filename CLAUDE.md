@@ -99,19 +99,20 @@ Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is 
    address-space duplication — so it is immune. The disk cache is the worker→main payload channel
    (the 4 MB SharedArrayBuffer in `ds-worker.ts` is too small for the multi-MB precompute JSON),
    written atomically (tmp + `renameSync`).
-2. **Worker services** (`sort-service.ts`, `canonicalize-service.ts`): both wrap the shared
-   `DesignSystemWorker<Req, Res>` class in `design-system/ds-worker.ts`. The class owns the
-   SharedArrayBuffer layout, the Atomics protocol, worker lifecycle (`worker.unref()`, error
-   handler), and the sticky `lastError`. The worker script itself is built by the shared
-   `makeWorkerScript(handlerExpr)` factory (also in `ds-worker.ts`) — each service passes only its
-   handler expression (`ds.getClassOrder` vs `ds.canonicalizeCandidates`); the factory owns the
-   buffer offsets, DS load (with error-cause propagation), ready signal, and request loop, so the
-   two services no longer duplicate the protocol. Both load the DS once and accept sync requests
-   with fixed 60 s init / 30 s per-request timeouts (NOT governed by `settings.tailwindcss.timeout`,
-   which only affects the precompute loader). Failures throw `SortServiceError`; the rule layer
-   catches via `safeGetDS` and reports `designSystemUnavailable`. `canonicalize-service` adds a
-   process-wide per-class cache keyed by `${cssPath}\0${rem}\0${class}`, rounding rem/em/px floats
-   (`roundRemValue`) before storing so the worker path matches the precomputed map.
+2. **Worker services** (`sort-service.ts`, `canonicalize-service.ts`, `declaration-service.ts`): all
+   three wrap the shared `DesignSystemWorker<Req, Res>` class in `design-system/ds-worker.ts`. The
+   class owns the SharedArrayBuffer layout, the Atomics protocol, worker lifecycle
+   (`worker.unref()`, error handler), and the sticky `lastError`. The worker script itself is built
+   by the shared `makeWorkerScript(handlerExpr)` factory (also in `ds-worker.ts`) — each service
+   passes only its handler expression (`ds.getClassOrder` vs `ds.canonicalizeCandidates`); the
+   factory owns the buffer offsets, DS load (with error-cause propagation), ready signal, and
+   request loop, so the two services no longer duplicate the protocol. Both load the DS once and
+   accept sync requests with fixed 60 s init / 30 s per-request timeouts (NOT governed by
+   `settings.tailwindcss.timeout`, which only affects the precompute loader). Failures throw
+   `SortServiceError`; the rule layer catches via `safeGetDS` and reports `designSystemUnavailable`.
+   `canonicalize-service` adds a process-wide per-class cache keyed by
+   `${cssPath}\0${rem}\0${class}`, rounding rem/em/px floats (`roundRemValue`) before storing so the
+   worker path matches the precomputed map.
 3. **`@tailwindcss/node` path/version** lives in `design-system/tailwind-node.ts` as
    `TAILWIND_NODE_PATH` and `TAILWIND_NODE_VERSION`, resolved once at module load. `sync-loader`,
    `sort-service`, and `canonicalize-service` all consume those constants — no per-call
@@ -119,10 +120,12 @@ Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is 
 
 DS-dependent rules: `no-unknown-classes`, `no-conflicting-classes`, `enforce-canonical`,
 `enforce-sort-order`, `no-unnecessary-arbitrary-value`, `prefer-theme-tokens`.
-`consistent-variant-order` is the sole DS-optional rule — its static-order fallback is itself
-deterministic, so a missing entryPoint is tolerated silently there. `no-deprecated-classes` is
-DS-independent outright (guard removed in #69): it consults only the hardcoded `DEPRECATED_MAP`, so
-it never loads the design system and never emits `designSystemUnavailable`.
+`consistent-variant-order` and `no-contradicting-variants` are the DS-optional rules: their static
+fallbacks (variant order, and the pseudo-element/barrier name lists) are themselves deterministic,
+so a missing entryPoint is tolerated silently in both — neither may ever emit
+`designSystemUnavailable`. `no-deprecated-classes` is DS-independent outright (guard removed in
+#69): it consults only the hardcoded `DEPRECATED_MAP`, so it never loads the design system and never
+emits `designSystemUnavailable`.
 
 ## Extraction System
 

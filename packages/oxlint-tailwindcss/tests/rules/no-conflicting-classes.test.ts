@@ -697,3 +697,81 @@ describe('allow option', () => {
     },
   )
 })
+
+// --- Guards for defects found reviewing this change ---
+
+describe('regressions found in review', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(ENTRY_POINT)
+  })
+
+  runWithFixture(
+    new RuleTester(),
+    'no-conflicting-classes (review)',
+    noConflictingClasses,
+    ENTRY_POINT,
+    {
+      valid: [
+        // `space-x-4` writes the reverse flag as its registered default and
+        // `space-x-reverse` flips it: this is the documented way to space a
+        // reversed flex row, not a clobber.
+        {
+          code: '<div className="flex-row-reverse space-x-4 space-x-reverse" />',
+          filename: 'test.tsx',
+        },
+        { code: '<div className="divide-y-4 divide-y-reverse" />', filename: 'test.tsx' },
+        // `prose` sets typographic defaults the plugin means you to override.
+        { code: '<div className="prose text-red-500" />', filename: 'test.tsx' },
+        { code: '<div className="prose leading-8" />', filename: 'test.tsx' },
+        // The other side of the reset rule — a class that clears variables AND
+        // declares substance of its own, so losing the reset is free — is
+        // `animate-in`, covered in the tailwindcss-animate block below.
+      ],
+      invalid: [
+        // A `*-none` reset IS the utility: everything else it declares is a pure
+        // var() conduit, so losing the reset loses the only thing asked for.
+        // This reported before the rewrite and must keep reporting.
+        {
+          code: '<div className="blur-lg blur-none" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'conflict' }],
+        },
+        {
+          code: '<div className="drop-shadow-xl drop-shadow-none" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'conflict' }],
+        },
+      ],
+    },
+  )
+})
+
+describe('declarations under an unmodelled selector condition', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(TW_ANIMATE_CSS_ENTRY)
+  })
+
+  runWithFixture(
+    new RuleTester(),
+    'no-conflicting-classes (ambiguous keys)',
+    noConflictingClasses,
+    TW_ANIMATE_CSS_ENTRY,
+    {
+      valid: [
+        // `slide-in-from-start` emits `&:dir(ltr)` and `&:dir(rtl)` blocks that
+        // both classify as the element's own box, so the model cannot say which
+        // value applies. Staying quiet is the honest answer; keeping only the
+        // last declaration would have told the user to remove the class and
+        // silently reversed the LTR animation.
+        {
+          code: '<div className="slide-in-from-start slide-in-from-right" />',
+          filename: 'test.tsx',
+        },
+        { code: '<div className="slide-in-from-end slide-in-from-left" />', filename: 'test.tsx' },
+      ],
+      invalid: [],
+    },
+  )
+})

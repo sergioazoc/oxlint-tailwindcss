@@ -62,6 +62,12 @@ export interface ClassFacts {
   important: boolean
   /** True when the class emits CSS we deliberately did not model in full. */
   partial: boolean
+  /**
+   * Keys the class declares more than once with different values, i.e. under a
+   * selector condition this model does not capture. They are excluded from
+   * comparison rather than guessed at.
+   */
+  ambiguousKeys: Set<DeclKey>
 }
 
 export interface GroupFacts {
@@ -211,6 +217,29 @@ export function resolveWinner(
     : { winner: b, loser: a, orderKnown: true }
 }
 
+/** A custom property cleared to a value that says nothing. */
+function isReset(decl: CssDeclaration): boolean {
+  return decl.prop.startsWith('--') && NO_INFO_VALUES.has(decl.value.trim())
+}
+
+/**
+ * Is clearing variables the whole point of this class?
+ *
+ * `blur-none` writes `--tw-blur: ` and then only forwards the filter chain;
+ * `animate-in` clears `--tw-enter-*` but also declares real values of its own.
+ * The first cannot afford to lose its reset, the second can.
+ */
+function resetIsAllTheClassDoes(cls: ClassFacts): boolean {
+  let sawSubstance = false
+  for (const decl of cls.decls.values()) {
+    if (isReset(decl)) continue
+    if (decl.pureVarRead) continue
+    sawSubstance = true
+    break
+  }
+  return !sawSubstance
+}
+
 /** Does the surviving declaration reproduce what the other one contributed? */
 function composes(
   winnerDecl: CssDeclaration,
@@ -234,16 +263,29 @@ export function decidePair(a: ClassFacts, b: ClassFacts, group: GroupFacts): Pai
     const winnerDecl = winner.decls.get(key)
     if (!winnerDecl) continue
 
+    // A class that declares the same (box, property) twice with DIFFERENT values
+    // is doing so under a selector condition we do not model — tw-animate-css's
+    // `slide-in-from-start` emits `&:dir(ltr)` and `&:dir(rtl)` blocks, both
+    // classified as the element's own box. Keeping only the last would have us
+    // compare half the class and, worse, call the other class redundant.
+    if (loser.ambiguousKeys.has(key) || winner.ambiguousKeys.has(key)) continue
+
     // Same declaration on both sides: whoever wins, the result is the same.
     if (loserDecl.valueId === winnerDecl.valueId) {
       duplicates.push(key)
       continue
     }
 
-    // A custom property reset to `initial`/`unset`/empty carries no information,
-    // so losing it is free. Restricted to custom properties on purpose: on a
-    // real property `initial` IS a value (`animation-play-state: initial`).
-    if (loserDecl.prop.startsWith('--') && NO_INFO_VALUES.has(loserDecl.value.trim())) {
+    // A custom property reset to `initial`/`unset`/empty is free to lose ONLY
+    // when the class resets to make room for a modifier: `animate-in` declares
+    // `animation-name: enter` and clears five `--tw-enter-*` vars precisely so
+    // `fade-in-0` can set one. For `blur-none`, `via-none` or `drop-shadow-none`
+    // the reset IS the utility — everything else they declare is a pure `var()`
+    // conduit — so dropping it drops the only thing the user asked for, and
+    // `blur-lg blur-none` would go silent (it reported before this rewrite).
+    // Restricted to custom properties on purpose: on a real property `initial`
+    // IS a value (`animation-play-state: initial`).
+    if (isReset(loserDecl) && !resetIsAllTheClassDoes(loser)) {
       continue
     }
 

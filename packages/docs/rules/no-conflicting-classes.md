@@ -43,11 +43,11 @@ rule emits a single fatal `designSystemUnavailable` diagnostic per file instead 
 
 ## Options
 
-| Option            | Type                             | Default | Description                                                                                                                                         |
-| ----------------- | -------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `reportRedundant` | `boolean`                        | `true`  | Report two classes that declare the same property with the same value as `redundant`.                                                               |
-| `allow`           | `(string \| [string, string])[]` | `[]`    | Patterns to silence. A bare pattern silences any pair involving a matching class; a two-element pattern silences that combination, in either order. |
-| `entryPoint`      | `string`                         | —       | Per-rule override of `settings.tailwindcss.entryPoint`.                                                                                             |
+| Option            | Type                             | Default | Description                                                                                                                                                                                                                     |
+| ----------------- | -------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reportRedundant` | `boolean`                        | `true`  | Report two classes that declare the same property with the same value as `redundant`.                                                                                                                                           |
+| `allow`           | `(string \| [string, string])[]` | `[]`    | Patterns to silence, matched against the class **as written** (variant prefix and `!` included). A bare pattern silences any pair involving a matching class; a two-element pattern silences that combination, in either order. |
+| `entryPoint`      | `string`                         | —       | Per-rule override of `settings.tailwindcss.entryPoint`.                                                                                                                                                                         |
 
 ```jsonc
 {
@@ -99,17 +99,15 @@ rule emits a single fatal `designSystemUnavailable` diagnostic per file instead 
 // `shadow-*` + `ring-*` compose via disjoint --tw-* custom properties
 <div className="shadow-lg ring-1 ring-offset-2" />
 
-// Narrowing: `size-4` then `h-6` refines one axis
-<div className="size-4 h-6" />
 ```
 
 ## Interactions with other rules
 
 - **`no-duplicate-classes`**: complementary. Duplicates are the exact same class repeated; conflicts
   are different classes that hit the same property. Keep both rules on.
-- **`enforce-sort-order`**: ordering changes which class wins, but it doesn't make conflicts
-  disappear. Run this rule first so the diagnostic points at the real overlap rather than chasing
-  whichever class happens to be last.
+- **`enforce-sort-order`**: cosmetic here. Which class wins is decided by the generated stylesheet,
+  not by the order of the attribute, so sorting cannot create or resolve a conflict — it only makes
+  the pair easier to read.
 - **`no-deprecated-classes`**: a deprecated alias and its modern equivalent (`flex-grow` + `grow`)
   will trip this rule on the property level. Fixing the deprecation usually resolves the conflict.
 - **`enforce-canonical`**: rewriting to canonical forms collapses trivially-aliased pairs before
@@ -120,7 +118,7 @@ rule emits a single fatal `designSystemUnavailable` diagnostic per file instead 
 - **Generated class lists** where the order is meaningful and you rely on "last wins" semantics
   intentionally (e.g. a base + override pattern in a design system primitive). Prefer extracting the
   override into a `cn()`/`twMerge()` call so the conflict becomes explicit.
-- **Codebases where many false positives stem from missing entries in `COMPLEMENTARY_GROUPS` /
-  `COMPOSITION_PAIRS`**: open an issue rather than disabling — the tables are the supported
-  extension point.
+- **Codebases whose own plugins compose in a way the emitted CSS cannot show**: use the `allow`
+  option rather than disabling the rule. Patterns are matched against the class as written, so
+  include the variant prefix if you need to silence `hover:` forms too.
 - **Tests / fixtures** that intentionally build conflicting class strings to exercise other tooling.

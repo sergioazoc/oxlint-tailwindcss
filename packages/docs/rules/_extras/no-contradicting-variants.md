@@ -23,7 +23,13 @@ values), as is `flex hover:items-center` (different utilities).
 
 ## Options
 
-(no options)
+| Option       | Type     | Default | Description                                             |
+| ------------ | -------- | ------- | ------------------------------------------------------- |
+| `entryPoint` | `string` | —       | Per-rule override of `settings.tailwindcss.entryPoint`. |
+
+The entry point is optional: with one configured the rule classifies variants from the selectors the
+design system generates, and without one it falls back to the built-in list. It never reports a
+missing design system.
 
 ## Examples
 

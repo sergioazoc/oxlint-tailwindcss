@@ -393,7 +393,7 @@ out.
 // "text-red-500" overrides "text-blue-500" on "color".
 
 <div className="mt-2 mt-4" />
-// "mt-2" and "mt-4" affect "margin-top".
+// "mt-4" overrides "mt-2" on "margin-top".
 ```
 
 > **Note:** Shorthand vs longhand conflicts (e.g., `p-4` vs `px-2`) are not currently detected. See

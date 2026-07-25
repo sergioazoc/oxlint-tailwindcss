@@ -24,7 +24,13 @@ El match es por identidad exacta de la utility, así que `bg-white hover:bg-blue
 
 ## Opciones
 
-(sin opciones)
+| Opción       | Tipo     | Por defecto | Descripción                                              |
+| ------------ | -------- | ----------- | -------------------------------------------------------- |
+| `entryPoint` | `string` | —           | Override por regla de `settings.tailwindcss.entryPoint`. |
+
+El entry point es opcional: con uno configurado la regla clasifica las variantes según los
+selectores que genera el design system, y sin él usa la lista interna. Nunca reporta que falte el
+design system.
 
 ## Ejemplos
 

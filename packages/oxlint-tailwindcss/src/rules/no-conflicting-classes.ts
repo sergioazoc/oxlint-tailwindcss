@@ -242,7 +242,7 @@ export const noConflictingClasses = defineRule({
             .map((cls) => splitImportant(extractUtility(cls)).bare)
             .filter((bare) => cache.getCssDeclarations(bare).length === 0 && isUserValued(bare))
           if (unknown.length > 0) {
-            const resolved = resolveDeclarationsSync(ds.entryPoint, unknown)
+            const resolved = resolveDeclarationsSync(ds.entryPoint, cache, unknown)
             if (resolved) {
               for (const [cls, raws] of Object.entries(resolved.decls)) {
                 cache.internDeclarations(cls, raws, resolved.values)
@@ -256,12 +256,19 @@ export const noConflictingClasses = defineRule({
             const declarations = cache.getCssDeclarations(bare)
             const decls = new Map<DeclKey, CssDeclaration>()
             const writes = new Map<string, number>()
+            const ambiguousKeys = new Set<DeclKey>()
             for (const decl of declarations) {
               // Conditional declarations (`@media`, `@supports`) are not
               // comparable: they apply under conditions we don't model.
               if (decl.conditional) continue
+              const key = declKey(decl)
+              const previous = decls.get(key)
+              // Same key twice with a different value means the two live under
+              // selector conditions we don't model (`&:dir(ltr)` / `&:dir(rtl)`).
+              // Flag it instead of letting the last one stand for the class.
+              if (previous && previous.valueId !== decl.valueId) ambiguousKeys.add(key)
               // Last one wins, which is CSS semantics inside a rule.
-              decls.set(declKey(decl), decl)
+              decls.set(key, decl)
               if (decl.prop.startsWith('--')) writes.set(decl.prop, decl.valueId)
             }
             return {
@@ -273,6 +280,7 @@ export const noConflictingClasses = defineRule({
               order: cache.hasExactOrder(utility) ? cache.getOrder(cls) : null,
               important: isImportant(utility),
               partial: cache.isPartial(bare),
+              ambiguousKeys,
             }
           })
 

@@ -401,7 +401,7 @@ async function main() {
 
   // Validity: which classes produce CSS. Validate the prefixed form, but keep
   // cssResults aligned positionally to the unprefixed classNames so the later
-  // cssProps / arbitraryEquivalents phases keep indexing by position.
+  // declarations / arbitraryEquivalents phases keep indexing by position.
   const cssResults = ds.candidatesToCss(classNames.map(pfx));
   const validClasses = classNames.filter((_, i) => cssResults[i] != null);
 
@@ -433,7 +433,7 @@ async function main() {
   //     utilities; their functional bases enumerate values but omit \`none\`.
   //   - \`max-w-screen\` (\`max-width: 100vw\`).
   // Validated via candidatesToCss (self-prunes on any Tailwind version that doesn't
-  // emit them) and their CSS is captured so the cssProps phase below treats them
+  // emit them) and their CSS is captured so the declarations phase below treats them
   // exactly like their getClassList siblings — otherwise no-conflicting-classes
   // would flag \`@container @container-normal\` but silently accept
   // \`@container @container-size\`. Named forms (\`@container-size/main\`) are covered

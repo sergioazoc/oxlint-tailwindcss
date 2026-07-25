@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
 
 ### Breaking-ish
 
@@ -91,12 +91,17 @@
   the stylesheet for real and compares byte offsets for the pairs the messages depend on — including
   the counter-intuitive ones (`shadow-sm` beats `shadow-lg`, `text-red-500` beats `text-blue-500`,
   `flex-row` beats `flex-col`).
+- A syntax error in the precompute script used to be unreportable: its own error channel lives
+  inside the script, and the worker's `error` event cannot be read while the main thread parks in
+  `Atomics.wait`. The failure surfaced as a timeout telling the user to raise
+  `settings.tailwindcss.timeout`. The script is now parsed before being handed to a worker, so the
+  real `SyntaxError` is reported instead.
 - `pnpm bench` had been reporting "No test files found" instead of measuring anything: a CLI path
   filter does not override vitest's `exclude`, and `--exclude` appends to it. Benchmarks now have
   their own config. That is also how the benchmark's hand-copied duplicate of the declaration
   extractor drifted unnoticed; it now interpolates the same source the worker uses.
 
-### Bug fixes
+### Bug fixes (previously unreleased)
 
 - **`enforce-canonical`**: no longer rewrites a literal arbitrary value to a variable-backed named
   token, which silently corrupted the design on projects that override a theme variable in `:root`

@@ -478,6 +478,9 @@ export class DesignSystemCache {
       this.valueIdByText = new Map(index.values.map((value, id) => [value, id]))
     }
     const decls: CssDeclaration[] = []
+    let hasElement = false
+    let hasDescendant = false
+    let hasConditional = false
     for (const [scopeToken, prop, value] of raws) {
       let valueId = this.valueIdByText.get(value)
       if (valueId === undefined) {
@@ -487,6 +490,9 @@ export class DesignSystemCache {
       }
       const facts = valueFacts[value]
       const { scope, pseudo, conditional } = parseScopeToken(scopeToken)
+      if (conditional) hasConditional = true
+      else if (scope === 'element') hasElement = true
+      else if (scope === 'descendant') hasDescendant = true
       decls.push({
         prop,
         value,
@@ -500,6 +506,9 @@ export class DesignSystemCache {
       })
     }
     const key = this.stripProjectPrefix(className)
+    // Same decision the precompute makes for the classes it knows: CSS we did
+    // not model in full must never be reported as redundant.
+    if (hasConditional || (hasElement && hasDescendant)) this.partialSet.add(key)
     this.declMemo.set(key, decls)
     this.propsMemo.delete(key)
     return decls

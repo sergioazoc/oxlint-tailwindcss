@@ -13,10 +13,14 @@ reached past the `--color-` prefix) becomes `bg-red-500`. Both the paren shortha
 modifiers (`/80`), variants, and `!` (important) are all preserved.
 
 The candidate `${prefix}-${varName}` has to be a real utility in your DS — the rule consults
-`cache.isValid(candidate)`. Then it explicitly skips any candidate that `cache.getNamedEquivalent`
-would also resolve, because that case is owned by `no-unnecessary-arbitrary-value` (same CSS, no
-double-fire). What's left is exactly the heuristic-only space: the named utility exists in your
-theme but does not share a bracket-equivalent shape with the original.
+`cache.isValid(candidate)`. Existing by name is not enough, though: the named token has to MEAN the
+same thing. `@theme inline { --color-primary: var(--primary) }` makes `bg-primary` and
+`bg-(--primary)` the same declaration, while a literal `--color-primary` alongside an unrelated
+`--primary` makes them different colours — and this rule autofixes. So the rewrite is only proposed
+when the token's declaration resolves back to the variable you wrote, or when that variable is
+defined nowhere (in which case the current declaration is dead CSS and the token can only be an
+improvement). Then it skips any candidate that `cache.getNamedEquivalent` would also resolve,
+because that case is owned by `no-unnecessary-arbitrary-value` (same CSS, no double-fire).
 
 DS-dependent — requires `settings.tailwindcss.entryPoint`. If the design system can't load, the rule
 emits a single fatal `designSystemUnavailable` diagnostic per file instead of silently passing.

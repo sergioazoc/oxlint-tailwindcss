@@ -27,7 +27,7 @@ export interface ComplementaryGroup {
    * regex composes" (e.g. `prose prose-sm`).
    */
   pattern: RegExp
-  /** Human-readable explanation rendered by the docs site. */
+  /** Human-readable explanation of why this pair cannot be derived. */
   reason: string
 }
 
@@ -36,7 +36,7 @@ export interface CompositionPair {
   a: RegExp
   /** Regex for the other side; orientation doesn't matter when matching. */
   b: RegExp
-  /** Human-readable explanation rendered by the docs site. */
+  /** Human-readable explanation of why this pair cannot be derived. */
   reason: string
 }
 
@@ -61,11 +61,25 @@ export const COMPOSITION_PAIRS: readonly CompositionPair[] = [
     reason: '`prose` sets a default max-width; `max-w-*` overrides it.',
   },
   {
-    // NOT DERIVABLE (candidate entry under evaluation).
+    // NOT DERIVABLE for the same reason as `max-w-*`: `prose` sets typographic
+    // defaults (`color`, `font-size`, `line-height`) on the element and the
+    // plugin intends them to be overridden. The emitted CSS is indistinguishable
+    // from an accidental clobber.
     a: /^prose(?:-|$)/,
-    b: /^(?:text-|leading-)/,
+    b: /^(?:text-|leading-|tracking-)/,
     reason:
-      '`prose` sets default typographic values on the element; `text-*`/`leading-*` override them.',
+      '`prose` sets default typographic values on the element; `text-*`/`leading-*`/`tracking-*` override them.',
+  },
+  {
+    // NOT DERIVABLE: `space-x-4` writes `--tw-space-x-reverse: 0` and
+    // `space-x-reverse` writes `1`. The reverse utility winning the cascade IS
+    // the composition Tailwind documents (`flex-row-reverse space-x-4
+    // space-x-reverse`), but nothing in the CSS says `0` was only the variable's
+    // registered `@property` default: it looks exactly like a clobber.
+    a: /^-?(?:space|divide)-[xy](?:-|$)/,
+    b: /^(?:space|divide)-[xy]-reverse$/,
+    reason:
+      '`space-*`/`divide-*` write the reverse flag as its default; `*-reverse` flips it — the documented way to space a reversed flex row.',
   },
   {
     // NOT DERIVABLE: every mask-gradient utility emits a literal

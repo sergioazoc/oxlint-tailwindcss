@@ -45,11 +45,11 @@ pasar en silencio.
 
 ## Opciones
 
-| Opción            | Tipo                             | Por defecto | Descripción                                                                                                                                                        |
-| ----------------- | -------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `reportRedundant` | `boolean`                        | `true`      | Reporta como `redundant` dos clases que declaran la misma propiedad con el mismo valor.                                                                            |
-| `allow`           | `(string \| [string, string])[]` | `[]`        | Patrones a silenciar. Uno simple silencia cualquier par que involucre una clase que haga match; uno de dos elementos silencia esa combinación, en cualquier orden. |
-| `entryPoint`      | `string`                         | —           | Override por regla de `settings.tailwindcss.entryPoint`.                                                                                                           |
+| Opción            | Tipo                             | Por defecto | Descripción                                                                                                                                                                                                                                                 |
+| ----------------- | -------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reportRedundant` | `boolean`                        | `true`      | Reporta como `redundant` dos clases que declaran la misma propiedad con el mismo valor.                                                                                                                                                                     |
+| `allow`           | `(string \| [string, string])[]` | `[]`        | Patrones a silenciar, comparados con la clase **tal como está escrita** (prefijo de variante y `!` incluidos). Uno simple silencia cualquier par que involucre una clase que haga match; uno de dos elementos silencia esa combinación, en cualquier orden. |
+| `entryPoint`      | `string`                         | —           | Override por regla de `settings.tailwindcss.entryPoint`.                                                                                                                                                                                                    |
 
 ```jsonc
 {
@@ -101,17 +101,16 @@ pasar en silencio.
 // `shadow-*` + `ring-*` componen vía custom properties --tw-* disjuntas
 <div className="shadow-lg ring-1 ring-offset-2" />
 
-// Narrowing: `size-4` y después `h-6` refina un eje
-<div className="size-4 h-6" />
 ```
 
 ## Interacciones con otras reglas
 
 - **`no-duplicate-classes`**: complementaria. Los duplicados son la misma clase repetida; los
   conflictos son clases distintas que pegan en la misma propiedad. Mantén ambas activas.
-- **`enforce-sort-order`**: el orden define quién gana, pero no hace desaparecer los conflictos.
-  Ejecuta esta regla primero así el diagnóstico apunta al solapamiento real y no a la que quedó
-  última.
+- **`enforce-sort-order`**: aquí es cosmética. Quién gana lo decide el stylesheet generado, no el
+  orden del atributo, así que ordenar no crea ni resuelve un conflicto — solo hace el par más fácil
+  de leer.
+
 - **`no-deprecated-classes`**: un alias deprecado y su equivalente moderno (`flex-grow` + `grow`)
   van a chocar a nivel de propiedad. Arreglar la deprecación suele resolver el conflicto.
 - **`enforce-canonical`**: reescribir a la forma canónica colapsa pares trivialmente aliasados antes
@@ -122,8 +121,8 @@ pasar en silencio.
 - **Listas de clases generadas** donde el orden importa a propósito y dependes de la semántica de
   "gana la última" (e.g. patrón base + override en un primitive del design system). Prefiere extraer
   el override a un `cn()`/`twMerge()` para que el conflicto sea explícito.
-- **Codebases donde la mayoría de los falsos positivos vienen de entradas faltantes en
-  `COMPLEMENTARY_GROUPS` / `COMPOSITION_PAIRS`**: abre un issue antes que desactivar — esas tablas
-  son el punto de extensión soportado.
+- **Codebases cuyos propios plugins componen de una forma que el CSS emitido no puede mostrar**: usa
+  la opción `allow` antes que desactivar la regla. Los patrones se comparan contra la clase tal como
+  está escrita, así que incluye el prefijo de variante si también quieres silenciar formas `hover:`.
 - **Tests / fixtures** que arman strings de clases en conflicto a propósito para ejercitar otro
   tooling.
