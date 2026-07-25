@@ -487,3 +487,92 @@ describe('custom variants', () => {
     ],
   })
 })
+
+/**
+ * Class strings copied from real shadcn/ui components.
+ *
+ * The validation this rule does is now exact rather than tolerant, and the way
+ * that goes wrong is by reporting something real. These are the shapes a modern
+ * Tailwind codebase actually writes — compound data variants, `has-[…]`,
+ * arbitrary selectors, `in-*`, `supports-[…]`, child selectors, colour modifiers —
+ * each against the fixture that defines what it needs.
+ */
+describe('real-world variant chains', () => {
+  runWithFixture(
+    new RuleTester(),
+    'shadcn tokens',
+    noUnknownClasses,
+    resolve(__dirname, '../fixtures/shadcn.css'),
+    {
+      valid: [
+        { code: '<div className="peer-data-[variant=inset]:bg-sidebar" />', filename: 'test.tsx' },
+        {
+          code: '<div className="focus-visible:ring-[3px] aria-invalid:ring-destructive/20" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="dark:aria-invalid:ring-destructive/40 md:max-w-[420px]" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="group-data-[collapsible=icon]:opacity-0" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="has-[>svg]:px-3 [&_svg:not([class*=size-])]:size-4" />',
+          filename: 'test.tsx',
+        },
+        { code: '<div className="in-data-[side=left]:cursor-w-resize" />', filename: 'test.tsx' },
+        {
+          code: '<div className="supports-[backdrop-filter]:bg-white/60" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="[&>[data-slot=x]]:h-4 *:data-[slot=y]:mt-2" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="motion-reduce:transition-none print:hidden" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="[&:has([role=checkbox])]:pr-0 first:*:rounded-l-md" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="bg-primary/90 text-primary-foreground shadow-xs" />',
+          filename: 'test.tsx',
+        },
+      ],
+      invalid: [],
+    },
+  )
+
+  runWithFixture(
+    new RuleTester(),
+    'animation plugin classes under data variants',
+    noUnknownClasses,
+    TW_ANIMATE_CSS_ENTRY_POINT,
+    {
+      valid: [
+        {
+          code: '<div className="data-[state=open]:animate-in data-[state=closed]:animate-out" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="data-[side=bottom]:slide-in-from-top-2" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="data-[state=open]:zoom-in-95 duration-200" />',
+          filename: 'test.tsx',
+        },
+      ],
+      invalid: [],
+    },
+  )
+})
