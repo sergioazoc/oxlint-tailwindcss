@@ -61,6 +61,13 @@ export const COMPOSITION_PAIRS: readonly CompositionPair[] = [
     reason: '`prose` sets a default max-width; `max-w-*` overrides it.',
   },
   {
+    // NOT DERIVABLE (candidate entry under evaluation).
+    a: /^prose(?:-|$)/,
+    b: /^(?:text-|leading-)/,
+    reason:
+      '`prose` sets default typographic values on the element; `text-*`/`leading-*` override them.',
+  },
+  {
     // NOT DERIVABLE: every mask-gradient utility emits a literal
     // `mask-composite: intersect`, and `mask-add` overrides it with `add`. The
     // values differ and neither reads a variable, so nothing in the CSS says
