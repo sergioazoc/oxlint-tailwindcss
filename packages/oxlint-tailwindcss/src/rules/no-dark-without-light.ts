@@ -1,11 +1,20 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
-import { extractVariants, extractUtility, splitImportant } from '../utils/class-parser'
+import {
+  extractVariants,
+  extractUtility,
+  isUserValued,
+  splitImportant,
+} from '../utils/class-parser'
+import { createLazyLoader } from '../design-system/loader'
+import { resolveDeclarationsSync } from '../design-system/declaration-service'
+import { softGetDS } from '../utils/fatal'
 import { createLazyOptions } from '../utils/context'
 
 interface Options {
   variants?: string[]
+  entryPoint?: string
 }
 
 const DEFAULT_VARIANTS = ['dark']
@@ -44,10 +53,16 @@ const KNOWN_PREFIXES = [
   'to',
 ]
 
-// Utilities that set the SAME CSS property under different bare names. The
-// prefix heuristic can't group these (`block` and `hidden` share no prefix), so
-// `block dark:hidden` — the idiomatic "show in light, hide in dark" — would
-// wrongly report a missing base. Map each to a shared property group (R-M5).
+// Utilities that set the SAME CSS property under different bare names, for when
+// no design system is available. The prefix heuristic can't group these (`block`
+// and `hidden` share no prefix), so `block dark:hidden` — the idiomatic "show in
+// light, hide in dark" — would wrongly report a missing base (R-M5).
+//
+// With an entry point configured this is redundant: the properties each class
+// declares are read from the design system, which covers these two groups and
+// every other same-property pair a list like this would have to enumerate
+// (`underline`/`no-underline`, `italic`/`not-italic`, `visible`/`invisible`,
+// `uppercase`/`normal-case`, `truncate`/`text-clip`, `sr-only`/`not-sr-only`…).
 const PROPERTY_GROUP_BY_UTILITY: Record<string, string> = {}
 for (const u of [
   'block',
@@ -110,6 +125,7 @@ export const noDarkWithoutLight = defineRule({
         type: 'object',
         properties: {
           variants: { type: 'array', items: { type: 'string' } },
+          entryPoint: { type: 'string' },
         },
         additionalProperties: false,
       },
@@ -126,40 +142,70 @@ export const noDarkWithoutLight = defineRule({
       (o) => new Set(o?.variants ?? DEFAULT_VARIANTS),
     )
 
+    // DS-OPTIONAL (see `softGetDS`): with an entry point the rule also groups by
+    // the CSS properties each class declares, which is the only way to know that
+    // `underline` and `no-underline` are the same concern. Without one it falls
+    // back to the prefix heuristic alone, exactly as before.
+    const getDS = createLazyLoader(context)
+
     function check(locations: ClassLocation[]) {
       const watchedVariants = getWatchedVariants()
+      const ds = softGetDS(getDS)
+      const cache = ds ? ds.cache : null
+
       for (const loc of locations) {
         const classes = splitClasses(loc.value)
 
-        // Collect utility prefixes that have a base (no watched variant)
+        const bareOf = (cls: string) => splitImportant(extractUtility(cls)).bare
+
+        // Classes whose value the user wrote have no precomputed declarations;
+        // resolving them keeps the property grouping from silently degrading to
+        // prefix-only for `dark:bg-[#111]`.
+        if (cache && ds) {
+          const unresolved = classes
+            .map(bareOf)
+            .filter((bare) => cache.getCssProperties(bare).length === 0 && isUserValued(bare))
+          if (unresolved.length > 0) resolveDeclarationsSync(ds.entryPoint, cache, unresolved)
+        }
+
+        // A base is a class with no watched variant. Two ways to be the base for
+        // a variant class: the same utility prefix (`bg-white` for
+        // `dark:bg-black`), or the same declared CSS property (`underline` for
+        // `dark:no-underline`, which share no prefix at all). The union is what
+        // makes this strictly less trigger-happy than the prefix check alone.
         const basePrefixes = new Set<string>()
-        // Collect classes that have a watched variant
-        const variantClasses: Array<{ cls: string; variant: string; prefix: string }> = []
+        const baseProperties = new Set<string>()
+        const variantClasses: Array<{
+          cls: string
+          variant: string
+          prefix: string
+          properties: readonly string[]
+        }> = []
 
         for (const cls of classes) {
           const variants = extractVariants(cls)
           const utility = extractUtility(cls)
           const prefix = getUtilityPrefix(utility)
+          const properties = cache ? cache.getCssProperties(bareOf(cls)) : []
 
-          const hasWatchedVariant = variants.some((v) => watchedVariants.has(v))
+          const variant = variants.find((v) => watchedVariants.has(v))
 
-          if (hasWatchedVariant) {
-            const variant = variants.find((v) => watchedVariants.has(v))!
-            variantClasses.push({ cls, variant, prefix })
+          if (variant !== undefined) {
+            variantClasses.push({ cls, variant, prefix, properties })
           } else {
             basePrefixes.add(prefix)
+            for (const property of properties) baseProperties.add(property)
           }
         }
 
-        // Report variant classes that don't have a matching base
-        for (const { cls, variant, prefix } of variantClasses) {
-          if (!basePrefixes.has(prefix)) {
-            context.report({
-              node: loc.node,
-              messageId: 'missingBase',
-              data: { className: cls, variant, prefix },
-            })
-          }
+        for (const { cls, variant, prefix, properties } of variantClasses) {
+          if (basePrefixes.has(prefix)) continue
+          if (properties.some((property) => baseProperties.has(property))) continue
+          context.report({
+            node: loc.node,
+            messageId: 'missingBase',
+            data: { className: cls, variant, prefix },
+          })
         }
       }
     }
