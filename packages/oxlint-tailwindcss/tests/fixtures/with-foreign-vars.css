@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+
+/*
+ * The shape issue #93 reports, without taking the dependency.
+ *
+ * `tailwind-scrollbar` gives `.scrollbar-thin` a `scrollbar-color` that only READS
+ * `--scrollbar-thumb`/`--scrollbar-track`, while the colour utilities WRITE one
+ * each. Tailwind core independently ships `scrollbar-thumb-*` writing
+ * `--tw-scrollbar-*`, so the two implementations collide on the property name and
+ * the old name-only comparison called it a conflict.
+ *
+ * What makes it a regression test rather than a plugin test: the variables are
+ * NOT named `--tw-*`. Anything keyed on that convention — as the previous escape
+ * hatch was — fails here, so this locks the fix at the level of the mechanism
+ * instead of the library. Named `gutter-*` on purpose: Tailwind 4.3 ships real
+ * `scrollbar-*` utilities that would collide with these.
+ */
+@utility gutter-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gutter-thumb, initial) var(--gutter-track, initial);
+}
+
+@utility gutter-thumb-* {
+  --gutter-thumb: --value(--color-*);
+  scrollbar-color: var(--gutter-thumb) var(--gutter-track);
+}
+
+@utility gutter-track-* {
+  --gutter-track: --value(--color-*);
+  scrollbar-color: var(--gutter-thumb) var(--gutter-track);
+}
+
+/* A pure writer: no declaration of its own on the shared property. Guards the
+ * "the winner must supply one of the loser's variables" condition — without it,
+ * an unrelated utility that merely outranks a reader/writer pair would silence a
+ * real clobber. */
+@utility gutter-supply-* {
+  --gutter-thumb: --value(--color-*);
+}
+
+/* A concrete declarer of the shared property, supplying none of the reader's
+ * variables. Combined with the pure writer above it builds the case that needs
+ * the "winner must supply one of them" condition: without it, this utility
+ * outranking the reader/writer pair would silence a genuine clobber. */
+@utility gutter-fixed {
+  scrollbar-color: red blue;
+}
