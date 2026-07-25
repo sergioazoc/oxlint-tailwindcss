@@ -13,6 +13,31 @@ custom CSS you wrote inline.
 DS-dependent — requires `settings.tailwindcss.entryPoint`. When the design system can't load, the
 rule emits a single fatal `designSystemUnavailable` diagnostic per file instead of silently passing.
 
+### The variant chain is checked too
+
+A typo in a variant produces no CSS at all, and it used to pass silently: the validity check
+stripped the variants before looking at anything. `hoverr:flex`, `darkk:size-4`, `peer-cheked:flex`
+and `@mdd:flex` are all reported now, with a suggestion that is **confirmed against the design
+system before it is offered** — so `group-hoverr` is corrected to `group-hover` (root kept, tail
+fixed) and a variant your own CSS defines (`@custom-variant thumb (&::-webkit-slider-thumb)`) is
+spell-checked like a built-in one.
+
+This can't be done from a list of variant names: Tailwind's functional variants (`group-*`,
+`data-*`, `@md`, `supports-[…]`, `min-[…]`, `nth-*`, `has-[…]`, `not-*`, `in-[…]`) have an unbounded
+value space, so a name list would report most real-world variants as unknown. Instead the chain
+itself is compiled, once per distinct chain in the project.
+
+### Off-scale values are checked against Tailwind, not guessed
+
+Tailwind accepts numbers outside the theme scale (`w-45`, `gap-13`, `min-h-17.5`), so the rule used
+to accept anything shaped like one — which meant `bg-red-5000`, `bg-red-500/foo` and `w-[]` passed
+for exactly the reason `w-45` legitimately does. Classes the precompute cannot enumerate are now
+resolved through the design system, batched and memoized, so the answer is Tailwind's rather than a
+guess.
+
+`w-[garbage]` stays valid on purpose: Tailwind takes an arbitrary value verbatim and emits
+`width: garbage`. Whether that CSS is meaningful is not this rule's call.
+
 ## Project prefix (`prefix(...)`)
 
 If your entry point declares a Tailwind v4 prefix — `@import "tailwindcss" prefix(tw)` — every
@@ -73,6 +98,13 @@ maintain.
 
 // Variant on a bogus class
 <div className="hover:foo-500" />
+
+// Typo in the VARIANT — the utility is fine, the class emits nothing
+<div className="hoverr:flex peer-cheked:underline" />
+//              ~~~~~~      ~~~~~~~~~~~ → hover: / peer-checked:
+
+// Shaped like an off-scale value, but Tailwind compiles neither
+<div className="bg-red-5000 bg-blue-500/foo" />
 ```
 
 ### ✓ Correct
@@ -87,15 +119,22 @@ maintain.
 // Plugin-registered class
 <article className="prose prose-invert" />
 
+// Off-scale values Tailwind does compile
+<div className="w-45 gap-13 min-h-17.5" />
+
+// Every variant shape, functional and arbitrary alike
+<div className="group-hover:flex data-[state=open]:grid @md:block [&>svg]:size-4" />
+
 // Allowlisted runtime class
 <div className={"hover:" + dynamicSuffix} />
 ```
 
 ## Interactions with other rules
 
-- **`no-deprecated-classes`**: this rule silently skips classes flagged by `no-deprecated-classes`
-  (`flex-grow`, `space-y-reverse`, etc.) so you don't get two diagnostics for the same class. Keep
-  both rules on.
+- **`no-deprecated-classes`**: this rule silently skips the v3 renames that one owns (`flex-grow`,
+  `bg-gradient-to-r`, `break-words`, …) so you don't get two diagnostics for the same class. The
+  list comes from the design system, not from a copy inside this rule, so the two cannot drift
+  apart. Keep both rules on.
 - **`enforce-canonical`**: complements this rule. `no-unknown-classes` catches typos and missing
   tokens; `enforce-canonical` rewrites valid-but-outdated forms (`-m-0` → `m-0`).
 - **`no-restricted-classes`**: orthogonal. Use that one to ban valid classes you don't want; use

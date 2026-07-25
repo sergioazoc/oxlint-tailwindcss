@@ -18,6 +18,30 @@ DS-dependiente — requiere `settings.tailwindcss.entryPoint`. Cuando el design 
 cargar, la regla emite un único diagnóstico fatal `designSystemUnavailable` por archivo en vez de
 pasar en silencio.
 
+### La cadena de variants también se valida
+
+Un typo en un variant no produce CSS ninguno, y antes pasaba en silencio: la validación descartaba
+los variants antes de mirar nada. `hoverr:flex`, `darkk:size-4`, `peer-cheked:flex` y `@mdd:flex`
+ahora se reportan, con una sugerencia **confirmada contra el design system antes de ofrecerla** —
+así `group-hoverr` se corrige a `group-hover` (raíz intacta, cola arreglada) y un variant que define
+tu propio CSS (`@custom-variant thumb (&::-webkit-slider-thumb)`) se revisa igual que uno nativo.
+
+Esto no se puede hacer con una lista de nombres: los variants funcionales de Tailwind (`group-*`,
+`data-*`, `@md`, `supports-[…]`, `min-[…]`, `nth-*`, `has-[…]`, `not-*`, `in-[…]`) tienen un espacio
+de valores ilimitado, así que una lista reportaría como desconocidos a la mayoría de los variants
+reales. En vez de eso se compila la cadena misma, una vez por cadena distinta del proyecto.
+
+### Los valores fuera de escala se comprueban con Tailwind, no se adivinan
+
+Tailwind acepta números fuera de la escala del tema (`w-45`, `gap-13`, `min-h-17.5`), así que la
+regla aceptaba cualquier cosa con esa forma — lo que significaba que `bg-red-5000`, `bg-red-500/foo`
+y `w-[]` pasaban exactamente por la misma razón por la que `w-45` pasa legítimamente. Las clases que
+el precompute no puede enumerar ahora se resuelven contra el design system, por lotes y memoizadas,
+así que la respuesta es la de Tailwind y no una conjetura.
+
+`w-[garbage]` sigue siendo válida a propósito: Tailwind toma un valor arbitrario tal cual y emite
+`width: garbage`. Si ese CSS tiene sentido o no, no es asunto de esta regla.
+
 ## Prefijo de proyecto (`prefix(...)`)
 
 Si tu entry point declara un prefijo de Tailwind v4 — `@import "tailwindcss" prefix(tw)` — cada
@@ -79,6 +103,13 @@ de mantener.
 
 // Variant sobre una clase inexistente
 <div className="hover:foo-500" />
+
+// Typo en el VARIANT — la utility está bien, la clase no emite nada
+<div className="hoverr:flex peer-cheked:underline" />
+//              ~~~~~~      ~~~~~~~~~~~ → hover: / peer-checked:
+
+// Tienen forma de valor fuera de escala, pero Tailwind no compila ninguna
+<div className="bg-red-5000 bg-blue-500/foo" />
 ```
 
 ### ✓ Correcto
@@ -93,15 +124,22 @@ de mantener.
 // Clase registrada por un plugin
 <article className="prose prose-invert" />
 
+// Valores fuera de escala que Tailwind sí compila
+<div className="w-45 gap-13 min-h-17.5" />
+
+// Todas las formas de variant, funcionales y arbitrarias
+<div className="group-hover:flex data-[state=open]:grid @md:block [&>svg]:size-4" />
+
 // Clase de runtime allowlisteada
 <div className={"hover:" + dynamicSuffix} />
 ```
 
 ## Interacciones con otras reglas
 
-- **`no-deprecated-classes`**: esta regla omite silenciosamente las clases marcadas por
-  `no-deprecated-classes` (`flex-grow`, `space-y-reverse`, etc.) para que no veas dos diagnósticos
-  por la misma clase. Mantén ambas activas.
+- **`no-deprecated-classes`**: esta regla omite silenciosamente los renombres de v3 que esa posee
+  (`flex-grow`, `bg-gradient-to-r`, `break-words`, …) para que no veas dos diagnósticos por la misma
+  clase. La lista sale del design system, no de una copia dentro de esta regla, así que las dos no
+  pueden desincronizarse. Mantén ambas activas.
 - **`enforce-canonical`**: complementa a esta. `no-unknown-classes` atrapa typos y tokens faltantes;
   `enforce-canonical` reescribe formas válidas-pero-desactualizadas (`-m-0` → `m-0`).
 - **`no-restricted-classes`**: ortogonal. Esa la usas para bloquear clases válidas que no quieres;

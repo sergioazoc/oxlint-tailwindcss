@@ -7,8 +7,15 @@ they flip automatically in RTL contexts without any extra code. Required if your
 Arabic, Hebrew, Farsi, or any other RTL language. Autofix on the first offender per location, editor
 suggestion on subsequent ones.
 
-DS-independent — works without `settings.tailwindcss.entryPoint`. The mapping table is static and
-lives in the rule's source; no design system lookup needed.
+The table also covers the three utilities where the direction is the VALUE rather than part of the
+property: `float-left` → `float-start` (`float: inline-start`), `clear-left` → `clear-start`, and
+`text-left` → `text-start` (`text-align: start`). Miss those and a codebase can be "fully converted"
+and still float things to the left in RTL.
+
+DS-independent in the sense that matters: the mapping table is static and the rule works without
+`settings.tailwindcss.entryPoint`. When one IS configured, the rule additionally checks that the
+class it suggests exists — a project with its own `@utility ml-huge` used to be autofixed to
+`ms-huge`, which emits no CSS at all, so the fix applied and the margin silently disappeared.
 
 `enforce-logical` and `enforce-physical` are sibling rules — they share a mapping table that one
 inverts. Enable **only one at a time**.
@@ -39,6 +46,12 @@ direction — e.g. an icon that should always sit on the visual left regardless 
 { "tailwindcss/enforce-logical": ["error", { "allowlist": ["^ml-icon$", "^rounded-tl-special$"] }] }
 ```
 
+### `entryPoint`
+
+`string`, optional. A CSS entry point for this rule alone, overriding
+`settings.tailwindcss.entryPoint`. Only used to confirm the class being suggested exists; the rule
+works without it.
+
 ## Examples
 
 ### ✗ Incorrect
@@ -47,6 +60,10 @@ direction — e.g. an icon that should always sit on the visual left regardless 
 // Physical margins/padding
 <div className="ml-4 pr-2" />
 //              ~~~~ ~~~~  → ms-4 pe-2
+
+// The direction as a VALUE
+<div className="float-left clear-right text-left" />
+//              ~~~~~~~~~~ ~~~~~~~~~~~ ~~~~~~~~~ → float-start clear-end text-start
 
 // Positioning
 <div className="left-0 right-0" />
@@ -74,8 +91,10 @@ direction — e.g. an icon that should always sit on the visual left regardless 
 - **`enforce-physical`**: the inverse. They share the mapping table; enabling both at the same time
   will autofix in a loop. Pick one based on whether your app supports RTL (use `enforce-logical`) or
   is LTR-only (use `enforce-physical`).
-- **`enforce-canonical`**: orthogonal. Canonical normalizes utility shape; this rule swaps physical
-  for logical along one axis.
+- **`enforce-canonical`**: it has an opinion about the logical insets. This rule suggests `start-2`
+  (what Tailwind's docs use); the design system reports `inset-s-2` as the canonical spelling, so
+  with both rules on you end up there in two passes. Same CSS either way, and `enforce-physical`
+  converts both spellings back.
 - **`enforce-shorthand`**: runs on plain `m-*` / `p-*` shorthands, which are already
   direction-neutral, so the two don't overlap.
 

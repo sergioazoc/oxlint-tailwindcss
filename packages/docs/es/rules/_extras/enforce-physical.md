@@ -6,8 +6,18 @@ El espejo de `enforce-logical`. Reescribe utilities lógicas conscientes del wri
 cognitiva sin payoff — `ml-4` es más directo que `ms-4` cuando no hay historia de RTL. Autofix sobre
 el primer ofensor por location, sugerencia de editor sobre los siguientes.
 
-DS-independiente — funciona sin `settings.tailwindcss.entryPoint`. Comparte la tabla estática de
-mapeo con `enforce-logical` y la invierte.
+Convierte **las dos** formas de los insets lógicos: `start-2` (la que sugiere `enforce-logical`, y
+la que usan los docs de Tailwind) e `inset-s-2` (en la que `enforce-canonical` reescribe esa, porque
+el design system la considera canónica). Un codebase que corrió logical + canonical termina con
+`inset-s-*`, y esta regla antes no tenía vuelta — su tabla solo conocía `start`.
+
+También refleja las tres utilities donde la dirección es el VALOR: `float-start` → `float-left`,
+`clear-start` → `clear-left`, `text-start` → `text-left`.
+
+DS-independiente en lo que importa: comparte la tabla estática de mapeo con `enforce-logical` y la
+invierte, así que funciona sin `settings.tailwindcss.entryPoint`. Cuando SÍ hay uno configurado, la
+regla además comprueba que la clase que sugiere exista, así que una reescritura nunca puede
+introducir una clase que no emita nada.
 
 `enforce-physical` y `enforce-logical` son reglas hermanas. Activa **solo una a la vez** — correr
 las dos produce un loop de autofix.
@@ -39,11 +49,25 @@ RTL).
 { "tailwindcss/enforce-physical": ["error", { "allowlist": ["^ms-", "^pe-"] }] }
 ```
 
+### `entryPoint`
+
+`string`, opcional. Un entry point CSS solo para esta regla, que pisa
+`settings.tailwindcss.entryPoint`. Se usa únicamente para confirmar que la clase sugerida exista; la
+regla funciona sin él.
+
 ## Ejemplos
 
 ### ✗ Incorrecto
 
 ```tsx
+// La dirección como VALOR
+<div className="float-start clear-end text-start" />
+//              ~~~~~~~~~~~ ~~~~~~~~~ ~~~~~~~~~~ → float-left clear-right text-left
+
+// Las dos formas de los insets lógicos
+<div className="start-2 inset-s-4" />
+//              ~~~~~~~ ~~~~~~~~~  → left-2 left-4
+
 // Márgenes/padding lógicos en un proyecto LTR-only
 <div className="ms-4 pe-2" />
 //              ~~~~ ~~~~  → ml-4 pr-2
@@ -73,8 +97,8 @@ RTL).
 
 - **`enforce-logical`**: la inversa. Elige **una**. Correr las dos simultáneamente reescribe en
   loop.
-- **`enforce-canonical`**: ortogonal. Canonical normaliza la forma de la utility; esta regla swappea
-  lógico por físico en un eje.
+- **`enforce-canonical`**: reescribe `start-2` → `inset-s-2`. Inofensivo acá: esta regla convierte
+  las dos formas a `left-2`.
 - **`enforce-shorthand`**: corre sobre shorthands `m-*` / `p-*` direction-neutral, así que no se
   solapan.
 

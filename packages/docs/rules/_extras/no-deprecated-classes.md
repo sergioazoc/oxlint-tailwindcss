@@ -1,22 +1,30 @@
 ## What this rule does
 
 Flags any class that was renamed when Tailwind moved from v3 to v4 and rewrites it in place with an
-auto-fix. The mapping is a hardcoded `DEPRECATED_MAP` — no heuristics, no DS queries against the
-deprecated name. Examples: `flex-grow` → `grow`, `flex-shrink` → `shrink`, `overflow-ellipsis` →
+auto-fix. Examples: `flex-grow` → `grow`, `flex-shrink` → `shrink`, `overflow-ellipsis` →
 `text-ellipsis`, `decoration-clone` → `box-decoration-clone`, `bg-gradient-to-r` → `bg-linear-to-r`
 (and the rest of the gradient directions). Variants and `!` (important) modifiers are preserved on
 both sides of the rewrite.
 
-Needs **no** design system. The rule consults only the hardcoded `DEPRECATED_MAP`, so it runs even
-when `settings.tailwindcss.entryPoint` is not configured, and it never emits a
-`designSystemUnavailable` diagnostic. It still plays nicely with the rest of the plugin:
-`no-unknown-classes` recognizes the legacy v3 spellings, so `flex-grow` gets a single `deprecated`
-diagnostic here rather than that plus an "unknown class" from another rule.
+### Where the rename list comes from
+
+With `settings.tailwindcss.entryPoint` (or the rule's own `entryPoint`) configured, the list is
+**derived from your design system**: Tailwind's own `canonicalizeCandidates` is asked what each v3
+spelling maps to, and only the ones it still compiles AND still renames are reported. That covers
+renames a hardcoded table did not — `break-words` → `wrap-break-word`, `order-none` → `order-0`, the
+reordered position spellings `bg-left-top` → `bg-top-left` and `object-left-top` → `object-top-left`
+— and, more importantly, an entry disappears by itself when a future Tailwind stops compiling it,
+instead of suggesting a replacement for a class that no longer exists.
+
+Without an entry point the rule falls back to a hardcoded table of the 15 best-known renames, so it
+still works with nothing configured and never emits a `designSystemUnavailable` diagnostic.
 
 ## Options
 
-This rule has no options. For backwards compatibility it still accepts an `entryPoint` string (left
-over from when it loaded the design system), but the value is ignored — the rule never reads it.
+### `entryPoint`
+
+`string`, optional. A CSS entry point for this rule alone, overriding
+`settings.tailwindcss.entryPoint`. Used to derive the rename list; the rule works without it.
 
 ## Examples
 
@@ -53,14 +61,15 @@ over from when it loaded the design system), but the value is ignored — the ru
 
 ## Interactions with other rules
 
-- **`no-unknown-classes`**: silently skips any class present in `DEPRECATED_MAP`. You won't get
-  "unknown class" plus "deprecated class" for `flex-grow` — only the deprecation. Keep both rules
-  on.
-- **`enforce-canonical`**: covers a strictly larger set than this rule — it rewrites
-  valid-but-non-canonical forms (`-m-0` → `m-0`, `start-2` → `inset-s-2`) and also catches every
-  deprecation. Running both is fine; the autofixes don't conflict. Pick `no-deprecated-classes` when
-  you want a fast pass over the fixed v3→v4 rename list; pick `enforce-canonical` for the full
-  DS-backed cleanup.
+- **`no-unknown-classes`**: silently skips any renamed spelling, asking the design system rather
+  than a list of its own, so the two rules cannot disagree. You won't get "unknown class" plus
+  "deprecated class" for `flex-grow` — only the deprecation. Keep both rules on.
+- **`enforce-canonical`**: **this rule owns the renames.** Tailwind canonicalizes them too
+  (`bg-gradient-to-r` → `bg-linear-to-r` is both a deprecation and a canonicalization), so both
+  rules used to report the same class with the same fix. `enforce-canonical` now stays quiet about
+  anything in the rename list and keeps the rest: valid-but-non-canonical forms like `-m-0` → `m-0`
+  and `start-2` → `inset-s-2` (`start-*` is current Tailwind, just not the canonical spelling). Keep
+  both on — with only `enforce-canonical` enabled the renames go unreported.
 - **`no-restricted-classes`**: orthogonal. Use that one to ban valid classes; this one only triggers
   on the fixed v3→v4 rename list.
 

@@ -1,5 +1,116 @@
 # Changelog
 
+## 1.5.0
+
+The companion to 1.4.0: that release made `no-conflicting-classes` decide from the CSS Tailwind
+emits, and the audit behind it left nine other rules reasoning about class NAMES. This closes them —
+one destructive autofix, one case of double reporting, six false negatives and one family of false
+positives.
+
+Eight of the nine rules are **DS-OPTIONAL**: with `settings.tailwindcss.entryPoint` (or a rule-level
+`entryPoint`) they get more accurate, without one they behave exactly as they did. None of them can
+emit `designSystemUnavailable`.
+
+### Breaking-ish
+
+- **`enforce-shorthand`** reports ONE diagnostic per collapsible group instead of one per matching
+  family. `mt-2 mr-2 mb-2 ml-2` used to produce three errors — `m-2` plus the `my-2` and `mx-2`
+  halves — and now produces one. The autofix output is unchanged; only the count is. If you track
+  diagnostic counts in CI, they will drop.
+- **`enforce-shorthand`** also gained ~30 families (borders, inset, radius edges, gap, overflow,
+  overscroll, `border-spacing`, `scroll-m*`/`scroll-p*`, the logical inline pairs, translate), so
+  patterns that were silent now report. Each was verified against the real design system before
+  being added; see the rule docs for the full table.
+- **`no-unknown-classes`** is exact where it used to guess, which means it can fail a CI run that
+  passes today — that is the point, since everything it now catches produces no CSS at all. Two
+  groups: typos in the VARIANT (`hoverr:flex`, `darkk:size-4`, `peer-cheked:flex`, `@mdd:flex`), and
+  values that merely LOOK like Tailwind's off-scale numbers (`bg-red-5000`, `bg-red-500/foo`,
+  `w-[]`).
+- **`no-arbitrary-value`** now reports the `(--x)` spelling too (`bg-(--brand)`), so projects using
+  the v4 shorthand will see new diagnostics.
+- **`no-hardcoded-colors`** scans the whole arbitrary value instead of matching it from the first
+  character, and no longer filters by utility prefix. New reports: `shadow-[0_1px_2px_#000]`-style
+  shorthands, `inset-ring-*`/`inset-shadow-*`, and arbitrary properties (`[color:#f00]`,
+  `[--brand:#f00]`).
+- **`no-deprecated-classes`** owns the v3 renames now, and **`enforce-canonical`** skips them. If
+  you run `enforce-canonical` with `no-deprecated-classes` disabled, `bg-gradient-to-r`,
+  `flex-grow`, `break-words` and the rest stop being reported. Keep both rules on.
+
+### Bug fixes
+
+- **`enforce-shorthand`**: a destructive autofix. Tailwind v4 resolves `w-*` from `--width-*`, `h-*`
+  from `--height-*` and `size-*` from `--size-*` — three namespaces, one token name. With
+  `@theme { --width-brand: 10rem; --height-brand: 20rem }`, `w-brand h-brand` was rewritten to
+  `size-brand`, which does not exist: the element lost its width AND its height. With an entry point
+  configured every merge is now checked against the declarations Tailwind emits — the parts must
+  resolve to the same value and the replacement must reproduce it. The hardcoded
+  `INVALID_SIZE_VALUES` blocklist is gone with it: `w-screen h-screen` is rejected because 100vw is
+  not 100vh (derived, not listed), and `w-dvw h-dvw` — excluded by that list for no reason — merges.
+  Without an entry point the sizing family only merges values that cannot come from a per-axis
+  namespace.
+- **`no-deprecated-classes`** + **`enforce-canonical`**: one class, two diagnostics, same fix.
+  Tailwind's own `canonicalizeCandidates` rewrites every v3 spelling, and the precompute fed them
+  into the canonical map, so `bg-gradient-to-r` was reported by both rules. The rename list is now
+  derived from the design system and decides ownership. It also covers renames the hardcoded table
+  never had (`break-words` → `wrap-break-word`, `order-none` → `order-0`, the reordered
+  `bg-left-top` / `object-left-top` position spellings) and prunes itself when a Tailwind release
+  stops compiling one, instead of suggesting a replacement for a class that no longer exists.
+  `start-2` → `inset-s-2` stays with `enforce-canonical`: it is current Tailwind, just not the
+  canonical spelling.
+- **`no-unknown-classes`**: the validity check stripped the variants before looking at anything, so
+  a typo'd variant was never seen. The chain is now compiled (once per distinct chain in the
+  project) — the only exact way, since `variantOrder` holds the 71 static variants and has no
+  `group`, no `data`, no `@md`, so a name list would report most real-world variants as unknown.
+  Suggestions are confirmed against the design system before being offered, so `group-hoverr` is
+  corrected to `group-hover` (root kept, tail fixed) and a project's own `@custom-variant thumb` is
+  spell-checked like a built-in one.
+- **`no-dark-without-light`**: false positives on the idiomatic "light does X, dark undoes X" pairs.
+  `underline dark:no-underline`, `italic dark:not-italic`, `visible dark:invisible`,
+  `uppercase dark:normal-case`, `truncate dark:text-clip` and `sr-only dark:not-sr-only` were all
+  reported as missing a base, because the two spellings share no prefix — though each pair writes
+  the same CSS property. With an entry point the base is also matched by declared property. The
+  check is additive, so configuring one can only make this rule report LESS.
+- **`enforce-logical`** / **`enforce-physical`**: three pairs Tailwind ships were missing from the
+  table — `float-left`↔`float-start` (`float: inline-start`), `clear-left`↔`clear-start` and
+  `text-left`↔`text-start`. A codebase could be fully converted and still float things left. Both
+  rules also verify the class they suggest exists when a design system is available: a project with
+  `@utility ml-huge` was autofixed to `ms-huge`, which emits nothing, so the fix applied and the
+  margin disappeared. `enforce-physical` additionally converts `inset-s-*`/`inset-e-*`, the spelling
+  `enforce-canonical` produces from `start-*`/`end-*`.
+- **`no-hardcoded-colors`**: `shadow-[0_1px_2px_#000]` carried a hardcoded black the rule promised
+  to catch and did not, and the utility-prefix list had `ring` but not `inset-ring`, `shadow` but
+  not `inset-shadow`, and no way to spell an arbitrary property. Both the anchoring and the list are
+  gone. Quoted strings (`content-['#fff']`) and `url()` contents (`fill-[url(#gradient)]`) are
+  excluded, so the most common non-colour `#` in a Tailwind class still passes.
+- **`no-arbitrary-value`**: `bg-(--x)` is sugar for `bg-[var(--x)]` and only the second was
+  reported, which turned `enforce-consistent-variable-syntax` into a laundry service — its default
+  `shorthand` autofix rewrote the reported form into the unreported one and the violation vanished
+  with the code unchanged in substance.
+
+### Not changed, and why
+
+- **`no-duplicate-classes`** was audited and left alone. Semantic duplicates (`p-4 p-[16px]`,
+  `flex flex!`) are `no-conflicting-classes`' `redundant` finding since 1.4.0, and that rule
+  deliberately skips the exact-duplicate pair so the two never double-report.
+- **`enforce-negative-arbitrary-values`** and **`enforce-consistent-variable-syntax`** do NOT get
+  the replacement guard the other rewriting rules got. Tailwind takes an arbitrary value verbatim,
+  so `x-[-5px]` compiles whenever `-x-[5px]` does and the guard could not answer anything. Both stay
+  purely syntactic, as their docs say. The equivalences they assume were re-verified against
+  Tailwind 4.3.3: `X-[var(--y)]` ≡ `X-(--y)` across 30 utilities, and `calc(5px * -1)` ≡ `-5px`.
+
+### Internal
+
+- New shared helpers: `softGetDS` (the quiet sibling of `safeGetDS`, for the DS-OPTIONAL rules),
+  `makeReplacementGuard`, and `containsColorLiteral` — a quote- and `url()`-aware colour scanner
+  with its own unit test.
+- The declaration service reports which classes produce no CSS and owns the interning, collapsing
+  the two per-cache memos the rules kept into one answer per class.
+- `tests/integration/shorthand-families.test.ts` proves every shorthand family against the real
+  design system: the properties the replacement writes must be exactly the union of the parts',
+  expanded through the CSS shorthands. It caught `rounded-s` being `ss`+`es` rather than the
+  `ss`+`se` the names suggest, and it is what keeps `scale-x`+`scale-y` out of the table
+  (`scale-110` also writes `--tw-scale-z`, which `scale-3d` reads).
+
 ## 1.4.0
 
 ### Breaking-ish

@@ -74,9 +74,13 @@ para todo el proyecto en vez de por-regla cuando puedas.
   variables CSS como `border-(--border)` → `border-border` donde ni `enforce-canonical` (el CSS
   difiere) ni `no-unnecessary-arbitrary-value` (no hay equivalente bracket compartido) se
   dispararían.
-- **`no-deprecated-classes`**: un subconjunto estricto de lo que hace `enforce-canonical`. Correr
-  ambas es seguro; los autofixes coinciden. Mantén `no-deprecated-classes` si quieres un pase
-  rápido, hardcodeado y sin DS.
+- **`no-deprecated-classes`**: **es la dueña de los renombres de v3, y esta regla los omite.**
+  Tailwind también los canonicaliza, así que `bg-gradient-to-r` → `bg-linear-to-r` antes se
+  reportaba dos veces con el mismo fix; el mensaje de la otra regla ("deprecada en v4") es el más
+  accionable de los dos. Acá queda todo lo que es actual-pero-no-canónico: `-m-0` → `m-0`, `start-2`
+  → `inset-s-2`, y las formas con valor arbitrario como `flex-grow-[2]` → `grow-2` (la lista de
+  renombres tiene spellings, no valores). Mantén ambas activas — con solo esta los renombres quedan
+  sin reportar.
 - **`enforce-consistent-important-position`**: esta regla preserva la posición del `!` que
   escribiste (prefix vs suffix vs ninguno). `enforce-consistent-important-position` es la única
   fuente de verdad para imponer una posición en particular.

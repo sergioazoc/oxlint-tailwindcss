@@ -4,11 +4,17 @@
 
 ## Qué hace esta regla
 
-Marca cualquier utility de Tailwind que use un arbitrary value — la escotilla `[...]` — para forzar
-al equipo a usar un token del design system o extender el theme en vez de literales sueltos.
-Cualquier cosa que el parser reconozca como arbitrary value califica: dimensiones (`w-[200px]`,
+Marca cualquier utility de Tailwind que use un arbitrary value — la escotilla — para forzar al
+equipo a usar un token del design system o extender el theme en vez de literales sueltos. Cualquier
+cosa que el parser reconozca como arbitrary value califica: dimensiones (`w-[200px]`,
 `text-[14px]`), colores (`bg-[#ff0000]`), expresiones calc (`p-[calc(1rem+2px)]`), gradients, y lo
 mismo dentro de variants (`hover:w-[200px]`) o con el modificador `!` (`!w-[200px]`, `w-[200px]!`).
+
+**Las dos formas cuentan.** `bg-(--brand)` es el azúcar de Tailwind v4 para `bg-[var(--brand)]` — el
+mismo arbitrary value, escrito de dos maneras — y antes solo se reportaba la forma con corchetes.
+Eso convertía a [`enforce-consistent-variable-syntax`](./enforce-consistent-variable-syntax) en un
+lavadero: con su ajuste por defecto `shorthand`, su autofix reescribía la forma reportada en la no
+reportada y la violación desaparecía sin que el código cambiara en el fondo.
 
 DS-independiente — no se carga ningún design system, no necesitas `entryPoint`. La regla es un
 chequeo puramente sintáctico, lo que la hace barata de correr en repos grandes. No hay autofix:
@@ -56,6 +62,9 @@ legítimos a `allow` en vez de desactivar la regla entera.
 
 // El modificador `!` tampoco
 <div className="!w-[200px]" />
+
+// El shorthand de v4 es el mismo arbitrary value
+<div className="bg-(--brand) border-(length:--stroke)" />
 ```
 
 ### ✓ Correcto
@@ -85,8 +94,11 @@ legítimos a `allow` en vez de desactivar la regla entera.
   nombrado exacto (`w-[100%]` → `w-full`). Pueden coexistir: la suave autofixea los casos triviales
   y esta atrapa lo que queda.
 - **`prefer-theme-tokens`**: misma intención, pero DS-dependiente. `prefer-theme-tokens` consulta tu
-  `@theme` y sugiere el token que matchea. Combinalas: esta regla es tu freno de mano cuando todavía
+  `@theme` y sugiere el token que matchea. Combínalas: esta regla es tu freno de mano cuando todavía
   no existe el token.
+- **`enforce-consistent-variable-syntax`**: convierte entre `bg-[var(--x)]` y `bg-(--x)`. Como las
+  dos formas se reportan acá, correrla — en cualquier dirección — no puede sacar una clase del
+  alcance de esta regla.
 
 ## Cuándo desactivarla
 

@@ -5,22 +5,58 @@
 ## What this rule does
 
 Combines per-axis Tailwind utilities into their shorthand equivalents when every axis carries the
-same value. The most common case: `mt-2 mr-2 mb-2 ml-2` collapses to `m-2`. The rule covers margins,
-paddings, width/height sizing, and corner radii — all combinations where Tailwind ships a one-class
-shorthand for the multi-class form. Autofix runs on every matching pattern.
+same value. The most common case: `mt-2 mr-2 mb-2 ml-2` collapses to `m-2`. Covered families:
 
-DS-independent — works without `settings.tailwindcss.entryPoint`. The mapping table is static, and
-value parsing comes from a single regex; no design-system lookup needed.
+| Family                  | Collapses                                                                                                                                     |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| margin / padding        | four sides → `m-*`, axes → `my-*`/`mx-*`, `mx-*`+`my-*` → `m-*`, `ms-*`+`me-*` → `mx-*`                                                       |
+| `scroll-m*`/`scroll-p*` | the same shapes                                                                                                                               |
+| sizing                  | `w-*`+`h-*` → `size-*`                                                                                                                        |
+| radii                   | corners → edges → `rounded-*`, including the logical corners (`rounded-ss-*`+`rounded-es-*` → `rounded-s-*`)                                  |
+| borders                 | sides → `border-*`, axes → `border-x-*`/`border-y-*` — widths **and** colours                                                                 |
+| inset                   | `top`/`right`/`bottom`/`left` → `inset-*`, axes → `inset-x-*`/`inset-y-*`, `start-*`+`end-*` → `inset-x-*`                                    |
+| single-property pairs   | `gap-x`+`gap-y`, `overflow-x`+`overflow-y`, `overscroll-x`+`overscroll-y`, `border-spacing-x`+`border-spacing-y`, `translate-x`+`translate-y` |
 
-Special case: `w-X h-X` → `size-X` only fires when both sides resolve to the same CSS dimension.
-Viewport units (`screen`, `dvw`, `dvh`, `svw`, `svh`, `lvw`, `lvh`) are excluded because `w-screen`
-and `h-screen` reference different axes (`100vw` vs `100vh`) and would not be equivalent to
-`size-screen`.
+One diagnostic per collapsible group: four sides report `m-2` once, not `m-2` plus the `my-2`/`mx-2`
+halves.
+
+`scale-x-*`+`scale-y-*` is deliberately **not** a family. `scale-110` also writes `--tw-scale-z`,
+which `scale-3d` reads, so merging would change how `scale-x-110 scale-y-110 scale-3d` renders.
+
+### With an `entryPoint`, the merge is checked against the CSS
+
+Tailwind v4 has per-axis theme namespaces: `w-*` reads `--width-*` (and `--container-*`), `h-*`
+reads `--height-*`, `size-*` reads `--size-*`. So this theme
+
+```css
+@theme {
+  --width-brand: 10rem;
+  --height-brand: 20rem;
+}
+```
+
+makes `w-brand h-brand` → `size-brand` destructive: `size-brand` does not exist, and the element
+loses its width and its height. Configure `settings.tailwindcss.entryPoint` (or the rule's own
+`entryPoint`) and the rule compares the declarations Tailwind emits — the parts have to resolve to
+the same value and the replacement has to reproduce it — so that merge is not offered.
+
+Named theme tokens on the sizing family are only merged when the values are literally identical.
+`w-card h-card` is left alone even when all three namespaces define `card` as `30rem`, because each
+side reads a different variable and a `:root` override of one makes them diverge — the same
+reasoning [`enforce-canonical`](./enforce-canonical) applies to `rounded-[0.5rem]` → `rounded-lg`.
+
+Without an entry point the rule keeps the merges that are safe whatever the theme says: numbers and
+fractions (the shared spacing scale), arbitrary values (the same literal on both sides), the core
+keywords (`full`, `auto`, `min`, `max`, `fit`, `px`, and the viewport units), and every family other
+than sizing — those all draw from a single namespace.
 
 ## Options
 
-This rule has no options. The set of shorthand pairs is fixed by Tailwind's own utility surface —
-anything we'd let you configure here is more a job for the upstream Tailwind project.
+### `entryPoint`
+
+`string`, optional. A CSS entry point for this rule alone, overriding
+`settings.tailwindcss.entryPoint`. Only used to verify merges against the emitted CSS; the rule
+works without it.
 
 ## Examples
 
@@ -39,6 +75,15 @@ anything we'd let you configure here is more a job for the upstream Tailwind pro
 <div className="w-full h-full" />
 //              ~~~~~~ ~~~~~~  → size-full
 
+// Sides and axes of any covered family
+<div className="border-t-2 border-r-2 border-b-2 border-l-2" />  →  border-2
+<div className="top-0 right-0 bottom-0 left-0" />                →  inset-0
+<div className="rounded-tl-lg rounded-tr-lg" />                  →  rounded-t-lg
+<div className="gap-x-4 gap-y-4" />                              →  gap-4
+
+// Logical inline pairs — `ms-*`+`me-*` IS `margin-inline`
+<div className="ms-4 me-4" />  →  mx-4
+
 // Same with important — both sides must share the modifier
 <div className="!mt-2 !mr-2 !mb-2 !ml-2" />
 //              ~~~~~ ~~~~~ ~~~~~ ~~~~~  → !m-2
@@ -53,11 +98,21 @@ anything we'd let you configure here is more a job for the upstream Tailwind pro
 // Different values across axes — no collapse possible
 <div className="mt-2 mb-4" />
 
-// Viewport units excluded — w-screen ≠ h-screen
+// w-screen is 100vw and h-screen is 100vh; size-screen doesn't exist
 <div className="w-screen h-screen" />
+
+// Per-axis theme tokens: `size-brand` would drop both dimensions
+// (needs an entryPoint to be detected — see above)
+<div className="w-brand h-brand" />
+
+// scale-110 also writes --tw-scale-z, which scale-3d reads
+<div className="scale-x-110 scale-y-110" />
 
 // Partial coverage — needs all four sides for m-*
 <div className="mt-2 mr-2" />
+
+// Adjacent sides are not an axis
+<div className="top-0 right-0" />
 
 // Different variants — rule doesn't merge across variant chains
 <div className="hover:mt-2 focus:mb-2" />
@@ -68,8 +123,10 @@ anything we'd let you configure here is more a job for the upstream Tailwind pro
 - **`enforce-sort-order`**: run shorthand first so the shorthand participates in sort with its own
   priority. Otherwise sort places `mt-2 mr-2 mb-2 ml-2` in spaced positions and the shorthand fix
   collapses them later.
-- **`enforce-logical` / `enforce-physical`**: the shorthand pairs here (`m-*`, `p-*`, `size-*`,
-  `rounded-*`) are direction-neutral, so neither directional rule interferes.
+- **`enforce-logical` / `enforce-physical`**: most families here are direction-neutral. The logical
+  pairs that do collapse (`ms-*`+`me-*` → `mx-*`, `border-s-*`+`border-e-*` → `border-x-*`,
+  `start-*`+`end-*` → `inset-x-*`) land on axis utilities neither directional rule converts, so the
+  two never fight.
 - **`enforce-consistent-important-position`**: shorthand respects the `!` placement convention of
   the merged classes. If all four use prefix, the shorthand is prefix; same for suffix.
 
