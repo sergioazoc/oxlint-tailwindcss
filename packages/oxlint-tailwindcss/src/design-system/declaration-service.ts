@@ -40,11 +40,19 @@ export interface ValueFacts {
 export interface DeclarationResponse {
   decls: Record<string, RawDeclaration[]>
   values: Record<string, ValueFacts>
+  /**
+   * Classes the design system produces NO CSS for. Distinct from "absent from
+   * `decls`", which also covers a class that compiles to something the extractor
+   * emits no declarations for — `no-unknown-classes` needs the difference, since
+   * one means the class is invalid and the other doesn't.
+   */
+  invalid: string[]
 }
 
 const DECLARATION_HANDLER = `(ds, request) => {
   const decls = {};
   const values = {};
+  const invalid = [];
   // A prefixed design system only resolves the PREFIXED form (\`tw:p-[5px]\`), and
   // the host asks with prefix-free names — \`extractUtility\` strips the project
   // prefix along with the variants. Same invariant the precompute follows: apply
@@ -55,7 +63,7 @@ const DECLARATION_HANDLER = `(ds, request) => {
   const pfx = (c) => (prefix && !c.startsWith(prefix + ':')) ? prefix + ':' + c : c;
   const css = ds.candidatesToCss(request.classes.map(pfx));
   for (let i = 0; i < request.classes.length; i++) {
-    if (!css[i]) continue;
+    if (!css[i]) { invalid.push(request.classes[i]); continue; }
     const cls = request.classes[i];
     const list = [];
     // The selector carries the prefix, so the scope classifier needs the
@@ -69,7 +77,7 @@ const DECLARATION_HANDLER = `(ds, request) => {
     });
     if (list.length > 0) decls[cls] = list;
   }
-  return { decls, values };
+  return { decls, values, invalid };
 }`
 
 const WORKER_SCRIPT = makeWorkerScript(DECLARATION_HANDLER, DECL_EXTRACTOR_SOURCE)
@@ -80,54 +88,89 @@ const declWorker = new DesignSystemWorker<DeclarationRequest, DeclarationRespons
 })
 
 /**
- * Classes already asked about, per design-system CACHE — not per entry point. A
- * miss is remembered too: a class the design system produces no CSS for must not
- * be re-queried on every AST node it appears in.
+ * Everything already asked about, per design-system CACHE — not per entry point:
+ * class name → does the design system produce CSS for it. A miss is remembered
+ * too, so a class that compiles to nothing is not re-queried on every AST node it
+ * appears in.
  *
- * The lifetime has to match the cache's, because that is where the answers are
- * interned. Keyed by path, a rebuilt cache (an mtime bump in a long-lived editor
- * process, or `resetDesignSystem()`) inherited a fully-populated set and could
- * never re-learn: the rule went permanently blind to user-written values with no
- * diagnostic. A WeakMap also means there is nothing to reset.
+ * The lifetime has to match the cache's, because that is where the declarations
+ * are interned. Keyed by path, a rebuilt cache (an mtime bump in a long-lived
+ * editor process, or `resetDesignSystem()`) inherited a fully-populated map and
+ * could never re-learn: the rules went permanently blind to user-written values
+ * with no diagnostic. A WeakMap also means there is nothing to reset.
  */
-const queried = new WeakMap<DesignSystemCache, Set<string>>()
+const answers = new WeakMap<DesignSystemCache, Map<string, boolean>>()
 
-function queriedFor(cache: DesignSystemCache): Set<string> {
-  let set = queried.get(cache)
-  if (!set) {
-    set = new Set()
-    queried.set(cache, set)
+function answersFor(cache: DesignSystemCache): Map<string, boolean> {
+  let map = answers.get(cache)
+  if (!map) {
+    map = new Map()
+    answers.set(cache, map)
   }
-  return set
+  return map
 }
 
 /**
- * Resolve declarations for `classes` that the precompute doesn't know.
+ * Ask the design system about every class there is no answer for yet, intern the
+ * declarations it returns, and record which classes produce no CSS at all.
  *
- * Returns null when the service is unavailable, which the caller treats as "no
- * information" — the same posture as a class with no declarations, so a broken
- * worker degrades to today's silence rather than to wrong diagnostics. Real
- * failures still surface through the sticky error the worker records.
+ * Returns false when the service is unavailable. Callers treat that as "no
+ * information" rather than as an answer, so a broken worker degrades to the
+ * behaviour that predates it instead of to wrong diagnostics. Real failures still
+ * surface through the sticky error the worker records.
+ */
+function ask(cssPath: string, cache: DesignSystemCache, classes: string[]): boolean {
+  const known = answersFor(cache)
+  const pending = [...new Set(classes.filter((cls) => !known.has(cls)))]
+  if (pending.length === 0) return true
+
+  let response: DeclarationResponse
+  try {
+    response = declWorker.callSync(cssPath, { classes: pending })
+  } catch (error) {
+    if (error instanceof SortServiceError) return false
+    throw error
+  }
+
+  const invalid = new Set(response.invalid)
+  for (const cls of pending) known.set(cls, !invalid.has(cls))
+  for (const [cls, raws] of Object.entries(response.decls)) {
+    cache.internDeclarations(cls, raws, response.values)
+  }
+  return true
+}
+
+/**
+ * Resolve and intern declarations for `classes` that the precompute doesn't know.
+ * They land in the cache, so the caller reads them back through
+ * `cache.getCssDeclarations` like any other class.
  */
 export function resolveDeclarationsSync(
   cssPath: string,
   cache: DesignSystemCache,
   classes: string[],
-): DeclarationResponse | null {
-  const seen = queriedFor(cache)
-  const pending = classes.filter((cls) => !seen.has(cls))
-  if (pending.length === 0) return null
-  for (const cls of pending) seen.add(cls)
-
-  try {
-    return declWorker.callSync(cssPath, { classes: pending })
-  } catch (error) {
-    if (error instanceof SortServiceError) return null
-    throw error
-  }
+): void {
+  ask(cssPath, cache, classes)
 }
 
-/** Test hook: drops the warm workers. The query memo dies with its cache. */
+/**
+ * Which of these classes produce CSS. `null` when the service is unavailable, so
+ * the caller can fall back instead of reading silence as an answer.
+ *
+ * This is what makes validity exact for the classes the precompute cannot
+ * enumerate: `w-45` and `bg-red-5000` are shaped identically, and only Tailwind
+ * knows that it compiles the first and not the second.
+ */
+export function validateClassesSync(
+  cssPath: string,
+  cache: DesignSystemCache,
+  classes: string[],
+): Map<string, boolean> | null {
+  if (!ask(cssPath, cache, classes)) return null
+  return answersFor(cache)
+}
+
+/** Test hook: drops the warm workers. The answers die with their cache. */
 export function resetDeclarationService(): void {
   declWorker.reset()
 }

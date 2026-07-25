@@ -319,3 +319,171 @@ describe('tw-animate-css classes', () => {
     },
   )
 })
+
+/**
+ * Classes the tolerant validity check used to wave through.
+ *
+ * Two holes, both of which looked like coverage: `isValid` strips the variants
+ * before validating (so a typo'd variant was never seen at all), and it accepts
+ * anything SHAPED like a dynamic value (so `bg-red-5000` passed for the same
+ * reason `w-45` legitimately does). Both are now settled by asking the design
+ * system, which is also why the valid lists below matter more than the invalid
+ * ones: reporting a real variant would be far worse than missing a typo.
+ */
+describe('exact validation against the design system', () => {
+  runWithFixture(new RuleTester(), 'unknown variants', noUnknownClasses, ENTRY_POINT, {
+    valid: [
+      // Static, functional, compound, arbitrary, container and structural
+      // variants — none of these are in `variantOrder`, and all of them compile.
+      { code: '<div className="hover:flex" />', filename: 'test.tsx' },
+      { code: '<div className="dark:md:flex" />', filename: 'test.tsx' },
+      { code: '<div className="group-hover:flex" />', filename: 'test.tsx' },
+      { code: '<div className="peer-checked:flex" />', filename: 'test.tsx' },
+      { code: '<div className="data-[state=open]:flex" />', filename: 'test.tsx' },
+      { code: '<div className="aria-checked:flex" />', filename: 'test.tsx' },
+      { code: '<div className="supports-[display:grid]:flex" />', filename: 'test.tsx' },
+      { code: '<div className="@md:flex" />', filename: 'test.tsx' },
+      { code: '<div className="@min-[400px]:flex" />', filename: 'test.tsx' },
+      { code: '<div className="max-md:flex" />', filename: 'test.tsx' },
+      { code: '<div className="min-[600px]:flex" />', filename: 'test.tsx' },
+      { code: '<div className="nth-3:flex" />', filename: 'test.tsx' },
+      { code: '<div className="not-hover:flex" />', filename: 'test.tsx' },
+      { code: '<div className="has-[a]:flex" />', filename: 'test.tsx' },
+      { code: '<div className="in-[.sidebar]:flex" />', filename: 'test.tsx' },
+      { code: '<div className="starting:flex" />', filename: 'test.tsx' },
+      { code: '<div className="open:flex" />', filename: 'test.tsx' },
+      { code: '<div className="[&>svg]:flex" />', filename: 'test.tsx' },
+      { code: '<div className="*:flex" />', filename: 'test.tsx' },
+      { code: '<div className="**:flex" />', filename: 'test.tsx' },
+      { code: '<div className="group-hover:before:flex" />', filename: 'test.tsx' },
+      // Silly but valid: Tailwind compiles a repeated variant.
+      { code: '<div className="hover:hover:flex" />', filename: 'test.tsx' },
+      { code: '<div className="hover:w-[200px]" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      // The typo is in the variant, and its neighbour is confirmed against the
+      // design system before being suggested.
+      {
+        code: '<div className="hoverr:flex" />',
+        filename: 'test.tsx',
+        errors: [
+          {
+            messageId: 'unknownVariantWithSuggestion',
+            data: { className: 'hoverr:flex', variant: 'hoverr', suggestion: 'hover' },
+            suggestions: [
+              {
+                messageId: 'suggestReplace',
+                data: { className: 'hoverr:flex', replacement: 'hover:flex' },
+                output: '<div className="hover:flex" />',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        code: '<div className="darkk:size-4" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownVariantWithSuggestion' }],
+      },
+      {
+        code: '<div className="opne:flex" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownVariantWithSuggestion' }],
+      },
+      // Compound variants keep their root: only the tail is corrected.
+      {
+        code: '<div className="group-hoverr:flex" />',
+        filename: 'test.tsx',
+        errors: [
+          {
+            messageId: 'unknownVariantWithSuggestion',
+            data: {
+              className: 'group-hoverr:flex',
+              variant: 'group-hoverr',
+              suggestion: 'group-hover',
+            },
+            suggestions: [
+              {
+                messageId: 'suggestReplace',
+                data: { className: 'group-hoverr:flex', replacement: 'group-hover:flex' },
+                output: '<div className="group-hover:flex" />',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        code: '<div className="peer-cheked:flex" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownVariantWithSuggestion' }],
+      },
+      // A bad variant in the middle of a chain is still the reported one.
+      {
+        code: '<div className="dark:mdd:flex" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownVariantWithSuggestion' }],
+      },
+      // No neighbour close enough to offer.
+      {
+        code: '<div className="zzzzzz:flex" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownVariant' }],
+      },
+    ],
+  })
+
+  runWithFixture(new RuleTester(), 'dynamic values', noUnknownClasses, ENTRY_POINT, {
+    valid: [
+      // Off-scale numbers, fractions and modifiers Tailwind does compile.
+      { code: '<div className="w-45 min-h-17.5 gap-13" />', filename: 'test.tsx' },
+      { code: '<div className="grow-999" />', filename: 'test.tsx' },
+      { code: '<div className="aspect-3/2" />', filename: 'test.tsx' },
+      { code: '<div className="bg-red-500/50" />', filename: 'test.tsx' },
+      { code: '<div className="w-1/2 h-1/3" />', filename: 'test.tsx' },
+      // Tailwind passes an arbitrary value through verbatim, so this compiles
+      // (to nonsense CSS, which is not this rule's call to make).
+      { code: '<div className="w-[garbage]" />', filename: 'test.tsx' },
+      { code: '<div className="border-1 underline-offset-3" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      // Same shape as `w-45`, but the design system compiles nothing for it.
+      {
+        code: '<div className="bg-red-5000" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+      // No neighbour: the modifier puts it too far from every known class.
+      {
+        code: '<div className="bg-red-500/foo" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknown' }],
+      },
+      {
+        code: '<div className="w-[]" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+    ],
+  })
+})
+
+/** Project-defined variants: only the design system knows they exist. */
+describe('custom variants', () => {
+  const CUSTOM_VARIANTS = resolve(__dirname, '../fixtures/with-custom-variants.css')
+
+  runWithFixture(new RuleTester(), 'custom variants', noUnknownClasses, CUSTOM_VARIANTS, {
+    valid: [
+      { code: '<div className="thumb:size-4" />', filename: 'test.tsx' },
+      { code: '<div className="child:mt-4" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      // The suggestion comes from the variants the design system reports, so a
+      // project's own `@custom-variant` is spell-checked like a built-in one.
+      {
+        code: '<div className="thumbb:size-4" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownVariantWithSuggestion' }],
+      },
+    ],
+  })
+})

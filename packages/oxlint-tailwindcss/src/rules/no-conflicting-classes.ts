@@ -241,14 +241,7 @@ export const noConflictingClasses = defineRule({
           const unknown = variantClasses
             .map((cls) => splitImportant(extractUtility(cls)).bare)
             .filter((bare) => cache.getCssDeclarations(bare).length === 0 && isUserValued(bare))
-          if (unknown.length > 0) {
-            const resolved = resolveDeclarationsSync(ds.entryPoint, cache, unknown)
-            if (resolved) {
-              for (const [cls, raws] of Object.entries(resolved.decls)) {
-                cache.internDeclarations(cls, raws, resolved.values)
-              }
-            }
-          }
+          if (unknown.length > 0) resolveDeclarationsSync(ds.entryPoint, cache, unknown)
 
           const facts: ClassFacts[] = variantClasses.map((cls) => {
             const utility = extractUtility(cls)
