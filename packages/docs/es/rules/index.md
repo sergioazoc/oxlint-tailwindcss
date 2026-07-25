@@ -74,7 +74,7 @@ fatal `designSystemUnavailable` cuando falta.
 | -------------------------------- | --------------------------------------- |
 | `enforce-canonical`              | `{}`                                    |
 | `enforce-sort-order`             | `{ mode: 'default' }`                   |
-| `no-conflicting-classes`         | `{}`                                    |
+| `no-conflicting-classes`         | `{ reportRedundant: true }`             |
 | `no-deprecated-classes`          | `{}`                                    |
 | `no-unknown-classes`             | `{ allowlist: [], ignorePrefixes: [] }` |
 | `no-unnecessary-arbitrary-value` | `{}`                                    |
@@ -97,7 +97,7 @@ estático interno (que es determinístico).
 | `enforce-shorthand`                     | (sin opciones)                                      |
 | `max-class-count`                       | `{ max: 20 }`                                       |
 | `no-arbitrary-value`                    | `{ allow: [] }`                                     |
-| `no-contradicting-variants`             | (sin opciones)                                      |
+| `no-contradicting-variants`             | `{}`                                                |
 | `no-dark-without-light`                 | `{ variants: ['dark'] }`                            |
 | `no-duplicate-classes`                  | (sin opciones)                                      |
 | `no-hardcoded-colors`                   | `{ allow: [] }`                                     |

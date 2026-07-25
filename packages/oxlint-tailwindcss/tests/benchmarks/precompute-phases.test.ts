@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { resolve } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { dirname } from 'node:path'
+import { DECL_EXTRACTOR_SOURCE } from '../../src/design-system/sync-loader'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 
@@ -89,78 +90,7 @@ function extractComponentClasses(cssPath, baseDir) {
   return [...new Set(result)];
 }
 
-const atPropertyDescriptors = new Set(['syntax', 'inherits', 'initial-value']);
-
-function extractRootCssProps(cssText, className) {
-  const rootProps = [];
-  const allProps = [];
-  const escapedName = className.replace(/([^\\w-])/g, '\\\\$1');
-  const classSelector = '.' + escapedName;
-  const rawSelector = '.' + className;
-  const propRe = /^\\s+([\\w-]+)\\s*:/gm;
-
-  function isRoot(sel) {
-    for (const s of [classSelector, rawSelector]) {
-      if (sel === s) return true;
-      if (sel.length > s.length && sel.startsWith(s) && sel[s.length] === ':') return true;
-    }
-    return false;
-  }
-
-  function extractTopLevelProps(body) {
-    const props = [];
-    let depth = 0;
-    let lineStart = 0;
-    for (let i = 0; i <= body.length; i++) {
-      if (i === body.length || body[i] === '\\n') {
-        if (depth === 0) {
-          const line = body.slice(lineStart, i);
-          const m = /^\\s+([\\w-]+)\\s*:/.exec(line);
-          if (m && !atPropertyDescriptors.has(m[1])) props.push(m[1]);
-        }
-        lineStart = i + 1;
-      } else if (body[i] === '{') {
-        depth++;
-      } else if (body[i] === '}') {
-        depth--;
-      }
-    }
-    return props;
-  }
-
-  function processText(text) {
-    let i = 0;
-    while (i < text.length) {
-      while (i < text.length && /\\s/.test(text[i])) i++;
-      if (i >= text.length) break;
-      const braceIdx = text.indexOf('{', i);
-      if (braceIdx === -1) break;
-      const selector = text.slice(i, braceIdx).trim();
-      let depth = 1, j = braceIdx + 1;
-      while (j < text.length && depth > 0) {
-        if (text[j] === '{') depth++;
-        if (text[j] === '}') depth--;
-        j++;
-      }
-      const body = text.slice(braceIdx + 1, j - 1);
-      if (selector.startsWith('@media') || selector.startsWith('@supports') || selector.startsWith('@layer')) {
-        processText(body);
-      } else if (!selector.startsWith('@')) {
-        propRe.lastIndex = 0;
-        let m;
-        while ((m = propRe.exec(body)) !== null) {
-          if (!atPropertyDescriptors.has(m[1])) allProps.push(m[1]);
-        }
-        if (isRoot(selector)) rootProps.push(...extractTopLevelProps(body));
-      }
-      i = j;
-    }
-  }
-
-  processText(cssText);
-  const result = rootProps.length > 0 ? rootProps : allProps;
-  return [...new Set(result)];
-}
+${DECL_EXTRACTOR_SOURCE}
 
 async function main() {
   const timings = {};
@@ -246,16 +176,39 @@ async function main() {
   }
   timings['4_sort_order'] = performance.now() - t;
 
-  // === Phase 5: CSS property extraction ===
+  // === Phase 5: CSS declaration extraction ===
   t = performance.now();
-  const cssProps = {};
+  const scopeIds = new Map([['', 0]]);
+  const scopeTable = [''];
+  const propIds = new Map();
+  const propTable = [];
+  const valueIds = new Map();
+  const valueTable = [];
+  const declFreq = new Map();
+  const perClass = {};
   for (let i = 0; i < classNames.length; i++) {
-    if (cssResults[i]) {
-      const props = extractRootCssProps(cssResults[i], classNames[i]);
-      if (props.length > 0) cssProps[classNames[i]] = props;
-    }
+    if (!cssResults[i]) continue;
+    const keys = [];
+    walkDeclarations(cssResults[i], classNames[i], (scopeTok, prop, value) => {
+      let sc = scopeIds.get(scopeTok);
+      if (sc === undefined) { sc = scopeTable.length; scopeTable.push(scopeTok); scopeIds.set(scopeTok, sc); }
+      let p = propIds.get(prop);
+      if (p === undefined) { p = propTable.length; propTable.push(prop); propIds.set(prop, p); }
+      let v = valueIds.get(value);
+      if (v === undefined) { v = valueTable.length; valueTable.push(value); valueIds.set(value, v); }
+      const key = sc + '|' + p + '|' + v;
+      declFreq.set(key, (declFreq.get(key) || 0) + 1);
+      keys.push(key);
+    });
+    if (keys.length > 0) perClass[classNames[i]] = keys;
   }
-  timings['5_css_props'] = performance.now() - t;
+  for (let v = 0; v < valueTable.length; v++) {
+    scanVarReads(valueTable[v]);
+    isPureVarRead(valueTable[v]);
+  }
+  timings['5_css_declarations'] = performance.now() - t;
+  timings['_decl_values'] = valueTable.length;
+  timings['_decl_distinct'] = declFreq.size;
 
   // === Phase 6: Variant ordering ===
   t = performance.now();
@@ -354,7 +307,7 @@ describe('Precompute Phases Benchmark', () => {
       ['2_class_validation', 'Validación de clases + expansión'],
       ['3_canonicalization', 'Canonicalización (1 llamada por clase)'],
       ['4_sort_order', 'Orden de sort'],
-      ['5_css_props', 'Extracción de CSS props'],
+      ['5_css_declarations', 'Extracción de declaraciones CSS'],
       ['6_variant_order', 'Orden de variantes'],
       ['7_component_classes', 'Clases de componentes'],
       ['8_arbitrary_equivalents', 'Equivalentes arbitrarios'],

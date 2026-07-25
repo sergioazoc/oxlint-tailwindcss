@@ -74,7 +74,7 @@ These rules require `settings.tailwindcss.entryPoint` to be set; they emit a fat
 | -------------------------------- | --------------------------------------- |
 | `enforce-canonical`              | `{}`                                    |
 | `enforce-sort-order`             | `{ mode: 'default' }`                   |
-| `no-conflicting-classes`         | `{}`                                    |
+| `no-conflicting-classes`         | `{ reportRedundant: true }`             |
 | `no-deprecated-classes`          | `{}`                                    |
 | `no-unknown-classes`             | `{ allowlist: [], ignorePrefixes: [] }` |
 | `no-unnecessary-arbitrary-value` | `{}`                                    |
@@ -97,7 +97,7 @@ built-in static order (which is itself deterministic).
 | `enforce-shorthand`                     | (no options)                           |
 | `max-class-count`                       | `{ max: 20 }`                          |
 | `no-arbitrary-value`                    | `{ allow: [] }`                        |
-| `no-contradicting-variants`             | (no options)                           |
+| `no-contradicting-variants`             | `{}`                                   |
 | `no-dark-without-light`                 | `{ variants: ['dark'] }`               |
 | `no-duplicate-classes`                  | (no options)                           |
 | `no-hardcoded-colors`                   | `{ allow: [] }`                        |

@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+
+/*
+ * Project-defined variants whose behaviour is invisible to a list of names.
+ *
+ * `thumb` targets a pseudo-element, so `size-4 thumb:size-4` is NOT a redundant
+ * repetition — the two style different boxes. `child` introduces a combinator,
+ * so it is a reordering barrier: moving a state variant across it changes which
+ * element the selector matches.
+ *
+ * Neither name can appear in a hardcoded list, which is the point: the flags are
+ * derived from the selectors the design system reports for each variant.
+ */
+@custom-variant thumb (&::-webkit-slider-thumb);
+@custom-variant child (& > *);

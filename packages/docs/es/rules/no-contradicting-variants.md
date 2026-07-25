@@ -18,12 +18,24 @@ Pseudo-elementos (`after`, `before`, `placeholder`, `marker`, `backdrop`, `selec
 `shrink-0 [&>svg]:shrink-0` están bien — la base aplica al elemento y la variante a un descendiente
 o pseudo-elemento.
 
+Con `settings.tailwindcss.entryPoint` configurado, ese criterio sale del selector que el design
+system genera de verdad para cada variante, así que cubre variantes que define el propio proyecto:
+`@custom-variant thumb (&::-webkit-slider-thumb)` hace válido `size-4 thumb:size-4`, algo que
+ninguna lista de nombres podría saber. Sin entry point la regla usa los nombres de arriba y se
+comporta igual que antes — nunca reporta que falte el design system.
+
 El match es por identidad exacta de la utility, así que `bg-white hover:bg-blue-500` queda intacto
 (valores distintos), igual que `flex hover:items-center` (utilities distintas).
 
 ## Opciones
 
-(sin opciones)
+| Opción       | Tipo     | Por defecto | Descripción                                              |
+| ------------ | -------- | ----------- | -------------------------------------------------------- |
+| `entryPoint` | `string` | —           | Override por regla de `settings.tailwindcss.entryPoint`. |
+
+El entry point es opcional: con uno configurado la regla clasifica las variantes según los
+selectores que genera el design system, y sin él usa la lista interna. Nunca reporta que falte el
+design system.
 
 ## Ejemplos
 

@@ -3,9 +3,8 @@ import { beforeAll, describe, it, test, expect } from 'vitest'
 import { RuleTester } from 'oxlint/plugins-dev'
 import {
   noConflictingClasses,
-  isCompositionViaCssVars,
-  isVarComposedProperty,
-  isNarrowingOverride,
+  neededVars,
+  resolveWinner,
   shouldSkipPair,
 } from '../../src/rules/no-conflicting-classes'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
@@ -93,17 +92,35 @@ runWithFixture(ruleTester, 'no-conflicting-classes', noConflictingClasses, ENTRY
     { code: '<div className="touch-pan-x touch-pinch-zoom" />', filename: 'test.tsx' },
     // border-spacing axis composition
     { code: '<div className="border-spacing-x-2 border-spacing-y-4" />', filename: 'test.tsx' },
-    // size-* sets {width,height}; later h-*/w-* narrows one axis (subset-override)
-    { code: '<div className="size-4 h-6" />', filename: 'test.tsx' },
-    { code: '<div className="size-4 w-6" />', filename: 'test.tsx' },
-    // rounded-{side} (2 corners) → rounded-{corner} (1) refines one corner
-    { code: '<div className="rounded-t-lg rounded-tl-sm" />', filename: 'test.tsx' },
-    { code: '<div className="rounded-s-lg rounded-ss-sm" />', filename: 'test.tsx' },
-    // rounded (4 corners) → side (2) → corner (1) — both subset layers compose
+    // rounded (4 corners) → side (2) / corner (1): no property NAME is shared
+    // (border-radius is not border-top-left-radius), so nothing to compare.
     { code: '<div className="rounded-lg rounded-t-sm" />', filename: 'test.tsx' },
     { code: '<div className="rounded-lg rounded-tl-sm" />', filename: 'test.tsx' },
-    // truncate sets {overflow,text-overflow,white-space}; text-clip refines text-overflow
-    { code: '<div className="truncate text-clip" />', filename: 'test.tsx' },
+    // Same corner, same radius: whoever wins, the corner is the same.
+    { code: '<div className="rounded-t-lg rounded-l-lg" />', filename: 'test.tsx' },
+    // Pseudo-element and descendant boxes are not the element's box.
+    { code: '<div className="text-gray-900 placeholder-gray-400" />', filename: 'test.tsx' },
+    { code: '<div className="ms-2 space-x-4" />', filename: 'test.tsx' },
+    { code: '<div className="space-x-4 ms-2" />', filename: 'test.tsx' },
+    { code: '<div className="mbs-2 space-y-4" />', filename: 'test.tsx' },
+    { code: '<div className="divide-y-2 border-t-2" />', filename: 'test.tsx' },
+    // Documented compositions the rule now derives from the emitted CSS.
+    { code: '<div className="mask-b-from-50% mask-b-from-black" />', filename: 'test.tsx' },
+    { code: '<div className="drop-shadow-xl drop-shadow-indigo-500" />', filename: 'test.tsx' },
+    { code: '<div className="scale-3d scale-x-110" />', filename: 'test.tsx' },
+    { code: '<div className="translate-3d translate-x-4" />', filename: 'test.tsx' },
+    { code: '<div className="transform-gpu rotate-x-45" />', filename: 'test.tsx' },
+    { code: '<div className="rotate-x-45 transform-gpu" />', filename: 'test.tsx' },
+    { code: '<div className="scale-150 transform-gpu" />', filename: 'test.tsx' },
+    // Native Tailwind scrollbar colours: identical `scrollbar-color` declaration.
+    {
+      code: '<div className="scrollbar-thumb-red-500 scrollbar-track-gray-100" />',
+      filename: 'test.tsx',
+    },
+    {
+      code: '<div className="scrollbar-thin scrollbar-thumb-red-500 scrollbar-track-gray-100" />',
+      filename: 'test.tsx',
+    },
     // Mask gradient utilities are designed to compose across stops, families, axes, and edges.
     // Source: https://tailwindcss.com/docs/mask-image
     { code: '<div className="mask-l-from-50% mask-l-to-90%" />', filename: 'test.tsx' },
@@ -299,184 +316,98 @@ describe('text + tracking composition with letter-spacing', () => {
 
 // --- Unit tests for the pure composition heuristics ---
 
-describe('isCompositionViaCssVars', () => {
-  it('returns true when both sides define disjoint --tw-* properties', () => {
-    // shadow and ring both contribute to box-shadow via different vars
-    expect(
-      isCompositionViaCssVars(['box-shadow', '--tw-shadow'], ['box-shadow', '--tw-ring-shadow']),
-    ).toBe(true)
+describe('neededVars', () => {
+  const decl = (readsVars: string[], readsFallbackVars: string[] = []) =>
+    ({
+      prop: 'line-height',
+      value: 'var(--tw-leading, var(--text-sm--line-height))',
+      valueId: 0,
+      scope: 'element',
+      pseudo: '',
+      conditional: false,
+      readsVars,
+      readsFallbackVars,
+      pureVarRead: true,
+    }) as const
+
+  it('ignores the fallback when the group supplies the direct read', () => {
+    // `var(--tw-leading, …)`: once leading-* writes --tw-leading the fallback is
+    // dead CSS, so text-sm does not "need" the size token.
+    const needed = neededVars(
+      decl(['--tw-leading'], ['--text-sm--line-height']),
+      new Set(['--tw-leading']),
+    )
+    expect(needed).toEqual(['--tw-leading'])
   })
 
-  it('returns false when both sides share a --tw-* property', () => {
-    expect(
-      isCompositionViaCssVars(['box-shadow', '--tw-shadow'], ['box-shadow', '--tw-shadow']),
-    ).toBe(false)
-  })
-
-  it('returns false when one side has no custom properties', () => {
-    expect(
-      isCompositionViaCssVars(['background-color'], ['background-color', '--tw-bg-opacity']),
-    ).toBe(false)
-  })
-
-  it('returns false when neither side has custom properties', () => {
-    expect(isCompositionViaCssVars(['color'], ['color'])).toBe(false)
-  })
-})
-
-describe('isVarComposedProperty', () => {
-  it('composes when exactly one side defines the matching --tw- variable', () => {
-    const outline1 = ['outline-style', 'outline-width']
-    const outlineDashed = ['--tw-outline-style', 'outline-style']
-    expect(isVarComposedProperty('outline-style', outline1, outlineDashed)).toBe(true)
-    expect(isVarComposedProperty('outline-style', outlineDashed, outline1)).toBe(true)
-  })
-
-  it('does not compose when both sides define the variable (two writers)', () => {
-    const dashed = ['--tw-outline-style', 'outline-style']
-    const solid = ['--tw-outline-style', 'outline-style']
-    expect(isVarComposedProperty('outline-style', dashed, solid)).toBe(false)
-  })
-
-  it('does not compose when neither side defines the variable', () => {
-    const a = ['outline-style', 'outline-width']
-    const b = ['outline-style', 'outline-width']
-    expect(isVarComposedProperty('outline-style', a, b)).toBe(false)
-  })
-
-  it('never treats custom properties themselves as composed', () => {
-    expect(
-      isVarComposedProperty('--tw-outline-style', ['--tw-outline-style'], ['outline-style']),
-    ).toBe(false)
+  it('keeps the fallback when the direct read is unsupplied', () => {
+    const needed = neededVars(decl(['--tw-leading'], ['--text-sm--line-height']), new Set())
+    expect(needed).toEqual(['--tw-leading', '--text-sm--line-height'])
   })
 })
 
-describe('isNarrowingOverride', () => {
-  it('returns true when later is a strict subset of earlier (size + h)', () => {
-    // size-4 sets {width, height}; h-6 sets {height} — narrows one axis
-    expect(isNarrowingOverride(['width', 'height'], ['height'])).toBe(true)
+describe('resolveWinner', () => {
+  const facts = (className: string, order: bigint | null, important = false) => ({
+    className,
+    decls: new Map(),
+    writes: new Map(),
+    order,
+    important,
+    partial: false,
   })
 
-  it('returns true for shorthand → corner (rounded + corner)', () => {
-    // rounded-t sets {border-top-left-radius, border-top-right-radius};
-    // rounded-tl sets {border-top-left-radius} — refines one corner
-    expect(
-      isNarrowingOverride(
-        ['border-top-left-radius', 'border-top-right-radius'],
-        ['border-top-left-radius'],
-      ),
-    ).toBe(true)
+  it('gives the later stylesheet position the win', () => {
+    const a = facts('p-4', 10n)
+    const b = facts('p-6', 20n)
+    expect(resolveWinner(a, b)).toMatchObject({ winner: b, loser: a, orderKnown: true })
+    expect(resolveWinner(b, a)).toMatchObject({ winner: b, loser: a, orderKnown: true })
   })
 
-  it('returns false when the inverse (wider later clobbers narrower earlier)', () => {
-    // h-6 then size-4: later is wider, not a refinement — must report conflict
-    expect(isNarrowingOverride(['height'], ['width', 'height'])).toBe(false)
+  it('lets ! beat stylesheet order', () => {
+    const plain = facts('text-red-500', 99n)
+    const important = facts('!text-blue-500', 1n, true)
+    expect(resolveWinner(plain, important)).toMatchObject({
+      winner: important,
+      loser: plain,
+      orderKnown: true,
+    })
   })
 
-  it('returns false when sets are equal (no strict subset)', () => {
-    // mt-2 vs mt-4: same property set — overlap check should still fire
-    expect(isNarrowingOverride(['margin-top'], ['margin-top'])).toBe(false)
-  })
-
-  it('returns false when later is disjoint from earlier', () => {
-    // padding-left is not in {color}, so no narrowing — different concern entirely
-    expect(isNarrowingOverride(['color'], ['padding-left'])).toBe(false)
-  })
-
-  it('returns false when later is empty', () => {
-    expect(isNarrowingOverride(['width', 'height'], [])).toBe(false)
-  })
-
-  it('returns true for multi-property shorthand narrowing (truncate + text-clip)', () => {
-    // truncate sets {overflow, text-overflow, white-space}; text-clip refines text-overflow
-    expect(
-      isNarrowingOverride(['overflow', 'text-overflow', 'white-space'], ['text-overflow']),
-    ).toBe(true)
-  })
-
-  it('returns false when later has same length as earlier (not strict subset)', () => {
-    // Same length means not strictly smaller — even if subset relation holds, this
-    // is redundancy, not refinement
-    expect(isNarrowingOverride(['color', 'background'], ['color', 'background'])).toBe(false)
+  it('reports an unknown order rather than guessing from the attribute', () => {
+    expect(resolveWinner(facts('a', null), facts('b', 5n)).orderKnown).toBe(false)
+    expect(resolveWinner(facts('a', 5n), facts('b', 5n)).orderKnown).toBe(false)
   })
 })
 
 describe('shouldSkipPair', () => {
-  it('skips pairs that compose via disjoint --tw-* vars', () => {
+  it('skips the documented non-derivable exceptions', () => {
+    // prose + prose-sm: same properties, different values, composition by plugin
+    // design — invisible in the emitted CSS.
+    expect(shouldSkipPair('prose', 'prose-sm')).toBe(true)
+    expect(shouldSkipPair('prose', 'max-w-none')).toBe(true)
+    expect(shouldSkipPair('mask-add', 'mask-linear-from-20%')).toBe(true)
+    expect(shouldSkipPair('mask-linear-from-20%', 'mask-add')).toBe(true)
+  })
+
+  it('does not skip pairs the CSS comparison is expected to judge', () => {
+    expect(shouldSkipPair('bg-red-500', 'bg-blue-500')).toBe(false)
+    expect(shouldSkipPair('from-red-500', 'to-blue-500')).toBe(false)
+    expect(shouldSkipPair('text-sm', 'leading-tight')).toBe(false)
+    expect(shouldSkipPair('divide-x-2', 'border-2')).toBe(false)
+    expect(shouldSkipPair('animate-in', 'fade-in')).toBe(false)
+  })
+
+  it('strips ! before matching, in either position', () => {
+    expect(shouldSkipPair('!prose', 'prose-sm')).toBe(true)
+    expect(shouldSkipPair('prose!', 'prose-sm')).toBe(true)
+  })
+
+  it('accepts injected tables', () => {
     expect(
-      shouldSkipPair(
-        'shadow-md',
-        'ring-2',
-        ['box-shadow', '--tw-shadow'],
-        ['box-shadow', '--tw-ring-shadow'],
-      ),
-    ).toBe(true)
-  })
-
-  it('skips pairs in the same complementary group (gradient stops)', () => {
-    expect(shouldSkipPair('from-red-500', 'to-blue-500', [], [])).toBe(true)
-  })
-
-  it('skips transform axes via disjoint --tw-* vars', () => {
-    // translate-x and translate-y are same captured prefix ("translate"),
-    // so they fall through the complementary-group check. With real DS props
-    // they have disjoint --tw-translate-{x,y} vars and compose via vars.
-    expect(
-      shouldSkipPair(
-        'translate-x-2',
-        'translate-y-4',
-        ['translate', '--tw-translate-x'],
-        ['translate', '--tw-translate-y'],
-      ),
-    ).toBe(true)
-  })
-
-  it('does NOT skip same-axis transforms (same captured prefix conflict)', () => {
-    // translate-x-1 vs translate-x-2: same prefix → fall through → overlap → conflict
-    expect(
-      shouldSkipPair(
-        'translate-x-1',
-        'translate-x-2',
-        ['translate', '--tw-translate-x'],
-        ['translate', '--tw-translate-x'],
-      ),
-    ).toBe(false)
-  })
-
-  it('skips composition pair text-* + leading-*', () => {
-    expect(shouldSkipPair('text-sm', 'leading-tight', [], [])).toBe(true)
-  })
-
-  it('skips composition pair in either order (leading-* + text-*)', () => {
-    expect(shouldSkipPair('leading-tight', 'text-sm', [], [])).toBe(true)
-  })
-
-  it('does NOT skip true conflicts on the same property', () => {
-    expect(
-      shouldSkipPair('bg-red-500', 'bg-blue-500', ['background-color'], ['background-color']),
-    ).toBe(false)
-  })
-
-  it('strips ! (prefix) before regex matching', () => {
-    expect(shouldSkipPair('!from-red-500', '!to-blue-500', [], [])).toBe(true)
-  })
-
-  it('strips ! (suffix) before regex matching', () => {
-    expect(shouldSkipPair('from-red-500!', 'to-blue-500!', [], [])).toBe(true)
-  })
-
-  it('accepts injected rule tables', () => {
-    // With empty rule tables nothing should be skipped via regex
-    expect(
-      shouldSkipPair('from-red-500', 'to-blue-500', [], [], {
-        complementaryGroups: [],
-        compositionPairs: [],
-      }),
+      shouldSkipPair('prose', 'prose-sm', { complementaryGroups: [], compositionPairs: [] }),
     ).toBe(false)
   })
 })
-
-// --- tailwindcss-animate utilities compose through CSS custom properties ---
 
 describe('tailwindcss-animate composition', () => {
   beforeAll(() => {
@@ -533,6 +464,33 @@ describe('tailwindcss-animate composition', () => {
 
 // --- tw-animate-css utilities compose through CSS custom properties ---
 
+describe('values that are the same number written two ways', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(TW_ANIMATE_CSS_ENTRY)
+  })
+
+  runWithFixture(
+    new RuleTester(),
+    'no-conflicting-classes (calc(1 * x))',
+    noConflictingClasses,
+    TW_ANIMATE_CSS_ENTRY,
+    {
+      valid: [],
+      invalid: [
+        {
+          // `slide-in-from-left` declares `--tw-enter-translate-x: -100%` and
+          // `slide-in-from-left-full` declares `calc(1 * -100%)`: the same value,
+          // so one of the two is redundant rather than in conflict.
+          code: '<div className="slide-in-from-left slide-in-from-left-full" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'redundant' }],
+        },
+      ],
+    },
+  )
+})
+
 describe('tw-animate-css composition', () => {
   beforeAll(() => {
     resetDesignSystem()
@@ -571,6 +529,249 @@ describe('tw-animate-css composition', () => {
           errors: [{ messageId: 'conflict' }],
         },
       ],
+    },
+  )
+})
+
+// --- Decisions the rule now derives from the emitted CSS ---
+
+describe('derived from generated CSS', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(ENTRY_POINT)
+  })
+
+  const invalid = (classes: string, messageId = 'conflict') => ({
+    code: `<div className="${classes}" />`,
+    filename: 'test.tsx',
+    errors: [{ messageId }],
+  })
+
+  runWithFixture(
+    new RuleTester(),
+    'no-conflicting-classes (derived)',
+    noConflictingClasses,
+    ENTRY_POINT,
+    {
+      valid: [],
+      invalid: [
+        // A narrower utility layered over a shorthand used to be waved through by
+        // a directional heuristic: `size-4 h-6` was valid and `h-6 size-4` was
+        // not, even though both compile to identical CSS. The stylesheet order
+        // decides, and it always puts `h-*`/`w-*` after `size-*`, so the
+        // attribute order was never the point.
+        invalid('size-4 h-6'),
+        invalid('size-4 w-6'),
+        invalid('rounded-t-lg rounded-tl-sm'),
+        invalid('rounded-s-lg rounded-ss-sm'),
+        invalid('truncate text-clip'),
+        // Same shape, and it used to be a FALSE NEGATIVE: not-sr-only's
+        // properties are a strict subset of sr-only's, so the heuristic silently
+        // accepted a pair that clobbers seven declarations.
+        invalid('sr-only not-sr-only'),
+
+        // Pairs within one non-element box still compete.
+        invalid('space-x-4 space-x-2'),
+        invalid('placeholder-red-500 placeholder-blue-500'),
+
+        // Both write --tw-mask-linear with different values: one silently kills
+        // the other. The old mask table hid this.
+        invalid('mask-linear-from-20% mask-b-from-50%'),
+
+        // Bare utilities recovered outside getClassList() had no precomputed
+        // data at all, so these were never compared.
+        invalid('rounded rounded-lg'),
+        invalid('blur blur-sm'),
+
+        // `!` wins regardless of stylesheet position, so it is the winner named.
+        invalid('!text-blue-500 text-red-500'),
+      ],
+    },
+  )
+})
+
+describe('redundant classes', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(ENTRY_POINT)
+  })
+
+  const redundant = (classes: string) => ({
+    code: `<div className="${classes}" />`,
+    filename: 'test.tsx',
+    errors: [{ messageId: 'redundant' }],
+  })
+
+  runWithFixture(
+    new RuleTester(),
+    'no-conflicting-classes (redundant)',
+    noConflictingClasses,
+    ENTRY_POINT,
+    {
+      valid: [
+        // Opting out silences redundancy without touching conflict detection.
+        {
+          code: '<div className="shadow shadow-sm" />',
+          filename: 'test.tsx',
+          options: [{ reportRedundant: false }],
+        },
+      ],
+      invalid: [
+        // Same declaration from both sides: not a conflict, but one of them is
+        // dead weight — and no other rule reports these (the design system
+        // canonicalizes them to themselves).
+        redundant('shadow shadow-sm'),
+        redundant('ring ring-1'),
+        redundant('grayscale grayscale-100'),
+        redundant('block line-clamp-none'),
+        redundant('h-4 size-4'),
+        redundant('-m-0 m-0'),
+        // `transform` is a v3 compatibility no-op: byte-identical chain.
+        redundant('transform rotate-x-45'),
+        // `w-full` adds nothing to `container`, but `container` itself is never
+        // named: its breakpoint max-widths live in @media and are not modelled.
+        redundant('container w-full'),
+      ],
+    },
+  )
+})
+
+// --- User escape hatch ---
+
+describe('allow option', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(ENTRY_POINT)
+  })
+
+  runWithFixture(
+    new RuleTester(),
+    'no-conflicting-classes (allow)',
+    noConflictingClasses,
+    ENTRY_POINT,
+    {
+      valid: [
+        // A bare pattern silences everything involving a matching class — the
+        // answer to "my plugin composes in a way you cannot derive".
+        {
+          code: '<div className="flex-row flex-col" />',
+          filename: 'test.tsx',
+          options: [{ allow: ['^flex-'] }],
+        },
+        // A two-element pattern silences just that combination.
+        {
+          code: '<div className="p-4 p-6" />',
+          filename: 'test.tsx',
+          options: [{ allow: [['^p-4$', '^p-6$']] }],
+        },
+        // Orientation does not matter.
+        {
+          code: '<div className="p-6 p-4" />',
+          filename: 'test.tsx',
+          options: [{ allow: [['^p-4$', '^p-6$']] }],
+        },
+      ],
+      invalid: [
+        // An unrelated allow entry must not silence anything else.
+        {
+          code: '<div className="w-4 w-8" />',
+          filename: 'test.tsx',
+          options: [{ allow: ['^flex-'] }],
+          errors: [{ messageId: 'conflict' }],
+        },
+        // A pair entry is not a licence for either class on its own.
+        {
+          code: '<div className="p-4 p-8" />',
+          filename: 'test.tsx',
+          options: [{ allow: [['^p-4$', '^p-6$']] }],
+          errors: [{ messageId: 'conflict' }],
+        },
+        // An invalid regex is skipped, not thrown, and silences nothing.
+        {
+          code: '<div className="w-4 w-8" />',
+          filename: 'test.tsx',
+          options: [{ allow: ['[unclosed'] }],
+          errors: [{ messageId: 'conflict' }],
+        },
+      ],
+    },
+  )
+})
+
+// --- Guards for defects found reviewing this change ---
+
+describe('regressions found in review', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(ENTRY_POINT)
+  })
+
+  runWithFixture(
+    new RuleTester(),
+    'no-conflicting-classes (review)',
+    noConflictingClasses,
+    ENTRY_POINT,
+    {
+      valid: [
+        // `space-x-4` writes the reverse flag as its registered default and
+        // `space-x-reverse` flips it: this is the documented way to space a
+        // reversed flex row, not a clobber.
+        {
+          code: '<div className="flex-row-reverse space-x-4 space-x-reverse" />',
+          filename: 'test.tsx',
+        },
+        { code: '<div className="divide-y-4 divide-y-reverse" />', filename: 'test.tsx' },
+        // `prose` sets typographic defaults the plugin means you to override.
+        { code: '<div className="prose text-red-500" />', filename: 'test.tsx' },
+        { code: '<div className="prose leading-8" />', filename: 'test.tsx' },
+        // The other side of the reset rule — a class that clears variables AND
+        // declares substance of its own, so losing the reset is free — is
+        // `animate-in`, covered in the tailwindcss-animate block below.
+      ],
+      invalid: [
+        // A `*-none` reset IS the utility: everything else it declares is a pure
+        // var() conduit, so losing the reset loses the only thing asked for.
+        // This reported before the rewrite and must keep reporting.
+        {
+          code: '<div className="blur-lg blur-none" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'conflict' }],
+        },
+        {
+          code: '<div className="drop-shadow-xl drop-shadow-none" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'conflict' }],
+        },
+      ],
+    },
+  )
+})
+
+describe('declarations under an unmodelled selector condition', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(TW_ANIMATE_CSS_ENTRY)
+  })
+
+  runWithFixture(
+    new RuleTester(),
+    'no-conflicting-classes (ambiguous keys)',
+    noConflictingClasses,
+    TW_ANIMATE_CSS_ENTRY,
+    {
+      valid: [
+        // `slide-in-from-start` emits `&:dir(ltr)` and `&:dir(rtl)` blocks that
+        // both classify as the element's own box, so the model cannot say which
+        // value applies. Staying quiet is the honest answer; keeping only the
+        // last declaration would have told the user to remove the class and
+        // silently reversed the LTR animation.
+        {
+          code: '<div className="slide-in-from-start slide-in-from-right" />',
+          filename: 'test.tsx',
+        },
+        { code: '<div className="slide-in-from-end slide-in-from-left" />', filename: 'test.tsx' },
+      ],
+      invalid: [],
     },
   )
 })

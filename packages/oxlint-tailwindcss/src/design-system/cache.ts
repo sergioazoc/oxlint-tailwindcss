@@ -1,5 +1,12 @@
 import { type PrecomputedData } from './sync-loader'
+import {
+  type CssDeclaration,
+  type CssDeclarationIndex,
+  createDeclarationDecoder,
+  parseScopeToken,
+} from './css-declarations'
 import { roundRemValue } from '../utils/floating-point'
+import { type VariantFacts } from '../utils/class-parser'
 import {
   extractUtility,
   extractVariants,
@@ -7,12 +14,24 @@ import {
   splitImportant,
 } from '../utils/class-parser'
 
+const EMPTY_DECLARATIONS: readonly CssDeclaration[] = []
+
 export class DesignSystemCache {
   private canonicalMap = new Map<string, string>()
   private validitySet = new Set<string>()
   private orderMap = new Map<string, bigint | null>()
-  private cssPropsMap = new Map<string, string[]>()
+  // Raw interned tables plus a per-class memo. Nothing is decoded up front: a
+  // linted file mentions hundreds of classes, not the 23 000 the design system
+  // knows, and eagerly building a map cost ~6 ms per design system for nothing.
+  private declIndex: CssDeclarationIndex | null = null
+  private decodeDecls: ((packed: string | undefined) => readonly CssDeclaration[]) | null = null
+  private declMemo = new Map<string, readonly CssDeclaration[]>()
+  private propsMemo = new Map<string, string[]>()
+  private partialSet = new Set<string>()
+  // Reverse of `declIndex.values`, built on first lint-time interning.
+  private valueIdByText: Map<string, number> | null = null
   private variantOrderMap = new Map<string, number>()
+  private variantFactsMap = new Map<string, VariantFacts>()
   private arbitraryEquivMap = new Map<string, string>()
   private _validClasses: string[] = []
   private _knownPrefixes: Set<string> | null = null
@@ -24,6 +43,8 @@ export class DesignSystemCache {
   // the prefix. Kept separate from validitySet so `classValidity` can tell a
   // Tailwind utility (prefix-required) apart from a user component class.
   private componentSet = new Set<string>()
+  private themeRefs = new Map<string, string[]>()
+  private definedVarSet = new Set<string>()
 
   static fromPrecomputed(data: PrecomputedData): DesignSystemCache {
     const cache = new DesignSystemCache()
@@ -43,8 +64,16 @@ export class DesignSystemCache {
       if (order > cache._maxOrder) cache._maxOrder = order
     }
 
-    for (const [cls, props] of Object.entries(data.cssProps)) {
-      cache.cssPropsMap.set(cls, props)
+    // Stored by reference, decoded on demand. Guarded rather than assumed: a
+    // cache artifact missing the field is rejected upstream by
+    // `isPrecomputedData`, so reaching here without it means a hand-built
+    // object, which should read as "no declarations known" instead of throwing.
+    if (data.cssDeclarations) {
+      cache.declIndex = data.cssDeclarations
+      cache.decodeDecls = createDeclarationDecoder(data.cssDeclarations)
+      for (const cls of data.cssDeclarations.partial ?? []) {
+        cache.partialSet.add(cls)
+      }
     }
 
     if (data.variantOrder) {
@@ -53,10 +82,27 @@ export class DesignSystemCache {
       }
     }
 
+    for (const [name, facts] of Object.entries(data.variantFacts ?? {})) {
+      cache.variantFactsMap.set(name, {
+        pseudoElement: facts.p === 1,
+        structural: facts.s === 1,
+      })
+    }
+
     if (data.componentClasses) {
       for (const cls of data.componentClasses) {
         cache.validitySet.add(cls)
         cache.componentSet.add(cls)
+      }
+    }
+
+    for (const name of data.definedVars ?? []) {
+      cache.definedVarSet.add(name)
+    }
+
+    if (data.themeRefs) {
+      for (const [name, refs] of Object.entries(data.themeRefs)) {
+        cache.themeRefs.set(name, refs)
       }
     }
 
@@ -374,16 +420,171 @@ export class DesignSystemCache {
     )
   }
 
+  /**
+   * Whether the stylesheet order for this exact class is known, as opposed to
+   * approximated from a prefix sibling. Callers that name a winner must not do
+   * so from an approximation: `w-[10px]` and `w-[20px]` both borrow the order of
+   * the first `w-*` class, which says nothing about their real positions.
+   */
+  hasExactOrder(className: string): boolean {
+    const key = this.stripProjectPrefix(className)
+    if (this.orderMap.get(key) != null) return true
+    const { bare, position } = splitImportant(key)
+    return position !== null && this.orderMap.get(bare) != null
+  }
+
   getClassOrder(classes: string[]): [string, bigint | null][] {
     return classes.map((cls) => [cls, this.getOrder(cls)])
   }
 
+  /**
+   * Every declaration the class emits, in emission order, not deduplicated.
+   * Includes declarations on pseudo-elements and (for classes that style only
+   * their descendants, like `space-x-*`) on descendants — each tagged with its
+   * scope, so callers never mistake one box for another.
+   */
+  getCssDeclarations(className: string): readonly CssDeclaration[] {
+    const key = this.stripProjectPrefix(className)
+    const memo = this.declMemo.get(key)
+    if (memo) return memo
+    const byClass = this.declIndex?.byClass
+    let packed = byClass?.[key]
+    if (packed === undefined) {
+      const { bare, position } = splitImportant(key)
+      if (position) packed = byClass?.[bare]
+    }
+    const decoded = this.decodeDecls?.(packed) ?? EMPTY_DECLARATIONS
+    this.declMemo.set(key, decoded)
+    return decoded
+  }
+
+  /**
+   * Adds declarations resolved at lint time (for classes the precompute never
+   * saw — arbitrary values, slash modifiers, off-scale numbers) and memoizes
+   * them like any other class.
+   *
+   * Values are interned against the SAME table the precompute filled, which is
+   * the point: `p-4`'s value id has to be comparable with `p-[1rem]`'s, or the
+   * two could never be told apart from a genuine conflict.
+   */
+  internDeclarations(
+    className: string,
+    raws: readonly (readonly [string, string, string])[],
+    valueFacts: Record<string, { p: string[]; f: string[]; u: boolean }>,
+  ): readonly CssDeclaration[] {
+    const index = this.declIndex
+    if (!index) return EMPTY_DECLARATIONS
+    if (!this.valueIdByText) {
+      this.valueIdByText = new Map(index.values.map((value, id) => [value, id]))
+    }
+    const decls: CssDeclaration[] = []
+    let hasElement = false
+    let hasDescendant = false
+    let hasConditional = false
+    for (const [scopeToken, prop, value] of raws) {
+      let valueId = this.valueIdByText.get(value)
+      if (valueId === undefined) {
+        valueId = index.values.length
+        index.values.push(value)
+        this.valueIdByText.set(value, valueId)
+      }
+      const facts = valueFacts[value]
+      const { scope, pseudo, conditional } = parseScopeToken(scopeToken)
+      if (conditional) hasConditional = true
+      else if (scope === 'element') hasElement = true
+      else if (scope === 'descendant') hasDescendant = true
+      decls.push({
+        prop,
+        value,
+        valueId,
+        scope,
+        pseudo,
+        conditional,
+        readsVars: facts?.p ?? [],
+        readsFallbackVars: facts?.f ?? [],
+        pureVarRead: facts?.u ?? false,
+      })
+    }
+    const key = this.stripProjectPrefix(className)
+    // Same decision the precompute makes for the classes it knows: CSS we did
+    // not model in full must never be reported as redundant.
+    if (hasConditional || (hasElement && hasDescendant)) this.partialSet.add(key)
+    this.declMemo.set(key, decls)
+    this.propsMemo.delete(key)
+    return decls
+  }
+
+  /**
+   * True when the class emits CSS we deliberately did not model in full
+   * (descendant rules alongside its own, or `@media`/`@supports` blocks). Such a
+   * class must never be reported as redundant.
+   */
+  isPartial(className: string): boolean {
+    return this.partialSet.has(this.stripProjectPrefix(className))
+  }
+
+  /**
+   * Property names the class declares on its OWN box, unconditionally.
+   * Deduplicated, in emission order.
+   */
   getCssProperties(className: string): string[] {
-    const result = this.cssPropsMap.get(className)
-    if (result) return result
-    const { bare, position } = splitImportant(className)
-    if (position) return this.cssPropsMap.get(bare) ?? []
-    return []
+    const key = this.stripProjectPrefix(className)
+    const memo = this.propsMemo.get(key)
+    if (memo) return memo
+    const seen = new Set<string>()
+    const props: string[] = []
+    for (const decl of this.getCssDeclarations(key)) {
+      if (decl.scope !== 'element' || decl.conditional) continue
+      if (seen.has(decl.prop)) continue
+      seen.add(decl.prop)
+      props.push(decl.prop)
+    }
+    this.propsMemo.set(key, props)
+    return props
+  }
+
+  /** Strips the Tailwind project prefix (`tw:flex` → `flex`), if configured. */
+  private stripProjectPrefix(className: string): string {
+    if (this._prefix && className.startsWith(this._prefix + ':')) {
+      return className.slice(this._prefix.length + 1)
+    }
+    return className
+  }
+
+  /**
+   * Whether `varName` resolves to `target` through theme indirection.
+   *
+   * `@theme inline { --color-primary: var(--primary) }` makes `bg-primary` and
+   * `bg-(--primary)` the same declaration; a literal `--color-primary: oklch(…)`
+   * makes them different colours. Only the theme table can tell those apart.
+   */
+  themeVarResolvesTo(varName: string, target: string, depth = 4): boolean {
+    if (varName === target) return true
+    if (depth <= 0) return false
+    const refs = this.themeRefs.get(varName)
+    if (!refs) return false
+    return refs.some((ref) => this.themeVarResolvesTo(ref, target, depth - 1))
+  }
+
+  /** Whether the project defines this custom property (theme or plain CSS). */
+  definesVar(varName: string): boolean {
+    return this.definedVarSet.has(varName) || this.themeRefs.has(varName)
+  }
+
+  /**
+   * What the variant's selector does, derived from the design system. `undefined`
+   * means "no information" — the caller falls back to its static predicates,
+   * which is what keeps the variant rules working without an entry point.
+   *
+   * Compound variants (`group-hover/name`, `peer-checked`) resolve through the
+   * same normalisation the priority lookup uses.
+   */
+  getVariantFacts(variant: string): VariantFacts | undefined {
+    const direct = this.variantFactsMap.get(variant)
+    if (direct) return direct
+    const slash = variant.indexOf('/')
+    if (slash > 0) return this.variantFactsMap.get(variant.slice(0, slash))
+    return undefined
   }
 
   getVariantPriority(variant: string): number | null {

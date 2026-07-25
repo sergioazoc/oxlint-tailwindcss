@@ -1,40 +1,70 @@
 ## What this rule does
 
-Detects pairs of Tailwind classes on the same element that write to the same CSS properties under
-the same variant — the kind of conflict where the second class silently wins and the first one is
-dead weight. Reporting happens at the CSS-property level (not by textual pattern): the rule asks the
-design system what each class produces, then compares the property sets.
+Detects pairs of Tailwind classes on the same element, under the same variant, whose CSS
+declarations clash — where one of the two is silently discarded. The comparison is made against the
+CSS the design system actually emits, values included: property names alone cannot tell a conflict
+from a composition.
 
-To avoid false positives on utilities that share properties on purpose, the rule has two escape
-hatches:
+A shared property is a conflict only when the declaration that LOSES the cascade carries something
+the winner does not reproduce. Which means these are **not** conflicts, and none of them is
+special-cased:
 
-- **`COMPLEMENTARY_GROUPS`** — regex families whose members are designed to compose, e.g. gradient
-  stops (`from-*` / `via-*` / `to-*` share `--tw-gradient-stops`), transition pieces, transform
-  axes, mask gradients, `prose` size modifiers.
-- **`COMPOSITION_PAIRS`** — explicit pairs that compose despite property overlap (e.g. `text-*` and
-  `leading-*`, `border-*` width and `border-{solid,dashed,…}` style, `divide-*` styling children
-  while `border-*` styles the element, `animate-in` initializing the `--tw-enter-*` vars that its
-  modifiers override).
+- **the same value on both sides** — `mask-b-from-50% mask-b-from-black` share four byte-identical
+  declarations, so whoever wins, the result is the same;
+- **a `var()` forwarder and the class supplying the variable** — `outline-2` declares
+  `outline-style: var(--tw-outline-style)` and carries no value of its own; matching is by the real
+  variable name, so a plugin's `--scrollbar-*` behaves exactly like Tailwind's `--tw-*`;
+- **a winner that still pulls the loser in** — `drop-shadow-indigo-500` reads the
+  `--tw-drop-shadow-size` that `drop-shadow-xl` writes, followed transitively (that is how the
+  `from-*` / `via-*` / `to-*` chain composes);
+- **a custom property reset to `initial`** — `animate-in` initializes every `--tw-enter-*` for its
+  modifiers to override;
+- **declarations on different boxes** — `placeholder-*` styles `::placeholder`, `space-x-*` styles
+  the children, neither styles the element.
 
-It also recognizes two structural patterns automatically: composition via disjoint CSS custom
-properties (so `shadow-*` and `ring-*` end up in the same `box-shadow` without colliding) and
-narrowing overrides, where the later class's property set is a strict subset of the earlier one
-(`size-4 h-6`, `rounded-t-lg rounded-tl-sm`, `truncate text-clip`).
+Two classes that declare the same property with the same value are reported as **`redundant`**
+instead: not a conflict, but one of them is dead weight. `reportRedundant: false` opts out.
+
+Which class wins is asked of the design system, not inferred from the order you wrote the classes in
+— Tailwind's output does not depend on that order. When the position cannot be known (for a class
+whose value you wrote, like `w-[10px]`), the diagnostic reports the clash without naming a winner.
+
+Only two compositions cannot be derived from the CSS, and they stay declared in the source with the
+reason why: `prose` size variants and `prose` + `max-w-*` (the plugin intends the override and the
+emitted CSS is indistinguishable from an accident), and `mask-composite` modes. For a composition
+your own plugins produce, use the **`allow`** option rather than waiting for a release.
 
 DS-dependent — requires `settings.tailwindcss.entryPoint`. When the design system can't load, the
 rule emits a single fatal `designSystemUnavailable` diagnostic per file instead of silently passing.
 
 ## Options
 
-(no options beyond `entryPoint`, which can also be set globally via
-`settings.tailwindcss.entryPoint`.)
+| Option            | Type                             | Default | Description                                                                                                                                                                                                                     |
+| ----------------- | -------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reportRedundant` | `boolean`                        | `true`  | Report two classes that declare the same property with the same value as `redundant`.                                                                                                                                           |
+| `allow`           | `(string \| [string, string])[]` | `[]`    | Patterns to silence, matched against the class **as written** (variant prefix and `!` included). A bare pattern silences any pair involving a matching class; a two-element pattern silences that combination, in either order. |
+| `entryPoint`      | `string`                         | —       | Per-rule override of `settings.tailwindcss.entryPoint`.                                                                                                                                                                         |
+
+```jsonc
+{
+  "rules": {
+    "tailwindcss/no-conflicting-classes": [
+      "error",
+      {
+        // Your plugin composes in a way the emitted CSS cannot show.
+        "allow": [["^gutter-thin$", "^gutter-(thumb|track)-"]],
+      },
+    ],
+  },
+}
+```
 
 ## Examples
 
 ### ✗ Incorrect
 
 ```tsx
-// Same property, second wins
+// Same property, different value: one of them is discarded
 <div className="text-red-500 text-blue-500" />
 
 // Conflict survives across variants when both classes share the same one
@@ -65,17 +95,15 @@ rule emits a single fatal `designSystemUnavailable` diagnostic per file instead 
 // `shadow-*` + `ring-*` compose via disjoint --tw-* custom properties
 <div className="shadow-lg ring-1 ring-offset-2" />
 
-// Narrowing: `size-4` then `h-6` refines one axis
-<div className="size-4 h-6" />
 ```
 
 ## Interactions with other rules
 
 - **`no-duplicate-classes`**: complementary. Duplicates are the exact same class repeated; conflicts
   are different classes that hit the same property. Keep both rules on.
-- **`enforce-sort-order`**: ordering changes which class wins, but it doesn't make conflicts
-  disappear. Run this rule first so the diagnostic points at the real overlap rather than chasing
-  whichever class happens to be last.
+- **`enforce-sort-order`**: cosmetic here. Which class wins is decided by the generated stylesheet,
+  not by the order of the attribute, so sorting cannot create or resolve a conflict — it only makes
+  the pair easier to read.
 - **`no-deprecated-classes`**: a deprecated alias and its modern equivalent (`flex-grow` + `grow`)
   will trip this rule on the property level. Fixing the deprecation usually resolves the conflict.
 - **`enforce-canonical`**: rewriting to canonical forms collapses trivially-aliased pairs before
@@ -86,7 +114,7 @@ rule emits a single fatal `designSystemUnavailable` diagnostic per file instead 
 - **Generated class lists** where the order is meaningful and you rely on "last wins" semantics
   intentionally (e.g. a base + override pattern in a design system primitive). Prefer extracting the
   override into a `cn()`/`twMerge()` call so the conflict becomes explicit.
-- **Codebases where many false positives stem from missing entries in `COMPLEMENTARY_GROUPS` /
-  `COMPOSITION_PAIRS`**: open an issue rather than disabling — the tables are the supported
-  extension point.
+- **Codebases whose own plugins compose in a way the emitted CSS cannot show**: use the `allow`
+  option rather than disabling the rule. Patterns are matched against the class as written, so
+  include the variant prefix if you need to silence `hover:` forms too.
 - **Tests / fixtures** that intentionally build conflicting class strings to exercise other tooling.

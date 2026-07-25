@@ -8,16 +8,26 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { resolve } from 'node:path'
 import { loadDesignSystemSync, type PrecomputedData } from '../../src/design-system/sync-loader'
+import { DesignSystemCache } from '../../src/design-system/cache'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
 
 let data: PrecomputedData
+let cache: DesignSystemCache
 
 beforeAll(() => {
   const result = loadDesignSystemSync(ENTRY_POINT)
   expect(result).not.toBeNull()
   data = result!
+  cache = DesignSystemCache.fromPrecomputed(data)
 })
+
+/** The single declaration a class emits for `prop` on its own box. */
+function elementDecl(cls: string, prop: string) {
+  return cache
+    .getCssDeclarations(cls)
+    .find((d) => d.prop === prop && d.scope === 'element' && !d.conditional)
+}
 
 describe('Precomputed Data Snapshot', () => {
   describe('validClasses', () => {
@@ -102,25 +112,113 @@ describe('Precomputed Data Snapshot', () => {
     })
   })
 
-  describe('cssProps', () => {
+  describe('cssDeclarations', () => {
     it('maps padding classes correctly', () => {
-      expect(data.cssProps['p-4']).toContain('padding')
+      expect(cache.getCssProperties('p-4')).toContain('padding')
     })
 
     it('maps display classes correctly', () => {
-      expect(data.cssProps['flex']).toContain('display')
+      expect(cache.getCssProperties('flex')).toContain('display')
     })
 
     it('maps background classes correctly', () => {
-      expect(data.cssProps['bg-blue-500']).toContain('background-color')
+      expect(cache.getCssProperties('bg-blue-500')).toContain('background-color')
     })
 
     it('maps alignment classes correctly', () => {
-      expect(data.cssProps['items-center']).toContain('align-items')
+      expect(cache.getCssProperties('items-center')).toContain('align-items')
     })
 
     it('has more than 5000 entries', () => {
-      expect(Object.keys(data.cssProps).length).toBeGreaterThan(5000)
+      expect(Object.keys(data.cssDeclarations.byClass).length).toBeGreaterThan(5000)
+    })
+
+    it('keeps the declaration value alongside the property', () => {
+      expect(elementDecl('p-4', 'padding')?.value).toBe('calc(var(--spacing) * 4)')
+      expect(elementDecl('flex', 'display')?.value).toBe('flex')
+    })
+
+    it('interns values, so equal declarations share an id', () => {
+      // `filter` is emitted with a byte-identical var chain by every filter
+      // utility — that shared id is what tells "same declaration" from a conflict.
+      const a = elementDecl('blur-sm', 'filter')
+      const b = elementDecl('brightness-50', 'filter')
+      expect(a?.valueId).toBe(b?.valueId)
+      expect(data.cssDeclarations.values.length).toBeLessThan(
+        Object.keys(data.cssDeclarations.table).length,
+      )
+    })
+
+    it('records the variables a value reads, keeping fallbacks apart', () => {
+      // text-sm READS --tw-leading (which leading-* writes) and only falls back
+      // to the size token when nothing supplies it.
+      const lineHeight = elementDecl('text-sm', 'line-height')
+      expect(lineHeight?.readsVars).toContain('--tw-leading')
+      expect(lineHeight?.readsFallbackVars).toContain('--text-sm--line-height')
+      expect(lineHeight?.pureVarRead).toBe(true)
+      expect(cache.getCssProperties('leading-6')).toContain('--tw-leading')
+    })
+
+    it('marks pure var() forwarding, but not values with content of their own', () => {
+      expect(elementDecl('scale-3d', 'scale')?.pureVarRead).toBe(true)
+      // transform-gpu prepends translateZ(0), so it contributes a value.
+      const gpu = elementDecl('transform-gpu', 'transform')
+      expect(gpu?.pureVarRead).toBe(false)
+      expect(gpu?.readsVars).toContain('--tw-rotate-x')
+    })
+
+    it('scopes pseudo-element declarations away from the element', () => {
+      const placeholder = cache.getCssDeclarations('placeholder-gray-400')
+      expect(placeholder).toHaveLength(1)
+      expect(placeholder[0].scope).toBe('pseudo')
+      expect(placeholder[0].pseudo).toBe('::placeholder')
+      expect(placeholder[0].prop).toBe('color')
+      // The element itself declares nothing: `text-gray-900 placeholder-gray-400`
+      // is not a conflict.
+      expect(cache.getCssProperties('placeholder-gray-400')).toEqual([])
+    })
+
+    it('scopes descendant declarations away from the element', () => {
+      const spacing = cache.getCssDeclarations('space-x-4')
+      expect(spacing.length).toBeGreaterThan(0)
+      expect(spacing.every((d) => d.scope === 'descendant')).toBe(true)
+      expect(spacing.some((d) => d.prop === 'margin-inline-start')).toBe(true)
+      // `ms-2 space-x-4` styles two different boxes.
+      expect(cache.getCssProperties('space-x-4')).toEqual([])
+      expect(cache.getCssProperties('ms-2')).toEqual(['margin-inline-start'])
+    })
+
+    it('keeps a property declared twice, marking the conditional one', () => {
+      const positions = cache
+        .getCssDeclarations('bg-linear-to-r')
+        .filter((d) => d.prop === '--tw-gradient-position')
+      expect(positions).toHaveLength(2)
+      expect(positions[0].conditional).toBe(false)
+      expect(positions[1].conditional).toBe(true)
+      expect(positions[0].value).not.toBe(positions[1].value)
+    })
+
+    it('reports classes whose CSS is only partially modelled', () => {
+      // container's breakpoint max-widths live in @media, so it must never be
+      // called redundant against a plain `w-full`.
+      expect(cache.isPartial('container')).toBe(true)
+      expect(cache.getCssProperties('container')).toEqual(['width'])
+      expect(cache.isPartial('p-4')).toBe(false)
+    })
+
+    it('covers the classes recovered outside getClassList()', () => {
+      // These used to be pushed into validClasses with their CSS discarded, so
+      // `rounded rounded-lg` and `blur blur-sm` were silently never compared.
+      expect(cache.getCssProperties('rounded')).toEqual(['border-radius'])
+      expect(cache.getCssProperties('blur')).toContain('--tw-blur')
+      expect(cache.getCssProperties('break-words')).toEqual(['overflow-wrap'])
+      expect(cache.getCssProperties('-col-1')).toEqual(['grid-column'])
+      expect(cache.getCssProperties('@container-size')).toContain('container-type')
+    })
+
+    it('leaves only the CSS-less marker classes without declarations', () => {
+      const missing = data.validClasses.filter((cls) => !(cls in data.cssDeclarations.byClass))
+      expect(missing.sort()).toEqual(['group', 'peer'])
     })
   })
 

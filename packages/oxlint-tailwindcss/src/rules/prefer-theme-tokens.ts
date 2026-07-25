@@ -74,6 +74,33 @@ export const preferThemeTokens = defineRule({
           const candidate = `${match.prefix}-${match.varName}${match.modifier}`
           if (!cache.isValid(candidate)) return []
 
+          // `cache.isValid` only says the name exists. Whether the named token
+          // means the SAME thing as the variable the user wrote depends on the
+          // theme: `@theme inline { --color-primary: var(--primary) }` makes
+          // `bg-primary` and `bg-(--primary)` identical, while a literal
+          // `--color-primary: oklch(…)` alongside an unrelated `--primary` makes
+          // them different colours — and this rule autofixes, so proposing the
+          // rewrite there silently changes the design. Only report when the
+          // token's declaration reads a variable that resolves back to the one
+          // written. Same principle as enforce-canonical's `safe` guard (#78).
+          const target = `--${match.varName}`
+          // The modifier (`/80`) is not part of the token lookup: `bg-primary/80`
+          // is a user-written value the precompute never saw, `bg-primary` is not.
+          const baseCandidate = `${match.prefix}-${match.varName}`
+          const resolves = cache
+            .getCssDeclarations(baseCandidate)
+            .some((decl) =>
+              [...decl.readsVars, ...decl.readsFallbackVars].some((read) =>
+                cache.themeVarResolvesTo(read, target),
+              ),
+            )
+          // Safe when the token dereferences to the very variable written (the
+          // `@theme inline` pattern), or when that variable is defined nowhere —
+          // then the current declaration is dead CSS and the token can only be an
+          // improvement. Otherwise the two mean different things and rewriting
+          // would silently change the design.
+          if (!resolves && cache.definesVar(target)) return []
+
           // Reject if the named candidate resolves to a class that produces
           // the same CSS as the original — that case is handled by
           // no-unnecessary-arbitrary-value. This rule only catches the

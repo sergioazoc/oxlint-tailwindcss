@@ -11,10 +11,16 @@ Pseudo-elements (`before`, `after`, `file`, `placeholder`, `selection`, `marker`
 utility — because in Tailwind v4 a pseudo-element placed before an element-selecting variant
 produces broken CSS like `&::before { &>svg { … } }`.
 
+With an entry point configured, which variants those are comes from the selectors the design system
+generates rather than from that fixed list, so a variant your project defines is handled too:
+`@custom-variant thumb (&::-webkit-slider-thumb)` is pinned innermost like `before:`, and
+`@custom-variant child (& > *)` becomes a reordering barrier because moving a state variant across a
+combinator changes which element is matched.
+
 DS-optional — when `settings.tailwindcss.entryPoint` is configured, the rule uses the design
-system's variant priority table. When it isn't, the rule falls back to a built-in static order. Both
-fallbacks are deterministic; this is the only DS-dependent rule that tolerates a missing entry point
-silently.
+system's variant priority table and the derived variant behaviour above. When it isn't, it falls
+back to a built-in static order and the fixed list. Both paths are deterministic, and a missing
+entry point is tolerated silently (`no-contradicting-variants` is the other rule that does this).
 
 ## Options
 

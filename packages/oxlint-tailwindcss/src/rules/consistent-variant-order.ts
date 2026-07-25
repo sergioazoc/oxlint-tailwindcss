@@ -8,6 +8,7 @@ import {
   isSelectorBarrier,
 } from '../utils/class-parser'
 import { createLazyOptions } from '../utils/context'
+import { type VariantFacts } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import type { DesignSystemCache } from '../design-system/cache'
 import { isFatalError } from '../utils/fatal'
@@ -173,7 +174,11 @@ export const consistentVariantOrder = defineRule({
     // fallback is also fully deterministic, so when no entryPoint is configured
     // we silently fall back to it. Only plugin-fatal errors are swallowed —
     // anything else is rethrown so real bugs stay visible.
-    function resolveForFile(): { priorityOf: (variant: string) => number; prefix: string } {
+    function resolveForFile(): {
+      priorityOf: (variant: string) => number
+      prefix: string
+      factsFor: (variant: string) => VariantFacts | undefined
+    } {
       let dsCache: DesignSystemCache | null = null
       let entryKey = ''
       try {
@@ -196,11 +201,17 @@ export const consistentVariantOrder = defineRule({
         prefix = dsCache?.prefix ?? ''
         prefixByEntry.set(entryKey, prefix)
       }
-      return { priorityOf, prefix }
+      // Derived from the selectors the design system reports per variant, so a
+      // project's own `@custom-variant` and the ancestor/sibling variants
+      // (`group-*`, `peer-*`) are classified correctly instead of by name.
+      const factsFor = dsCache
+        ? (variant: string) => dsCache.getVariantFacts(variant)
+        : () => undefined
+      return { priorityOf, prefix, factsFor }
     }
 
     function reorderClass(cls: string): string | null {
-      const { priorityOf, prefix } = resolveForFile()
+      const { priorityOf, prefix, factsFor } = resolveForFile()
       let pfx = ''
       let body = cls
       if (prefix && cls.startsWith(prefix + ':')) {
@@ -227,7 +238,7 @@ export const consistentVariantOrder = defineRule({
       const pseudo: string[] = []
       const rest: string[] = []
       for (const v of variants) {
-        if (isPseudoElementVariant(v)) pseudo.push(v)
+        if (isPseudoElementVariant(v, factsFor(v))) pseudo.push(v)
         else rest.push(v)
       }
 
@@ -240,7 +251,7 @@ export const consistentVariantOrder = defineRule({
         segment = []
       }
       for (const v of rest) {
-        if (isSelectorBarrier(v)) {
+        if (isSelectorBarrier(v, factsFor(v))) {
           flushSegment()
           reorderedRest.push(v)
         } else {

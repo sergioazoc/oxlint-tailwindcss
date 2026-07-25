@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { DesignSystemCache } from '../../src/design-system/cache'
 import { type PrecomputedData } from '../../src/design-system/sync-loader'
+import { makeDeclarations } from '../utils/declarations'
 
 function makeData(overrides: Partial<PrecomputedData> = {}): PrecomputedData {
   return {
@@ -12,12 +13,31 @@ function makeData(overrides: Partial<PrecomputedData> = {}): PrecomputedData {
       'bg-blue-500': '300',
       'items-center': '150',
     },
-    cssProps: {
-      flex: ['display'],
-      'p-4': ['padding'],
-      'bg-blue-500': ['background-color'],
-      'items-center': ['align-items'],
-    },
+    cssDeclarations: makeDeclarations(
+      {
+        flex: [['', 'display', 'flex']],
+        'p-4': [['', 'padding', 'calc(var(--spacing) * 4)']],
+        'bg-blue-500': [['', 'background-color', 'var(--color-blue-500)']],
+        'items-center': [['', 'align-items', 'center']],
+        // Scope coverage: a pseudo-element box, a descendant box, and a class
+        // that declares the same property twice (plainly, then under @supports).
+        'placeholder-red-500': [['::placeholder', 'color', 'var(--color-red-500)']],
+        'space-x-4': [
+          ['>', '--tw-space-x-reverse', '0'],
+          ['>', 'margin-inline-start', 'calc(var(--spacing) * 4)'],
+        ],
+        'bg-linear-to-r': [
+          ['', '--tw-gradient-position', 'to right'],
+          ['@', '--tw-gradient-position', 'to right in oklab'],
+          ['', 'background-image', 'linear-gradient(var(--tw-gradient-stops))'],
+        ],
+        container: [
+          ['', 'width', '100%'],
+          ['@', 'max-width', '40rem'],
+        ],
+      },
+      { partial: ['bg-linear-to-r', 'container'] },
+    ),
     variantOrder: { hover: 10, focus: 20, dark: 30, sm: 40, md: 50 },
     componentClasses: ['prose', 'not-prose'],
     arbitraryEquivalents: { 'p-[1rem]': 'p-4', 'bg-[#3b82f6]': 'bg-blue-500' },
