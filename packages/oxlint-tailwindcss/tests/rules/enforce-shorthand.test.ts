@@ -162,6 +162,13 @@ ruleTester.run('enforce-shorthand', enforceShorthand, {
       errors: [{ messageId: 'shorthand' }],
       output: '<div className={`${base} size-4`} />',
     },
+    // The shorthand is already there: the fix must not duplicate it
+    {
+      code: '<div className="mt-2 mb-2 my-2" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'shorthand' }],
+      output: '<div className="my-2" />',
+    },
     // Scrambled order
     {
       code: '<div className="mb-2 ml-2 mt-2 mr-2" />',

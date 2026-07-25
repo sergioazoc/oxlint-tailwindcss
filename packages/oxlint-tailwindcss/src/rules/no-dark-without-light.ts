@@ -148,6 +148,8 @@ export const noDarkWithoutLight = defineRule({
     // back to the prefix heuristic alone, exactly as before.
     const getDS = createLazyLoader(context)
 
+    const bareOf = (cls: string) => splitImportant(extractUtility(cls)).bare
+
     function check(locations: ClassLocation[]) {
       const watchedVariants = getWatchedVariants()
       const ds = softGetDS(getDS)
@@ -156,16 +158,19 @@ export const noDarkWithoutLight = defineRule({
       for (const loc of locations) {
         const classes = splitClasses(loc.value)
 
-        const bareOf = (cls: string) => splitImportant(extractUtility(cls)).bare
-
         // Classes whose value the user wrote have no precomputed declarations;
         // resolving them keeps the property grouping from silently degrading to
-        // prefix-only for `dark:bg-[#111]`.
+        // prefix-only for `dark:bg-[#111]`. Allocates nothing when every class is
+        // precomputed — this runs on every AST node.
         if (cache && ds) {
-          const unresolved = classes
-            .map(bareOf)
-            .filter((bare) => cache.getCssProperties(bare).length === 0 && isUserValued(bare))
-          if (unresolved.length > 0) resolveDeclarationsSync(ds.entryPoint, cache, unresolved)
+          let unresolved: string[] | null = null
+          for (const cls of classes) {
+            const bare = bareOf(cls)
+            if (cache.getCssProperties(bare).length > 0 || !isUserValued(bare)) continue
+            if (!unresolved) unresolved = []
+            unresolved.push(bare)
+          }
+          if (unresolved) resolveDeclarationsSync(ds.entryPoint, cache, unresolved)
         }
 
         // A base is a class with no watched variant. Two ways to be the base for

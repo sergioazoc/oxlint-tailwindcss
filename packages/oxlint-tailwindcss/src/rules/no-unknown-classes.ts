@@ -103,14 +103,24 @@ export const noUnknownClasses = defineRule({
      * Compiling a probe utility under the chain is the only exact answer, and it
      * costs one design-system call per DISTINCT chain in the project.
      */
+    const chainAnswers = new Map<string, boolean | null>()
+
     function chainProduces(
       cache: DesignSystemCache,
       entryPoint: string,
       chain: string,
     ): boolean | null {
+      // Visitors run on every AST node, so the answer is memoized here as well as
+      // in the service: a file with a thousand `hover:` classes should not pay a
+      // probe array and a WeakMap lookup a thousand times.
+      const key = `${entryPoint}\0${chain}`
+      const memo = chainAnswers.get(key)
+      if (memo !== undefined) return memo
       const probe = `${chain}${PROBE_UTILITY}`
       const answers = validateClassesSync(entryPoint, cache, [probe])
-      return answers ? (answers.get(probe) ?? null) : null
+      const verdict = answers ? (answers.get(probe) ?? null) : null
+      chainAnswers.set(key, verdict)
+      return verdict
     }
 
     function check(locations: ClassLocation[]) {
@@ -154,13 +164,17 @@ export const noUnknownClasses = defineRule({
         const classes = split.classes
 
         // Everything the precompute doesn't know verbatim, asked in one batch per
-        // location instead of one call per class.
-        const toVerify = classes
-          .filter((cls) => !shouldIgnore(cls))
-          .map((cls) => strippedUtility(cls).bare)
-          .filter((bare) => !cache.isKnownClass(bare))
-        const verified =
-          toVerify.length > 0 ? validateClassesSync(entryPoint, cache, toVerify) : null
+        // location instead of one call per class. Allocates nothing for the common
+        // location where every class is precomputed — this runs on every node.
+        let toVerify: string[] | null = null
+        for (const cls of classes) {
+          if (shouldIgnore(cls)) continue
+          const bare = strippedUtility(cls).bare
+          if (cache.isKnownClass(bare)) continue
+          if (!toVerify) toVerify = []
+          toVerify.push(bare)
+        }
+        const verified = toVerify ? validateClassesSync(entryPoint, cache, toVerify) : null
 
         for (const cls of classes) {
           if (shouldIgnore(cls)) continue

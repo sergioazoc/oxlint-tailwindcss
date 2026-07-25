@@ -280,7 +280,9 @@ export const enforceShorthand = defineRule({
             const replacement =
               group.variant + reattachImportant(`${family.to}-${group.value}`, group.position)
             const remaining = classes.filter((cls) => !matched.includes(cls))
-            remaining.push(replacement)
+            // `mt-2 mb-2 my-2` already carries the shorthand: appending it again
+            // would fix one problem into a duplicate class.
+            if (!remaining.includes(replacement)) remaining.push(replacement)
             for (const part of family.parts) consumed.add(part)
 
             context.report({
