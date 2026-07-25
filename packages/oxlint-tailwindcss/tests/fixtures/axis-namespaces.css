@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+
+/*
+ * Per-axis theme namespaces, which is what makes `w-* h-*` → `size-*` unsafe.
+ *
+ * Tailwind v4 resolves `w-*` from `--width-*` (and `--container-*`), `h-*` from
+ * `--height-*`, and `size-*` from `--size-*`. Three namespaces, one token name:
+ *
+ *   - `brand` exists on both axes with DIFFERENT values and has no `--size-brand`
+ *     at all, so `w-brand h-brand` → `size-brand` produces a class that emits
+ *     nothing: the element loses its width AND its height.
+ *   - `card` exists in all three with the same value, so the merge looks safe —
+ *     but each side reads a different variable, and a `:root` override of one of
+ *     them makes them diverge. The rule refuses it for the same reason
+ *     `enforce-canonical` refuses `rounded-[0.5rem]` → `rounded-lg` (#78).
+ *
+ * The spacing scale is shared by all three, which is why `w-4 h-4` → `size-4`
+ * stays safe with or without a design system.
+ */
+@theme {
+  --width-brand: 10rem;
+  --height-brand: 20rem;
+
+  --width-card: 30rem;
+  --height-card: 30rem;
+  --size-card: 30rem;
+}

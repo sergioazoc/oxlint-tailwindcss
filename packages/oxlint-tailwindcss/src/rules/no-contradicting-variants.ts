@@ -8,7 +8,7 @@ import {
   extractVariants,
 } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
-import { isFatalError } from '../utils/fatal'
+import { softGetDS } from '../utils/fatal'
 
 export const noContradictingVariants = defineRule({
   meta: {
@@ -42,13 +42,9 @@ export const noContradictingVariants = defineRule({
     const getDS = createLazyLoader(context)
 
     function variantFactsLookup(): (variant: string) => VariantFacts | undefined {
-      try {
-        const ds = getDS()
-        return (variant) => ds.cache.getVariantFacts(variant)
-      } catch (err) {
-        if (!isFatalError(err)) throw err
-        return () => undefined
-      }
+      const ds = softGetDS(getDS)
+      if (!ds) return () => undefined
+      return (variant) => ds.cache.getVariantFacts(variant)
     }
 
     function check(locations: ClassLocation[]) {

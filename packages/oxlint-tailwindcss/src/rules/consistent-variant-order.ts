@@ -11,7 +11,7 @@ import { createLazyOptions } from '../utils/context'
 import { type VariantFacts } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import type { DesignSystemCache } from '../design-system/cache'
-import { isFatalError } from '../utils/fatal'
+import { softGetDS } from '../utils/fatal'
 
 interface Options {
   entryPoint?: string
@@ -170,24 +170,16 @@ export const consistentVariantOrder = defineRule({
     const priorityByEntry = new Map<string, (variant: string) => number>()
     const prefixByEntry = new Map<string, string>()
 
-    // consistent-variant-order is the one DS-optional rule in v1: its static
-    // fallback is also fully deterministic, so when no entryPoint is configured
-    // we silently fall back to it. Only plugin-fatal errors are swallowed —
-    // anything else is rethrown so real bugs stay visible.
+    // DS-OPTIONAL (see `softGetDS`): this rule's static fallback is also fully
+    // deterministic, so with no entryPoint configured we silently fall back to it.
     function resolveForFile(): {
       priorityOf: (variant: string) => number
       prefix: string
       factsFor: (variant: string) => VariantFacts | undefined
     } {
-      let dsCache: DesignSystemCache | null = null
-      let entryKey = ''
-      try {
-        const ds = getDS()
-        dsCache = ds.cache
-        entryKey = ds.entryPoint
-      } catch (err) {
-        if (!isFatalError(err)) throw err
-      }
+      const ds = softGetDS(getDS)
+      const dsCache: DesignSystemCache | null = ds ? ds.cache : null
+      const entryKey = ds ? ds.entryPoint : ''
 
       let priorityOf = priorityByEntry.get(entryKey)
       if (!priorityOf) {
