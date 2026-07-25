@@ -45,13 +45,14 @@ function isHexDigit(ch: string): boolean {
   return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
 }
 
+/**
+ * `-` belongs to the identifier so `color-mix(` is not read as `color(`. `_` does
+ * NOT: in a Tailwind arbitrary value an underscore stands for a space, so
+ * `0_0_4px_rgb(…)` has to break into words or the function name never surfaces.
+ */
 function isIdentChar(ch: string): boolean {
   return (
-    (ch >= 'a' && ch <= 'z') ||
-    (ch >= 'A' && ch <= 'Z') ||
-    (ch >= '0' && ch <= '9') ||
-    ch === '-' ||
-    ch === '_'
+    (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch === '-'
   )
 }
 

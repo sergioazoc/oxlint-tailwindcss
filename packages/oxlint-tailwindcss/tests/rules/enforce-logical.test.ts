@@ -1,5 +1,8 @@
+import { resolve } from 'node:path'
+import { describe } from 'vitest'
 import { RuleTester } from 'oxlint/plugins-dev'
-import { enforceLogical, PHYSICAL_TO_LOGICAL } from '../../src/rules/enforce-logical'
+import { enforceLogical, PHYSICAL_TO_LOGICAL_MAPPINGS } from '../../src/rules/enforce-logical'
+import { makeFixtureRunner } from '../utils/with-fixture'
 
 const ruleTester = new RuleTester()
 
@@ -12,14 +15,15 @@ ruleTester.run('enforce-logical', enforceLogical, {
     { code: '<div className="flex items-center" />', filename: 'test.tsx' },
   ],
   invalid: [
-    // Generated from PHYSICAL_TO_LOGICAL — every entry is covered
-    ...Object.entries(PHYSICAL_TO_LOGICAL).map(([physical, logical]) => {
-      const suffix = physical.includes('left') || physical.includes('right') ? '-0' : '-4'
+    // Generated from the mapping table — every entry is covered. `exact` entries
+    // carry the direction as their value (`float-left`), so they take no suffix.
+    ...PHYSICAL_TO_LOGICAL_MAPPINGS.map(({ from, to, exact }) => {
+      const suffix = exact ? '' : from.includes('left') || from.includes('right') ? '-0' : '-4'
       return {
-        code: `<div className="${physical}${suffix}" />`,
+        code: `<div className="${from}${suffix}" />`,
         filename: 'test.tsx',
         errors: [{ messageId: 'useLogical' as const }],
-        output: `<div className="${logical}${suffix}" />`,
+        output: `<div className="${to}${suffix}" />`,
       }
     }),
     // With variant
@@ -89,4 +93,37 @@ ruleTester.run('enforce-logical', enforceLogical, {
       output: '<div className="!ms-4" />',
     },
   ],
+})
+
+/**
+ * With a design system, a rewrite has to land on a class that exists.
+ *
+ * The mapping table is pure name arithmetic: `ml-*` → `ms-*`. A project that
+ * defines its own `@utility ml-huge` got an autofix to `ms-huge`, which emits
+ * nothing at all — the margin silently disappeared.
+ */
+describe('replacement validity', () => {
+  const run = makeFixtureRunner(resolve(__dirname, '../fixtures/custom-utility.css'))
+
+  run('enforce-logical (validated replacement)', enforceLogical, {
+    valid: [
+      // `ms-huge` does not exist, so there is nothing to suggest.
+      { code: '<div className="ml-huge" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      // The scale utilities are unaffected: `ms-4` exists.
+      {
+        code: '<div className="ml-4" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'useLogical' }],
+        output: '<div className="ms-4" />',
+      },
+      {
+        code: '<div className="float-left text-right" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'useLogical' }, { messageId: 'useLogical' }],
+        output: '<div className="float-start text-end" />',
+      },
+    ],
+  })
 })

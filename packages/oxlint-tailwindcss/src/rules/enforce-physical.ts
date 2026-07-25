@@ -1,6 +1,7 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors } from '../utils/extractors'
 import {
+  LOGICAL_INSET_ALIASES,
   LOGICAL_PHYSICAL_SCHEMA,
   PHYSICAL_TO_LOGICAL_MAPPINGS,
   createDirectionalMapper,
@@ -26,7 +27,10 @@ export const enforcePhysical = defineRule({
   },
   createOnce(context) {
     const { check } = createDirectionalMapper(context, {
-      mappings: invertAxisMappings(PHYSICAL_TO_LOGICAL_MAPPINGS),
+      // Both spellings of the logical insets convert back: `start-2` (what
+      // enforce-logical suggests) and `inset-s-2` (what enforce-canonical
+      // rewrites that into).
+      mappings: [...invertAxisMappings(PHYSICAL_TO_LOGICAL_MAPPINGS), ...LOGICAL_INSET_ALIASES],
       messageId: 'usePhysical',
     })
     return createExtractorVisitors(context, check)

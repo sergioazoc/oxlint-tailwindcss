@@ -108,3 +108,72 @@ ruleTester.run('no-hardcoded-colors (allow)', noHardcodedColors, {
     },
   ],
 })
+
+/**
+ * Colours the anchored regexes and the prefix list used to miss.
+ *
+ * The value was only matched from its first character, so a colour anywhere else
+ * in it passed; and the utility had to be on a hand-written list of
+ * "colour-bearing prefixes", which had `ring` but not `inset-ring` and no way to
+ * spell an arbitrary property.
+ */
+new RuleTester().run('no-hardcoded-colors (value scan)', noHardcodedColors, {
+  valid: [
+    // A quoted string is text, not a colour.
+    { code: `<div className="content-['#fff']" />`, filename: 'test.tsx' },
+    { code: `<div className="after:content-['#000']" />`, filename: 'test.tsx' },
+    // `url(#id)` is an SVG reference — the most common `#` that isn't a colour.
+    { code: '<div className="fill-[url(#gradient)]" />', filename: 'test.tsx' },
+    { code: '<div className="mask-[url(#mask)]" />', filename: 'test.tsx' },
+    { code: '<div className="bg-[url(/img.png)]" />', filename: 'test.tsx' },
+    // Still exempt: a variable reference is design-system indirection.
+    { code: '<div className="bg-[var(--brand)]" />', filename: 'test.tsx' },
+    { code: '<div className="shadow-[0_1px_2px_var(--shadow)]" />', filename: 'test.tsx' },
+    // Non-colour arbitrary values are untouched.
+    { code: '<div className="w-[200px] tracking-[0.5em]" />', filename: 'test.tsx' },
+    { code: '<div className="grid-cols-[18rem_1fr]" />', filename: 'test.tsx' },
+    // Not a valid hex length.
+    { code: '<div className="w-[#12345]" />', filename: 'test.tsx' },
+  ],
+  invalid: [
+    // The colour is in the middle of the value.
+    {
+      code: '<div className="shadow-[0_1px_2px_#000]" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'noHardcoded' }],
+    },
+    {
+      code: '<div className="shadow-[inset_0_0_4px_rgb(0_0_0/0.5)]" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'noHardcoded' }],
+    },
+    // Utilities the prefix list didn't have.
+    {
+      code: '<div className="inset-ring-[#000]" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'noHardcoded' }],
+    },
+    {
+      code: '<div className="inset-shadow-[#000]" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'noHardcoded' }],
+    },
+    // Arbitrary properties, which no prefix could ever match.
+    {
+      code: '<div className="[color:#f00]" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'noHardcoded' }],
+    },
+    {
+      code: '<div className="[--brand:#f00]" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'noHardcoded' }],
+    },
+    // A colour inside a gradient the value merely contains.
+    {
+      code: '<div className="bg-[linear-gradient(#fff,#000)]" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'noHardcoded' }],
+    },
+  ],
+})

@@ -1,13 +1,18 @@
 /**
- * Guard for the rules that rewrite one class into another.
+ * Guard for the rules that rewrite one class into another NAMED class.
  *
- * `enforce-logical`, `enforce-physical`, `enforce-negative-arbitrary-values`,
- * `enforce-consistent-variable-syntax` and `no-deprecated-classes` all build
- * their replacement from a name table. None of them used to check that the class
- * they propose exists in THIS project's design system, so a project that defines
- * `@utility ml-huge` got an autofix to `ms-huge` — a class that emits no CSS at
- * all. The fix is applied, the style silently disappears, and the only trace is
- * a `no-unknown-classes` diagnostic (if that rule is even on).
+ * `enforce-logical`, `enforce-physical` and `no-deprecated-classes` build their
+ * replacement from a name table, and none of them used to check that the class
+ * they propose exists in THIS project's design system: a project that defines
+ * `@utility ml-huge` got an autofix to `ms-huge`, which emits no CSS at all. The
+ * fix is applied, the style silently disappears, and the only trace is a
+ * `no-unknown-classes` diagnostic — if that rule is even on.
+ *
+ * It is not used by the rules whose replacement is an arbitrary VALUE
+ * (`enforce-negative-arbitrary-values`, `enforce-consistent-variable-syntax`):
+ * there the guard could not answer anything, because Tailwind takes an arbitrary
+ * value verbatim, so `x-[-5px]` compiles whenever `-x-[5px]` does. Those two stay
+ * purely syntactic, as their docs say.
  *
  * The check is deliberately one-sided: with no design system available every
  * replacement passes, which is exactly today's behaviour. These rules are
