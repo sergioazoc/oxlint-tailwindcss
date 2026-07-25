@@ -52,6 +52,16 @@ export interface PrecomputedData {
   cssDeclarations: CssDeclarationIndex
   /** variant name → sort index from the design system */
   variantOrder: Record<string, number>
+  /**
+   * variant name → what its selector DOES, for the variants where it matters:
+   * `p` when it targets a generated box (`::before`, or a project's
+   * `@custom-variant thumb (&::-webkit-slider-thumb)`), `s` when it adds
+   * structural context so reordering across it changes which element is matched
+   * (`group-*`/`peer-*` wrap the element in an ancestor/sibling selector — the
+   * case no list of names can describe). Sparse: variants that only add a
+   * condition to the same element are absent.
+   */
+  variantFacts?: Record<string, { p?: 1; s?: 1 }>
   /** Classes from @layer components and modifier classes referenced via [class~="..."] */
   componentClasses: string[]
   /** arbitraryForm → namedClass for unnecessary arbitrary value detection */
@@ -154,6 +164,19 @@ function classifyNested(sel) {
   return classifyAfter(sel.slice(1));
 }
 
+// Tailwind emits the same value two ways: 'slide-in-from-left' declares
+// '-100%' and 'slide-in-from-left-full' declares 'calc(1 * -100%)'. Same
+// computed value, different text — and a text comparison would call that a
+// conflict. Only a SINGLE numeric term is unwrapped, so 'calc(1 * 2px + 3px)'
+// (where the multiplication is part of a larger expression) is left alone.
+const CALC_ONE_LEFT = /^calc\\(\\s*1\\s*\\*\\s*(-?(?:\\d+\\.?\\d*|\\.\\d+)[a-z%]*)\\s*\\)$/;
+const CALC_ONE_RIGHT = /^calc\\(\\s*(-?(?:\\d+\\.?\\d*|\\.\\d+)[a-z%]*)\\s*\\*\\s*1\\s*\\)$/;
+function normalizeDeclValue(value) {
+  const trimmed = value.trim();
+  const m = CALC_ONE_LEFT.exec(trimmed) || CALC_ONE_RIGHT.exec(trimmed);
+  return m ? m[1] : trimmed;
+}
+
 function walkDeclarations(cssText, className, sink) {
   const token = '.' + className.replace(/([^\\w-])/g, '\\\\$1');
   const stack = [];
@@ -190,7 +213,7 @@ function walkDeclarations(cssText, className, sink) {
         else if (inner !== '' && scope !== '>') scope = inner;
       }
     }
-    sink((conditional ? '@' : '') + scope, m[1], m[2]);
+    sink((conditional ? '@' : '') + scope, m[1], normalizeDeclValue(m[2]));
   }
 }
 
@@ -682,12 +705,60 @@ async function main() {
     byClass,
   };
 
-  // Variant ordering from the design system
+  // Variant ordering from the design system.
   const variantOrder = {};
   const variants = ds.getVariants();
   for (let i = 0; i < variants.length; i++) {
     if (!variants[i].isArbitrary) {
       variantOrder[variants[i].name] = i;
+    }
+  }
+
+  // What each variant DOES to the selector, so the variant rules can stop
+  // guessing from a list of names — the list cannot know a project's own
+  // \`@custom-variant\`.
+  //
+  // Derived by compiling a probe utility and reading the emitted selector, NOT
+  // from \`variant.selectors()\`: that returns '&'-relative strings, comes back
+  // empty for \`before\`/\`after\`, and reports \`group\`/\`peer\` as arbitrary with no
+  // selectors at all. Compiling is the same mechanism the declaration extractor
+  // already trusts, and \`walkDeclarations\` already classifies exactly what we
+  // need — the scope of each emitted declaration.
+  //
+  // Functional variants (\`group-*\`, \`peer-*\`, \`data-*\`, \`nth-*\`) are skipped:
+  // probing them would need a value, and none of them retargets the selector.
+  // Measured in Tailwind 4.3.3: \`group-hover\`/\`peer-checked\` compile to
+  // \`&:is(:where(.group):hover *)\` — an \`:is()\` on the element itself — so two of
+  // them in either order produce equivalent selectors and neither is a
+  // reordering barrier.
+  const variantFacts = {};
+  const probeNames = [];
+  for (let i = 0; i < variants.length; i++) {
+    const v = variants[i];
+    if (v.isArbitrary) continue;
+    if (v.values && v.values.length > 0) continue;
+    probeNames.push(v.name);
+  }
+  if (probeNames.length > 0) {
+    const probeClasses = probeNames.map((n) => n + ':flex');
+    const probeCss = ds.candidatesToCss(probeClasses.map(pfx));
+    for (let i = 0; i < probeNames.length; i++) {
+      if (!probeCss[i]) continue;
+      let pseudo = false, structural = false;
+      walkDeclarations(probeCss[i], pfx(probeClasses[i]), (scopeTok) => {
+        const body = scopeTok.charCodeAt(0) === 64 ? scopeTok.slice(1) : scopeTok;
+        if (body.startsWith('::')) pseudo = true;
+        else if (body === '>') structural = true;
+      });
+      // A variant that styles a generated box is a pseudo-element variant even
+      // when it ALSO reaches descendants' boxes (\`marker\` emits both
+      // \`& ::marker\` and \`&::marker\`): it belongs innermost, not treated as a
+      // reordering barrier.
+      if (pseudo) {
+        variantFacts[probeNames[i]] = { p: 1 };
+      } else if (structural) {
+        variantFacts[probeNames[i]] = { s: 1 };
+      }
     }
   }
 
@@ -772,7 +843,7 @@ async function main() {
     }
   }
 
-  const json = JSON.stringify({ validClasses, canonical, order, cssDeclarations, variantOrder, componentClasses, arbitraryEquivalents, themeRefs, definedVars, prefix });
+  const json = JSON.stringify({ validClasses, canonical, order, cssDeclarations, variantOrder, variantFacts, componentClasses, arbitraryEquivalents, themeRefs, definedVars, prefix });
   // Atomic write: write to a unique temp path then rename, so a peer isolate
   // busy-waiting on the cache file never observes a half-written JSON.
   writeFileSync(WD_TMP_PATH, json);
@@ -1075,6 +1146,19 @@ function runPrecomputeViaWorker(
   const errLengthView = new DataView(sharedBuffer, 16, 4)
   const errDataArea = new Uint8Array(sharedBuffer, 20)
   const tmpPath = `${cachePath}.tmp.${process.pid}.${threadId}.${precomputeSeq++}`
+
+  // Parse the script before handing it to a worker. A SYNTAX error in it cannot
+  // reach us any other way: `signalError` lives inside the script, so it is
+  // never installed, and the worker's 'error' event cannot be read either —
+  // the main thread parks in `Atomics.wait` and the event loop never turns
+  // before it gives up. Without this the failure surfaced as a full-timeout
+  // blaming the user's machine ("raise the timeout"), which is how an editing
+  // mistake in the precompute costs an hour to find.
+  try {
+    new Function(PRECOMPUTE_SCRIPT)
+  } catch (cause) {
+    throw precomputeLoadError(resolvedPath, cause)
+  }
 
   let worker: Worker
   try {

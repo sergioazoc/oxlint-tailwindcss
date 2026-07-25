@@ -6,6 +6,7 @@ import {
   parseScopeToken,
 } from './css-declarations'
 import { roundRemValue } from '../utils/floating-point'
+import { type VariantFacts } from '../utils/class-parser'
 import {
   extractUtility,
   extractVariants,
@@ -30,6 +31,7 @@ export class DesignSystemCache {
   // Reverse of `declIndex.values`, built on first lint-time interning.
   private valueIdByText: Map<string, number> | null = null
   private variantOrderMap = new Map<string, number>()
+  private variantFactsMap = new Map<string, VariantFacts>()
   private arbitraryEquivMap = new Map<string, string>()
   private _validClasses: string[] = []
   private _knownPrefixes: Set<string> | null = null
@@ -78,6 +80,13 @@ export class DesignSystemCache {
       for (const [name, index] of Object.entries(data.variantOrder)) {
         cache.variantOrderMap.set(name, index)
       }
+    }
+
+    for (const [name, facts] of Object.entries(data.variantFacts ?? {})) {
+      cache.variantFactsMap.set(name, {
+        pseudoElement: facts.p === 1,
+        structural: facts.s === 1,
+      })
     }
 
     if (data.componentClasses) {
@@ -551,6 +560,22 @@ export class DesignSystemCache {
   /** Whether the project defines this custom property (theme or plain CSS). */
   definesVar(varName: string): boolean {
     return this.definedVarSet.has(varName) || this.themeRefs.has(varName)
+  }
+
+  /**
+   * What the variant's selector does, derived from the design system. `undefined`
+   * means "no information" — the caller falls back to its static predicates,
+   * which is what keeps the variant rules working without an entry point.
+   *
+   * Compound variants (`group-hover/name`, `peer-checked`) resolve through the
+   * same normalisation the priority lookup uses.
+   */
+  getVariantFacts(variant: string): VariantFacts | undefined {
+    const direct = this.variantFactsMap.get(variant)
+    if (direct) return direct
+    const slash = variant.indexOf('/')
+    if (slash > 0) return this.variantFactsMap.get(variant.slice(0, slash))
+    return undefined
   }
 
   getVariantPriority(variant: string): number | null {

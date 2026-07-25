@@ -17,6 +17,12 @@ The rule does NOT report when the variant targets a different element than the b
 the selector target, so `absolute after:absolute` or `shrink-0 [&>svg]:shrink-0` is fine — the base
 applies to the element while the variant applies to a descendant or pseudo-element.
 
+With `settings.tailwindcss.entryPoint` configured, that judgement comes from the selector the design
+system actually generates for each variant, so it covers variants the project defines itself:
+`@custom-variant thumb (&::-webkit-slider-thumb)` makes `size-4 thumb:size-4` valid, which no list
+of variant names could know. Without an entry point the rule falls back to the names above and
+behaves exactly as before — it never reports a missing design system.
+
 The match is by exact utility identity, so `bg-white hover:bg-blue-500` is left alone (different
 values), as is `flex hover:items-center` (different utilities).
 

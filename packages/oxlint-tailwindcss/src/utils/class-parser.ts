@@ -190,11 +190,32 @@ export function reattachImportant(bare: string, position: ImportantPosition): st
 }
 
 /**
- * Pseudo-element variants. They select a generated box (`::before`, `::marker`,
- * …) rather than the element itself, so they must sit innermost in the variant
- * chain (closest to the utility). Canonical home shared by
- * `consistent-variant-order` (partitions them last) and
- * `no-contradicting-variants` (they can't contradict a base class).
+ * What a variant does to the selector, as reported by the design system.
+ *
+ * Derived from the selectors Tailwind generates for the variant, so it covers
+ * project-defined ones (`@custom-variant thumb (&::-webkit-slider-thumb)`) and
+ * the ancestor/sibling variants a name list cannot describe (`group-hover`
+ * wraps the element in `.group:hover &`). Passed IN rather than looked up here:
+ * this module is imported by the design-system cache, not the other way round.
+ */
+export interface VariantFacts {
+  /** The variant selects a generated box (`::before`, `::-webkit-slider-thumb`). */
+  pseudoElement?: boolean
+  /** The variant adds structural context, so reordering across it changes the target. */
+  structural?: boolean
+}
+
+/** Looks up derived facts for a variant name; absent means "no information". */
+export type VariantFactsLookup = (variant: string) => VariantFacts | undefined
+
+/**
+ * Pseudo-element variants, as a static fallback for when no design system is
+ * configured. They select a generated box (`::before`, `::marker`, …) rather than
+ * the element itself, so they must sit innermost in the variant chain (closest to
+ * the utility).
+ *
+ * Prefer the derived facts: this list cannot know a project's own variants, and
+ * `consistent-variant-order` is DS-optional by design, so both paths must work.
  */
 export const PSEUDO_ELEMENT_VARIANTS = new Set([
   'before',
@@ -209,25 +230,32 @@ export const PSEUDO_ELEMENT_VARIANTS = new Set([
   'details-content',
 ])
 
-export function isPseudoElementVariant(variant: string): boolean {
+export function isPseudoElementVariant(variant: string, facts?: VariantFacts): boolean {
+  if (facts) return facts.pseudoElement === true
   return PSEUDO_ELEMENT_VARIANTS.has(variant)
 }
 
 /**
  * Selector barriers: variants that re-point the selector at a *different*
- * element than the ones around them — child (`*`), descendant (`**`),
- * arbitrary selectors (`[&>svg]`) and compound child selectors (`*:data-[…]`).
+ * element than the ones around them — child (`*`), descendant (`**`), arbitrary
+ * selectors (`[&>svg]`), compound child selectors (`*:data-[…]`), and — only
+ * visible in the generated selector — ancestor/sibling variants like
+ * `group-hover` and `peer-checked`.
  *
  * Unlike pseudo-elements, these are NOT free to move to the end of the chain:
  * `hover:*:flex` (`&:hover > *`) and `*:hover:flex` (`& > *:hover`) target
- * different elements. `consistent-variant-order` treats them as hard
+ * different elements, and `peer-checked:group-hover:*` is not
+ * `group-hover:peer-checked:*`. `consistent-variant-order` treats them as hard
  * reordering barriers — variants never cross them.
+ *
+ * The syntactic checks stay as the fallback, and also as a floor: an arbitrary
+ * selector is a barrier whether or not the design system enumerated it.
  */
-export function isSelectorBarrier(variant: string): boolean {
+export function isSelectorBarrier(variant: string, facts?: VariantFacts): boolean {
   if (variant === '*' || variant === '**') return true
   if (variant.startsWith('[') && variant.endsWith(']')) return true
   if (variant.startsWith('*:')) return true
-  return false
+  return facts?.structural === true
 }
 
 /**
@@ -235,8 +263,8 @@ export function isSelectorBarrier(variant: string): boolean {
  * barrier). Such variants don't impose a condition on the same element, so they
  * can't make a variant class contradict/duplicate a base class.
  */
-export function changesTarget(variant: string): boolean {
-  return isPseudoElementVariant(variant) || isSelectorBarrier(variant)
+export function changesTarget(variant: string, facts?: VariantFacts): boolean {
+  return isPseudoElementVariant(variant, facts) || isSelectorBarrier(variant, facts)
 }
 
 /**

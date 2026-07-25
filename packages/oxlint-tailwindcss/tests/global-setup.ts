@@ -28,6 +28,7 @@ const FIXTURES = [
   'with-tailwindcss-animate.css',
   'with-tw-animate-css.css',
   'unrelated-theme-vars.css',
+  'with-custom-variants.css',
 ]
 
 export function setup() {

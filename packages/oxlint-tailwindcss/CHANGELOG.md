@@ -51,9 +51,28 @@
 
 ### Features
 
+- **`no-contradicting-variants`** and **`consistent-variant-order`**: both now ask the design system
+  what a variant's selector actually does, instead of matching its name against a hardcoded list.
+  With an entry point configured, a project's own variants are classified correctly:
+  `@custom-variant thumb (&::-webkit-slider-thumb)` targets a generated box, so
+  `size-4 thumb:size-4` is no longer reported as redundant and `thumb:` is moved innermost like
+  Tailwind's own `before:`; `@custom-variant child (& > *)` introduces a combinator, so it becomes a
+  reordering barrier. Both rules stay DS-OPTIONAL — without an entry point they behave exactly as
+  before, and neither can emit `designSystemUnavailable`.
+
+  Worth recording what this did NOT change: `group-*` and `peer-*` are not reordering barriers.
+  Tailwind 4.3.3 compiles them to `&:is(:where(.group):hover *)`, an `:is()` on the element itself,
+  so `peer-checked:group-hover:x` and `group-hover:peer-checked:x` differ only in the order of two
+  `:is()` compounds and match the same elements.
+
 - **`no-conflicting-classes`**: new `allow` option. A bare pattern silences every pair involving a
   matching class, a two-element pattern silences one combination. It is the supported way to handle
   a composition this plugin cannot derive, without waiting for a release.
+
+- **`no-conflicting-classes`**: two spellings of the same number no longer read as a conflict.
+  `slide-in-from-left` declares `--tw-enter-translate-x: -100%` and `slide-in-from-left-full`
+  declares `calc(1 * -100%)`; the pair is now `redundant`. Only a single numeric term is unwrapped,
+  so `calc(1 * 2px + 3px)` is untouched.
 
 ### Internal
 
@@ -66,6 +85,12 @@
 - ~300 valid classes had their CSS discarded by the precompute (bare utilities like `rounded`,
   negatives like `-col-1`, legacy v3 spellings). Only `group` and `peer`, which emit no CSS, now
   lack declarations.
+- New integration test locking the premise the whole rule rests on: `cache.getOrder` must agree with
+  the physical order of the compiled stylesheet. If a Tailwind release ever moved one utility past
+  another, every diagnostic would name the wrong winner with nothing failing, so the test compiles
+  the stylesheet for real and compares byte offsets for the pairs the messages depend on — including
+  the counter-intuitive ones (`shadow-sm` beats `shadow-lg`, `text-red-500` beats `text-blue-500`,
+  `flex-row` beats `flex-col`).
 - `pnpm bench` had been reporting "No test files found" instead of measuring anything: a CLI path
   filter does not override vitest's `exclude`, and `--exclude` appends to it. Benchmarks now have
   their own config. That is also how the benchmark's hand-copied duplicate of the declaration

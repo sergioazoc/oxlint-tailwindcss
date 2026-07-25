@@ -464,6 +464,33 @@ describe('tailwindcss-animate composition', () => {
 
 // --- tw-animate-css utilities compose through CSS custom properties ---
 
+describe('values that are the same number written two ways', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(TW_ANIMATE_CSS_ENTRY)
+  })
+
+  runWithFixture(
+    new RuleTester(),
+    'no-conflicting-classes (calc(1 * x))',
+    noConflictingClasses,
+    TW_ANIMATE_CSS_ENTRY,
+    {
+      valid: [],
+      invalid: [
+        {
+          // `slide-in-from-left` declares `--tw-enter-translate-x: -100%` and
+          // `slide-in-from-left-full` declares `calc(1 * -100%)`: the same value,
+          // so one of the two is redundant rather than in conflict.
+          code: '<div className="slide-in-from-left slide-in-from-left-full" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'redundant' }],
+        },
+      ],
+    },
+  )
+})
+
 describe('tw-animate-css composition', () => {
   beforeAll(() => {
     resetDesignSystem()
