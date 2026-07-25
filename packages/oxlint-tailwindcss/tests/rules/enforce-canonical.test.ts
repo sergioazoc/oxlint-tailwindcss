@@ -47,20 +47,6 @@ runWithFixture(ruleTester, 'enforce-canonical', enforceCanonical, ENTRY_POINT, {
       errors: [{ messageId: 'nonCanonical' }],
       output: '<div className="m-0" />',
     },
-    // v3 background/object-position spellings reordered in v4 (#37):
-    // axis order flipped to vertical-first.
-    {
-      code: '<div className="bg-left-top" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="bg-top-left" />',
-    },
-    {
-      code: '<div className="object-right-bottom" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="object-bottom-right" />',
-    },
     {
       code: '<div className="flex -mt-0" />',
       filename: 'test.tsx',
@@ -123,52 +109,14 @@ runWithFixture(ruleTester, 'enforce-canonical', enforceCanonical, ENTRY_POINT, {
       ],
       output: '<div className="m-0 mt-0 flex" />',
     },
-    // Issue #16: legacy named classes (not in getClassList()) must canonicalize
-    {
-      code: '<div className="break-words" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="wrap-break-word" />',
-    },
-    {
-      code: '<div className="absolute whitespace-pre-wrap break-words overflow-hidden" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="absolute whitespace-pre-wrap wrap-break-word overflow-hidden" />',
-    },
-    {
-      code: '<div className="order-none" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="order-0" />',
-    },
-    {
-      code: '<div className="overflow-ellipsis" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="text-ellipsis" />',
-    },
-    // Legacy class with variant prefix
-    {
-      code: '<div className="hover:break-words" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="hover:wrap-break-word" />',
-    },
-    // Legacy class with important modifier
-    {
-      code: '<div className="!break-words" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="!wrap-break-word" />',
-    },
-    {
-      code: '<div className="break-words!" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="wrap-break-word!" />',
-    },
     // start-*/end-* (logical inset) → inset-s-*/inset-e-*
+    //
+    // These are the legacy spellings this rule still owns: `start-2` is current
+    // Tailwind (what the docs use), just not the canonical form. The v3 RENAMES
+    // that used to be tested here — `break-words`, `order-none`,
+    // `overflow-ellipsis`, `flex-grow*`, `decoration-*`, `bg-gradient-to-*`, the
+    // reordered position spellings — moved to `no-deprecated-classes`; see
+    // tests/integration/deprecated-canonical-coexistence.test.ts.
     {
       code: '<div className="start-2" />',
       filename: 'test.tsx',
@@ -193,42 +141,13 @@ runWithFixture(ruleTester, 'enforce-canonical', enforceCanonical, ENTRY_POINT, {
       errors: [{ messageId: 'nonCanonical' }],
       output: '<div className="inset-s-1/2" />',
     },
-    // flex-grow / flex-shrink: bare and -1 alias to default (grow / shrink)
-    {
-      code: '<div className="flex-grow" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="grow" />',
-    },
-    {
-      code: '<div className="flex-grow-1" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="grow" />',
-    },
-    {
-      code: '<div className="flex-shrink-0" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="shrink-0" />',
-    },
-    // decoration-clone / decoration-slice
-    {
-      code: '<div className="decoration-clone" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="box-decoration-clone" />',
-    },
-    // bg-gradient-to-* → bg-linear-to-*
-    {
-      code: '<div className="bg-gradient-to-r" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
-      output: '<div className="bg-linear-to-r" />',
-    },
     // Arbitrary forms route through the worker (canonicalize-service). This one
     // is value-safe (#78): both `flex-grow-[2]` and `grow-2` emit
     // `flex-grow: 2` (a literal), so the byte-equal check keeps the autofix.
+    //
+    // It stays this rule's business even though bare `flex-grow` is now
+    // `no-deprecated-classes`': the deprecation map holds renamed SPELLINGS, and
+    // `flex-grow-[2]` is a value this rule canonicalizes.
     // (`start-[10px]` → `inset-s-2.5` is NOT enforced — 10px vs
     // `calc(var(--spacing) * 2.5)` differ — see the valid block above.)
     {

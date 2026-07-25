@@ -5,7 +5,6 @@ import { findBestSuggestion } from '../utils/levenshtein'
 import { splitImportant, splitUtilityAndVariant, reattachImportant } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import { createLazyOptions } from '../utils/context'
-import { DEPRECATED_MAP } from './no-deprecated-classes'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 
 interface Options {
@@ -94,8 +93,10 @@ export const noUnknownClasses = defineRule({
           if (validity === 'valid') continue
 
           const { variant, bare, position } = strippedUtility(cls)
-          // Don't report deprecated classes — no-deprecated-classes handles those
-          if (DEPRECATED_MAP[bare]) continue
+          // Don't report deprecated classes — no-deprecated-classes handles those.
+          // Read from the design system rather than a hardcoded list, so the two
+          // rules can't disagree about what counts as deprecated.
+          if (cache.deprecatedReplacement(bare)) continue
 
           // A real Tailwind utility written without the required project prefix:
           // suggest the prefixed form rather than a Levenshtein neighbor.

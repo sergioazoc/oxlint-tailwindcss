@@ -92,6 +92,16 @@ export const enforceCanonical = defineRule({
         const arbitrary: string[] = []
 
         for (let i = 0; i < classes.length; i++) {
+          // A v3 spelling Tailwind renamed is `no-deprecated-classes`' class:
+          // it canonicalizes to exactly the same replacement, so reporting it
+          // here too meant one class producing two diagnostics with two
+          // identical fixes. Deprecation is the more actionable message of the
+          // two, so this rule stays quiet and the other one owns them.
+          const { utility } = splitUtilityAndVariant(classes[i])
+          if (cache.deprecatedReplacement(splitImportant(utility).bare)) {
+            canonicals[i] = classes[i]
+            continue
+          }
           if (utilityHasDynamicValue(classes[i])) {
             arbitraryIdx.push(i)
             arbitrary.push(classes[i])
