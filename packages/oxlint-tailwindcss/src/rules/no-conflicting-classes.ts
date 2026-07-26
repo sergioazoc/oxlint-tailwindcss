@@ -234,7 +234,21 @@ export const noConflictingClasses = defineRule({
           const unknown = variantClasses
             .map((cls) => splitImportant(extractUtility(cls)).bare)
             .filter((bare) => cache.getCssDeclarations(bare).length === 0 && isUserValued(bare))
-          if (unknown.length > 0) resolveDeclarationsSync(ds.entryPoint, cache, unknown)
+          // A dead worker is fatal here, not something to lint through: without
+          // the declarations this rule compares nothing, and going quiet about a
+          // whole class of pairs while the run stays green is the failure mode
+          // the service was added to remove.
+          if (unknown.length > 0) {
+            const resolved = safeGetDS(
+              () => {
+                resolveDeclarationsSync(ds.entryPoint, cache, unknown)
+                return true
+              },
+              context,
+              loc.node,
+            )
+            if (!resolved) return
+          }
 
           const facts: ClassFacts[] = variantClasses.map((cls) => {
             const utility = extractUtility(cls)

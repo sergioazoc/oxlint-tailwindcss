@@ -18,7 +18,6 @@
 import { type DesignSystemCache } from './cache'
 import { DesignSystemWorker, makeWorkerScript } from './ds-worker'
 import { DECL_EXTRACTOR_SOURCE } from './sync-loader'
-import { SortServiceError } from '../utils/fatal'
 
 interface DeclarationRequest {
   classes: string[]
@@ -114,36 +113,40 @@ function answersFor(cache: DesignSystemCache): Map<string, boolean> {
  * Ask the design system about every class there is no answer for yet, intern the
  * declarations it returns, and record which classes produce no CSS at all.
  *
- * Returns false when the service is unavailable. Callers treat that as "no
- * information" rather than as an answer, so a broken worker degrades to the
- * behaviour that predates it instead of to wrong diagnostics. Real failures still
- * surface through the sticky error the worker records.
+ * **Throws `SortServiceError` when the service is unavailable**, like the sort and
+ * canonicalize services do. It used to swallow the failure and report "no
+ * information", which was defensible when `no-conflicting-classes` was the only
+ * caller — no declarations means no comparison, so the rule just went quiet. It
+ * stopped being defensible once `no-unknown-classes` started asking about
+ * VALIDITY: there, silence sends the rule back to the tolerant heuristic, so a
+ * dead worker quietly reinstates the very false negatives the service exists to
+ * remove, with nothing anywhere to say so.
+ *
+ * The caller decides what to do, and the two postures already exist in the
+ * plugin: a DS-dependent rule surfaces it through `safeGetDS` as
+ * `designSystemUnavailable` (what `enforce-canonical` does with the canonicalize
+ * worker), a DS-OPTIONAL rule catches it and degrades.
  */
-function ask(cssPath: string, cache: DesignSystemCache, classes: string[]): boolean {
+function ask(cssPath: string, cache: DesignSystemCache, classes: string[]): void {
   const known = answersFor(cache)
   const pending = [...new Set(classes.filter((cls) => !known.has(cls)))]
-  if (pending.length === 0) return true
+  if (pending.length === 0) return
 
-  let response: DeclarationResponse
-  try {
-    response = declWorker.callSync(cssPath, { classes: pending })
-  } catch (error) {
-    if (error instanceof SortServiceError) return false
-    throw error
-  }
+  const response: DeclarationResponse = declWorker.callSync(cssPath, { classes: pending })
 
   const invalid = new Set(response.invalid)
   for (const cls of pending) known.set(cls, !invalid.has(cls))
   for (const [cls, raws] of Object.entries(response.decls)) {
     cache.internDeclarations(cls, raws, response.values)
   }
-  return true
 }
 
 /**
  * Resolve and intern declarations for `classes` that the precompute doesn't know.
  * They land in the cache, so the caller reads them back through
  * `cache.getCssDeclarations` like any other class.
+ *
+ * Throws `SortServiceError` if the service is unavailable — see `ask`.
  */
 export function resolveDeclarationsSync(
   cssPath: string,
@@ -154,19 +157,19 @@ export function resolveDeclarationsSync(
 }
 
 /**
- * Which of these classes produce CSS. `null` when the service is unavailable, so
- * the caller can fall back instead of reading silence as an answer.
+ * Which of these classes produce CSS.
  *
  * This is what makes validity exact for the classes the precompute cannot
  * enumerate: `w-45` and `bg-red-5000` are shaped identically, and only Tailwind
- * knows that it compiles the first and not the second.
+ * knows that it compiles the first and not the second. Throws
+ * `SortServiceError` if the service is unavailable — see `ask`.
  */
 export function validateClassesSync(
   cssPath: string,
   cache: DesignSystemCache,
   classes: string[],
-): Map<string, boolean> | null {
-  if (!ask(cssPath, cache, classes)) return null
+): Map<string, boolean> {
+  ask(cssPath, cache, classes)
   return answersFor(cache)
 }
 

@@ -29,8 +29,11 @@ export class DesignSystemCache {
   private declMemo = new Map<string, readonly CssDeclaration[]>()
   private propsMemo = new Map<string, string[]>()
   private partialSet = new Set<string>()
-  // Reverse of `declIndex.values`, built on first lint-time interning.
+  // Reverse of `declIndex.values`, built on first lint-time interning, plus the
+  // next id to hand out for a value the precompute never saw. Ids live here
+  // rather than in the artifact — see `internDeclarations`.
   private valueIdByText: Map<string, number> | null = null
+  private nextValueId = 0
   private variantOrderMap = new Map<string, number>()
   private variantFactsMap = new Map<string, VariantFacts>()
   private arbitraryEquivMap = new Map<string, string>()
@@ -522,6 +525,7 @@ export class DesignSystemCache {
     if (!index) return EMPTY_DECLARATIONS
     if (!this.valueIdByText) {
       this.valueIdByText = new Map(index.values.map((value, id) => [value, id]))
+      this.nextValueId = index.values.length
     }
     const decls: CssDeclaration[] = []
     let hasElement = false
@@ -530,8 +534,15 @@ export class DesignSystemCache {
     for (const [scopeToken, prop, value] of raws) {
       let valueId = this.valueIdByText.get(value)
       if (valueId === undefined) {
-        valueId = index.values.length
-        index.values.push(value)
+        // Numbered above the precomputed range but NOT appended to
+        // `index.values`: that array belongs to the cache artifact, which is
+        // shared by reference. Two caches built from the same artifact would
+        // each push into it while holding their own text→id map, so the same
+        // value would end up with two different ids — and `decidePair` compares
+        // ids, so two identical values would read as a conflict. Nothing reads
+        // ids back out of the array (the decoder only resolves ids that came
+        // from `index.table`, all precomputed), so keeping them local is free.
+        valueId = this.nextValueId++
         this.valueIdByText.set(value, valueId)
       }
       const facts = valueFacts[value]

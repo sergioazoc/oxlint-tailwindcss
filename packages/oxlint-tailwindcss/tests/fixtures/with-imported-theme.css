@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+@import './imported-tokens.css';
+
+/*
+ * `unrelated-theme-vars.css` with the project variable moved into an @import.
+ *
+ * Same hazard, one file further away: `--color-primary` is a literal theme token
+ * and `--primary` is an unrelated project variable, so rewriting `bg-(--primary)`
+ * to `bg-primary` would change the colour. The precompute scans the entry AND its
+ * imports for `--x:` declarations, so `definesVar('--primary')` is true here and
+ * prefer-theme-tokens refuses the rewrite — exactly as it does when the two live
+ * in the same file.
+ */
+@theme {
+  --color-primary: oklch(0.55 0.2 260);
+}

@@ -89,10 +89,11 @@ export interface PrecomputedData {
    */
   themeRefs?: Record<string, string[]>
   /**
-   * Custom properties the project defines anywhere in the entry CSS. Used to
-   * tell "the variable the user referenced does not exist, so the declaration is
-   * dead and suggesting a token can only improve it" from "it exists and means
-   * something else, so suggesting a token would change the design".
+   * Custom properties the project defines, across the entry CSS and the files it
+   * `@import`s (one level). Used to tell "the variable the user referenced does
+   * not exist, so the declaration is dead and suggesting a token can only improve
+   * it" from "it exists and means something else, so suggesting a token would
+   * change the design".
    */
   definedVars?: string[]
   /**
@@ -351,7 +352,12 @@ function resolveImport(specifier, baseDir) {
   return null;
 }
 
-function extractComponentClasses(cssPath, baseDir) {
+// The entry CSS plus every \`@import\` that resolves, one level deep. Shared by
+// the component-class scan and the \`definedVars\` scan: a custom property declared
+// in an imported file is as real to the browser as one in the entry, and treating
+// it as undefined makes prefer-theme-tokens propose a token that can change the
+// design (the #78 hazard, in miniature).
+function collectCssSources(cssPath, baseDir) {
   let css;
   try { css = readFileSync(cssPath, 'utf-8'); } catch { return []; }
   const files = [css];
@@ -363,6 +369,11 @@ function extractComponentClasses(cssPath, baseDir) {
       try { files.push(readFileSync(resolved, 'utf-8')); } catch {}
     }
   }
+  return files;
+}
+
+function extractComponentClasses(cssPath, baseDir) {
+  const files = collectCssSources(cssPath, baseDir);
   const result = [];
   for (const content of files) {
     // Scan both @layer components AND @layer utilities
@@ -849,15 +860,14 @@ async function main() {
     }
   }
 
-  // Theme variables that dereference to another custom property. Only the
-  // referencing ones are stored (~a handful), and the reference list reuses the
-  // same balanced scanner the declaration values go through.
-  // Custom properties the project defines. The entry file covers the standard
-  // ':root { --x: ... }' pattern; definitions inside @imported files are not
-  // scanned, so an unseen definition reads as "undefined" — which only ever makes
-  // prefer-theme-tokens more willing to suggest, never less accurate about a
-  // definition it can see.
-  const definedVars = [...new Set(css.match(/--[\\w-]+(?=\\s*:)/g) || [])];
+  // Custom properties the project defines, across the entry AND its resolved
+  // @imports — splitting the theme across files is the normal shadcn/ui layout,
+  // and a definition we cannot see reads as "undefined", which is what makes
+  // prefer-theme-tokens propose a token that means something else. One level
+  // deep, same as the component-class scan it shares \`collectCssSources\` with.
+  const definedVars = [...new Set(
+    collectCssSources(cssPath, base).flatMap(src => src.match(/--[\\w-]+(?=\\s*:)/g) || [])
+  )];
 
   const themeRefs = {};
   if (ds.theme && typeof ds.theme.entries === 'function') {
