@@ -22,6 +22,7 @@ import { consistentVariantOrder } from './rules/consistent-variant-order'
 import { enforceConsistentLineWrapping } from './rules/enforce-consistent-line-wrapping'
 import { noUnnecessaryArbitraryValue } from './rules/no-unnecessary-arbitrary-value'
 import { preferThemeTokens } from './rules/prefer-theme-tokens'
+import { preferScaleToken } from './rules/prefer-scale-token'
 
 const plugin = definePlugin({
   meta: { name: 'tailwindcss' },
@@ -49,6 +50,7 @@ const plugin = definePlugin({
     'enforce-consistent-line-wrapping': enforceConsistentLineWrapping,
     'no-unnecessary-arbitrary-value': noUnnecessaryArbitraryValue,
     'prefer-theme-tokens': preferThemeTokens,
+    'prefer-scale-token': preferScaleToken,
   },
 })
 

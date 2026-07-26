@@ -9,7 +9,8 @@ import {
 } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import { resolveDeclarationsSync } from '../design-system/declaration-service'
-import { softGetDS } from '../utils/fatal'
+import { isFatalError, softGetDS } from '../utils/fatal'
+import { debugLog } from '../design-system/debug'
 import { createLazyOptions } from '../utils/context'
 
 interface Options {
@@ -170,7 +171,18 @@ export const noDarkWithoutLight = defineRule({
             if (!unresolved) unresolved = []
             unresolved.push(bare)
           }
-          if (unresolved) resolveDeclarationsSync(ds.entryPoint, cache, unresolved)
+          if (unresolved) {
+            try {
+              resolveDeclarationsSync(ds.entryPoint, cache, unresolved)
+            } catch (error) {
+              // DS-OPTIONAL: this rule may never emit `designSystemUnavailable`,
+              // so a dead worker degrades to prefix-only grouping for the classes
+              // it could not resolve. Logged rather than swallowed, because the
+              // difference is invisible from the diagnostics alone.
+              if (!isFatalError(error)) throw error
+              debugLog(`declaration service unavailable, grouping by prefix only: ${String(error)}`)
+            }
+          }
         }
 
         // A base is a class with no watched variant. Two ways to be the base for

@@ -20,10 +20,12 @@ Reglas que atrapan problemas que generarían CSS inválido o inesperado.
 - [no-deprecated-classes](./no-deprecated-classes) — `flex-grow` → `grow`, etc.
 - [enforce-canonical](./enforce-canonical) — `-m-0` → `m-0`, `bg-gradient-to-r` → `bg-linear-to-r`,
   etc.
-- [no-unnecessary-arbitrary-value](./no-unnecessary-arbitrary-value) — `w-[200px]` → `w-50` cuando
-  existe el named.
+- [no-unnecessary-arbitrary-value](./no-unnecessary-arbitrary-value) — `w-[100%]` → `w-full` cuando
+  la clase nombrada emite CSS idéntico.
 - [prefer-theme-tokens](./prefer-theme-tokens) — `border-(--border)` → `border-border` cuando un
   named utility mapea al mismo variable.
+- [prefer-scale-token](./prefer-scale-token) — `p-[10px]` → `p-2.5`, `w-[200px]` → `w-50` cuando el
+  token es el mismo VALOR (solo reporta; el CSS difiere textualmente).
 - [enforce-negative-arbitrary-values](./enforce-negative-arbitrary-values) — `-top-[5px]` →
   `top-[-5px]`.
 
@@ -77,6 +79,7 @@ fatal `designSystemUnavailable` cuando falta.
 | `no-conflicting-classes`         | `{ reportRedundant: true }`             |
 | `no-unknown-classes`             | `{ allowlist: [], ignorePrefixes: [] }` |
 | `no-unnecessary-arbitrary-value` | `{}`                                    |
+| `prefer-scale-token`             | `{}`                                    |
 | `prefer-theme-tokens`            | `{}`                                    |
 
 ### Reglas DS-opcionales

@@ -89,12 +89,39 @@ export interface PrecomputedData {
    */
   themeRefs?: Record<string, string[]>
   /**
-   * Custom properties the project defines anywhere in the entry CSS. Used to
-   * tell "the variable the user referenced does not exist, so the declaration is
-   * dead and suggesting a token can only improve it" from "it exists and means
-   * something else, so suggesting a token would change the design".
+   * Custom properties the project defines, across the entry CSS and the files it
+   * `@import`s (one level). Used to tell "the variable the user referenced does
+   * not exist, so the declaration is dead and suggesting a token can only improve
+   * it" from "it exists and means something else, so suggesting a token would
+   * change the design".
    */
   definedVars?: string[]
+  /**
+   * Utility prefix → the numeric theme tokens it can be written with, as
+   * `[literal, className]` (`rounded` → `[['0.5rem', 'rounded-lg'], …]`).
+   *
+   * Only classes that emit ONE declaration whose whole value is a single `var(--x)`
+   * resolving to a number. Both restrictions are what make a match an equivalence
+   * rather than a guess: a colour token can never match a literal a human typed,
+   * and a class that declares MORE than the original is not the same declaration —
+   * `text-sm` also sets `line-height`, so `text-[14px]` is not it.
+   *
+   * Read by `prefer-scale-token`, which converts both sides to a common unit with
+   * the configured root font size before comparing.
+   */
+  tokenValues?: Record<string, [string, string][]>
+  /**
+   * The spacing scale, for `prefer-scale-token`: the resolved value of
+   * `--spacing`, the utility prefixes whose `<prefix>-1` reads it, and the
+   * granularity Tailwind's own enumerated steps use (the smallest gap between
+   * them — 0.5 in the default theme).
+   *
+   * The granularity is DERIVED rather than chosen: Tailwind compiles any number,
+   * so without it every length would have a "scale equivalent" and the rule would
+   * report `w-[33.7px]` → `w-8.425`. Deriving it from the steps Tailwind itself
+   * enumerates is how the rule stays inside what Tailwind does.
+   */
+  scale?: { unit: string; step: number; prefixes: string[] }
   /**
    * Tailwind v4 project prefix (e.g. 'tw' for `@import "tailwindcss" prefix(tw)`).
    * Empty string when no prefix is configured. All other fields store class
@@ -351,7 +378,12 @@ function resolveImport(specifier, baseDir) {
   return null;
 }
 
-function extractComponentClasses(cssPath, baseDir) {
+// The entry CSS plus every \`@import\` that resolves, one level deep. Shared by
+// the component-class scan and the \`definedVars\` scan: a custom property declared
+// in an imported file is as real to the browser as one in the entry, and treating
+// it as undefined makes prefer-theme-tokens propose a token that can change the
+// design (the #78 hazard, in miniature).
+function collectCssSources(cssPath, baseDir) {
   let css;
   try { css = readFileSync(cssPath, 'utf-8'); } catch { return []; }
   const files = [css];
@@ -363,6 +395,11 @@ function extractComponentClasses(cssPath, baseDir) {
       try { files.push(readFileSync(resolved, 'utf-8')); } catch {}
     }
   }
+  return files;
+}
+
+function extractComponentClasses(cssPath, baseDir) {
+  const files = collectCssSources(cssPath, baseDir);
   const result = [];
   for (const content of files) {
     // Scan both @layer components AND @layer utilities
@@ -849,20 +886,21 @@ async function main() {
     }
   }
 
-  // Theme variables that dereference to another custom property. Only the
-  // referencing ones are stored (~a handful), and the reference list reuses the
-  // same balanced scanner the declaration values go through.
-  // Custom properties the project defines. The entry file covers the standard
-  // ':root { --x: ... }' pattern; definitions inside @imported files are not
-  // scanned, so an unseen definition reads as "undefined" — which only ever makes
-  // prefer-theme-tokens more willing to suggest, never less accurate about a
-  // definition it can see.
-  const definedVars = [...new Set(css.match(/--[\\w-]+(?=\\s*:)/g) || [])];
+  // Custom properties the project defines, across the entry AND its resolved
+  // @imports — splitting the theme across files is the normal shadcn/ui layout,
+  // and a definition we cannot see reads as "undefined", which is what makes
+  // prefer-theme-tokens propose a token that means something else. One level
+  // deep, same as the component-class scan it shares \`collectCssSources\` with.
+  const definedVars = [...new Set(
+    collectCssSources(cssPath, base).flatMap(src => src.match(/--[\\w-]+(?=\\s*:)/g) || [])
+  )];
 
   const themeRefs = {};
+  const themeValues = new Map();
   if (ds.theme && typeof ds.theme.entries === 'function') {
     for (const [name, entry] of ds.theme.entries()) {
       const value = entry && typeof entry.value === 'string' ? entry.value : '';
+      themeValues.set(name, value);
       if (!value.includes('var(')) continue;
       const reads = scanVarReads(value);
       const all = [...new Set([...reads[0], ...reads[1]])];
@@ -870,7 +908,77 @@ async function main() {
     }
   }
 
-  const json = JSON.stringify({ validClasses, canonical, deprecated, order, cssDeclarations, variantOrder, variantFacts, componentClasses, arbitraryEquivalents, themeRefs, definedVars, prefix });
+  // ── What a literal value could have been written as (for prefer-scale-token) ──
+  //
+  // Two families, both derived. Neither is a name table: the emitted CSS says
+  // which variable a class reads and the theme says what that variable is worth.
+
+  // A single declaration whose whole value is one \`var(--x)\` that the theme
+  // resolves to a NUMBER. Numeric because that is the only thing the rule can
+  // compare — a colour token could never match a literal the user typed — and
+  // SINGLE because a class that declares more than the original is not an
+  // equivalent: \`text-sm\` sets \`line-height\` too, so \`text-[14px]\` is not it.
+  const NUMERIC_LITERAL = /^-?\\d*\\.?\\d+(rem|px|em|%|s|ms|deg)?$/;
+  const tokenValues = {};
+  for (const cls of validClasses) {
+    if (cls.includes('[') || cls.includes('/')) continue;
+    const css = declCss[cls];
+    if (!css) continue;
+    const open = css.indexOf('{');
+    const close = css.indexOf('}');
+    if (open < 0 || close < 0) continue;
+    const body = css.slice(open + 1, close).replace(/\\s+/g, ' ').replace(/;\\s*$/, '').trim();
+    const m = /^([a-z-]+):\\s*var\\((--[\\w-]+)\\)$/.exec(body);
+    if (!m) continue;
+    const value = themeValues.get(m[2]);
+    if (!value || !NUMERIC_LITERAL.test(value)) continue;
+    const dash = cls.lastIndexOf('-');
+    if (dash <= 0) continue;
+    const prefix = unpfx(cls).slice(0, unpfx(cls).lastIndexOf('-'));
+    if (!prefix) continue;
+    if (!tokenValues[prefix]) tokenValues[prefix] = [];
+    tokenValues[prefix].push([value, unpfx(cls)]);
+  }
+
+  // The spacing scale: its unit, which prefixes read it, and the granularity
+  // Tailwind's own enumerated steps use. Every step getClassList() lists is a
+  // multiple of that granularity, so deriving it is how the rule stays inside
+  // what Tailwind does instead of inventing a threshold.
+  const scaleUnit = themeValues.get('--spacing') || '';
+  const scalePrefixes = [];
+  if (scaleUnit) {
+    const probes = [...knownPrefixes];
+    const probeResults = ds.candidatesToCss(probes.map(p => pfx(p + '-1')));
+    for (let i = 0; i < probes.length; i++) {
+      const css = probeResults[i];
+      if (!css) continue;
+      // \`size-1\` emits width AND height, both reading the unit — one match is enough.
+      if (css.includes('var(--spacing)')) scalePrefixes.push(probes[i]);
+    }
+  }
+  let scaleStep = 0;
+  if (scalePrefixes.length > 0) {
+    const steps = new Set();
+    const scaleSet = new Set(scalePrefixes);
+    for (const cls of validClasses) {
+      const dash = cls.lastIndexOf('-');
+      if (dash <= 0) continue;
+      if (!scaleSet.has(cls.slice(0, dash))) continue;
+      const suffix = cls.slice(dash + 1);
+      if (!/^\\d*\\.?\\d+$/.test(suffix)) continue;
+      steps.add(parseFloat(suffix));
+    }
+    const sorted = [...steps].sort((a, b) => a - b);
+    for (let i = 1; i < sorted.length; i++) {
+      const gap = Math.round((sorted[i] - sorted[i - 1]) * 1000) / 1000;
+      if (gap > 0 && (scaleStep === 0 || gap < scaleStep)) scaleStep = gap;
+    }
+  }
+  const scale = scaleUnit && scalePrefixes.length > 0
+    ? { unit: scaleUnit, step: scaleStep || 1, prefixes: scalePrefixes.sort() }
+    : undefined;
+
+  const json = JSON.stringify({ validClasses, canonical, deprecated, order, cssDeclarations, variantOrder, variantFacts, componentClasses, arbitraryEquivalents, themeRefs, definedVars, tokenValues, scale, prefix });
   // Atomic write: write to a unique temp path then rename, so a peer isolate
   // busy-waiting on the cache file never observes a half-written JSON.
   writeFileSync(WD_TMP_PATH, json);

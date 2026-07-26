@@ -262,3 +262,56 @@ describe('Precomputed Data Snapshot', () => {
     })
   })
 })
+
+/**
+ * The two derivations `prefer-scale-token` rests on.
+ *
+ * Neither is a table anyone maintains: the spacing granularity comes from the
+ * steps Tailwind itself enumerates, and the token values come from the emitted
+ * CSS plus the theme. If a Tailwind release changes either, the rule silently
+ * starts reporting more or less — so the derived shape is pinned here.
+ */
+describe('derived scale and token values', () => {
+  it('derives the spacing unit, its granularity and which prefixes read it', () => {
+    expect(data.scale).toBeDefined()
+    expect(data.scale!.unit).toBe('0.25rem')
+    // Every step getClassList() enumerates (0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4,
+    // 5…96) is a multiple of this. It is what keeps the rule from reporting
+    // `w-[33.7px]` → `w-8.425`, which Tailwind compiles but never proposes.
+    expect(data.scale!.step).toBe(0.5)
+    // Utilities whose `<prefix>-1` reads `var(--spacing)`.
+    expect(data.scale!.prefixes).toContain('w')
+    expect(data.scale!.prefixes).toContain('p')
+    expect(data.scale!.prefixes).toContain('gap')
+    expect(data.scale!.prefixes).toContain('size')
+    expect(data.scale!.prefixes).toContain('scroll-mt')
+    // …and not the ones whose `-1` is a plain number or a length of its own.
+    expect(data.scale!.prefixes).not.toContain('z')
+    expect(data.scale!.prefixes).not.toContain('opacity')
+    expect(data.scale!.prefixes).not.toContain('border')
+    expect(data.scale!.prefixes).not.toContain('order')
+  })
+
+  it('maps numeric theme tokens back to their literal value', () => {
+    const rounded = new Map(data.tokenValues?.rounded ?? [])
+    expect(rounded.get('0.5rem')).toBe('rounded-lg')
+    expect(rounded.get('0.125rem')).toBe('rounded-xs')
+
+    const basis = new Map(data.tokenValues?.basis ?? [])
+    expect(basis.get('28rem')).toBe('basis-md')
+  })
+
+  it('excludes tokens whose class declares more than the literal would', () => {
+    // `text-sm` sets `font-size` AND `line-height`, so `text-[14px]` is not it —
+    // the single-declaration requirement drops the whole `text` family without
+    // anyone having to list it.
+    expect(data.tokenValues?.text).toBeUndefined()
+  })
+
+  it('excludes non-numeric tokens, which no literal could match', () => {
+    // 7 000 of the ~7 200 pure-`var()` classes are colours; none can be compared
+    // against a value a human typed, so none are stored.
+    expect(data.tokenValues?.['accent-amber']).toBeUndefined()
+    expect(data.tokenValues?.['bg-red']).toBeUndefined()
+  })
+})

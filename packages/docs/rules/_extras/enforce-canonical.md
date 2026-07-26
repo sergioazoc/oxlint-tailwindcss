@@ -74,6 +74,11 @@ for the whole project instead of per-rule whenever possible.
   What stays here is everything that is current-but-not-canonical: `-m-0` → `m-0`, `start-2` →
   `inset-s-2`, and arbitrary-valued forms like `flex-grow-[2]` → `grow-2` (the rename list holds
   spellings, not values). Keep both rules on — with only this one enabled the renames go unreported.
+- **`prefer-scale-token`**: the report-only half of what this rule gave up in #78. A rewrite whose
+  emitted CSS differs textually (`p-[10px]` → `p-2.5`, where the token resolves through
+  `var(--spacing)`) is not autofixed here and never will be; that rule reports it with a suggestion
+  instead. The two can never both fire: this one only rewrites byte-identical pairs, which is
+  exactly what the other one skips.
 - **`enforce-consistent-important-position`**: this rule preserves the `!` position you wrote
   (prefix vs suffix vs none). `enforce-consistent-important-position` is the single source of truth
   for enforcing a particular position.

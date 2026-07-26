@@ -12,7 +12,7 @@ import { createLazyLoader } from '../design-system/loader'
 import { validateClassesSync } from '../design-system/declaration-service'
 import type { DesignSystemCache } from '../design-system/cache'
 import { createLazyOptions } from '../utils/context'
-import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
+import { DS_UNAVAILABLE_MESSAGE, reportFatalDsError, safeGetDS } from '../utils/fatal'
 
 interface Options {
   entryPoint?: string
@@ -117,8 +117,7 @@ export const noUnknownClasses = defineRule({
       const memo = chainAnswers.get(key)
       if (memo !== undefined) return memo
       const probe = `${chain}${PROBE_UTILITY}`
-      const answers = validateClassesSync(entryPoint, cache, [probe])
-      const verdict = answers ? (answers.get(probe) ?? null) : null
+      const verdict = validateClassesSync(entryPoint, cache, [probe]).get(probe) ?? null
       chainAnswers.set(key, verdict)
       return verdict
     }
@@ -159,6 +158,24 @@ export const noUnknownClasses = defineRule({
       if (!ds) return
       const { cache, entryPoint } = ds
 
+      try {
+        checkLocations(locations, cache, entryPoint)
+      } catch (error) {
+        // The declaration service is what makes this rule's answers exact. If it
+        // is unavailable, going back to the tolerant heuristic in silence would
+        // reinstate exactly the false negatives it exists to remove, on a run
+        // that stays green — so it surfaces like any other design-system failure
+        // and the rule stops. One diagnostic per visitor call, not per class.
+        if (reportFatalDsError(context, error, locations[0].node)) return
+        throw error
+      }
+    }
+
+    function checkLocations(
+      locations: ClassLocation[],
+      cache: DesignSystemCache,
+      entryPoint: string,
+    ) {
       for (const loc of locations) {
         const split = splitClassesWithSeparators(loc.value)
         const classes = split.classes

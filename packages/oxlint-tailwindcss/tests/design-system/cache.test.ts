@@ -322,3 +322,67 @@ describe('project prefix', () => {
     expect(variant! > base!).toBe(true)
   })
 })
+
+/**
+ * Lint-time interning must not write into the cache artifact.
+ *
+ * `PrecomputedData.cssDeclarations` is held by reference, so a value appended to
+ * its `values` array would be visible to every cache built from the same object
+ * — while each cache keeps its OWN text→id map. The second cache would not see
+ * the first one's append, hand out a fresh id for the same text, and then
+ * `decidePair` (which compares ids, not strings) would read two identical values
+ * as a conflict.
+ *
+ * Unreachable through the loader today, which parses the JSON per entry point,
+ * but it is one shared object away from being a false positive nobody could
+ * explain.
+ */
+describe('internDeclarations isolation', () => {
+  const RAWS: [string, string, string][] = [['', 'padding', '5px']]
+  const FACTS = { '5px': { p: [], f: [], u: false } }
+
+  it('does not append to the shared value table', () => {
+    const data = makeData()
+    const before = data.cssDeclarations.values.length
+    const cache = DesignSystemCache.fromPrecomputed(data)
+
+    cache.internDeclarations('p-[5px]', RAWS, FACTS)
+
+    expect(data.cssDeclarations.values.length).toBe(before)
+  })
+
+  it('gives the same value the same id in each cache built from one artifact', () => {
+    const data = makeData()
+    const a = DesignSystemCache.fromPrecomputed(data)
+    const b = DesignSystemCache.fromPrecomputed(data)
+
+    // Interleaved on purpose. Each cache has to have built its text→id map, and
+    // to have interned something of its own, BEFORE they meet on a shared value —
+    // that is the ordering in which a shared, appended array hands out two
+    // different ids for one text. Interning in both caches back to back would
+    // pass either way, because the second cache builds its map lazily and would
+    // simply see the first one's append.
+    b.internDeclarations('mt-[7px]', [['', 'margin-top', '7px']], {
+      '7px': { p: [], f: [], u: false },
+    })
+    a.internDeclarations('mb-[9px]', [['', 'margin-bottom', '9px']], {
+      '9px': { p: [], f: [], u: false },
+    })
+
+    const fromB = b.internDeclarations('p-[5px]', RAWS, FACTS)
+    const fromA = a.internDeclarations('p-[5px]', RAWS, FACTS)
+
+    expect(fromA[0].valueId).toBe(fromB[0].valueId)
+  })
+
+  it('still shares ids with the precomputed values it interns against', () => {
+    const cache = DesignSystemCache.fromPrecomputed(makeData())
+    // `p-4` is precomputed with this exact value; the lint-time class has to land
+    // on the SAME id or the two would never compare equal.
+    const precomputed = cache.getCssDeclarations('p-4')[0]
+    const interned = cache.internDeclarations('p-[1rem]', [['', 'padding', precomputed.value]], {
+      [precomputed.value]: { p: [], f: [], u: false },
+    })
+    expect(interned[0].valueId).toBe(precomputed.valueId)
+  })
+})

@@ -1,0 +1,8 @@
+/*
+ * Imported by `with-imported-theme.css`. The point is that `--primary` is
+ * declared HERE and nowhere else: the browser sees it, so anything that decides
+ * whether a variable is defined has to look past the entry file.
+ */
+:root {
+  --primary: #ff0000;
+}

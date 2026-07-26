@@ -20,10 +20,12 @@ These rules catch problems that would generate invalid or unexpected CSS.
 - [no-deprecated-classes](./no-deprecated-classes) — `flex-grow` → `grow`, etc.
 - [enforce-canonical](./enforce-canonical) — `-m-0` → `m-0`, `bg-gradient-to-r` → `bg-linear-to-r`,
   etc.
-- [no-unnecessary-arbitrary-value](./no-unnecessary-arbitrary-value) — `w-[200px]` → `w-50` when the
-  named value exists.
+- [no-unnecessary-arbitrary-value](./no-unnecessary-arbitrary-value) — `w-[100%]` → `w-full` when
+  the named class emits identical CSS.
 - [prefer-theme-tokens](./prefer-theme-tokens) — `border-(--border)` → `border-border` when a named
   utility maps to the same theme variable.
+- [prefer-scale-token](./prefer-scale-token) — `p-[10px]` → `p-2.5`, `w-[200px]` → `w-50` when the
+  token is the same VALUE (report-only; the CSS differs textually).
 - [enforce-negative-arbitrary-values](./enforce-negative-arbitrary-values) — `-top-[5px]` →
   `top-[-5px]`.
 
@@ -77,6 +79,7 @@ These rules require `settings.tailwindcss.entryPoint` to be set; they emit a fat
 | `no-conflicting-classes`         | `{ reportRedundant: true }`             |
 | `no-unknown-classes`             | `{ allowlist: [], ignorePrefixes: [] }` |
 | `no-unnecessary-arbitrary-value` | `{}`                                    |
+| `prefer-scale-token`             | `{}`                                    |
 | `prefer-theme-tokens`            | `{}`                                    |
 
 ### DS-optional rules

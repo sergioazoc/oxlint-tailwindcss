@@ -1,6 +1,6 @@
 /**
- * Coexistence matrix between prefer-theme-tokens and the two related rules
- * (enforce-canonical, no-unnecessary-arbitrary-value).
+ * Coexistence matrix between prefer-theme-tokens and the three related rules
+ * (enforce-canonical, no-unnecessary-arbitrary-value, prefer-scale-token).
  *
  * Each input class is run against every rule separately, asserting which rule
  * fires and which stays silent. The goal is to lock in the boundary so future
@@ -52,6 +52,7 @@ import { makeFixtureRunner } from '../utils/with-fixture'
 import { preferThemeTokens } from '../../src/rules/prefer-theme-tokens'
 import { enforceCanonical } from '../../src/rules/enforce-canonical'
 import { noUnnecessaryArbitraryValue } from '../../src/rules/no-unnecessary-arbitrary-value'
+import { preferScaleToken } from '../../src/rules/prefer-scale-token'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
 import { resetCanonicalizeService } from '../../src/design-system/canonicalize-service'
 
@@ -229,3 +230,68 @@ describe('prefer-theme-tokens coexistence (shadcn-style theme)', () => {
 // intermediate (`border-(--border)`) and the input (`border-[var(--border)]`)
 // shapes, so any future regression that breaks convergence will fail one of
 // those test cases.
+
+/**
+ * The fourth rule joins on a premise none of the other three can host.
+ *
+ * Each of them keys on something different — byte-identical CSS
+ * (no-unnecessary-arbitrary-value), what canonicalizeCandidates proposes
+ * (enforce-canonical), the NAME of a variable the user wrote
+ * (prefer-theme-tokens) — and a literal that is only NUMERICALLY equal to a token
+ * satisfies none of those. That is the gap #91 reported.
+ *
+ *   ┌──────────────────────┬───────┬──────────┬───────────┬─────────────┐
+ *   │ input                │ canon │ no-unnec │ prefer-tt │ prefer-scale│
+ *   ├──────────────────────┼───────┼──────────┼───────────┼─────────────┤
+ *   │ w-[100%]             │ fires │ fires    │ silent    │ silent      │
+ *   │ p-[10px]             │ silent│ silent   │ silent    │ FIRES       │
+ *   │ w-[140px]            │ silent│ silent   │ silent    │ FIRES       │
+ *   │ rounded-[0.5rem]     │ silent│ silent   │ silent    │ FIRES       │
+ *   │ bg-(--red-500)       │ silent│ silent   │ fires     │ silent      │
+ *   └──────────────────────┴───────┴──────────┴───────────┴─────────────┘
+ *
+ * `w-[100%]` is the line that matters most: byte-identical, so it belongs to
+ * no-unnecessary-arbitrary-value, and prefer-scale-token's getNamedEquivalent
+ * guard keeps it out even though 100% would also resolve on the scale.
+ */
+describe('prefer-scale-token coexistence (default theme)', () => {
+  const run = makeFixtureRunner(DEFAULT_FIXTURE)
+  beforeAll(() => {
+    resetDesignSystem()
+    resetCanonicalizeService()
+    getLoadedDesignSystem(DEFAULT_FIXTURE)
+  })
+  afterAll(() => {
+    resetDesignSystem()
+    resetCanonicalizeService()
+  })
+
+  const NUMERIC_ONLY = ['p-[10px]', 'w-[140px]', 'rounded-[0.5rem]']
+
+  run('prefer-scale-token owns the numeric equivalences', preferScaleToken, {
+    valid: [
+      { code: '<div className="w-[100%]" />', filename: 'test.tsx' },
+      { code: '<div className="bg-(--red-500)" />', filename: 'test.tsx' },
+      { code: '<div className="rounded-[var(--radius-sm)]" />', filename: 'test.tsx' },
+    ],
+    invalid: NUMERIC_ONLY.map((code) => ({
+      code: `<div className="${code}" />`,
+      filename: 'test.tsx',
+      errors: [{ messageId: 'preferToken' as const }],
+    })),
+  })
+
+  // The other three stay silent on all of them — that is what makes this a gap
+  // rather than a duplicate.
+  const silentOn = NUMERIC_ONLY.map((code) => ({
+    code: `<div className="${code}" />`,
+    filename: 'test.tsx',
+  }))
+
+  run('enforce-canonical stays silent', enforceCanonical, { valid: silentOn, invalid: [] })
+  run('no-unnecessary-arbitrary-value stays silent', noUnnecessaryArbitraryValue, {
+    valid: silentOn,
+    invalid: [],
+  })
+  run('prefer-theme-tokens stays silent', preferThemeTokens, { valid: silentOn, invalid: [] })
+})
