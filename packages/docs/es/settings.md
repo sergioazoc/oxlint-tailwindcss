@@ -8,6 +8,13 @@ Ruta al archivo CSS que tiene `@import "tailwindcss";` y (opcionalmente) tus cus
 `@theme { ... }`. El plugin lee este archivo para construir el design system que cada regla
 consulta.
 
+Es obligatorio para las reglas DS-dependientes, que fallan ruidosamente sin él. Hay un segundo grupo
+**DS-opcional**: esas funcionan sin nada configurado y ganan precisión cuando está —
+`enforce-shorthand` verifica cada merge contra el CSS emitido, `no-dark-without-light` agrupa la
+base por propiedad declarada, `no-deprecated-classes` deriva su lista de renombres, y las reglas
+direccionales confirman que la clase que sugieren exista. Mira la
+[referencia de defaults](./rules/#referencia-de-defaults) para saber qué regla está en qué grupo.
+
 Acepta dos formas:
 
 ```jsonc

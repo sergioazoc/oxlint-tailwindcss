@@ -228,6 +228,46 @@ describe('families beyond margin/padding/size', () => {
   })
 })
 
+/**
+ * The same families, with an entry point configured.
+ *
+ * The DS path compares the declarations each part emits, so a family that merges
+ * fine without CSS could silently stop merging with it — a false negative nobody
+ * would notice. Every family is exercised through the design system here, at a
+ * named token where the comparison actually has to resolve something.
+ */
+describe('families with a design system', () => {
+  const run = makeFixtureRunner(resolve(__dirname, '../fixtures/default.css'))
+  const cases: [string, string][] = [
+    ['border-t-2 border-r-2 border-b-2 border-l-2', 'border-2'],
+    ['border-t-red-500 border-b-red-500', 'border-y-red-500'],
+    ['border-s-2 border-e-2', 'border-x-2'],
+    ['rounded-tl-lg rounded-tr-lg', 'rounded-t-lg'],
+    ['rounded-ss-lg rounded-es-lg', 'rounded-s-lg'],
+    ['rounded-t-lg rounded-b-lg', 'rounded-lg'],
+    ['top-0 right-0 bottom-0 left-0', 'inset-0'],
+    ['start-4 end-4', 'inset-x-4'],
+    ['gap-x-4 gap-y-4', 'gap-4'],
+    ['overflow-x-hidden overflow-y-hidden', 'overflow-hidden'],
+    ['overscroll-x-none overscroll-y-none', 'overscroll-none'],
+    ['border-spacing-x-4 border-spacing-y-4', 'border-spacing-4'],
+    ['translate-x-4 translate-y-4', 'translate-4'],
+    ['ms-4 me-4', 'mx-4'],
+    ['scroll-mt-4 scroll-mb-4', 'scroll-my-4'],
+    ['mt-px mb-px', 'my-px'],
+  ]
+
+  run('enforce-shorthand (families, DS path)', enforceShorthand, {
+    valid: [],
+    invalid: cases.map(([code, replacement]) => ({
+      code: `<div className="${code}" />`,
+      filename: 'test.tsx',
+      errors: [{ messageId: 'shorthand' }],
+      output: `<div className="${replacement}" />`,
+    })),
+  })
+})
+
 describe('with a design system: per-axis theme namespaces', () => {
   const run = makeFixtureRunner(resolve(__dirname, '../fixtures/axis-namespaces.css'))
 

@@ -75,31 +75,37 @@ These rules require `settings.tailwindcss.entryPoint` to be set; they emit a fat
 | `enforce-canonical`              | `{}`                                    |
 | `enforce-sort-order`             | `{ mode: 'default' }`                   |
 | `no-conflicting-classes`         | `{ reportRedundant: true }`             |
-| `no-deprecated-classes`          | `{}`                                    |
 | `no-unknown-classes`             | `{ allowlist: [], ignorePrefixes: [] }` |
 | `no-unnecessary-arbitrary-value` | `{}`                                    |
 | `prefer-theme-tokens`            | `{}`                                    |
 
-`consistent-variant-order` is DS-optional — when no `entryPoint` is declared, it falls back to a
-built-in static order (which is itself deterministic).
+### DS-optional rules
+
+These work with nothing configured — their fallback is deterministic on its own — and get more
+accurate when an `entryPoint` is available. None of them can emit `designSystemUnavailable`. Each
+also accepts a rule-level `entryPoint` that overrides the shared setting.
+
+| Rule                        | Default options                        | What the design system adds                                  |
+| --------------------------- | -------------------------------------- | ------------------------------------------------------------ |
+| `consistent-variant-order`  | `{}` (DS-derived order when available) | Real variant order, and what each variant's selector does    |
+| `enforce-logical`           | `{ allowlist: [], direction: 'both' }` | Confirms the suggested class exists                          |
+| `enforce-physical`          | `{ allowlist: [], direction: 'both' }` | Confirms the suggested class exists                          |
+| `enforce-shorthand`         | `{}`                                   | Verifies each merge against the emitted CSS                  |
+| `no-contradicting-variants` | `{}`                                   | What each variant's selector does                            |
+| `no-dark-without-light`     | `{ variants: ['dark'] }`               | Groups the base by declared CSS property, not just by prefix |
+| `no-deprecated-classes`     | `{}`                                   | Derives the rename list instead of using the built-in table  |
 
 ### DS-independent rules
 
-| Rule                                    | Default options                        |
-| --------------------------------------- | -------------------------------------- |
-| `consistent-variant-order`              | `{}` (DS-derived order when available) |
-| `enforce-consistent-important-position` | `{ position: 'suffix' }`               |
-| `enforce-consistent-line-wrapping`      | `{ printWidth: 80 }`                   |
-| `enforce-consistent-variable-syntax`    | `{ syntax: 'shorthand' }`              |
-| `enforce-logical`                       | `{ allowlist: [], direction: 'both' }` |
-| `enforce-negative-arbitrary-values`     | (no options)                           |
-| `enforce-physical`                      | `{ allowlist: [], direction: 'both' }` |
-| `enforce-shorthand`                     | (no options)                           |
-| `max-class-count`                       | `{ max: 20 }`                          |
-| `no-arbitrary-value`                    | `{ allow: [] }`                        |
-| `no-contradicting-variants`             | `{}`                                   |
-| `no-dark-without-light`                 | `{ variants: ['dark'] }`               |
-| `no-duplicate-classes`                  | (no options)                           |
-| `no-hardcoded-colors`                   | `{ allow: [] }`                        |
-| `no-restricted-classes`                 | `{ classes: [], patterns: [] }`        |
-| `no-unnecessary-whitespace`             | (no options)                           |
+| Rule                                    | Default options                 |
+| --------------------------------------- | ------------------------------- |
+| `enforce-consistent-important-position` | `{ position: 'suffix' }`        |
+| `enforce-consistent-line-wrapping`      | `{ printWidth: 80 }`            |
+| `enforce-consistent-variable-syntax`    | `{ syntax: 'shorthand' }`       |
+| `enforce-negative-arbitrary-values`     | (no options)                    |
+| `max-class-count`                       | `{ max: 20 }`                   |
+| `no-arbitrary-value`                    | `{ allow: [] }`                 |
+| `no-duplicate-classes`                  | (no options)                    |
+| `no-hardcoded-colors`                   | `{ allow: [] }`                 |
+| `no-restricted-classes`                 | `{ classes: [], patterns: [] }` |
+| `no-unnecessary-whitespace`             | (no options)                    |

@@ -17,10 +17,10 @@ emit `designSystemUnavailable`.
   family. `mt-2 mr-2 mb-2 ml-2` used to produce three errors — `m-2` plus the `my-2` and `mx-2`
   halves — and now produces one. The autofix output is unchanged; only the count is. If you track
   diagnostic counts in CI, they will drop.
-- **`enforce-shorthand`** also gained ~30 families (borders, inset, radius edges, gap, overflow,
-  overscroll, `border-spacing`, `scroll-m*`/`scroll-p*`, the logical inline pairs, translate), so
-  patterns that were silent now report. Each was verified against the real design system before
-  being added; see the rule docs for the full table.
+- **`enforce-shorthand`** also went from 10 collapsible families to 47 (borders, inset, radius
+  edges, gap, overflow, overscroll, `border-spacing`, `scroll-m*`/`scroll-p*`, the logical inline
+  pairs, translate), so patterns that were silent now report. Each of the 37 new ones was verified
+  against the real design system before being added; see the rule docs for the full table.
 - **`no-unknown-classes`** is exact where it used to guess, which means it can fail a CI run that
   passes today — that is the point, since everything it now catches produces no CSS at all. Two
   groups: typos in the VARIANT (`hoverr:flex`, `darkk:size-4`, `peer-cheked:flex`, `@mdd:flex`), and

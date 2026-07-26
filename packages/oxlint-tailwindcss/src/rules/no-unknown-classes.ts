@@ -123,41 +123,41 @@ export const noUnknownClasses = defineRule({
       return verdict
     }
 
+    /** Replace one class in the location and report, with a quick-fix suggestion. */
+    function reportWithSuggestion(
+      loc: ClassLocation,
+      classes: string[],
+      cls: string,
+      replacement: string,
+      messageId: string,
+      data: Record<string, string>,
+      split: ReturnType<typeof splitClassesWithSeparators>,
+    ): void {
+      const fixedValue = rebuildClassString(
+        split,
+        classes.map((c) => (c === cls ? replacement : c)),
+      )
+      context.report({
+        node: loc.node,
+        messageId,
+        data,
+        suggest: [
+          {
+            messageId: 'suggestReplace',
+            data: { className: cls, replacement },
+            fix(fixer) {
+              return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
+            },
+          },
+        ],
+      })
+    }
+
     function check(locations: ClassLocation[]) {
       if (locations.length === 0) return
       const ds = safeGetDS(getDS, context, locations[0].node)
       if (!ds) return
       const { cache, entryPoint } = ds
-
-      /** Replace one class in the location and report, with a quick-fix suggestion. */
-      function reportWithSuggestion(
-        loc: ClassLocation,
-        classes: string[],
-        cls: string,
-        replacement: string,
-        messageId: string,
-        data: Record<string, string>,
-        split: ReturnType<typeof splitClassesWithSeparators>,
-      ): void {
-        const fixedValue = rebuildClassString(
-          split,
-          classes.map((c) => (c === cls ? replacement : c)),
-        )
-        context.report({
-          node: loc.node,
-          messageId,
-          data,
-          suggest: [
-            {
-              messageId: 'suggestReplace',
-              data: { className: cls, replacement },
-              fix(fixer) {
-                return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-              },
-            },
-          ],
-        })
-      }
 
       for (const loc of locations) {
         const split = splitClassesWithSeparators(loc.value)
@@ -181,6 +181,13 @@ export const noUnknownClasses = defineRule({
 
           const validity = cache.classValidity(cls)
           const { variant, bare, position } = strippedUtility(cls)
+
+          // A precomputed class with no variant chain is settled, and that is the
+          // overwhelming majority of what a file contains. The old code exited on
+          // `validity === 'valid'` alone; the extra two conditions are what the
+          // design-system lookups below are FOR, so they have to be cheap and
+          // first.
+          if (validity === 'valid' && !variant && cache.isKnownClass(bare)) continue
 
           // Don't report deprecated classes — no-deprecated-classes handles those.
           // Read from the design system rather than a hardcoded list, so the two
@@ -243,10 +250,12 @@ export const noUnknownClasses = defineRule({
           if (!variant) continue
           if (chainProduces(cache, entryPoint, variant) !== false) continue
 
-          const { variant: offending, suggestion } = diagnoseChain(cache, entryPoint, variant)
-          const fixedClass = suggestion
-            ? variant.replace(`${offending}:`, `${suggestion}:`) + reattachImportant(bare, position)
-            : null
+          const {
+            variant: offending,
+            suggestion,
+            fixedChain,
+          } = diagnoseChain(cache, entryPoint, variant)
+          const fixedClass = fixedChain ? fixedChain + reattachImportant(bare, position) : null
 
           if (fixedClass && suggestion) {
             reportWithSuggestion(
@@ -282,7 +291,7 @@ export const noUnknownClasses = defineRule({
       cache: DesignSystemCache,
       entryPoint: string,
       chain: string,
-    ): { variant: string; suggestion: string | null } {
+    ): { variant: string; suggestion: string | null; fixedChain: string | null } {
       const segments = extractVariants(`${chain}${PROBE_UTILITY}`)
       const names = cache.variantNames()
 
@@ -293,16 +302,19 @@ export const noUnknownClasses = defineRule({
         if (chainProduces(cache, entryPoint, `${segment}:`) !== false) continue
 
         for (const candidate of correctionsFor(segment, names)) {
-          if (chainProduces(cache, entryPoint, `${candidate}:`) === true) {
-            return { variant: segment, suggestion: candidate }
-          }
+          if (chainProduces(cache, entryPoint, `${candidate}:`) !== true) continue
+          // Rebuilt from the parsed segments rather than by string replacement, so
+          // a variant that happens to contain another one (`data-[x=md]:mdd:`)
+          // can't have the wrong occurrence rewritten.
+          const fixedChain = segments.map((s) => (s === segment ? candidate : s)).join(':') + ':'
+          return { variant: segment, suggestion: candidate, fixedChain }
         }
-        return { variant: segment, suggestion: null }
+        return { variant: segment, suggestion: null, fixedChain: null }
       }
 
       // Every segment compiles on its own but the chain does not — report the
       // chain itself rather than blaming a variant that is perfectly valid.
-      return { variant: chain.slice(0, -1), suggestion: null }
+      return { variant: chain.slice(0, -1), suggestion: null, fixedChain: null }
     }
 
     /** Spelling candidates for a variant segment, nearest neighbour first. */
