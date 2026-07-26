@@ -77,6 +77,11 @@ para todo el proyecto en vez de por-regla cuando puedas.
   → `inset-s-2`, y las formas con valor arbitrario como `flex-grow-[2]` → `grow-2` (la lista de
   renombres tiene spellings, no valores). Mantén ambas activas — con solo esta los renombres quedan
   sin reportar.
+- **`prefer-scale-token`**: la mitad solo-reporte de lo que esta regla cedió en #78. Una reescritura
+  cuyo CSS emitido difiere textualmente (`p-[10px]` → `p-2.5`, donde el token llega por
+  `var(--spacing)`) no se autofixea aquí y no lo hará nunca; esa regla lo reporta con una
+  sugerencia. Las dos no pueden disparar juntas: esta solo reescribe pares byte-idénticos, que es
+  exactamente lo que la otra salta.
 - **`enforce-consistent-important-position`**: esta regla preserva la posición del `!` que
   escribiste (prefix vs suffix vs ninguno). `enforce-consistent-important-position` es la única
   fuente de verdad para imponer una posición en particular.

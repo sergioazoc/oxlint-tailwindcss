@@ -1,5 +1,71 @@
 # Changelog
 
+## 1.6.0
+
+### Features
+
+- **New rule `prefer-scale-token`** — reports a hardcoded value that is numerically equal to
+  something your design system already names, and suggests the name: `p-[10px]` → `p-2.5`,
+  `gap-[4px]` → `gap-1`, `w-[140px]` → `w-35`, `rounded-[0.5rem]` → `rounded-lg`. Off unless you
+  enable it. Closes [#91](https://github.com/sergioazoc/oxlint-tailwindcss/issues/91).
+
+  It fills a gap the other three arbitrary→named rules cannot: each keys on something this case does
+  not satisfy — byte-identical CSS (`no-unnecessary-arbitrary-value`), what `canonicalizeCandidates`
+  proposes (`enforce-canonical` since #78), the NAME of a variable the user wrote
+  (`prefer-theme-tokens`). `p-2.5` compiles to `calc(var(--spacing) * 2.5)` and `p-[10px]` to
+  `10px`: same length, different text.
+
+  **Report-only, deliberately.** There is no autofix and there will not be one: the token reaches
+  its value through a CSS variable, so a `:root` override or a different root font size makes the
+  two diverge. Autofixing that is the bug #78 fixed. The rule suggests, and the message says why.
+
+  Both families are derived from the design system, so there is no table to drift: the spacing scale
+  comes from `--spacing` plus a probe of what `<prefix>-1` compiles to, and the named tokens come
+  from the emitted CSS plus the theme. Two consequences fall out of the derivation rather than being
+  special-cased: `text-[14px]` → `text-sm` is NOT reported (`text-sm` also sets `line-height`, so it
+  is not the same declaration), and colour tokens are not candidates at all (a colour can never
+  match a literal numerically). 253 comparable tokens, +8.5 KB on the cache artifact.
+
+  **The granularity is derived, not chosen.** Tailwind compiles any number — `w-8.425` is valid — so
+  every length is N spacing units for some N, and reporting all of them would just be
+  `no-arbitrary-value`. Every step Tailwind's own scale enumerates is a multiple of `0.5`, and the
+  precompute computes that from the steps themselves. `step` only ever makes it finer.
+
+  For the record, correcting the issue's premise: `w-[140px]` → `w-35` was never reported, before or
+  after #78. Tailwind does not propose it, because 35 is not one of the steps it enumerates. What
+  #78 silenced were the values that ARE enumerated (`p-[10px]` → `p-2.5` and friends). Both are
+  covered now.
+
+### Bug fixes
+
+- **The declaration service no longer degrades in silence.** It swallowed its own failures and
+  reported "no information", which was defensible while `no-conflicting-classes` was the only caller
+  — no declarations, no comparison, no diagnostic. Since 1.5.0 `no-unknown-classes` asks it about
+  VALIDITY, and there silence sends the rule back to the tolerant heuristic: a dead worker quietly
+  reinstated exactly the false negatives the service exists to remove, on a run that stayed green.
+  It throws now, like the sort and canonicalize services, and each caller takes the posture that
+  already existed — `no-conflicting-classes` and `no-unknown-classes` surface
+  `designSystemUnavailable`; `no-dark-without-light` (DS-OPTIONAL, which may never emit it) degrades
+  to prefix-only grouping and logs it under `debug`. **A transient worker failure now fails those
+  two rules instead of quietly weakening them.**
+- **`prefer-theme-tokens` no longer proposes a token when the variable is defined in an `@import`.**
+  `definesVar` is what stops a rewrite that would change the design, and it scanned only the entry
+  CSS — so splitting the theme across files (the normal shadcn/ui layout) made
+  `:root { --primary: … }` read as undefined and the rule went back to proposing `bg-primary` for
+  `bg-(--primary)`. The precompute now scans the entry and its resolved imports.
+- **A cache artifact shared by two `DesignSystemCache` instances could produce a false conflict.**
+  Lint-time interning appended values to the artifact's own array while each cache kept its own
+  text→id map, so one value could end up with two ids — and `no-conflicting-classes` compares ids,
+  so two identical values would read as a conflict. Ids are local to the cache now. Unreachable
+  through the loader, which parses the JSON per entry point; fixed because it was one shared object
+  away.
+
+### Docs
+
+- The rule index claimed `no-unnecessary-arbitrary-value` handles `w-[200px]` → `w-50`. It does not,
+  and cannot: those emit different CSS text. That example was the same misconception behind #91, and
+  it now points at `prefer-scale-token`, which does handle it.
+
 ## 1.5.0
 
 The companion to 1.4.0: that release made `no-conflicting-classes` decide from the CSS Tailwind

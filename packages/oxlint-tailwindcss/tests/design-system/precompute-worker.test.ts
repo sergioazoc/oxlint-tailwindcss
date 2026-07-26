@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest'
 import { resolve } from 'node:path'
 import { existsSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { basename, dirname } from 'node:path'
 import {
   cacheArtifactPaths,
   loadDesignSystemSync,
@@ -71,7 +71,13 @@ describe('precompute via worker_thread', () => {
     expect(parsed.validClasses.length).toBe(result.validClasses.length)
 
     // The atomic write (tmp → rename) leaves no `.tmp.*` straggler.
-    const leftovers = readdirSync(dirname(json)).filter((f) => f.includes('.tmp.'))
+    //
+    // Scoped to THIS artifact's temp names (`<cache file>.tmp.<pid>.<thread>.<n>`).
+    // The cache dir is shared by every isolate in the run, so scanning it for any
+    // `.tmp.` caught a peer mid-write and failed for something this test does not
+    // claim anything about.
+    const own = `${basename(json)}.tmp.`
+    const leftovers = readdirSync(dirname(json)).filter((f) => f.startsWith(own))
     expect(leftovers).toEqual([])
 
     rmSync(css, { force: true })
