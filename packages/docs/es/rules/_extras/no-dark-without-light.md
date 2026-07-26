@@ -5,11 +5,27 @@ light mode (`bg-white`, `bg-zinc-50`, lo que sea). En el momento en que un theme
 activo, ese elemento renderiza sin estilo en light mode — típicamente transparente o heredando del
 padre, casi nunca lo que querías.
 
-El chequeo es por prefijo de utility, no por valor exacto. La regla agrupa las clases por la familia
-de propiedad inicial (`bg`, `text`, `border-t`, `from`, `rounded-tl`, etc.), y después pregunta: por
-cada clase que usa una variante observada, ¿hay al menos una clase con el mismo prefijo que NO usa
-una variante observada? Si no, la clase con variante no tiene contraparte en light mode y se
-reporta.
+El chequeo es por grupo, no por valor exacto: por cada clase que usa una variante observada, ¿hay al
+menos una clase del mismo grupo que NO usa una? Si no, la clase con variante no tiene contraparte en
+light mode y se reporta.
+
+Una clase cuenta como base de dos maneras:
+
+- **Mismo prefijo de utility** — `bg-white` es la base de `dark:bg-black`, `text-gray-900` la de
+  `dark:text-white`. Es la familia de propiedad inicial (`bg`, `text`, `border-t`, `from`,
+  `rounded-tl`, …).
+- **Misma propiedad CSS declarada**, cuando `settings.tailwindcss.entryPoint` (o el `entryPoint`
+  propio de la regla) está configurado. `underline` y `no-underline` no comparten prefijo alguno,
+  pero las dos escriben `text-decoration-line` — así que `underline dark:no-underline` es un par
+  completo, no una base faltante. Lo mismo vale para `italic dark:not-italic`,
+  `visible dark:invisible`, `uppercase dark:normal-case`, `truncate dark:text-clip` y
+  `sr-only dark:not-sr-only`, que antes se reportaban todos.
+
+El chequeo por propiedad es **aditivo**: todo lo que ya matcheaba por prefijo sigue matcheando, así
+que configurar un entry point solo puede hacer que esta regla reporte menos, nunca más. Sin él cae
+al chequeo por prefijo más una tabla interna pequeña para `display` y `position` (para que
+`block dark:hidden` funcione), y por eso los pares de arriba siguen reportándose cuando no hay CSS
+configurado.
 
 El conjunto de "variantes observadas" es configurable. Por defecto es sólo `dark`, pero el mismo
 shape aplica a cualquier otra variante estilo scheme (`contrast-more`, `motion-reduce`, `print`,
@@ -32,6 +48,12 @@ tema de alto contraste, o una variante custom `theme-foo:` definida en tu CSS).
 Si seteas `variants` a un array vacío la regla se convierte en un no-op — prefiere desactivarla
 directamente en ese caso.
 
+### `entryPoint`
+
+`string`, opcional. Un entry point CSS solo para esta regla, que pisa
+`settings.tailwindcss.entryPoint`. Habilita el agrupamiento por propiedad declarada descrito arriba;
+la regla funciona sin él.
+
 ## Ejemplos
 
 ### ✗ Incorrecto
@@ -52,6 +74,14 @@ cn("dark:bg-gray-900")
 ```tsx
 // Ambos modos cubiertos
 <div className="bg-white text-black dark:bg-gray-900 dark:text-white" />
+
+// Misma propiedad con otro nombre — hace falta un entryPoint para reconocerlo
+<div className="underline dark:no-underline" />
+<div className="italic dark:not-italic" />
+<div className="visible dark:invisible" />
+
+// Mostrar en light, ocultar en dark: las dos escriben `display`
+<div className="block dark:hidden" />
 
 // No hay variante observada → la regla no se mete con la cobertura de base
 <div className="hover:bg-blue-500" />

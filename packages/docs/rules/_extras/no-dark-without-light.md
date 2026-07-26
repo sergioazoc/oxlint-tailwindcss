@@ -5,10 +5,26 @@ Catches the case where you wrote `dark:bg-gray-900` but forgot the matching ligh
 unstyled in light mode — usually as transparent or whatever the parent inherits, almost never what
 you wanted.
 
-The check is by utility prefix, not by exact value. The rule groups classes by their leading
-property family (`bg`, `text`, `border-t`, `from`, `rounded-tl`, etc.), then asks: for every class
-that uses a watched variant, is there at least one class with the same prefix that does NOT use a
-watched variant? If not, the variant class has no light-mode counterpart and gets reported.
+The check is by group, not by exact value: for every class that uses a watched variant, is there at
+least one class in the same group that does NOT use one? If not, the variant class has no light-mode
+counterpart and gets reported.
+
+A class counts as the base in either of two ways:
+
+- **Same utility prefix** — `bg-white` is the base for `dark:bg-black`, `text-gray-900` for
+  `dark:text-white`. This is the leading property family (`bg`, `text`, `border-t`, `from`,
+  `rounded-tl`, …).
+- **Same declared CSS property**, when `settings.tailwindcss.entryPoint` (or the rule's own
+  `entryPoint`) is configured. `underline` and `no-underline` share no prefix at all, yet both write
+  `text-decoration-line` — so `underline dark:no-underline` is a complete pair, not a missing base.
+  The same goes for `italic dark:not-italic`, `visible dark:invisible`,
+  `uppercase dark:normal-case`, `truncate dark:text-clip` and `sr-only dark:not-sr-only`, all of
+  which used to be reported.
+
+The property check is **additive**: anything that matched by prefix still matches, so configuring an
+entry point can only make this rule report less, never more. Without one it falls back to the prefix
+check plus a small built-in table for `display` and `position` (so `block dark:hidden` works), which
+is why the pairs listed above still report when no CSS is configured.
 
 The set of "watched variants" is configurable. By default it's just `dark`, but the same shape
 applies to any other scheme-style variant (`contrast-more`, `motion-reduce`, `print`, custom
@@ -31,6 +47,12 @@ theme, or a custom `theme-foo:` variant defined in your CSS).
 If you set `variants` to an empty array the rule effectively becomes a no-op — prefer disabling the
 rule outright in that case.
 
+### `entryPoint`
+
+`string`, optional. A CSS entry point for this rule alone, overriding
+`settings.tailwindcss.entryPoint`. Enables the declared-property grouping described above; the rule
+works without it.
+
 ## Examples
 
 ### ✗ Incorrect
@@ -51,6 +73,14 @@ cn("dark:bg-gray-900")
 ```tsx
 // Both modes covered
 <div className="bg-white text-black dark:bg-gray-900 dark:text-white" />
+
+// Same property under a different name — needs an entryPoint to be recognized
+<div className="underline dark:no-underline" />
+<div className="italic dark:not-italic" />
+<div className="visible dark:invisible" />
+
+// Show in light, hide in dark: both write `display`
+<div className="block dark:hidden" />
 
 // No watched variant → rule doesn't care about base coverage
 <div className="hover:bg-blue-500" />

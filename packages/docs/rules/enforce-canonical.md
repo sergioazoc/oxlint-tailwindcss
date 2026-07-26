@@ -72,9 +72,12 @@ for the whole project instead of per-rule whenever possible.
 - **`prefer-theme-tokens`**: the third partner of the arbitrary→named trio. It catches CSS-var
   references like `border-(--border)` → `border-border` where neither `enforce-canonical` (the CSS
   differs) nor `no-unnecessary-arbitrary-value` (no shared bracket equivalent) would fire.
-- **`no-deprecated-classes`**: a strict subset of what `enforce-canonical` does. Running both is
-  safe; the autofixes agree. Keep `no-deprecated-classes` if you want a fast, hardcoded, DS-free
-  pass.
+- **`no-deprecated-classes`**: **it owns the v3 renames, and this rule skips them.** Tailwind
+  canonicalizes them too, so `bg-gradient-to-r` → `bg-linear-to-r` used to be reported twice with
+  the same fix; the other rule's message ("deprecated in v4") is the more actionable of the two.
+  What stays here is everything that is current-but-not-canonical: `-m-0` → `m-0`, `start-2` →
+  `inset-s-2`, and arbitrary-valued forms like `flex-grow-[2]` → `grow-2` (the rename list holds
+  spellings, not values). Keep both rules on — with only this one enabled the renames go unreported.
 - **`enforce-consistent-important-position`**: this rule preserves the `!` position you wrote
   (prefix vs suffix vs none). `enforce-consistent-important-position` is the single source of truth
   for enforcing a particular position.

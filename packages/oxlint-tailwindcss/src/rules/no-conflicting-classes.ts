@@ -1,7 +1,12 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
-import { extractUtility, getVariantPrefix, splitImportant } from '../utils/class-parser'
+import {
+  extractUtility,
+  getVariantPrefix,
+  isUserValued,
+  splitImportant,
+} from '../utils/class-parser'
 import { type CssDeclaration } from '../design-system/css-declarations'
 import { resolveDeclarationsSync } from '../design-system/declaration-service'
 import { createLazyLoader } from '../design-system/loader'
@@ -112,18 +117,6 @@ export function shouldSkipPair(
     if ((reA.test(ua) && reB.test(ub)) || (reA.test(ub) && reB.test(ua))) return true
   }
   return false
-}
-
-/**
- * A class the precompute cannot have enumerated: the value is written by the
- * user, not by the design system's class list. Asking the design system about
- * these is what closes the false negatives — `p-4 p-[5px]` used to be silently
- * accepted while `p-4 p-6` reported.
- */
-function isUserValued(utility: string): boolean {
-  return (
-    utility.includes('[') || utility.includes('(') || utility.includes('/') || /-\d/.test(utility)
-  )
 }
 
 /** Whether the user's `allow` option silences this pair. */
@@ -241,14 +234,7 @@ export const noConflictingClasses = defineRule({
           const unknown = variantClasses
             .map((cls) => splitImportant(extractUtility(cls)).bare)
             .filter((bare) => cache.getCssDeclarations(bare).length === 0 && isUserValued(bare))
-          if (unknown.length > 0) {
-            const resolved = resolveDeclarationsSync(ds.entryPoint, cache, unknown)
-            if (resolved) {
-              for (const [cls, raws] of Object.entries(resolved.decls)) {
-                cache.internDeclarations(cls, raws, resolved.values)
-              }
-            }
-          }
+          if (unknown.length > 0) resolveDeclarationsSync(ds.entryPoint, cache, unknown)
 
           const facts: ClassFacts[] = variantClasses.map((cls) => {
             const utility = extractUtility(cls)

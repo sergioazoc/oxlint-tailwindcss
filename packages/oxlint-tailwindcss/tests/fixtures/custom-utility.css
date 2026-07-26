@@ -1,0 +1,14 @@
+@import 'tailwindcss';
+
+/*
+ * A project-defined utility with no logical counterpart.
+ *
+ * `enforce-logical` rewrites `ml-*` to `ms-*` from a name table, so `ml-huge`
+ * became `ms-huge` — a class Tailwind compiles to nothing. The fix is applied, the
+ * margin disappears, and the only trace is a `no-unknown-classes` diagnostic if
+ * that rule happens to be on. With a design system available the rule can check
+ * that what it suggests exists.
+ */
+@utility ml-huge {
+  margin-left: 12rem;
+}

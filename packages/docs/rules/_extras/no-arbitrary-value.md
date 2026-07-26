@@ -1,10 +1,16 @@
 ## What this rule does
 
-Flags any Tailwind utility that uses an arbitrary value — the `[...]` escape hatch — so your team is
-forced to either reach for a design token or extend the theme instead of one-off literals. Anything
-the parser recognizes as an arbitrary value qualifies: dimensions (`w-[200px]`, `text-[14px]`),
-colors (`bg-[#ff0000]`), arbitrary calc expressions (`p-[calc(1rem+2px)]`), gradients, and the same
-inside variants (`hover:w-[200px]`) or with the `!` modifier (`!w-[200px]`, `w-[200px]!`).
+Flags any Tailwind utility that uses an arbitrary value — the escape hatch — so your team is forced
+to either reach for a design token or extend the theme instead of one-off literals. Anything the
+parser recognizes as an arbitrary value qualifies: dimensions (`w-[200px]`, `text-[14px]`), colors
+(`bg-[#ff0000]`), arbitrary calc expressions (`p-[calc(1rem+2px)]`), gradients, and the same inside
+variants (`hover:w-[200px]`) or with the `!` modifier (`!w-[200px]`, `w-[200px]!`).
+
+**Both spellings count.** `bg-(--brand)` is Tailwind v4 sugar for `bg-[var(--brand)]` — the same
+arbitrary value, written two ways — and only the bracket form used to be reported. That made
+[`enforce-consistent-variable-syntax`](./enforce-consistent-variable-syntax) a laundry service: with
+its default `shorthand` setting, its autofix rewrote the reported form into the unreported one and
+the violation disappeared with the code unchanged in substance.
 
 DS-independent — no design system is loaded, no `entryPoint` is needed. The rule is a pure syntactic
 check, which makes it cheap to run on large repos. There is no autofix: replacing an arbitrary value
@@ -52,6 +58,9 @@ ones into `allow` rather than disabling the rule wholesale.
 
 // `!` modifier doesn't either
 <div className="!w-[200px]" />
+
+// The v4 shorthand is the same arbitrary value
+<div className="bg-(--brand) border-(length:--stroke)" />
 ```
 
 ### ✓ Correct
@@ -83,6 +92,9 @@ ones into `allow` rather than disabling the rule wholesale.
 - **`prefer-theme-tokens`**: similar intent, but DS-dependent. `prefer-theme-tokens` actually
   consults your `@theme` and suggests the matching token. Pair them: this rule is your stop-gap when
   no token exists yet.
+- **`enforce-consistent-variable-syntax`**: converts between `bg-[var(--x)]` and `bg-(--x)`. Since
+  both forms report here, running it — in either direction — cannot move a class out of this rule's
+  reach.
 
 ## When to disable it
 

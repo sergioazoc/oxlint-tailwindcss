@@ -3,8 +3,20 @@ import { createExtractorVisitors, type ClassLocation } from '../utils/extractors
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
 import { reattachImportant, splitImportant, splitUtilityAndVariant } from '../utils/class-parser'
+import { createLazyLoader } from '../design-system/loader'
+import { softGetDS } from '../utils/fatal'
+import { makeReplacementGuard } from '../utils/replacement'
 
-// Mapping of deprecated classes in TW v4 to their replacements
+/**
+ * Fallback rename map, for when no design system is available.
+ *
+ * With an `entryPoint` configured the rule uses the map the precompute derives
+ * from `canonicalizeCandidates`, which is strictly better: it covers the renames
+ * this list misses (`break-words`, `order-none`, the reordered
+ * `bg-left-top`/`object-left-top` position spellings) and it prunes itself when a
+ * Tailwind release stops compiling one of them. This table only has to keep the
+ * unconfigured case working exactly as it did.
+ */
 export const DEPRECATED_MAP: Record<string, string> = {
   'flex-grow': 'grow',
   'flex-grow-0': 'grow-0',
@@ -34,9 +46,6 @@ export const noDeprecatedClasses = defineRule({
       {
         type: 'object',
         properties: {
-          // Accepted for backwards compat with configs from before the DS-guard
-          // was removed. This rule uses a hardcoded rename map and never reads
-          // the design system, so the option is ignored.
           entryPoint: { type: 'string' },
         },
         additionalProperties: false,
@@ -50,17 +59,28 @@ export const noDeprecatedClasses = defineRule({
     },
   },
   createOnce(context) {
+    // DS-OPTIONAL (see `softGetDS`): the hardcoded map above stands in when no
+    // entry point is configured, so this rule keeps working with no CSS
+    // configured and never reports `designSystemUnavailable`.
+    const getDS = createLazyLoader(context)
+
     function check(locations: ClassLocation[]) {
       if (locations.length === 0) return
+      const ds = softGetDS(getDS)
+      const cache = ds ? ds.cache : null
+      const replacementFor = (bare: string): string | null =>
+        cache?.hasDeprecatedMap ? cache.deprecatedReplacement(bare) : (DEPRECATED_MAP[bare] ?? null)
+      const isUsable = makeReplacementGuard(cache)
+
       for (const loc of locations) {
         const split = splitClassesWithSeparators(loc.value)
         const offending = split.classes.flatMap((cls) => {
           const { utility, variant } = splitUtilityAndVariant(cls)
           const { bare: bareUtility, position } = splitImportant(utility)
-          const replacement = DEPRECATED_MAP[bareUtility]
-          return replacement
-            ? [{ cls, replacement: variant + reattachImportant(replacement, position) }]
-            : []
+          const replacement = replacementFor(bareUtility)
+          if (!replacement) return []
+          const rebuilt = variant + reattachImportant(replacement, position)
+          return isUsable(rebuilt) ? [{ cls, replacement: rebuilt }] : []
         })
         reportClassReplacements(context, loc, split, split.classes, offending, {
           messageId: 'deprecated',

@@ -1,16 +1,29 @@
 ## Qué hace esta regla
 
-Marca utilities de color de Tailwind cuyo arbitrary value es un literal de color hardcodeado —
-cualquier cosa que escribirías con un paint chip en la mano: hex (`bg-[#ff5733]`, `text-[#000]`),
-`rgb()`/`rgba()`, `hsl()`/`hsla()`, más los espacios de color modernos `oklch()`, `oklab()`,
-`lab()`, `lch()`, `hwb()`, y `color()`. La intención es la misma que `no-arbitrary-value` pero
-acotada exclusivamente al color, que es donde suele empezar el drift del design system.
+Marca cualquier clase cuyo arbitrary value lleve un literal de color hardcodeado — cualquier cosa
+que escribirías con un paint chip en la mano: hex (`bg-[#ff5733]`, `text-[#000]`), `rgb()`/`rgba()`,
+`hsl()`/`hsla()`, más los espacios de color modernos `oklch()`, `oklab()`, `lab()`, `lch()`,
+`hwb()`, y `color()`. La intención es la misma que `no-arbitrary-value` pero acotada exclusivamente
+al color, que es donde suele empezar el drift del design system.
 
-La regla revisa _únicamente_ los prefijos de utility que llevan color (`bg-`, `text-`, `border-*`,
-`outline-`, `ring-*`, `shadow-`, `accent-`, `caret-`, `fill-`, `stroke-`, `decoration-`, `divide-`,
-`placeholder-`, gradient stops `from-`/`via-`/`to-`). Los arbitrary no-color como `w-[200px]` o
-`tracking-[0.5em]` se ignoran explícitamente, así que puedes activar esta regla incluso donde _sí_
-quieres permitir dimensiones arbitrarias.
+El valor se **escanea**, no se matchea desde su primer carácter, y la utility de la que cuelga es
+irrelevante. Eso importa más de lo que parece:
+
+- un color en medio de un shorthand cuenta — `shadow-[0_1px_2px_#000]` es un negro hardcodeado;
+- también las utilities que ninguna lista de prefijos mantuvo al día — `inset-ring-[#000]`,
+  `inset-shadow-[#000]`;
+- y también las propiedades arbitrarias, que ningún prefijo podría matchear — `[color:#f00]`,
+  `[--brand:#f00]`.
+
+Hay dos exclusiones deliberadas, y son la razón de que esto sea un escáner y no un regex: un `#`
+dentro de un **string entre comillas** es texto (`content-['#fff']`), y un `#` dentro de **`url()`**
+es una referencia a un nodo SVG (`fill-[url(#gradient)]`) — el `#` no-color más común en una clase
+de Tailwind. Los arbitrary no-color como `w-[200px]` o `tracking-[0.5em]` no llevan literal, así que
+pasan como antes y puedes activar esta regla incluso donde _sí_ quieres permitir dimensiones
+arbitrarias.
+
+Los colores con nombre (`bg-[red]`) no están cubiertos: `currentColor`, `transparent` e `inherit`
+hacen de eso un juicio de valor y no un escaneo.
 
 Los valores que referencian una variable CSS se tratan como indirección del design system y pasan:
 `bg-[var(--primary)]`, `text-[hsl(var(--fg))]`, `bg-[oklch(var(--bg))]`, incluso
@@ -53,6 +66,15 @@ ocasional mandado por brand en un único componente de assets.
 
 // Variants y el modificador `!` no salvan
 <div className="hover:bg-[#ff5733] !bg-[#ff5733]" />
+
+// El color no tiene que ser todo el valor
+<div className="shadow-[0_1px_2px_#000]" />
+
+// Utilities que una lista de prefijos no cubría
+<div className="inset-ring-[#000] inset-shadow-[#111]" />
+
+// Propiedades arbitrarias, incluida una custom property
+<div className="[color:#f00] [--brand:#f00]" />
 ```
 
 ### ✓ Correcto
@@ -66,6 +88,12 @@ ocasional mandado por brand en un único componente de assets.
 
 // Los arbitrary no-color no son asunto de esta regla
 <div className="w-[200px] tracking-[0.5em]" />
+
+// Un `#` dentro de un string entre comillas es texto
+<div className="content-['#fff']" />
+
+// Un `#` dentro de url() referencia un nodo SVG
+<svg className="fill-[url(#gradient)]" />
 
 // String exacto allowlisteado
 <div className="bg-[#000]" /> // con allow: ["bg-[#000]"]

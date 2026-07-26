@@ -130,6 +130,21 @@ export function utilityHasDynamicValue(cls: string): boolean {
 }
 
 /**
+ * A utility the precompute cannot have enumerated, because the VALUE comes from
+ * the user rather than from the design system's class list: arbitrary brackets,
+ * the `(--var)` shorthand, a `/` modifier, or an off-scale number.
+ *
+ * Asking the design system about exactly these is what closes the "looks like
+ * coverage" false negatives — `p-4 p-[5px]` used to be accepted silently while
+ * `p-4 p-6` reported. Takes the bare utility (no variants, no `!`).
+ */
+export function isUserValued(utility: string): boolean {
+  return (
+    utility.includes('[') || utility.includes('(') || utility.includes('/') || /-\d/.test(utility)
+  )
+}
+
+/**
  * Gets the arbitrary value from a class, or null if none.
  * e.g. "w-[200px]" → "200px"
  *      "bg-[#ff0000]" → "#ff0000"

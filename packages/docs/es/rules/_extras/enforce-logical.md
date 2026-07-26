@@ -7,8 +7,15 @@ sus equivalentes lógicos, conscientes del writing direction (`ms-4`, `pe-2`, `s
 Necesaria si tu app se distribuye en árabe, hebreo, farsi, o cualquier otro idioma RTL. Autofix
 sobre el primer ofensor por location, sugerencia de editor sobre los siguientes.
 
-DS-independiente — funciona sin `settings.tailwindcss.entryPoint`. La tabla de mapeo es estática y
-vive en el código de la regla; no se necesita lookup en el design system.
+La tabla también cubre las tres utilities donde la dirección es el VALOR y no parte de la propiedad:
+`float-left` → `float-start` (`float: inline-start`), `clear-left` → `clear-start` y `text-left` →
+`text-start` (`text-align: start`). Si esas faltan, un codebase puede estar "totalmente convertido"
+y seguir flotando cosas a la izquierda en RTL.
+
+DS-independiente en lo que importa: la tabla de mapeo es estática y la regla funciona sin
+`settings.tailwindcss.entryPoint`. Cuando SÍ hay uno configurado, la regla además comprueba que la
+clase que sugiere exista — un proyecto con su propia `@utility ml-huge` recibía un autofix a
+`ms-huge`, que no emite CSS ninguno, así que el fix se aplicaba y el margen desaparecía en silencio.
 
 `enforce-logical` y `enforce-physical` son reglas hermanas — comparten una tabla de mapeo que una
 invierte. Activa **solo una a la vez**.
@@ -41,6 +48,12 @@ importar el writing direction.
 { "tailwindcss/enforce-logical": ["error", { "allowlist": ["^ml-icon$", "^rounded-tl-special$"] }] }
 ```
 
+### `entryPoint`
+
+`string`, opcional. Un entry point CSS solo para esta regla, que pisa
+`settings.tailwindcss.entryPoint`. Se usa únicamente para confirmar que la clase sugerida exista; la
+regla funciona sin él.
+
 ## Ejemplos
 
 ### ✗ Incorrecto
@@ -49,6 +62,10 @@ importar el writing direction.
 // Márgenes/padding físicos
 <div className="ml-4 pr-2" />
 //              ~~~~ ~~~~  → ms-4 pe-2
+
+// La dirección como VALOR
+<div className="float-left clear-right text-left" />
+//              ~~~~~~~~~~ ~~~~~~~~~~~ ~~~~~~~~~ → float-start clear-end text-start
 
 // Posicionamiento
 <div className="left-0 right-0" />
@@ -76,8 +93,10 @@ importar el writing direction.
 - **`enforce-physical`**: la inversa. Comparten la tabla de mapeo; activar las dos al mismo tiempo
   va a autofixear en loop. Elige una según si tu app soporta RTL (usa `enforce-logical`) o es
   LTR-only (usa `enforce-physical`).
-- **`enforce-canonical`**: ortogonal. Canonical normaliza la forma de la utility; esta regla swappea
-  físico por lógico en un eje.
+- **`enforce-canonical`**: tiene opinión sobre los insets lógicos. Esta regla sugiere `start-2` (lo
+  que usan los docs de Tailwind); el design system reporta `inset-s-2` como el spelling canónico,
+  así que con las dos activas terminas ahí en dos pasadas. El CSS es el mismo en ambos casos, y
+  `enforce-physical` convierte los dos spellings de vuelta.
 - **`enforce-shorthand`**: corre sobre shorthands `m-*` / `p-*` que ya son direction-neutral, así
   que las dos no se solapan.
 

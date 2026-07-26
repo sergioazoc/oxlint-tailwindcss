@@ -15,6 +15,7 @@ import { noUnknownClasses } from '../../src/rules/no-unknown-classes'
 import { consistentVariantOrder } from '../../src/rules/consistent-variant-order'
 import { enforceSortOrder } from '../../src/rules/enforce-sort-order'
 import { enforceCanonical } from '../../src/rules/enforce-canonical'
+import { noDeprecatedClasses } from '../../src/rules/no-deprecated-classes'
 import { noConflictingClasses } from '../../src/rules/no-conflicting-classes'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
 import { makeFixtureRunner } from '../utils/with-fixture'
@@ -151,13 +152,37 @@ run('enforce-sort-order strict (prefix)', enforceSortOrder, {
 // ── enforce-canonical (preserves the prefix) ─────────────────────────────────
 
 run('enforce-canonical (prefix)', enforceCanonical, {
+  valid: [
+    { code: '<div className="tw:grow" />', filename: 'test.tsx' },
+    // `tw:flex-grow` is a v3 rename, so `no-deprecated-classes` owns it (below).
+    { code: '<div className="tw:flex-grow" />', filename: 'test.tsx' },
+  ],
+  invalid: [
+    {
+      code: '<div className="tw:start-2" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'nonCanonical' }],
+      output: '<div className="tw:inset-s-2" />',
+    },
+  ],
+})
+
+// ── no-deprecated-classes (rebuilds the replacement behind the prefix) ────────
+
+run('no-deprecated-classes (prefix)', noDeprecatedClasses, {
   valid: [{ code: '<div className="tw:grow" />', filename: 'test.tsx' }],
   invalid: [
     {
       code: '<div className="tw:flex-grow" />',
       filename: 'test.tsx',
-      errors: [{ messageId: 'nonCanonical' }],
+      errors: [{ messageId: 'deprecated' }],
       output: '<div className="tw:grow" />',
+    },
+    {
+      code: '<div className="tw:hover:break-words" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'deprecated' }],
+      output: '<div className="tw:hover:wrap-break-word" />',
     },
   ],
 })

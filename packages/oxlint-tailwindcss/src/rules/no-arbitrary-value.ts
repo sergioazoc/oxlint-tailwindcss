@@ -1,7 +1,7 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
-import { hasArbitraryValue, extractUtility, splitImportant } from '../utils/class-parser'
+import { utilityHasDynamicValue, extractUtility, splitImportant } from '../utils/class-parser'
 import { createLazyOptions } from '../utils/context'
 
 interface Options {
@@ -41,7 +41,12 @@ export const noArbitraryValue = defineRule({
         const classes = splitClasses(loc.value)
 
         for (const cls of classes) {
-          if (!hasArbitraryValue(cls)) continue
+          // Both spellings of an arbitrary value count. `bg-(--x)` is sugar for
+          // `bg-[var(--x)]` and only the second used to be reported, which
+          // `enforce-consistent-variable-syntax` turned into a laundry service:
+          // its `shorthand` autofix rewrote the reported form into the unreported
+          // one and the violation vanished.
+          if (!utilityHasDynamicValue(cls)) continue
 
           const utility = splitImportant(extractUtility(cls)).bare
           if (isAllowed(utility)) continue

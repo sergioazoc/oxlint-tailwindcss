@@ -11,8 +11,18 @@ The mirror of `enforce-logical`. Rewrites logical, writing-direction aware utili
 without a payoff — `ml-4` is more direct than `ms-4` when there's no RTL story. Autofix on the first
 offender per location, editor suggestion on subsequent ones.
 
-DS-independent — works without `settings.tailwindcss.entryPoint`. Shares the static mapping table
-with `enforce-logical` and inverts it.
+It converts **both** spellings of the logical insets: `start-2` (what `enforce-logical` suggests,
+and what Tailwind's docs use) and `inset-s-2` (what `enforce-canonical` rewrites that into, because
+the design system calls it canonical). A codebase that ran logical + canonical ends up with
+`inset-s-*`, and this rule used to have no way back — its table only knew `start`.
+
+It also mirrors the three utilities where the direction is the VALUE: `float-start` → `float-left`,
+`clear-start` → `clear-left`, `text-start` → `text-left`.
+
+DS-independent in the sense that matters: it shares the static mapping table with `enforce-logical`
+and inverts it, so it works without `settings.tailwindcss.entryPoint`. When one IS configured, the
+rule additionally checks that the class it suggests exists, so a rewrite can never introduce a class
+that emits nothing.
 
 `enforce-physical` and `enforce-logical` are sibling rules. Enable **only one at a time** — running
 both produces an autofix loop.
@@ -42,11 +52,25 @@ otherwise-LTR codebase (e.g. one component that has to support RTL).
 { "tailwindcss/enforce-physical": ["error", { "allowlist": ["^ms-", "^pe-"] }] }
 ```
 
+### `entryPoint`
+
+`string`, optional. A CSS entry point for this rule alone, overriding
+`settings.tailwindcss.entryPoint`. Only used to confirm the class being suggested exists; the rule
+works without it.
+
 ## Examples
 
 ### ✗ Incorrect
 
 ```tsx
+// The direction as a VALUE
+<div className="float-start clear-end text-start" />
+//              ~~~~~~~~~~~ ~~~~~~~~~ ~~~~~~~~~~ → float-left clear-right text-left
+
+// Both spellings of the logical insets
+<div className="start-2 inset-s-4" />
+//              ~~~~~~~ ~~~~~~~~~  → left-2 left-4
+
 // Logical margins/padding in an LTR-only project
 <div className="ms-4 pe-2" />
 //              ~~~~ ~~~~  → ml-4 pr-2
@@ -75,8 +99,8 @@ otherwise-LTR codebase (e.g. one component that has to support RTL).
 ## Interactions with other rules
 
 - **`enforce-logical`**: the inverse. Pick **one**. Running both simultaneously rewrites in a loop.
-- **`enforce-canonical`**: orthogonal. Canonical normalizes utility shape; this rule swaps logical
-  for physical along one axis.
+- **`enforce-canonical`**: it rewrites `start-2` → `inset-s-2`. Harmless here: this rule converts
+  both spellings to `left-2`.
 - **`enforce-shorthand`**: runs on direction-neutral `m-*` / `p-*` shorthands, so no overlap.
 
 ## When to disable it

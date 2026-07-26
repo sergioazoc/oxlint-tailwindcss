@@ -112,3 +112,27 @@ export function safeGetDS<T, C extends Reporter>(
     throw err
   }
 }
+
+/**
+ * `safeGetDS`'s quiet sibling, for the DS-OPTIONAL rules.
+ *
+ * A handful of rules work without a design system — their static fallback is
+ * itself deterministic (`consistent-variant-order`'s variant table,
+ * `no-dark-without-light`'s prefix grouping) — and an entry point only makes
+ * them more accurate. Those rules must never emit `designSystemUnavailable`:
+ * they were usable with no configuration before the DS lookup existed and have
+ * to stay that way, or adding the lookup would break every project that runs
+ * them without a CSS entry point.
+ *
+ * So: returns the load result, or `null` when the design system is unavailable
+ * for a reason the plugin knows about. Non-fatal errors still propagate, since
+ * those are bugs rather than missing configuration.
+ */
+export function softGetDS<T>(getDS: () => T): T | null {
+  try {
+    return getDS()
+  } catch (err) {
+    if (isFatalError(err)) return null
+    throw err
+  }
+}

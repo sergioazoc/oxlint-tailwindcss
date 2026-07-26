@@ -18,6 +18,7 @@ const EMPTY_DECLARATIONS: readonly CssDeclaration[] = []
 
 export class DesignSystemCache {
   private canonicalMap = new Map<string, string>()
+  private deprecatedMap = new Map<string, string>()
   private validitySet = new Set<string>()
   private orderMap = new Map<string, bigint | null>()
   // Raw interned tables plus a per-class memo. Nothing is decoded up front: a
@@ -56,6 +57,12 @@ export class DesignSystemCache {
 
     for (const [from, to] of Object.entries(data.canonical)) {
       cache.canonicalMap.set(from, roundRemValue(to))
+    }
+
+    if (data.deprecated) {
+      for (const [from, to] of Object.entries(data.deprecated)) {
+        cache.deprecatedMap.set(from, to)
+      }
     }
 
     for (const [cls, val] of Object.entries(data.order)) {
@@ -161,6 +168,26 @@ export class DesignSystemCache {
   }
 
   /**
+   * The v4 name of a class Tailwind renamed, or `null` if it isn't a renamed
+   * spelling. Takes the BARE utility (no variants, no `!`) — the caller has
+   * already split those off to rebuild the replacement around them.
+   *
+   * Derived by the precompute from what `canonicalizeCandidates` reports for the
+   * v3 spellings, rather than from a map maintained by hand. Two rules read it:
+   * `no-deprecated-classes`, which owns the diagnostic, and `enforce-canonical`,
+   * which stays quiet about these so one class doesn't produce two identical
+   * rewrites.
+   */
+  deprecatedReplacement(bareUtility: string): string | null {
+    return this.deprecatedMap.get(this.stripProjectPrefix(bareUtility)) ?? null
+  }
+
+  /** Whether the precompute produced a deprecation map at all (older artifacts didn't). */
+  get hasDeprecatedMap(): boolean {
+    return this.deprecatedMap.size > 0
+  }
+
+  /**
    * Resolve a variant name to its priority in the CSS output order.
    * Named variants use the precomputed map. Arbitrary variants use pattern-based heuristics
    * to approximate their position relative to named variants.
@@ -253,6 +280,25 @@ export class DesignSystemCache {
       }
     }
     return this._knownPrefixes
+  }
+
+  /**
+   * Is this class name in the precomputed set VERBATIM?
+   *
+   * `isValid` is deliberately tolerant: it accepts anything shaped like a dynamic
+   * value (`w-45`, `bg-red-5000`, `bg-red-500/foo`) because there used to be no
+   * way to ask the design system at lint time. That tolerance is what let
+   * `no-unknown-classes` accept classes Tailwind compiles to nothing. This is the
+   * exact answer, so a rule can tell "known to produce CSS" from "shaped like it
+   * might" and ask the design system about the difference.
+   */
+  isKnownClass(className: string): boolean {
+    return this.validitySet.has(this.stripProjectPrefix(className))
+  }
+
+  /** Variant names the design system reports, for suggesting a typo's neighbour. */
+  variantNames(): string[] {
+    return [...this.variantOrderMap.keys()]
   }
 
   isValid(className: string): boolean {

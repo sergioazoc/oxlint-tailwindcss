@@ -5,6 +5,9 @@ import { reportClassReplacements } from '../utils/report'
 import { reattachImportant, splitImportant, splitUtilityAndVariant } from '../utils/class-parser'
 import { createLazyOptions } from '../utils/context'
 import { compileRegexList, matchesAny } from '../utils/allowlist'
+import { createLazyLoader } from '../design-system/loader'
+import { softGetDS } from '../utils/fatal'
+import { makeReplacementGuard } from '../utils/replacement'
 
 export type Direction = 'inline' | 'block' | 'both'
 
@@ -16,6 +19,7 @@ export type Direction = 'inline' | 'block' | 'both'
 export interface LogicalPhysicalOptions {
   allowlist?: string[]
   direction?: Direction
+  entryPoint?: string
 }
 
 export const LOGICAL_PHYSICAL_SCHEMA = {
@@ -23,6 +27,7 @@ export const LOGICAL_PHYSICAL_SCHEMA = {
   properties: {
     allowlist: { type: 'array', items: { type: 'string' } },
     direction: { type: 'string', enum: ['inline', 'block', 'both'] },
+    entryPoint: { type: 'string' },
   },
   additionalProperties: false,
 } as const
@@ -40,6 +45,13 @@ export interface AxisMapping {
   from: string
   to: string
   axis: 'inline' | 'block'
+  /**
+   * The direction is the VALUE, not part of the property, so the utility is
+   * already complete: `float-left`, never `float-left-4`. Without this the prefix
+   * scan would happily rewrite `float-left-0` — a class that does not exist — into
+   * another one that doesn't either.
+   */
+  exact?: true
 }
 
 export const PHYSICAL_TO_LOGICAL_MAPPINGS: AxisMapping[] = [
@@ -61,21 +73,39 @@ export const PHYSICAL_TO_LOGICAL_MAPPINGS: AxisMapping[] = [
   { from: 'scroll-mr', to: 'scroll-me', axis: 'inline' },
   { from: 'scroll-pl', to: 'scroll-ps', axis: 'inline' },
   { from: 'scroll-pr', to: 'scroll-pe', axis: 'inline' },
+  // Utilities whose VALUE is the direction rather than the property. Tailwind v4
+  // ships the logical form of all three (`float: inline-start`, `clear:
+  // inline-start`, `text-align: start`) and they were simply missing from the
+  // table, so a codebase could be fully converted and still float things left.
+  { from: 'float-left', to: 'float-start', axis: 'inline', exact: true },
+  { from: 'float-right', to: 'float-end', axis: 'inline', exact: true },
+  { from: 'clear-left', to: 'clear-start', axis: 'inline', exact: true },
+  { from: 'clear-right', to: 'clear-end', axis: 'inline', exact: true },
+  { from: 'text-left', to: 'text-start', axis: 'inline', exact: true },
+  { from: 'text-right', to: 'text-end', axis: 'inline', exact: true },
+]
+
+/**
+ * Extra sources for enforce-physical ONLY.
+ *
+ * `enforce-logical` rewrites `left-2` to `start-2`, the spelling Tailwind's own
+ * docs use. `enforce-canonical`, asking the design system, then rewrites that to
+ * `inset-s-2` — same CSS, canonical name. So a codebase that ran both ends up with
+ * `inset-s-*`, and enforce-physical had no way back: its table only knew `start`.
+ *
+ * Kept out of the main table so inverting it doesn't change what enforce-logical
+ * suggests (both spellings map to the same physical class, but only one of them
+ * can be the recommendation).
+ */
+export const LOGICAL_INSET_ALIASES: AxisMapping[] = [
+  { from: 'inset-s', to: 'left', axis: 'inline' },
+  { from: 'inset-e', to: 'right', axis: 'inline' },
 ]
 
 /** Invert a directional table. enforce-physical consumes this. */
 export function invertAxisMappings(mappings: AxisMapping[]): AxisMapping[] {
-  return mappings.map((m) => ({ from: m.to, to: m.from, axis: m.axis }))
+  return mappings.map((m) => ({ ...m, from: m.to, to: m.from }))
 }
-
-/**
- * Flat `physical → logical` lookup. Kept exported so the test matrices in
- * `tests/rules/enforce-{logical,physical}.test.ts` can iterate the table
- * without depending on the richer `AxisMapping` shape.
- */
-export const PHYSICAL_TO_LOGICAL: Record<string, string> = Object.fromEntries(
-  PHYSICAL_TO_LOGICAL_MAPPINGS.map((m) => [m.from, m.to]),
-)
 
 /**
  * Build the `check` callback for a directional-rewrite rule. Both
@@ -100,6 +130,11 @@ export function createDirectionalMapper(
     direction: o?.direction ?? 'both',
   }))
 
+  // DS-OPTIONAL (see `softGetDS`): the design system is consulted only to check
+  // that the class being suggested exists. A project with its own
+  // `@utility ml-huge` used to get an autofix to `ms-huge`, which emits nothing.
+  const getDS = createLazyLoader(context)
+
   function convertClass(cls: string): string | null {
     const { allowlist, direction } = getState()
     if (matchesAny(cls, allowlist)) return null
@@ -112,23 +147,27 @@ export function createDirectionalMapper(
     const negative = bareUtility.startsWith('-')
     const core = negative ? bareUtility.slice(1) : bareUtility
 
-    for (const { from, to, axis } of opts.mappings) {
+    for (const { from, to, axis, exact } of opts.mappings) {
       if (direction !== 'both' && direction !== axis) continue
-      if (core === from || core.startsWith(`${from}-`)) {
-        const suffix = core.slice(from.length)
-        const replacement = `${negative ? '-' : ''}${to}${suffix}`
-        return `${variant}${reattachImportant(replacement, position)}`
-      }
+      const matches = core === from || (!exact && core.startsWith(`${from}-`))
+      if (!matches) continue
+      const suffix = core.slice(from.length)
+      const replacement = `${negative ? '-' : ''}${to}${suffix}`
+      return `${variant}${reattachImportant(replacement, position)}`
     }
     return null
   }
 
   function check(locations: ClassLocation[]) {
+    const ds = softGetDS(getDS)
+    const isUsable = makeReplacementGuard(ds ? ds.cache : null)
+
     for (const loc of locations) {
       const split = splitClassesWithSeparators(loc.value)
       const offending = split.classes.flatMap((cls) => {
         const converted = convertClass(cls)
-        return converted ? [{ cls, replacement: converted }] : []
+        if (!converted || !isUsable(converted)) return []
+        return [{ cls, replacement: converted }]
       })
       reportClassReplacements(context, loc, split, split.classes, offending, {
         messageId: opts.messageId,

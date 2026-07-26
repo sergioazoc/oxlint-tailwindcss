@@ -75,31 +75,37 @@ fatal `designSystemUnavailable` cuando falta.
 | `enforce-canonical`              | `{}`                                    |
 | `enforce-sort-order`             | `{ mode: 'default' }`                   |
 | `no-conflicting-classes`         | `{ reportRedundant: true }`             |
-| `no-deprecated-classes`          | `{}`                                    |
 | `no-unknown-classes`             | `{ allowlist: [], ignorePrefixes: [] }` |
 | `no-unnecessary-arbitrary-value` | `{}`                                    |
 | `prefer-theme-tokens`            | `{}`                                    |
 
-`consistent-variant-order` es DS-opcional — cuando no hay `entryPoint` declarado, cae a un orden
-estático interno (que es determinístico).
+### Reglas DS-opcionales
+
+Funcionan sin nada configurado — su fallback es determinístico por sí solo — y ganan precisión
+cuando hay un `entryPoint` disponible. Ninguna puede emitir `designSystemUnavailable`. Todas aceptan
+además un `entryPoint` propio que pisa el ajuste compartido.
+
+| Regla                       | Opciones por defecto                                | Qué aporta el design system                                     |
+| --------------------------- | --------------------------------------------------- | --------------------------------------------------------------- |
+| `consistent-variant-order`  | `{}` (orden derivado del DS cuando está disponible) | El orden real de variants, y qué hace el selector de cada una   |
+| `enforce-logical`           | `{ allowlist: [], direction: 'both' }`              | Confirma que la clase sugerida exista                           |
+| `enforce-physical`          | `{ allowlist: [], direction: 'both' }`              | Confirma que la clase sugerida exista                           |
+| `enforce-shorthand`         | `{}`                                                | Verifica cada merge contra el CSS emitido                       |
+| `no-contradicting-variants` | `{}`                                                | Qué hace el selector de cada variant                            |
+| `no-dark-without-light`     | `{ variants: ['dark'] }`                            | Agrupa la base por propiedad CSS declarada, no solo por prefijo |
+| `no-deprecated-classes`     | `{}`                                                | Deriva la lista de renombres en vez de usar la tabla interna    |
 
 ### Reglas DS-independientes
 
-| Regla                                   | Opciones por defecto                                |
-| --------------------------------------- | --------------------------------------------------- |
-| `consistent-variant-order`              | `{}` (orden derivado del DS cuando está disponible) |
-| `enforce-consistent-important-position` | `{ position: 'suffix' }`                            |
-| `enforce-consistent-line-wrapping`      | `{ printWidth: 80 }`                                |
-| `enforce-consistent-variable-syntax`    | `{ syntax: 'shorthand' }`                           |
-| `enforce-logical`                       | `{ allowlist: [], direction: 'both' }`              |
-| `enforce-negative-arbitrary-values`     | (sin opciones)                                      |
-| `enforce-physical`                      | `{ allowlist: [], direction: 'both' }`              |
-| `enforce-shorthand`                     | (sin opciones)                                      |
-| `max-class-count`                       | `{ max: 20 }`                                       |
-| `no-arbitrary-value`                    | `{ allow: [] }`                                     |
-| `no-contradicting-variants`             | `{}`                                                |
-| `no-dark-without-light`                 | `{ variants: ['dark'] }`                            |
-| `no-duplicate-classes`                  | (sin opciones)                                      |
-| `no-hardcoded-colors`                   | `{ allow: [] }`                                     |
-| `no-restricted-classes`                 | `{ classes: [], patterns: [] }`                     |
-| `no-unnecessary-whitespace`             | (sin opciones)                                      |
+| Regla                                   | Opciones por defecto            |
+| --------------------------------------- | ------------------------------- |
+| `enforce-consistent-important-position` | `{ position: 'suffix' }`        |
+| `enforce-consistent-line-wrapping`      | `{ printWidth: 80 }`            |
+| `enforce-consistent-variable-syntax`    | `{ syntax: 'shorthand' }`       |
+| `enforce-negative-arbitrary-values`     | (sin opciones)                  |
+| `max-class-count`                       | `{ max: 20 }`                   |
+| `no-arbitrary-value`                    | `{ allow: [] }`                 |
+| `no-duplicate-classes`                  | (sin opciones)                  |
+| `no-hardcoded-colors`                   | `{ allow: [] }`                 |
+| `no-restricted-classes`                 | `{ classes: [], patterns: [] }` |
+| `no-unnecessary-whitespace`             | (sin opciones)                  |

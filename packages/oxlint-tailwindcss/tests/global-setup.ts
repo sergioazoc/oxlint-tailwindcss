@@ -30,6 +30,8 @@ const FIXTURES = [
   'unrelated-theme-vars.css',
   'with-custom-variants.css',
   'with-foreign-vars.css',
+  'axis-namespaces.css',
+  'custom-utility.css',
 ]
 
 export function setup() {

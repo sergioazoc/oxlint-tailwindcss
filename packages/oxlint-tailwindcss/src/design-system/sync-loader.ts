@@ -39,6 +39,20 @@ export interface PrecomputedData {
   validClasses: string[]
   /** className → canonical form (only entries where canonical differs) */
   canonical: Record<string, string>
+  /**
+   * v3 spelling → its v4 name, for the classes Tailwind renamed. A subset of
+   * `canonical`, kept apart because "deprecated" and "not canonical" are
+   * different claims: `start-2` canonicalizes to `inset-s-2` and is NOT
+   * deprecated, while `bg-gradient-to-r` is.
+   *
+   * Derived by asking `canonicalizeCandidates` about the renamed spellings, so an
+   * entry disappears the moment a Tailwind release stops emitting CSS for it —
+   * which is what a hardcoded map cannot do. It is also what makes
+   * `no-deprecated-classes` the single owner of these classes:
+   * `enforce-canonical` skips whatever is in here instead of reporting the same
+   * rewrite a second time.
+   */
+  deprecated?: Record<string, string>
   /** className → sort order as string (BigInt serialized) */
   order: Record<string, string>
   /**
@@ -532,11 +546,17 @@ async function main() {
   // their v4 equivalent, so we feed them in explicitly. Without this pass,
   // classes like \`break-words\` would be invisible to enforce-canonical
   // (issue #16).
-  // - Fixed renames mirror the internal v3->v4 map in tailwindcss/canonicalize.
-  // - Pattern renames (start-* -> inset-s-*, end-* -> inset-e-*) are derived
-  //   from the inset-{s,e}-* utilities present in validClasses so we cover
-  //   every numeric/named value the design system exposes.
-  const legacyCandidates = [
+  //
+  // Two kinds, and the difference is what \`deprecated\` records:
+  // - RENAMES: a v3 spelling of a utility v4 calls something else. Mirrors the
+  //   internal v3->v4 map in tailwindcss/canonicalize. These ARE deprecated, and
+  //   no-deprecated-classes owns them.
+  // - Pattern renames (start-* -> inset-s-*, end-* -> inset-e-*), derived from
+  //   the inset-{s,e}-* utilities in validClasses so every numeric/named value is
+  //   covered. These are NOT deprecated: \`start-2\` is current Tailwind (it is
+  //   what the docs use), it just isn't the canonical spelling. Calling it
+  //   deprecated would be a lie, so only enforce-canonical speaks about it.
+  const v3Renames = [
     'order-none',
     'break-words',
     'overflow-ellipsis',
@@ -551,12 +571,15 @@ async function main() {
     'bg-left-top', 'bg-right-top', 'bg-left-bottom', 'bg-right-bottom',
     'object-left-top', 'object-right-top', 'object-left-bottom', 'object-right-bottom',
   ];
+  const renameSet = new Set(v3Renames);
+  const legacyCandidates = [...v3Renames];
   for (const cls of validClasses) {
     if (cls.startsWith('inset-s-')) legacyCandidates.push('start-' + cls.slice(8));
     else if (cls.startsWith('-inset-s-')) legacyCandidates.push('-start-' + cls.slice(9));
     else if (cls.startsWith('inset-e-')) legacyCandidates.push('end-' + cls.slice(8));
     else if (cls.startsWith('-inset-e-')) legacyCandidates.push('-end-' + cls.slice(9));
   }
+  const deprecated = {};
   const legacyToProcess = legacyCandidates.filter(cls => !validSet.has(cls));
   if (legacyToProcess.length > 0) {
     const legacyCssResults = ds.candidatesToCss(legacyToProcess.map(pfx));
@@ -567,6 +590,10 @@ async function main() {
       const canon = result[0] ? unpfx(result[0]) : null;
       if (canon && canon !== cls) {
         canonical[cls] = canon;
+        // Only a v3 rename that this Tailwind still compiles AND still renames.
+        // A release that drops either of those drops the entry, so the rule can
+        // never suggest a replacement for a class that no longer exists.
+        if (renameSet.has(cls)) deprecated[cls] = canon;
       }
       // Mark as valid so no-unknown-classes doesn't flag legacy spellings.
       validClasses.push(cls);
@@ -843,7 +870,7 @@ async function main() {
     }
   }
 
-  const json = JSON.stringify({ validClasses, canonical, order, cssDeclarations, variantOrder, variantFacts, componentClasses, arbitraryEquivalents, themeRefs, definedVars, prefix });
+  const json = JSON.stringify({ validClasses, canonical, deprecated, order, cssDeclarations, variantOrder, variantFacts, componentClasses, arbitraryEquivalents, themeRefs, definedVars, prefix });
   // Atomic write: write to a unique temp path then rename, so a peer isolate
   // busy-waiting on the cache file never observes a half-written JSON.
   writeFileSync(WD_TMP_PATH, json);

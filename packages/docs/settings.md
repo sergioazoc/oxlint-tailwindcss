@@ -7,6 +7,13 @@ Every setting lives under `settings.tailwindcss` in your `.oxlintrc.json`.
 Path to the CSS file that `@import "tailwindcss";` and (optionally) your `@theme { ... }`
 customizations. The plugin reads this file to build the design system every rule queries.
 
+Required by the DS-dependent rules, which fail loudly without it. A second group is **DS-optional**:
+those work with nothing configured and get more accurate when it is there — `enforce-shorthand`
+verifies each merge against the emitted CSS, `no-dark-without-light` groups the base by declared
+property, `no-deprecated-classes` derives its rename list, and the directional rules confirm the
+class they suggest exists. See the [defaults reference](./rules/#defaults-reference) for which rule
+is in which group.
+
 Two shapes are supported:
 
 ```jsonc
