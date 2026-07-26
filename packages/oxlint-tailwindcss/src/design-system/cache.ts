@@ -15,6 +15,7 @@ import {
 } from '../utils/class-parser'
 
 const EMPTY_DECLARATIONS: readonly CssDeclaration[] = []
+const EMPTY_TOKEN_VALUES: readonly [string, string][] = []
 
 export class DesignSystemCache {
   private canonicalMap = new Map<string, string>()
@@ -49,6 +50,11 @@ export class DesignSystemCache {
   private componentSet = new Set<string>()
   private themeRefs = new Map<string, string[]>()
   private definedVarSet = new Set<string>()
+  // Utility prefix → [literal value, class]. Read by prefer-scale-token; see
+  // `PrecomputedData.tokenValues` for why only single-declaration numeric tokens
+  // are in here.
+  private tokenValuesMap = new Map<string, readonly [string, string][]>()
+  private scaleFacts: { unit: string; step: number; prefixes: Set<string> } | null = null
 
   static fromPrecomputed(data: PrecomputedData): DesignSystemCache {
     const cache = new DesignSystemCache()
@@ -113,6 +119,18 @@ export class DesignSystemCache {
     if (data.themeRefs) {
       for (const [name, refs] of Object.entries(data.themeRefs)) {
         cache.themeRefs.set(name, refs)
+      }
+    }
+
+    for (const [prefix, entries] of Object.entries(data.tokenValues ?? {})) {
+      cache.tokenValuesMap.set(prefix, entries)
+    }
+
+    if (data.scale) {
+      cache.scaleFacts = {
+        unit: data.scale.unit,
+        step: data.scale.step,
+        prefixes: new Set(data.scale.prefixes),
       }
     }
 
@@ -302,6 +320,27 @@ export class DesignSystemCache {
   /** Variant names the design system reports, for suggesting a typo's neighbour. */
   variantNames(): string[] {
     return [...this.variantOrderMap.keys()]
+  }
+
+  /**
+   * The numeric theme tokens this utility prefix can be written with, as
+   * `[literal value, class]`. Empty when the prefix has none.
+   */
+  tokenValuesFor(prefix: string): readonly [string, string][] {
+    return this.tokenValuesMap.get(this.stripProjectPrefix(prefix)) ?? EMPTY_TOKEN_VALUES
+  }
+
+  /**
+   * The spacing scale as the design system describes it: the resolved value of
+   * `--spacing`, the granularity Tailwind's own enumerated steps use, and whether
+   * a given prefix reads it. `null` when the theme has no `--spacing`.
+   */
+  get scale(): { unit: string; step: number } | null {
+    return this.scaleFacts ? { unit: this.scaleFacts.unit, step: this.scaleFacts.step } : null
+  }
+
+  readsScale(prefix: string): boolean {
+    return this.scaleFacts?.prefixes.has(this.stripProjectPrefix(prefix)) ?? false
   }
 
   isValid(className: string): boolean {
