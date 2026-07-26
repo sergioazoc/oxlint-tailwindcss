@@ -23,10 +23,23 @@ interface Options {
 const LENGTH_RE = /^(-?\d*\.?\d+)(rem|px|em)?$/
 
 /**
- * Convert a CSS length to px. `em` is treated as `rem`, which is what it is at
- * the root and the only interpretation available without a layout.
+ * A comparable value: a magnitude, plus whether it carried a unit at all.
+ *
+ * The flag is not bookkeeping. `p-[10]` compiles to `padding: 10` — no unit,
+ * which is not a length — while `p-2.5` is `padding: 10px`. Treating the bare
+ * number as px would have this rule "helpfully" suggest a class that means
+ * something else.
  */
-function toPx(value: string, rootFontSize: number): number | null {
+interface Measure {
+  px: number
+  unitless: boolean
+}
+
+/**
+ * Parse a CSS length. `em` is treated as `rem`, which is what it is at the root
+ * and the only interpretation available without a layout.
+ */
+function measure(value: string, rootFontSize: number): Measure | null {
   const match = LENGTH_RE.exec(value.trim())
   if (!match) return null
   const n = Number.parseFloat(match[1])
@@ -34,18 +47,22 @@ function toPx(value: string, rootFontSize: number): number | null {
   switch (match[2]) {
     case 'rem':
     case 'em':
-      return n * rootFontSize
+      return { px: n * rootFontSize, unitless: false }
     case 'px':
+      return { px: n, unitless: false }
     case undefined:
-      return n
+      return { px: n, unitless: true }
     default:
       return null
   }
 }
 
-/** Same length, allowing for float noise (`0.875rem` × 16 = 13.999999999999998). */
-function sameLength(a: number, b: number): boolean {
-  return Math.abs(a - b) < 0.0001
+/**
+ * Same value, allowing for float noise (`0.875rem` × 16 = 13.999999999999998).
+ * A unitless number and a length are never the same value, whatever the digits.
+ */
+function sameMeasure(a: Measure, b: Measure): boolean {
+  return a.unitless === b.unitless && Math.abs(a.px - b.px) < 0.0001
 }
 
 /**
@@ -125,26 +142,30 @@ export const preferScaleToken = defineRule({
 
       const value = getArbitraryValue(bare)
       if (value === null) return null
-      const px = toPx(value, rootFontSize())
-      if (px === null) return null
+      const written = measure(value, rootFontSize())
+      if (written === null) return null
 
       const open = bare.indexOf('[')
-      if (open <= 0) return null
+      // The utility and its value are joined by a dash: `p-[10px]`. Anything else
+      // is not this shape — an arbitrary property (`[color:red]`) starts at 0.
+      if (open <= 0 || bare[open - 1] !== '-') return null
       const prefix = bare.slice(0, open - 1)
       if (!prefix) return null
 
       for (const [literal, className] of cache.tokenValuesFor(prefix)) {
-        const tokenPx = toPx(literal, rootFontSize())
-        if (tokenPx !== null && sameLength(px, tokenPx)) return className
+        const token = measure(literal, rootFontSize())
+        if (token !== null && sameMeasure(written, token)) return className
       }
 
       if (!cache.readsScale(prefix)) return null
       const scale = cache.scale
       if (!scale) return null
-      const unitPx = toPx(scale.unit, rootFontSize())
-      if (unitPx === null || unitPx <= 0) return null
+      const unit = measure(scale.unit, rootFontSize())
+      // Same kind of quantity on both sides, or the division is meaningless:
+      // `p-[10]` is `padding: 10`, which is not 2.5 × `0.25rem`.
+      if (unit === null || unit.px <= 0 || unit.unitless !== written.unitless) return null
 
-      const steps = px / unitPx
+      const steps = written.px / unit.px
       if (steps < 0) return null
       // Tailwind compiles any number, so without a granularity every length
       // would have an "equivalent" and this would just be `no-arbitrary-value`.

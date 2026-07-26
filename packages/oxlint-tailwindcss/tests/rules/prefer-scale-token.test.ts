@@ -101,6 +101,11 @@ describe('the boundary', () => {
       { code: '<div className="w-[100%]" />', filename: 'test.tsx' },
       { code: '<div className="z-[10]" />', filename: 'test.tsx' },
       { code: '<div className="p-[0px]" />', filename: 'test.tsx' },
+      // A bare number is not a length: `p-[10]` compiles to `padding: 10`, which
+      // is not what `p-2.5` (`padding: 10px`) says. Suggesting it would change the
+      // meaning, not just the spelling.
+      { code: '<div className="p-[10]" />', filename: 'test.tsx' },
+      { code: '<div className="w-[140]" />', filename: 'test.tsx' },
       // Not a length, or not on a prefix that reads the scale.
       { code: '<div className="w-[50%]" />', filename: 'test.tsx' },
       { code: '<div className="grid-cols-[18rem_1fr]" />', filename: 'test.tsx' },
