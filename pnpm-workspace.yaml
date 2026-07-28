@@ -2,7 +2,7 @@ packages:
   - 'packages/*'
 catalog:
   '@oxlint/plugins': ^1.74.0
-  oxfmt: ^0.59.0
+  oxfmt: ^0.61.0
   oxlint: ^1.74.0
 allowBuilds:
   esbuild: true
