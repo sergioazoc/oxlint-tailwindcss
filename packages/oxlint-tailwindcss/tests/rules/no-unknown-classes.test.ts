@@ -475,6 +475,11 @@ describe('custom variants', () => {
     valid: [
       { code: '<div className="thumb:size-4" />', filename: 'test.tsx' },
       { code: '<div className="child:mt-4" />', filename: 'test.tsx' },
+      // The class a `@custom-variant` selector names is a marker for that
+      // variant: it declares nothing, but removing it stops `sidebar-open:*`
+      // from matching. Read from the at-rule's selector, so it stays valid.
+      { code: '<div className="sidebar-open" />', filename: 'test.tsx' },
+      { code: '<div className="sidebar-open:flex" />', filename: 'test.tsx' },
     ],
     invalid: [
       // The suggestion comes from the variants the design system reports, so a
@@ -483,6 +488,111 @@ describe('custom variants', () => {
         code: '<div className="thumbb:size-4" />',
         filename: 'test.tsx',
         errors: [{ messageId: 'unknownVariantWithSuggestion' }],
+      },
+    ],
+  })
+})
+
+/**
+ * Named group/peer markers (#102).
+ *
+ * `group/menu-item` binds `group-hover/menu-item:` to ONE specific ancestor, and
+ * the consumer's compiled selector hard-codes the marker as a class selector —
+ * `:is(:where(.group\/menu-item):hover *)`. A class selector matches whole
+ * tokens, so bare `group` does not satisfy it: the named marker is required
+ * markup, not decoration. Tailwind emits no CSS for the marker itself, which is
+ * exactly what made the exact validation of 1.5.0 report it.
+ *
+ * The `/name` half is user-chosen and Tailwind never checks that it exists, so
+ * any NON-EMPTY name is legitimate — including shapes only an arbitrary modifier
+ * can reach (`group/*`, `group/a/b`, `peer//x`). The one genuinely dead spelling
+ * is the EMPTY name: `group-hover/` compiles to nothing.
+ */
+describe('named group/peer markers', () => {
+  runWithFixture(new RuleTester(), 'markers', noUnknownClasses, ENTRY_POINT, {
+    valid: [
+      // Bare markers — the case that already worked, kept as the symmetry anchor.
+      { code: '<div className="peer group" />', filename: 'test.tsx' },
+      // Named markers: the regression.
+      { code: '<div className="peer/menu-button" />', filename: 'test.tsx' },
+      { code: '<div className="group/menu-item" />', filename: 'test.tsx' },
+      { code: '<div className="group/menu-item flex items-center" />', filename: 'test.tsx' },
+      // `!` in both positions, and behind a variant chain.
+      { code: '<div className="!peer/menu-button" />', filename: 'test.tsx' },
+      { code: '<div className="peer/menu-button!" />', filename: 'test.tsx' },
+      { code: '<div className="hover:group/menu-item" />', filename: 'test.tsx' },
+      // A short name must not be "corrected" to the bare marker: the quick-fix
+      // would drop the name and leave every `peer-*/a:` consumer matching
+      // nothing. This is the destructive half of the bug.
+      { code: '<div className="peer/a" />', filename: 'test.tsx' },
+      { code: '<div className="group/1" />', filename: 'test.tsx' },
+      // Names reachable only through an arbitrary modifier on the consumer.
+      { code: '<div className="group/*" />', filename: 'test.tsx' },
+      { code: '<div className="peer//x" />', filename: 'test.tsx' },
+      { code: '<div className="group/a/b" />', filename: 'test.tsx' },
+      // The other half: the consumers that read the marker. These always
+      // compiled, and must keep doing so.
+      { code: '<div className="peer-data-[size=sm]/menu-button:top-1" />', filename: 'test.tsx' },
+      { code: '<div className="group-hover/menu-item:underline" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      // Empty name: Tailwind compiles nothing for it, so the existing
+      // `Did you mean "peer"?` quick-fix is the right answer.
+      {
+        code: '<div className="peer/" />',
+        filename: 'test.tsx',
+        errors: [
+          {
+            messageId: 'unknownWithSuggestion',
+            suggestions: [
+              {
+                messageId: 'suggestReplace',
+                data: { className: 'peer/', replacement: 'peer' },
+                output: '<div className="peer" />',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        code: '<div className="group/" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+      // A typo in the marker itself is not a marker.
+      {
+        code: '<div className="peerr/menu-button" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknown' }],
+      },
+      // Still the exact answer for a slash modifier that is NOT a marker: the
+      // base produces CSS, so `/foo` has to resolve — and it doesn't.
+      {
+        code: '<div className="bg-red-500/foo" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknown' }],
+      },
+    ],
+  })
+
+  /**
+   * A component class with no CSS of its own (`not-prose` is referenced only
+   * through `[class~="not-prose"]` in typography's output) is NOT a marker:
+   * `not-prose/x` is not Tailwind syntax. The predicate has to tell the two
+   * apart, because both are "in the validity set with zero declarations".
+   */
+  const TYPOGRAPHY = resolve(__dirname, '../fixtures/with-typography.css')
+
+  runWithFixture(new RuleTester(), 'markers vs component classes', noUnknownClasses, TYPOGRAPHY, {
+    valid: [
+      { code: '<div className="prose not-prose" />', filename: 'test.tsx' },
+      { code: '<div className="group/menu-item peer/menu-button" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      {
+        code: '<div className="not-prose/x" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknown' }],
       },
     ],
   })

@@ -42,6 +42,30 @@ guess.
 `w-[garbage]` stays valid on purpose: Tailwind takes an arbitrary value verbatim and emits
 `width: garbage`. Whether that CSS is meaningful is not this rule's call.
 
+### Named group/peer markers are valid
+
+`group/menu-item` and `peer/menu-button` are the v4 idiom for binding a variant to **one specific**
+ancestor or sibling when several are in play — the pattern shadcn/ui's sidebar is built on. The
+marker emits no CSS of its own, which is the whole point: the CSS lives in the consumer that reads
+it. `group-hover/menu-item:underline` compiles to
+
+```css
+.group-hover\/menu-item\:underline:is(:where(.group\/menu-item):hover *) { text-decoration-line: underline; }
+```
+
+A CSS class selector matches whole tokens of the `class` attribute, so bare `group` does **not**
+satisfy `:where(.group\/menu-item)`. The marker is required markup — remove it and every consumer
+silently stops matching.
+
+The name is yours and Tailwind never checks that it exists, so any non-empty name is accepted,
+including shapes only an arbitrary modifier on the consumer can reach (`group/*`, `group/a/b`,
+`peer//x`). The one spelling that is genuinely dead is the **empty** name: `peer/` compiles to
+nothing and is reported.
+
+A class named by a `@custom-variant` selector works the same way and stays valid:
+`@custom-variant sidebar-open (&:where(.sidebar-open *))` makes `sidebar-open` load-bearing even
+though nothing declares it.
+
 ## Project prefix (`prefix(...)`)
 
 If your entry point declares a Tailwind v4 prefix — `@import "tailwindcss" prefix(tw)` — every
@@ -53,6 +77,9 @@ prefix-aware:
   needing the prefix, with a quick-fix that adds it (`flex` → `tw:flex`).
 - Component classes from `@layer components` (`btn`, `card`) carry no prefix and stay valid either
   way — only Tailwind-generated utilities require it.
+- Named markers need the prefix too, because that is what Tailwind puts in the selector:
+  `tw:group-hover/menu-item:underline` compiles to `:is(:where(.tw\:group\/menu-item):hover *)`, so
+  `tw:group/menu-item` is valid and a bare `group/menu-item` is reported as needing the prefix.
 
 The prefix is detected automatically from your `entryPoint`; there is nothing extra to configure.
 
@@ -128,6 +155,10 @@ maintain.
 
 // Every variant shape, functional and arbitrary alike
 <div className="group-hover:flex data-[state=open]:grid @md:block [&>svg]:size-4" />
+
+// Named group/peer markers, and the consumers that read them
+<div className="group/menu-item peer/menu-button" />
+<div className="group-hover/menu-item:underline peer-data-[size=sm]/menu-button:top-1" />
 
 // Allowlisted runtime class
 <div className={"hover:" + dynamicSuffix} />

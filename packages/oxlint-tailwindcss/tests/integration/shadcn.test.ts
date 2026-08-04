@@ -49,6 +49,11 @@ const SHADCN_CLASS_STRINGS = [
   'bg-sidebar-accent text-sidebar-accent-foreground',
   'ring-sidebar-ring',
   'fill-chart-1 stroke-chart-2 text-chart-3 bg-chart-4 border-chart-5',
+  // sidebar named markers and the consumers that read them (#102). The sidebar
+  // is where shadcn uses the named form pervasively, and it is what the report
+  // came from.
+  'group/menu-item peer/menu-button relative flex w-full items-center',
+  'peer-data-[active=true]/menu-button:bg-sidebar-accent group-data-[collapsible=icon]/menu-item:hidden',
   // card / popover / muted / accent
   'bg-card text-card-foreground rounded-lg border border-border shadow-sm',
   'bg-popover text-popover-foreground rounded-md',

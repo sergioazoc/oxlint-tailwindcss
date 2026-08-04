@@ -303,7 +303,30 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   that styles both itself and its descendants (`prose`) advertises only its own box, and is flagged
   `partial` so it is never called redundant.
 - **Modifier class detection**: Classes referenced via `[class~="..."]` attribute selectors in CSS
-  output (e.g. `not-prose`) are added to `componentClasses` so `no-unknown-classes` recognizes them.
+  output (e.g. `not-prose`) are added to `componentClasses` so `no-unknown-classes` recognizes them,
+  interned in a `Set` (typography names `not-prose` from ~230 selectors).
+- **`extractComponentClasses` reads SELECTORS ONLY** (`sync-loader.ts`). Everything it returns lands
+  in `validitySet`, so a false entry there is a class the plugin silently accepts. It used to regex
+  whole files, which harvested identifiers from Tailwind's own preflight comments (`mozilla`, `org`,
+  `com`, `cgi`, `chromium`, `webkit`, `css` — all from URLs) and from declaration values
+  (`padding: 0.5rem` → `5rem`). A selector is the text between the last `{`, `}` or `;` and the next
+  `{`, so scanning only what precedes a `{` skips declaration bodies by construction; comments and
+  strings are stepped over, and a CSS identifier start (never a digit) is the second line of defence
+  for a decimal in an at-rule prelude. **Statement at-rules are the deliberate exception**: the
+  class named by `@custom-variant sidebar-open (&:where(.sidebar-open *))` is load-bearing exactly
+  the way `group`/`peer` are, so a prelude starting with `@` is scanned before its `;` discards it.
+- **Named group/peer markers** (`cache.isMarkerClass`, issue #102): `group/menu-item` /
+  `peer/menu-button` emit NO CSS — the CSS lives in the consumer, whose selector hard-codes the
+  marker (`:is(:where(.group\/menu-item):hover *)`), so the marker is required markup and "does it
+  compile?" is the wrong question. `no-unknown-classes` calls the predicate in its pre-pass and
+  again **after** the `missing-prefix` branch (under a prefix the marker Tailwind wants IS
+  `tw:group/menu-item`, so an unprefixed one is genuinely dead CSS and must stay reported). The
+  predicate is derived — a precomputed, non-component class with ZERO declarations, which resolves
+  to exactly `group` and `peer` on every fixture — so it self-prunes, self-extends, and excludes
+  `@container/main` for free. Splits at the FIRST slash (`peer//x`, `group/a/b` are legal names);
+  only the EMPTY name is rejected. **Do not seed named markers into `validClasses`**: the `/name` is
+  user-chosen and unbounded, `ds.parseCandidate('peer/menu-button')` returns `[]`, and it would feed
+  unbounded strings to the Levenshtein scan.
 - **`no-conflicting-classes` decides from the emitted CSS**
   (`rules/no-conflicting-classes/decide.ts`): a shared `(box, property)` is a conflict only when the
   declaration that LOSES the cascade carries something the winner does not reproduce — equal value

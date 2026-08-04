@@ -188,6 +188,9 @@ export const noUnknownClasses = defineRule({
           if (shouldIgnore(cls)) continue
           const bare = strippedUtility(cls).bare
           if (cache.isKnownClass(bare)) continue
+          // A marker emits no CSS by design, so asking the service about one
+          // costs a roundtrip to learn nothing.
+          if (cache.isMarkerClass(bare)) continue
           if (!toVerify) toVerify = []
           toVerify.push(bare)
         }
@@ -224,6 +227,20 @@ export const noUnknownClasses = defineRule({
               { className: cls, prefix: cache.prefix, suggestion: fixed },
               split,
             )
+            continue
+          }
+
+          // A named group/peer marker (#102). It produces no CSS on purpose — the
+          // CSS lives in the consumer that references it (`group-hover/menu-item:`
+          // compiles to `:is(:where(.group\/menu-item):hover *)`), so "does it
+          // compile?" is the wrong question and both terms of `utilityIsUnknown`
+          // would answer it wrongly. Deliberately AFTER the missing-prefix branch:
+          // under `prefix(tw)` the marker Tailwind requires is `tw:group/menu-item`,
+          // so an unprefixed one is genuinely dead CSS and must stay reported.
+          if (
+            cache.isMarkerClass(bare) &&
+            (!cache.prefix || variant.startsWith(`${cache.prefix}:`))
+          ) {
             continue
           }
 

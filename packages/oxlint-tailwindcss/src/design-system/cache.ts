@@ -317,6 +317,43 @@ export class DesignSystemCache {
     return this.validitySet.has(this.stripProjectPrefix(className))
   }
 
+  /**
+   * Is this a NAMED group/peer marker — `group/menu-item`, `peer/menu-button`?
+   *
+   * A marker binds a variant to one specific ancestor or sibling, and the
+   * consumer's compiled selector hard-codes it as a class selector:
+   * `group-hover/menu-item:underline` emits
+   * `:is(:where(.group\/menu-item):hover *)`. A class selector matches whole
+   * tokens, so bare `group` does not satisfy it — the named marker is required
+   * markup. Tailwind emits no CSS for the marker itself, which is why
+   * `no-unknown-classes` cannot ask "does it compile?" about one.
+   *
+   * Derived, not listed: the base must be a precomputed class that emits ZERO
+   * declarations, which across every fixture resolves to exactly `group` and
+   * `peer` (2 of ~23.6k). It self-prunes if Tailwind drops the variants,
+   * self-extends if a new CSS-less marker appears, and excludes `@container/main`
+   * for free — that one HAS declarations. The component set is subtracted
+   * because a class referenced only through `[class~="…"]` (`not-prose`) also has
+   * no declarations of its own, and `not-prose/x` is not Tailwind syntax.
+   *
+   * The name is user-chosen and Tailwind never checks that it exists, so any
+   * NON-EMPTY name is accepted — including the shapes only an arbitrary modifier
+   * can reach (`group/*`, `group/a/b`, `peer//x`), which is why this splits at
+   * the FIRST slash rather than the last one `isValid` uses. The empty name is
+   * the one genuinely dead spelling: `group-hover/` compiles to nothing.
+   */
+  isMarkerClass(className: string): boolean {
+    const bare = this.stripProjectPrefix(className)
+    const slash = bare.indexOf('/')
+    if (slash <= 0 || slash === bare.length - 1) return false
+    const base = bare.slice(0, slash)
+    return (
+      this.validitySet.has(base) &&
+      !this.componentSet.has(base) &&
+      this.getCssDeclarations(base).length === 0
+    )
+  }
+
   /** Variant names the design system reports, for suggesting a typo's neighbour. */
   variantNames(): string[] {
     return [...this.variantOrderMap.keys()]
