@@ -38,6 +38,30 @@ así que la respuesta es la de Tailwind y no una conjetura.
 `w-[garbage]` sigue siendo válida a propósito: Tailwind toma un valor arbitrario tal cual y emite
 `width: garbage`. Si ese CSS tiene sentido o no, no es asunto de esta regla.
 
+### Los marcadores group/peer con nombre son válidos
+
+`group/menu-item` y `peer/menu-button` son el idioma de v4 para atar una variante a **un** ancestro
+o hermano concreto cuando hay varios en juego — el patrón sobre el que está construido el sidebar de
+shadcn/ui. El marcador no emite CSS propio, y eso es justamente el punto: el CSS vive en el
+consumidor que lo lee. `group-hover/menu-item:underline` compila a
+
+```css
+.group-hover\/menu-item\:underline:is(:where(.group\/menu-item):hover *) { text-decoration-line: underline; }
+```
+
+Un selector de clase CSS casa tokens completos del atributo `class`, así que `group` a secas **no**
+satisface `:where(.group\/menu-item)`. El marcador es markup obligatorio: si lo quitas, todos sus
+consumidores dejan de casar en silencio.
+
+El nombre es tuyo y Tailwind nunca comprueba que exista, así que se acepta cualquier nombre no
+vacío, incluidas formas que solo un modificador arbitrario en el consumidor puede alcanzar
+(`group/*`, `group/a/b`, `peer//x`). La única grafía realmente muerta es el nombre **vacío**:
+`peer/` no compila nada y se reporta.
+
+Una clase nombrada por el selector de un `@custom-variant` funciona igual y sigue siendo válida:
+`@custom-variant sidebar-open (&:where(.sidebar-open *))` hace que `sidebar-open` sea load-bearing
+aunque nada la declare.
+
 ## Prefijo de proyecto (`prefix(...)`)
 
 Si tu entry point declara un prefijo de Tailwind v4 — `@import "tailwindcss" prefix(tw)` — cada
@@ -49,6 +73,10 @@ del prefijo:
   como que le falta el prefijo, con un quick-fix que lo agrega (`flex` → `tw:flex`).
 - Las component classes de `@layer components` (`btn`, `card`) no llevan prefijo y siguen siendo
   válidas en cualquier caso — solo las utilities generadas por Tailwind lo requieren.
+- Los marcadores con nombre también necesitan el prefijo, porque es lo que Tailwind pone en el
+  selector: `tw:group-hover/menu-item:underline` compila a
+  `:is(:where(.tw\:group\/menu-item):hover *)`, así que `tw:group/menu-item` es válida y un
+  `group/menu-item` sin prefijo se reporta como que le falta.
 
 El prefijo se detecta automáticamente desde tu `entryPoint`; no hay nada extra que configurar.
 
@@ -125,6 +153,10 @@ de mantener.
 
 // Todas las formas de variant, funcionales y arbitrarias
 <div className="group-hover:flex data-[state=open]:grid @md:block [&>svg]:size-4" />
+
+// Marcadores group/peer con nombre, y los consumidores que los leen
+<div className="group/menu-item peer/menu-button" />
+<div className="group-hover/menu-item:underline peer-data-[size=sm]/menu-button:top-1" />
 
 // Clase de runtime allowlisteada
 <div className={"hover:" + dynamicSuffix} />

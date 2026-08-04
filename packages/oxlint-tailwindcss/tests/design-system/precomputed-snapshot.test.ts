@@ -222,6 +222,40 @@ describe('Precomputed Data Snapshot', () => {
     })
   })
 
+  /**
+   * `componentClasses` feeds the validity set, so anything that lands here is a
+   * class `no-unknown-classes` will accept. The scan used to read the whole file
+   * — comments and declaration bodies included — so the URLs in Tailwind's own
+   * preflight comments (`developer.mozilla.org`, `bugs.chromium.org`) and the
+   * decimals in values (`padding: 0.5rem`) arrived as class names, and every
+   * project accepted `com`, `org`, `css` and `5rem` as valid Tailwind classes.
+   */
+  describe('componentClasses', () => {
+    it('does not harvest identifiers from comments or declaration values', () => {
+      const noise = ['com', 'org', 'css', 'cgi', 'webkit', 'mozilla', 'chromium', '5rem', '25rem']
+      for (const name of noise) {
+        expect(data.componentClasses).not.toContain(name)
+      }
+    })
+
+    it('is deduplicated', () => {
+      expect(new Set(data.componentClasses).size).toBe(data.componentClasses.length)
+    })
+
+    // The entry above cannot catch a duplicate on its own: the bare `@import
+    // "tailwindcss"` fixture has no `[class~="…"]` selectors at all. Typography
+    // is where it happened — it references `not-prose` from ~230 selectors, and
+    // each one used to be stored separately.
+    it('interns a repeated [class~] reference once', () => {
+      const typography = loadDesignSystemSync(
+        resolve(__dirname, '../fixtures/with-typography.css'),
+      )!
+      expect(typography.componentClasses).toContain('not-prose')
+      expect(new Set(typography.componentClasses).size).toBe(typography.componentClasses.length)
+      expect(typography.componentClasses.filter((c) => c === 'not-prose')).toHaveLength(1)
+    })
+  })
+
   describe('variantOrder', () => {
     it('contains core variants', () => {
       const coreVariants = ['hover', 'focus', 'active', 'dark', 'sm', 'md', 'lg', 'xl', '2xl']

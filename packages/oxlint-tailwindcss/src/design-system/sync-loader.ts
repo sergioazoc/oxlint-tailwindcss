@@ -398,31 +398,68 @@ function collectCssSources(cssPath, baseDir) {
   return files;
 }
 
+// Class names the project writes in its own CSS, read from the SELECTORS only.
+//
+// This used to scan whole files with two regexes, which harvested identifiers
+// from places that are not selectors at all: the URLs in Tailwind's own preflight
+// comments (\`developer.mozilla.org\` → \`mozilla\`, \`org\`; \`bugs.chromium.org\`;
+// \`-webkit-\`) and the decimals in declaration values (\`padding: 0.5rem\` →
+// \`5rem\`). Everything here reaches \`validitySet\`, so every project accepted
+// \`com\`, \`org\`, \`css\` and \`5rem\` as valid Tailwind classes.
+//
+// A selector is the text between the last \`{\`, \`}\` or \`;\` and the next \`{\`, so
+// scanning only what precedes a \`{\` skips declaration bodies by construction —
+// a declaration ends in \`;\` or \`}\` and never reaches one. Comments and strings
+// are stepped over. Requiring a CSS identifier start (never a digit) is the
+// second line of defence, for a decimal inside an at-rule prelude
+// (\`@media (min-width: 40.5rem)\`).
 function extractComponentClasses(cssPath, baseDir) {
   const files = collectCssSources(cssPath, baseDir);
-  const result = [];
+  const result = new Set();
+  const classRe = /\\.(-?[a-zA-Z_][\\w-]*)/g;
   for (const content of files) {
-    // Scan both @layer components AND @layer utilities
-    const layerRe = /@layer\\s+(?:components|utilities)\\s*\\{/g;
-    let lm;
-    while ((lm = layerRe.exec(content)) !== null) {
-      let depth = 1, i = lm.index + lm[0].length;
-      while (i < content.length && depth > 0) {
-        if (content[i] === '{') depth++;
-        if (content[i] === '}') depth--;
-        i++;
+    let prelude = '';
+    for (let i = 0; i < content.length; i++) {
+      const c = content[i];
+      if (c === '/' && content[i + 1] === '*') {
+        const end = content.indexOf('*/', i + 2);
+        i = end === -1 ? content.length : end + 1;
+        continue;
       }
-      const block = content.slice(lm.index + lm[0].length, i - 1);
-      const selRe = /\\.([\\w-]+)/g;
-      let sm;
-      while ((sm = selRe.exec(block)) !== null) result.push(sm[1]);
+      if (c === '"' || c === "'") {
+        const quote = c;
+        i++;
+        while (i < content.length && content[i] !== quote) {
+          if (content[i] === '\\\\') i++;
+          i++;
+        }
+        continue;
+      }
+      if (c === '{') {
+        classRe.lastIndex = 0;
+        let m;
+        while ((m = classRe.exec(prelude)) !== null) result.add(m[1]);
+        prelude = '';
+        continue;
+      }
+      if (c === '}' || c === ';') {
+        // A statement at-rule carries a selector even though it has no block:
+        // \`@custom-variant sidebar-open (&:where(.sidebar-open *));\` makes that
+        // class load-bearing exactly the way \`group\`/\`peer\` are, so it has to
+        // stay valid. Plain declarations never start with \`@\`, so this readmits
+        // the selector without readmitting \`padding: 0.5rem\`.
+        if (c === ';' && prelude.trimStart().charCodeAt(0) === 64) {
+          classRe.lastIndex = 0;
+          let m;
+          while ((m = classRe.exec(prelude)) !== null) result.add(m[1]);
+        }
+        prelude = '';
+        continue;
+      }
+      prelude += c;
     }
-    // Scan all class selectors anywhere in the file (.class-name)
-    const classSelRe = /\\.([a-zA-Z_][\\w-]*)/g;
-    let cs;
-    while ((cs = classSelRe.exec(content)) !== null) result.push(cs[1]);
   }
-  return [...new Set(result)];
+  return [...result];
 }
 
 ${DECL_EXTRACTOR_SOURCE}
@@ -827,11 +864,13 @@ async function main() {
   }
 
   // Component classes from @layer components
-  const componentClasses = extractComponentClasses(cssPath, base);
+  const componentSet = new Set(extractComponentClasses(cssPath, base));
 
   // Extract class names from attribute selectors [class~="..."] in CSS output.
   // Plugins like @tailwindcss/typography use these for modifier classes (e.g. "not-prose")
   // that don't generate their own CSS but are referenced in other classes' selectors.
+  // Interned in a Set: typography references \`not-prose\` from ~230 selectors, and
+  // pushing one entry per occurrence only inflated the cache artifact.
   const attrClassRe = /\\[class~="([^"]+)"\\]/g;
   for (let i = 0; i < cssResults.length; i++) {
     if (cssResults[i]) {
@@ -839,10 +878,11 @@ async function main() {
       attrClassRe.lastIndex = 0;
       while ((acm = attrClassRe.exec(cssResults[i])) !== null) {
         // Typography-style plugins emit \`[class~="tw:not-prose"]\` under a prefix.
-        componentClasses.push(unpfx(acm[1]));
+        componentSet.add(unpfx(acm[1]));
       }
     }
   }
+  const componentClasses = [...componentSet];
 
   // Arbitrary equivalents: map arbitrary forms to named equivalents.
   // Enumerate every dash split point so multi-segment utilities (e.g.

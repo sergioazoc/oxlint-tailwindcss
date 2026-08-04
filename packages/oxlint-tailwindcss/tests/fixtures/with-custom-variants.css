@@ -13,3 +13,10 @@
  */
 @custom-variant thumb (&::-webkit-slider-thumb);
 @custom-variant child (& > *);
+
+/*
+ * A variant whose selector names a CLASS. The class itself produces no CSS —
+ * it is a marker the variant binds to, the same shape as `group`/`peer` — so it
+ * has to stay valid for `no-unknown-classes` even though nothing declares it.
+ */
+@custom-variant sidebar-open (&:where(.sidebar-open *));

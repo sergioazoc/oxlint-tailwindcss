@@ -1,5 +1,63 @@
 # Changelog
 
+## 1.7.0
+
+Two false-positive families in `no-unknown-classes`, both found by asking what the design system
+actually knows rather than what its class names look like. One was reported; the other came out of
+auditing the first.
+
+### Breaking-ish
+
+- **`no-unknown-classes` stops accepting nine class names it never should have.** The scan that
+  collects the classes your own CSS declares read whole files — comments and declaration bodies
+  included — so the URLs in Tailwind's preflight comments arrived as class names (`mozilla`, `org`,
+  `com`, `cgi`, `chromium`, `webkit`, `css`) and so did the decimals in values (`padding: 0.5rem` →
+  `5rem`, `0.25rem` → `25rem`). Those went into the validity set, which means **every project using
+  this plugin has been accepting `com`, `org`, `css` and `5rem` as valid Tailwind classes**. It now
+  reads selectors only, so those nine report like any other unknown class. If your code contains one
+  of them it will newly fail — which is the point.
+
+  Kept deliberately: the class a statement at-rule names is still valid.
+  `@custom-variant sidebar-open (&:where(.sidebar-open *))` makes `sidebar-open` load-bearing in
+  exactly the way `group`/`peer` are, so it is read from the at-rule's selector instead of falling
+  out with the noise.
+
+### Bug fixes
+
+- **`no-unknown-classes` no longer reports named group/peer markers.** `group/menu-item` and
+  `peer/menu-button` bind a variant to ONE specific ancestor or sibling, and the consumer's compiled
+  selector hard-codes the marker as a class selector — `group-hover/menu-item:underline` emits
+  `:is(:where(.group\/menu-item):hover *)`. A class selector matches whole tokens, so bare `group`
+  does not satisfy it: the named marker is required markup, not decoration. Tailwind emits no CSS
+  for the marker itself, so the exact validation added in 1.5.0 asked "does this compile?" and got
+  the honest answer "nothing" — and every named marker in a shadcn/ui sidebar became a diagnostic.
+
+  Worse than noise, for short names: `peer/a` got a quick-fix that rewrote it to `peer`, silently
+  dropping the name and leaving every `peer-*/a:` consumer matching nothing.
+
+  Markers are now recognized as what they are, derived rather than listed — a precomputed class that
+  emits ZERO declarations, which across every fixture resolves to exactly `group` and `peer` (2 of
+  ~23.6k classes). It self-prunes if Tailwind drops the variants, self-extends if a new CSS-less
+  marker appears, and excludes `@container/main` for free, because that one has declarations. Any
+  non-empty name is accepted, including the shapes only an arbitrary modifier on the consumer can
+  reach (`group/*`, `group/a/b`, `peer//x`); Tailwind never checks that a marker name exists either.
+  `peer/` keeps reporting — the empty name is the one spelling that really compiles to nothing.
+
+  Under a project prefix the marker Tailwind requires IS the prefixed form
+  (`:is(:where(.tw\:group\/menu-item):hover *)`), so an unprefixed `peer/menu-button` still reports
+  `missingPrefix` with its quick-fix. Closes
+  [#102](https://github.com/sergioazoc/oxlint-tailwindcss/issues/102).
+
+- **The cache artifact no longer stores one entry per reference for `[class~="…"]` classes.**
+  Typography references `not-prose` from ~230 selectors and each one was pushed separately.
+
+### Dependencies
+
+- `oxlint` 1.74.0 → 1.76.0, `oxfmt` 0.59.0 → 0.61.0, and `@oxlint/plugins` moved to 1.76.0 so the
+  plugin API and the linter no longer sit on different versions — the catalog had bumped `oxlint`
+  while leaving `@oxlint/plugins` behind, which left the root workspace on 1.76 and the package
+  itself (including the test runner) on 1.74.
+
 ## 1.6.0
 
 ### Features

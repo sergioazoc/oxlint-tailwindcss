@@ -5,7 +5,7 @@ import { makeDeclarations } from '../utils/declarations'
 
 function makeData(overrides: Partial<PrecomputedData> = {}): PrecomputedData {
   return {
-    validClasses: ['flex', 'p-4', 'bg-blue-500', 'items-center', 'group', '-m-0'],
+    validClasses: ['flex', 'p-4', 'bg-blue-500', 'items-center', 'group', 'peer', '-m-0'],
     canonical: { '-m-0': 'm-0', 'flex-grow': 'grow' },
     order: {
       flex: '100',
@@ -151,6 +151,64 @@ describe('isValid', () => {
     const cache = DesignSystemCache.fromPrecomputed(makeData())
     expect(cache.isValid('!flex')).toBe(true)
     expect(cache.isValid('flex!')).toBe(true)
+  })
+})
+
+/**
+ * Named group/peer markers (#102).
+ *
+ * Derived rather than listed: a marker is a precomputed class that emits ZERO
+ * declarations. Across every fixture in this suite that resolves to exactly
+ * `group` and `peer` (2 of ~23.6k classes), so the predicate self-prunes if
+ * Tailwind stops shipping the variants and self-extends if a new CSS-less marker
+ * appears — and `@container/main` is excluded for free, because it HAS
+ * declarations.
+ *
+ * The component set has to be subtracted, though: a component class referenced
+ * only through `[class~="…"]` (`not-prose`) also lands in the validity set with
+ * no declarations of its own, and `not-prose/x` is not Tailwind syntax.
+ */
+describe('isMarkerClass', () => {
+  it('recognizes named markers', () => {
+    const cache = DesignSystemCache.fromPrecomputed(makeData())
+    expect(cache.isMarkerClass('group/menu-item')).toBe(true)
+    expect(cache.isMarkerClass('peer/menu-button')).toBe(true)
+    // Any non-empty name: Tailwind never checks the name exists, and an
+    // arbitrary modifier on the consumer can reference shapes the bare syntax
+    // cannot spell.
+    expect(cache.isMarkerClass('group/1')).toBe(true)
+    expect(cache.isMarkerClass('group/*')).toBe(true)
+    expect(cache.isMarkerClass('peer//x')).toBe(true)
+    expect(cache.isMarkerClass('group/a/b')).toBe(true)
+  })
+
+  it('rejects the empty name, which compiles to nothing', () => {
+    const cache = DesignSystemCache.fromPrecomputed(makeData())
+    expect(cache.isMarkerClass('group/')).toBe(false)
+    expect(cache.isMarkerClass('peer/')).toBe(false)
+    expect(cache.isMarkerClass('/menu-item')).toBe(false)
+  })
+
+  it('rejects utilities that merely carry a slash modifier', () => {
+    const cache = DesignSystemCache.fromPrecomputed(makeData())
+    // `bg-blue-500` emits declarations, so it is not a marker.
+    expect(cache.isMarkerClass('bg-blue-500/50')).toBe(false)
+    expect(cache.isMarkerClass('flex')).toBe(false)
+    expect(cache.isMarkerClass('group')).toBe(false)
+    expect(cache.isMarkerClass('grup/menu-item')).toBe(false)
+  })
+
+  it('rejects CSS-less component classes', () => {
+    const cache = DesignSystemCache.fromPrecomputed(makeData())
+    // `not-prose` is in the validity set with zero declarations, exactly like a
+    // marker — but it is a component class, and `not-prose/x` is not syntax.
+    expect(cache.isMarkerClass('not-prose/x')).toBe(false)
+  })
+
+  it('honours the project prefix', () => {
+    const cache = DesignSystemCache.fromPrecomputed(makeData({ prefix: 'tw' }))
+    expect(cache.isMarkerClass('tw:group/menu-item')).toBe(true)
+    expect(cache.isMarkerClass('group/menu-item')).toBe(true)
   })
 })
 

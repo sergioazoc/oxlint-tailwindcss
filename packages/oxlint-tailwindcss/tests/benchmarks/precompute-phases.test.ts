@@ -67,27 +67,47 @@ function extractComponentClasses(cssPath, baseDir) {
       try { files.push(readFileSync(resolved, 'utf-8')); } catch {}
     }
   }
-  const result = [];
+  // Mirrors extractComponentClasses in sync-loader.ts — selectors only.
+  const result = new Set();
+  const classRe = /\\.(-?[a-zA-Z_][\\w-]*)/g;
   for (const content of files) {
-    const layerRe = /@layer\\s+(?:components|utilities)\\s*\\{/g;
-    let lm;
-    while ((lm = layerRe.exec(content)) !== null) {
-      let depth = 1, i = lm.index + lm[0].length;
-      while (i < content.length && depth > 0) {
-        if (content[i] === '{') depth++;
-        if (content[i] === '}') depth--;
-        i++;
+    let prelude = '';
+    for (let i = 0; i < content.length; i++) {
+      const c = content[i];
+      if (c === '/' && content[i + 1] === '*') {
+        const end = content.indexOf('*/', i + 2);
+        i = end === -1 ? content.length : end + 1;
+        continue;
       }
-      const block = content.slice(lm.index + lm[0].length, i - 1);
-      const selRe = /\\.([\\w-]+)/g;
-      let sm;
-      while ((sm = selRe.exec(block)) !== null) result.push(sm[1]);
+      if (c === '"' || c === "'") {
+        const quote = c;
+        i++;
+        while (i < content.length && content[i] !== quote) {
+          if (content[i] === '\\\\') i++;
+          i++;
+        }
+        continue;
+      }
+      if (c === '{') {
+        classRe.lastIndex = 0;
+        let m2;
+        while ((m2 = classRe.exec(prelude)) !== null) result.add(m2[1]);
+        prelude = '';
+        continue;
+      }
+      if (c === '}' || c === ';') {
+        if (c === ';' && prelude.trimStart().charCodeAt(0) === 64) {
+          classRe.lastIndex = 0;
+          let m3;
+          while ((m3 = classRe.exec(prelude)) !== null) result.add(m3[1]);
+        }
+        prelude = '';
+        continue;
+      }
+      prelude += c;
     }
-    const classSelRe = /\\.([a-zA-Z_][\\w-]*)/g;
-    let cs;
-    while ((cs = classSelRe.exec(content)) !== null) result.push(cs[1]);
   }
-  return [...new Set(result)];
+  return [...result];
 }
 
 ${DECL_EXTRACTOR_SOURCE}
@@ -223,17 +243,18 @@ async function main() {
 
   // === Phase 7: Component classes ===
   t = performance.now();
-  const componentClasses = extractComponentClasses(cssPath, base);
+  const componentSet = new Set(extractComponentClasses(cssPath, base));
   const attrClassRe = /\\[class~="([^"]+)"\\]/g;
   for (let i = 0; i < cssResults.length; i++) {
     if (cssResults[i]) {
       let acm;
       attrClassRe.lastIndex = 0;
       while ((acm = attrClassRe.exec(cssResults[i])) !== null) {
-        componentClasses.push(acm[1]);
+        componentSet.add(acm[1]);
       }
     }
   }
+  const componentClasses = [...componentSet];
   timings['7_component_classes'] = performance.now() - t;
 
   // === Phase 8: Arbitrary equivalents ===

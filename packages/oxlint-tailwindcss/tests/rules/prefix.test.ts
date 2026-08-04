@@ -47,6 +47,13 @@ run('no-unknown-classes (prefix)', noUnknownClasses, {
     { code: '<div className="tw:bg-[#123456]" />', filename: 'test.tsx' },
     { code: '<div className="tw:bg-blue-500/50" />', filename: 'test.tsx' },
     { code: '<div className="tw:!flex tw:items-center!" />', filename: 'test.tsx' },
+    // Named group/peer markers (#102). Under a prefix the marker Tailwind
+    // requires IS the prefixed form: `tw:group-hover/menu-item:underline`
+    // compiles to `:is(:where(.tw\:group\/menu-item):hover *)`.
+    { code: '<div className="tw:peer/menu-button" />', filename: 'test.tsx' },
+    { code: '<div className="tw:group/menu-item" />', filename: 'test.tsx' },
+    { code: '<div className="tw:hover:group/a/b" />', filename: 'test.tsx' },
+    { code: '<div className="tw:group-hover/menu-item:underline" />', filename: 'test.tsx' },
   ],
   invalid: [
     // Tailwind utility without the required prefix → missing-prefix (dead CSS).
@@ -77,6 +84,32 @@ run('no-unknown-classes (prefix)', noUnknownClasses, {
       code: '<div className="tw:not-a-real-class" />',
       filename: 'test.tsx',
       errors: [{ messageId: 'unknown' }],
+    },
+    // A named marker written WITHOUT the prefix is genuinely dead CSS: the
+    // consumer's selector references `.tw\:peer\/menu-button`, so the unprefixed
+    // spelling binds to nothing. This case is the guard that keeps the marker
+    // exemption from being "simplified" into an early blanket skip, which would
+    // turn a correct loud diagnostic into silence (#102).
+    {
+      code: '<div className="peer/menu-button" />',
+      filename: 'test.tsx',
+      errors: [
+        {
+          messageId: 'missingPrefix',
+          data: {
+            className: 'peer/menu-button',
+            prefix: 'tw',
+            suggestion: 'tw:peer/menu-button',
+          },
+          suggestions: [
+            {
+              messageId: 'suggestReplace',
+              data: { className: 'peer/menu-button', replacement: 'tw:peer/menu-button' },
+              output: '<div className="tw:peer/menu-button" />',
+            },
+          ],
+        },
+      ],
     },
   ],
 })
