@@ -326,7 +326,36 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `@container/main` for free. Splits at the FIRST slash (`peer//x`, `group/a/b` are legal names);
   only the EMPTY name is rejected. **Do not seed named markers into `validClasses`**: the `/name` is
   user-chosen and unbounded, `ds.parseCandidate('peer/menu-button')` returns `[]`, and it would feed
-  unbounded strings to the Levenshtein scan.
+  unbounded strings to the Levenshtein scan. Under a prefix an unprefixed marker reports
+  `missingPrefix`, never a Levenshtein neighbour — for `peer//x` that neighbour is the bare `peer`,
+  and the quick-fix would delete the name every consumer binds to.
+- **The DS verdict ACCEPTS as well as refutes** (`no-unknown-classes`, issue #104). The rule asks
+  `validateClassesSync` about every class the precompute doesn't know verbatim; that answer used to
+  be read only as `compiles === false`, so `validity === 'unknown'` won even when Tailwind had just
+  said the class compiles. It reclassifies now (`effectiveValidity`), and the heuristic is left with
+  the one thing only it knows: telling `unknown` from `missing-prefix`. **The service is blind to
+  the prefix by construction** — `declaration-service.ts` applies the project prefix before asking,
+  so `compiles === true` always means "the PREFIXED form compiles". Acceptance is therefore split on
+  a syntactic `prefixWritten` check, never on the verdict alone, or #29 comes straight back.
+  `undefined` (markers, excluded from the batch) must never accept. The gate stays
+  `validity === 'unknown'`: a component class under a prefix is already `'valid'` with no prefix
+  written, and accepting on `compiles` alone would report it as needing one. Symmetrically,
+  `missing-prefix` + `compiles === false` downgrades to `unknown` — `tw:bg-red-5000` is as dead as
+  `bg-red-5000`, so the prefix is not the fix.
+- **What `@utility` can and cannot enumerate** (#104): `--value(--brand-*)` (theme namespace) and
+  `--value("a","b")` (literal set) produce `getClassList()` entries; an OPEN type (`integer`,
+  `[length]`, …) produces NONE — not even the root. `ds.utilities.keys('functional')` is the only
+  API that sees the root, and the plugin deliberately does not use it: of 316 functional roots only
+  17 are missing from `knownPrefixes` and 16 are already recovered by existing passes, seeding would
+  have to bypass `validClasses` (or `isKnownClass('foo')` starts accepting a valueless `foo`), and
+  touching `PRECOMPUTE_SCRIPT` changes `CACHE_KEY` and forces every consumer to recompute.
+- **Off-scale percentages** (`cache.dynamicValuePrefix`, from the #104 audit): Tailwind enumerates
+  21 of the 101 percentages it compiles, so `from-33%` is as real as `w-45`. `prefixSets()` derives,
+  in the same lazy pass as `knownPrefixes`, the subset of prefixes with at least one enumerated `%`
+  class (22 of ~1 800). Keep it narrow: `enforce-logical`/`enforce-physical` guard their replacement
+  with `isValid` and nothing else, so accepting `<any known prefix>-N%` makes them rewrite `ml-33%`
+  into the equally dead `ms-33%`. The slash branch of `isValid` stays numeric-only — neither
+  `from-33%/50` nor `bg-black/50%` compiles.
 - **`no-conflicting-classes` decides from the emitted CSS**
   (`rules/no-conflicting-classes/decide.ts`): a shared `(box, property)` is a conflict only when the
   declaration that LOSES the cascade carries something the winner does not reproduce — equal value
