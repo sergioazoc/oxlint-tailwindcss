@@ -28,6 +28,11 @@ groups classes by their variant chain first (`hover:`, `dark:hover:`, …), then
 group — useful if you want responsive/state prefixes to cluster visually rather than interleave by
 utility. Most projects should keep the default; it's what every other Tailwind tooling does.
 
+`'strict'` sorts from the precomputed order, so a class Tailwind never enumerated borrows the
+position of the first sibling sharing its prefix: `from-33%` and `w-45` land in the `from-*` and
+`w-*` buckets rather than at their exact positions inside them. That's the approximation the mode is
+built on — `'default'` asks the worker for the real answer.
+
 ```jsonc
 { "tailwindcss/enforce-sort-order": ["error", { "mode": "strict" }] }
 ```

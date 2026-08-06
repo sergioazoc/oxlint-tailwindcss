@@ -109,6 +109,11 @@ describe('replacement validity', () => {
     valid: [
       // `ms-huge` does not exist, so there is nothing to suggest.
       { code: '<div className="ml-huge" />', filename: 'test.tsx' },
+      // Same guard, percentage edition. `ms-*` takes no percentage — only the 22
+      // gradient/mask/font-stretch prefixes do — so widening the off-scale
+      // heuristic to every known prefix would have this rewrite one dead class
+      // into another.
+      { code: '<div className="ml-33%" />', filename: 'test.tsx' },
     ],
     invalid: [
       // The scale utilities are unaffected: `ms-4` exists.

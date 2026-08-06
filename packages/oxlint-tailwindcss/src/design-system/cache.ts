@@ -17,6 +17,15 @@ import {
 const EMPTY_DECLARATIONS: readonly CssDeclaration[] = []
 const EMPTY_TOKEN_VALUES: readonly [string, string][] = []
 
+/** Off-scale numeric value: `w-45`, `min-h-17.5`, `gap-13`. */
+const DYNAMIC_NUMERIC_RE = /^(.+)-\d+\.?\d*$/
+/**
+ * Off-scale percentage: `from-33%`, `via-51%`, `mask-b-from-70%`. The integer is
+ * not an accident — Tailwind compiles `from-33%` and does NOT compile
+ * `from-33.5%`, so a decimal here would be tolerance with nothing behind it.
+ */
+const DYNAMIC_PERCENT_RE = /^(.+)-\d+%$/
+
 export class DesignSystemCache {
   private canonicalMap = new Map<string, string>()
   private deprecatedMap = new Map<string, string>()
@@ -39,7 +48,7 @@ export class DesignSystemCache {
   private variantFactsMap = new Map<string, VariantFacts>()
   private arbitraryEquivMap = new Map<string, string>()
   private _validClasses: string[] = []
-  private _knownPrefixes: Set<string> | null = null
+  private _prefixSets: { known: Set<string>; percent: Set<string> } | null = null
   private _maxOrder = 0n
   // Tailwind v4 project prefix ('' when none). All maps store prefix-free names;
   // this is consulted to strip/re-apply the prefix at the public-method boundary.
@@ -292,15 +301,55 @@ export class DesignSystemCache {
     return this._prefixOrderMap.get(prefix)
   }
 
-  private getKnownPrefixes(): Set<string> {
-    if (!this._knownPrefixes) {
-      this._knownPrefixes = new Set<string>()
+  /**
+   * The two prefix sets the off-scale heuristics need, derived in ONE pass over
+   * the ~23 600 valid class names.
+   *
+   * `known` is every dash-bounded prefix. `percent` is the subset that has at
+   * least one enumerated class ending in `%`, and it exists because Tailwind
+   * enumerates only 21 of the 101 percentages it compiles (0, 5, …, 100): a
+   * `from-33%` is as real as a `w-45`, and was reported as a typo of `from-35%`
+   * — a quick-fix that silently moves the gradient stop.
+   *
+   * The narrower set is the point. Accepting `<any known prefix>-N%` would reach
+   * the ~1 780 prefixes Tailwind has, when only 22 take a percentage, and the
+   * directional rules guard their replacements with `isValid` alone (no design
+   * system to refute them), so `ml-33%` → `ms-33%` would start being reported and
+   * autofixed from one dead class to another. Derived rather than listed: it
+   * self-extends when a plugin enumerates percentage classes and self-prunes when
+   * Tailwind stops emitting them.
+   */
+  private prefixSets(): { known: Set<string>; percent: Set<string> } {
+    if (!this._prefixSets) {
+      const known = new Set<string>()
+      const percent = new Set<string>()
       for (const cls of this._validClasses) {
         const dash = cls.lastIndexOf('-')
-        if (dash > 0) this._knownPrefixes.add(cls.slice(0, dash))
+        if (dash <= 0) continue
+        const prefix = cls.slice(0, dash)
+        known.add(prefix)
+        if (cls.endsWith('%')) percent.add(prefix)
       }
+      this._prefixSets = { known, percent }
     }
-    return this._knownPrefixes
+    return this._prefixSets
+  }
+
+  private getKnownPrefixes(): Set<string> {
+    return this.prefixSets().known
+  }
+
+  /**
+   * The utility prefix of an off-scale dynamic value, or null when the shape
+   * doesn't match or the prefix doesn't take that kind of value. Shared by
+   * `isValid` and `getOrder` so the two can't drift on what "dynamic" means.
+   */
+  private dynamicValuePrefix(bare: string): string | null {
+    const numeric = DYNAMIC_NUMERIC_RE.exec(bare)
+    if (numeric) return this.getKnownPrefixes().has(numeric[1]) ? numeric[1] : null
+    const percent = DYNAMIC_PERCENT_RE.exec(bare)
+    if (percent) return this.prefixSets().percent.has(percent[1]) ? percent[1] : null
+    return null
   }
 
   /**
@@ -397,19 +446,15 @@ export class DesignSystemCache {
       const base = bare.slice(0, slashIdx)
       // Base is a known valid class: bg-black/80 → bg-black valid
       if (this.validitySet.has(base)) return true
-      // Base has a known prefix + numeric value: aspect-3/2 → prefix "aspect" known + "3" numeric
-      if (/^(.+)-(\d+\.?\d*)$/.test(base)) {
-        const dashIdx = base.lastIndexOf('-')
-        if (dashIdx > 0 && this.getKnownPrefixes().has(base.slice(0, dashIdx))) return true
-      }
+      // Base has a known prefix + numeric value: aspect-3/2 → prefix "aspect" known + "3" numeric.
+      // Numeric only, deliberately: Tailwind compiles neither a percentage base
+      // (`from-33%/50`) nor a percentage modifier (`bg-black/50%`).
+      const numericBase = DYNAMIC_NUMERIC_RE.exec(base)
+      if (numericBase && this.getKnownPrefixes().has(numericBase[1])) return true
     }
 
-    // Dynamic numeric values: w-45, min-h-17.5, gap-13, etc.
-    // Tailwind v4 accepts any number for known utility prefixes
-    const numericMatch = /^(.+)-(\d+\.?\d*)$/.exec(bare)
-    if (numericMatch && this.getKnownPrefixes().has(numericMatch[1])) {
-      return true
-    }
+    // Dynamic values off the enumerated scale: w-45, min-h-17.5, gap-13, from-33%.
+    if (this.dynamicValuePrefix(bare) !== null) return true
 
     // Arbitrary values: bracket syntax [200px] or variable shorthand (--var)
     if (hasArbitraryValue(className)) return true
@@ -512,13 +557,10 @@ export class DesignSystemCache {
       }
     }
 
-    // Dynamic numeric values: underline-offset-3, gap-13, etc. → look up prefix
+    // Dynamic values off the scale: underline-offset-3, gap-13, from-33% → prefix
     if (baseOrder === undefined) {
-      const stripped = splitImportant(utility).bare
-      const numericMatch = /^(.+)-(\d+\.?\d*)$/.exec(stripped)
-      if (numericMatch && this.getKnownPrefixes().has(numericMatch[1])) {
-        baseOrder = this.findOrderByPrefix(numericMatch[1] + '-')
-      }
+      const prefix = this.dynamicValuePrefix(splitImportant(utility).bare)
+      if (prefix) baseOrder = this.findOrderByPrefix(prefix + '-')
     }
 
     if (baseOrder === undefined) return null

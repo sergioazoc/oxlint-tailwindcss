@@ -1,0 +1,13 @@
+@import 'tailwindcss' prefix(tw);
+
+/*
+ * Issue #104 under a project prefix (#29).
+ *
+ * The declaration service applies the prefix before asking the design system, so
+ * a "it compiles" verdict is always about `tw:foo-1` no matter which spelling was
+ * written. `tw:foo-1` is valid; a bare `foo-1` produces no CSS at all and has to
+ * keep reporting `missingPrefix`. This fixture is the guard on that split.
+ */
+@utility foo-* {
+  --foo: --value(integer);
+}

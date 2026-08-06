@@ -214,9 +214,46 @@ export const noUnknownClasses = defineRule({
           // rules can't disagree about what counts as deprecated.
           if (cache.deprecatedReplacement(bare)) continue
 
+          // `classValidity` is tolerant by design (it accepts anything shaped like
+          // a dynamic value), so a class it calls valid may still compile to
+          // nothing: `w-45` does, `bg-red-5000` and `bg-red-500/foo` don't, and
+          // they are the same shape. Only the design system can tell them apart.
+          const compiles = cache.isKnownClass(bare) ? true : verified?.get(bare)
+
+          // Was the prefix WRITTEN? Not the same question as "does it compile":
+          // the service applies the project prefix before asking (a prefixed
+          // design system resolves only `tw:foo-1`), so a `true` verdict is about
+          // the PREFIXED form no matter which spelling the user typed.
+          const prefixWritten = !cache.prefix || variant.startsWith(`${cache.prefix}:`)
+
+          // The verdict has to be able to ACCEPT, not only to refute (#104).
+          // `@utility foo-* { --foo: --value(integer) }` declares an open value
+          // type, and an open type has nothing to enumerate: `getClassList()`
+          // returns no entry for it — not `foo-1`, not even the root — so `foo`
+          // never reaches the precomputed class list and the tolerant heuristic
+          // has no prefix to match. It read `foo-1` as a typo of `top-1` while the
+          // design system, asked in the pre-pass above, was already answering that
+          // it compiles. A value type the theme bounds (`--value(--brand-*)`) or a
+          // literal set both enumerate fine, which is why only some custom
+          // utilities broke.
+          //
+          // The gate is `'unknown'` rather than `compiles === true` alone: a
+          // component class under a prefix (`hover:btn`) is already `'valid'` with
+          // no prefix written, and accepting on the verdict would report it as
+          // needing one. And `undefined` reclassifies nothing, which is what keeps
+          // the marker branch below intact.
+          let effectiveValidity = validity
+          if (validity === 'unknown' && compiles === true) {
+            effectiveValidity = prefixWritten ? 'valid' : 'missing-prefix'
+          } else if (validity === 'missing-prefix' && compiles === false) {
+            // Symmetrically: `tw:bg-red-5000` is as dead as `bg-red-5000`, so
+            // offering the prefix as the fix trades one dead class for another.
+            effectiveValidity = 'unknown'
+          }
+
           // A real Tailwind utility written without the required project prefix:
           // suggest the prefixed form rather than a Levenshtein neighbor.
-          if (validity === 'missing-prefix') {
+          if (effectiveValidity === 'missing-prefix') {
             const fixed = `${cache.prefix}:${cls}`
             reportWithSuggestion(
               loc,
@@ -234,22 +271,30 @@ export const noUnknownClasses = defineRule({
           // CSS lives in the consumer that references it (`group-hover/menu-item:`
           // compiles to `:is(:where(.group\/menu-item):hover *)`), so "does it
           // compile?" is the wrong question and both terms of `utilityIsUnknown`
-          // would answer it wrongly. Deliberately AFTER the missing-prefix branch:
-          // under `prefix(tw)` the marker Tailwind requires is `tw:group/menu-item`,
-          // so an unprefixed one is genuinely dead CSS and must stay reported.
-          if (
-            cache.isMarkerClass(bare) &&
-            (!cache.prefix || variant.startsWith(`${cache.prefix}:`))
-          ) {
+          // would answer it wrongly.
+          if (cache.isMarkerClass(bare)) {
+            // Under `prefix(tw)` the marker Tailwind requires is
+            // `tw:group/menu-item`, so an unprefixed one is genuinely dead CSS.
+            // The fix is the prefix, though — never a Levenshtein neighbor, which
+            // for the names only an arbitrary modifier reaches (`peer//x`) is the
+            // bare marker, and applying it deletes the name every consumer binds
+            // to. `classValidity` already routes the ordinary `peer/menu-button`
+            // here through its slash branch; this covers the rest.
+            if (prefixWritten) continue
+            const fixed = `${cache.prefix}:${cls}`
+            reportWithSuggestion(
+              loc,
+              classes,
+              cls,
+              fixed,
+              'missingPrefix',
+              { className: cls, prefix: cache.prefix, suggestion: fixed },
+              split,
+            )
             continue
           }
 
-          // `classValidity` is tolerant by design (it accepts anything shaped like
-          // a dynamic value), so a class it calls valid may still compile to
-          // nothing: `w-45` does, `bg-red-5000` and `bg-red-500/foo` don't, and
-          // they are the same shape. Only the design system can tell them apart.
-          const compiles = cache.isKnownClass(bare) ? true : verified?.get(bare)
-          const utilityIsUnknown = validity === 'unknown' || compiles === false
+          const utilityIsUnknown = effectiveValidity === 'unknown' || compiles === false
 
           if (utilityIsUnknown) {
             const suggestionBare = findBestSuggestion(bare, cache.validClasses)

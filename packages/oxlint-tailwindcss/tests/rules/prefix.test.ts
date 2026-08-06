@@ -22,6 +22,7 @@ import { makeFixtureRunner } from '../utils/with-fixture'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/with-prefix.css')
 const COMPONENTS_ENTRY_POINT = resolve(__dirname, '../fixtures/with-prefix-components.css')
+const UTILITY_ENTRY_POINT = resolve(__dirname, '../fixtures/with-prefix-utility.css')
 
 beforeAll(() => {
   resetDesignSystem()
@@ -34,6 +35,7 @@ afterAll(() => {
 
 const run = makeFixtureRunner(ENTRY_POINT)
 const runComponents = makeFixtureRunner(COMPONENTS_ENTRY_POINT)
+const runUtility = makeFixtureRunner(UTILITY_ENTRY_POINT)
 
 // ── no-unknown-classes (the core of #29) ────────────────────────────────────
 
@@ -110,6 +112,85 @@ run('no-unknown-classes (prefix)', noUnknownClasses, {
           ],
         },
       ],
+    },
+    // The names only an arbitrary modifier reaches take the same route. They used
+    // to fall through to Levenshtein, whose neighbour for `peer//x` is the bare
+    // `peer` — a quick-fix that deletes the name every consumer binds to, which
+    // is the destructive half of #102 surviving under a prefix.
+    {
+      code: '<div className="peer//x" />',
+      filename: 'test.tsx',
+      errors: [
+        {
+          messageId: 'missingPrefix',
+          suggestions: [
+            {
+              messageId: 'suggestReplace',
+              data: { className: 'peer//x', replacement: 'tw:peer//x' },
+              output: '<div className="tw:peer//x" />',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: '<div className="group/a/b" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'missingPrefix' }],
+    },
+    // Shaped like a Tailwind utility, so the tolerant heuristic calls it
+    // missing-prefix — but `tw:bg-red-5000` compiles nothing either, and offering
+    // it as the fix trades one dead class for another. The design system's
+    // verdict is what tells the two apart.
+    {
+      code: '<div className="bg-red-5000" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'unknownWithSuggestion' }],
+    },
+  ],
+})
+
+/**
+ * An open-typed `@utility` under a prefix (#104 × #29).
+ *
+ * The declaration service applies the prefix before asking, so "it compiles" is
+ * always a statement about `tw:foo-1`. Accepting on that verdict alone would
+ * silently readmit the unprefixed spelling — dead CSS — as valid.
+ */
+runUtility('no-unknown-classes (prefix + open value type)', noUnknownClasses, {
+  valid: [
+    { code: '<div className="tw:foo-1" />', filename: 'test.tsx' },
+    { code: '<div className="tw:hover:foo-2" />', filename: 'test.tsx' },
+    { code: '<div className="tw:!foo-3" />', filename: 'test.tsx' },
+  ],
+  invalid: [
+    {
+      code: '<div className="foo-1" />',
+      filename: 'test.tsx',
+      errors: [
+        {
+          messageId: 'missingPrefix',
+          data: { className: 'foo-1', prefix: 'tw', suggestion: 'tw:foo-1' },
+          suggestions: [
+            {
+              messageId: 'suggestReplace',
+              data: { className: 'foo-1', replacement: 'tw:foo-1' },
+              output: '<div className="tw:foo-1" />',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: '<div className="hover:foo-1" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'missingPrefix' }],
+    },
+    // `--value(integer)` still refuses this one, prefix or no prefix.
+    {
+      code: '<div className="tw:foo-abcdef" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'unknown' }],
     },
   ],
 })

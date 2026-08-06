@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.7.1
+
+`no-unknown-classes` was already asking the design system about the classes it could not enumerate,
+and already getting the right answer — it just wasn't allowed to act on it. The verdict was wired up
+to refute a guess (`compiles === false`) and never to confirm one, so every class the heuristic
+missed was reported no matter what Tailwind said. Two families were falling through that gap.
+
+### Bug fixes
+
+- **Custom utilities with an open value type are no longer reported.**
+  `@utility step-* { --step: --value(integer) }` declares a value space with nothing to enumerate,
+  so Tailwind's class list returns no entry for it — not `step-1`, not even the root `step`. The
+  precompute therefore never learned that `step` is a utility prefix, the off-scale heuristic had
+  nothing to match, and `step-1` was reported as a typo of `top-1`. A value type the theme bounds
+  (`--value(--brand-*)`) or a literal set (`--value("a","b")`) enumerates fine, which is why only
+  some custom utilities were affected — and why the report read as arbitrary. What the value type
+  does refuse still reports: `step-abc`, `step-1.5` and `step-[3]` under `--value(integer)`. Closes
+  [#104](https://github.com/sergioazoc/oxlint-tailwindcss/issues/104).
+
+- **Off-scale percentages are no longer reported.** Tailwind enumerates 21 of the 101 percentages it
+  compiles (0, 5, …, 100), so `from-33%`, `via-51%`, `mask-b-from-70%` and `font-stretch-57%` — 3921
+  class names across 22 prefixes — were read as typos, and the quick-fix offered `from-35%`: it
+  moves the gradient stop and leaves the lint green. The heuristic now derives which prefixes take a
+  percentage from the classes that do enumerate with one, so `p-4%` and `ms-33%` keep reporting.
+  `enforce-sort-order` in `mode: 'strict'` gains the same knowledge — those classes used to have no
+  order at all and were pushed to the front of the attribute.
+
+- **A prefix quick-fix is no longer offered for a class the prefix cannot save.** Under
+  `prefix(tw)`, `bg-red-5000` was reported as needing the prefix, with a fix producing
+  `tw:bg-red-5000` — equally dead. It now reports as unknown, with a spelling suggestion.
+
+- **The rest of [#102](https://github.com/sergioazoc/oxlint-tailwindcss/issues/102): named markers
+  under a project prefix.** `peer//x` and `group/a/b` — the marker names only an arbitrary modifier
+  on the consumer can reach — fell through to the spelling suggestion, whose neighbour is the bare
+  `peer`, and applying that quick-fix deletes the name every consumer binds to. They now report as
+  needing the prefix, like `peer/menu-button` already did.
+
+Nothing in the precompute changed, so the disk cache stays valid across the upgrade.
+
 ## 1.7.0
 
 Two false-positive families in `no-unknown-classes`, both found by asking what the design system
