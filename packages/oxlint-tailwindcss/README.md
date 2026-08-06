@@ -990,6 +990,13 @@ the box. If you find one that doesn't, open an issue.
 - Tailwind CSS v4
 - oxlint >= 1.43.0
 
+> **oxlint 1.77.0 crashes the language server.** Not a plugin bug, but you'll hit it through us:
+> 1.77.0 panics the oxlint **language server** on any diagnostic from any JS plugin
+> (`disable_fix.rs:52`, then SIGABRT and a restart loop). The upstream repro uses a different plugin
+> — [oxc#25278](https://github.com/oxc-project/oxc/issues/25278) — and the fix
+> ([oxc#25280](https://github.com/oxc-project/oxc/pull/25280)) is not released yet. The CLI is
+> unaffected, so CI is fine; if you use the editor extension, pin `oxlint@1.76.0` for now.
+
 ## License
 
 MIT

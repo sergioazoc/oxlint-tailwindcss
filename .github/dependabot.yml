@@ -17,3 +17,11 @@ updates:
     directory: /packages/oxlint-tailwindcss
     schedule:
       interval: weekly
+
+  # The docs site. Missing here until now, which is why VitePress was the one
+  # dependency that never got an automated bump — every other package in the
+  # workspace has had one.
+  - package-ecosystem: npm
+    directory: /packages/docs
+    schedule:
+      interval: weekly
