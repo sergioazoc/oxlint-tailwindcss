@@ -39,6 +39,17 @@ missed was reported no matter what Tailwind said. Two families were falling thro
 
 Nothing in the precompute changed, so the disk cache stays valid across the upgrade.
 
+### Compatibility
+
+- **Avoid oxlint 1.77.0 if you use the editor extension.** It shipped a regression that panics the
+  oxlint **language server** on any diagnostic from any JS plugin — `disable_fix.rs:52`, then
+  SIGABRT and a restart loop. Not specific to this plugin (the upstream repro uses
+  `@stylistic/eslint-plugin`), but you reach it through us because we emit diagnostics.
+  [oxc#25278](https://github.com/oxc-project/oxc/issues/25278) is open and the fix
+  ([oxc#25280](https://github.com/oxc-project/oxc/pull/25280)) is unreleased. The CLI never asks for
+  ignore fixes, so CI and `oxlint --fix` are unaffected; pin `oxlint@1.76.0` for editor use until a
+  release carries the fix.
+
 ## 1.7.0
 
 Two false-positive families in `no-unknown-classes`, both found by asking what the design system
