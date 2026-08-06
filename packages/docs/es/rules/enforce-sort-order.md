@@ -29,6 +29,11 @@ grupo — útil si quieres que los prefijos responsive/state queden visualmente 
 intercalados por utility. La mayoría de los proyectos deberían quedarse con el default; es lo que
 hace todo el tooling de Tailwind.
 
+`'strict'` ordena a partir del orden precomputado, así que una clase que Tailwind nunca enumeró toma
+prestada la posición del primer hermano que comparte su prefijo: `from-33%` y `w-45` caen en el
+bucket de `from-*` y de `w-*`, no en su posición exacta dentro de él. Esa es la aproximación sobre
+la que está construido el modo — `'default'` le pide al worker la respuesta real.
+
 ```jsonc
 { "tailwindcss/enforce-sort-order": ["error", { "mode": "strict" }] }
 ```

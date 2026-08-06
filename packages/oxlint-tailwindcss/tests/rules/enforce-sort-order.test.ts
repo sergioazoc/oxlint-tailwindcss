@@ -136,5 +136,16 @@ runWithFixture(ruleTester, 'enforce-sort-order (strict)', enforceSortOrder, ENTR
       errors: [{ messageId: 'unsorted' }],
       output: '<div className="flex dark:hover:bg-black dark:hover:text-white" />',
     },
+    // Off-scale percentages (#104 audit). Tailwind enumerates 21 of the 101 it
+    // compiles, so `from-33%` had no order at all and strict mode pushed it to
+    // the front of the attribute with the unknown classes. It now borrows its
+    // siblings' bucket, which is what `default` mode gets from the worker.
+    {
+      code: '<div className="from-33% flex to-50% bg-red-500" />',
+      filename: 'test.tsx',
+      options: [{ mode: 'strict' }],
+      errors: [{ messageId: 'unsorted' }],
+      output: '<div className="flex bg-red-500 from-33% to-50%" />',
+    },
   ],
 })

@@ -42,6 +42,38 @@ guess.
 `w-[garbage]` stays valid on purpose: Tailwind takes an arbitrary value verbatim and emits
 `width: garbage`. Whether that CSS is meaningful is not this rule's call.
 
+Percentages work the same way and used to be the loudest case of this: Tailwind enumerates 21 of the
+101 values it compiles (`from-0%`, `from-5%`, …), so `from-33%`, `via-51%`, `mask-b-from-70%` and
+`font-stretch-57%` were reported as typos — and the quick-fix offered `from-35%`, which moves the
+gradient stop and leaves the lint green. They are accepted now, on the same 22 prefixes Tailwind
+takes a percentage for; `p-4%` and `ms-33%` still report, because no percentage compiles there.
+
+### Custom utilities with an open value type
+
+`@utility` covers three kinds of value space, and only two of them can be listed:
+
+```css
+@utility brand-* {
+  --brand: --value(--brand-*);
+} /* bounded by the theme  → enumerable */
+@utility align-* {
+  --align: --value("a", "b");
+} /* a literal set         → enumerable */
+@utility step-* {
+  --step: --value(integer);
+} /* OPEN                  → not enumerable */
+```
+
+For the open one Tailwind's class list returns nothing at all — not `step-1`, not even the root
+`step` — because there is no finite set to return. The rule used to read `step-1` as a typo for that
+reason. It now asks the design system, which compiles the class and says so, and the same answer
+keeps refusing what the value type refuses: with `--value(integer)`, `step-abc`, `step-1.5` and
+`step-[3]` all still report.
+
+One consequence worth knowing: there is no spelling suggestion for this family. A suggestion is
+drawn from the enumerated class list, and by definition your open utility isn't in it — so a real
+typo in the root (`stepp-1`) reports as plainly unknown.
+
 ### Named group/peer markers are valid
 
 `group/menu-item` and `peer/menu-button` are the v4 idiom for binding a variant to **one specific**
@@ -80,6 +112,11 @@ prefix-aware:
 - Named markers need the prefix too, because that is what Tailwind puts in the selector:
   `tw:group-hover/menu-item:underline` compiles to `:is(:where(.tw\:group\/menu-item):hover *)`, so
   `tw:group/menu-item` is valid and a bare `group/menu-item` is reported as needing the prefix.
+- Your own `@utility` follows the same rule, including the open-value kind above: the design system
+  is asked about the prefixed form, so `tw:step-1` is valid and a bare `step-1` gets the quick-fix.
+- The prefix is only offered as the fix when the prefixed form actually compiles. `bg-red-5000` is
+  shaped like a utility, but `tw:bg-red-5000` is as dead as the unprefixed spelling, so that one is
+  reported as unknown with a spelling suggestion instead.
 
 The prefix is detected automatically from your `entryPoint`; there is nothing extra to configure.
 
@@ -151,7 +188,11 @@ maintain.
 <article className="prose prose-invert" />
 
 // Off-scale values Tailwind does compile
-<div className="w-45 gap-13 min-h-17.5" />
+<div className="w-45 gap-13 min-h-17.5 from-33%" />
+
+// Your own utility, whatever its value type
+// @utility step-* { --step: --value(integer) }
+<div className="step-1 step-42" />
 
 // Every variant shape, functional and arbitrary alike
 <div className="group-hover:flex data-[state=open]:grid @md:block [&>svg]:size-4" />

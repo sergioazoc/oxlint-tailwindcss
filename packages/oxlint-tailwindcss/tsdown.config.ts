@@ -10,7 +10,11 @@ export default defineConfig({
   // `pnpm add -D oxlint-tailwindcss` works with no peer/runtime dep to install
   // (issue #50). The real runtime deps (@tailwindcss/node, tailwindcss) stay
   // external — they're heavy and shareable.
-  deps: { alwaysBundle: ['@oxlint/plugins'] },
+  // `onlyBundle` states the other half of the invariant: this is the ONLY
+  // dependency that may end up inside the tarball. Without it tsdown warns on
+  // every build that something was bundled and asks whether it was intended —
+  // and a future dependency would be silently inlined instead of caught here.
+  deps: { alwaysBundle: ['@oxlint/plugins'], onlyBundle: ['@oxlint/plugins'] },
   // Disable the declaration-map too (rolldown-plugin-dts emits *.d.*.map and an
   // index.mjs.map otherwise), so the published tarball carries no sourcemaps.
   dts: { sourcemap: false },

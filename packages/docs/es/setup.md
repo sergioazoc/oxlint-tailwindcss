@@ -17,6 +17,16 @@ Requisitos:
   sintaxis v4 (`@import "tailwindcss";`, `@theme { ... }`).
 - **Node.js 20** o posterior para el proceso del linter.
 
+::: warning oxlint 1.77.0 crashea el language server No es un bug del plugin, pero te lo vas a
+encontrar a través nuestro: 1.77.0 trae una regresión que hace panic en el **language server** de
+oxlint ante cualquier diagnóstico de cualquier plugin JS — `disable_fix.rs:52`,
+`range end index N out of range for slice of length 0`, y después SIGABRT y bucle de reinicio. El
+repro upstream usa otro plugin ([oxc#25278](https://github.com/oxc-project/oxc/issues/25278)) y el
+arreglo ([oxc#25280](https://github.com/oxc-project/oxc/pull/25280)) todavía no está publicado.
+
+La CLI no está afectada — nunca pide ignore fixes — así que CI y `oxlint --fix` funcionan bien. Si
+usas la extensión del editor, fija `oxlint@1.76.0` hasta que salga una versión con el arreglo. :::
+
 ## 2. Configuración mínima
 
 Crea o extiende tu `.oxlintrc.json` en la raíz del proyecto:

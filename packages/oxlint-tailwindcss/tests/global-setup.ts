@@ -32,6 +32,8 @@ const FIXTURES = [
   'with-foreign-vars.css',
   'axis-namespaces.css',
   'custom-utility.css',
+  'open-value-utility.css',
+  'with-prefix-utility.css',
   'with-imported-theme.css',
 ]
 

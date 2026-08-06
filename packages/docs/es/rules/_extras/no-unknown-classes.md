@@ -38,6 +38,39 @@ así que la respuesta es la de Tailwind y no una conjetura.
 `w-[garbage]` sigue siendo válida a propósito: Tailwind toma un valor arbitrario tal cual y emite
 `width: garbage`. Si ese CSS tiene sentido o no, no es asunto de esta regla.
 
+Los porcentajes funcionan igual, y eran el caso más ruidoso: Tailwind enumera 21 de los 101 valores
+que compila (`from-0%`, `from-5%`, …), así que `from-33%`, `via-51%`, `mask-b-from-70%` y
+`font-stretch-57%` se reportaban como erratas — y el quick-fix ofrecía `from-35%`, que mueve la
+parada del degradado y deja el lint en verde. Ahora se aceptan, en los mismos 22 prefijos a los que
+Tailwind les admite un porcentaje; `p-4%` y `ms-33%` se siguen reportando, porque ahí no compila
+ninguno.
+
+### Las utilidades propias con tipo de valor abierto
+
+`@utility` cubre tres tipos de espacio de valores, y solo dos se pueden enumerar:
+
+```css
+@utility brand-* {
+  --brand: --value(--brand-*);
+} /* acotado por el tema  → enumerable */
+@utility align-* {
+  --align: --value("a", "b");
+} /* conjunto literal     → enumerable */
+@utility step-* {
+  --step: --value(integer);
+} /* ABIERTO              → no enumerable */
+```
+
+Para el abierto, la lista de clases de Tailwind no devuelve nada — ni `step-1`, ni siquiera la raíz
+`step` — porque no hay conjunto finito que devolver. Por eso la regla leía `step-1` como una errata.
+Ahora se lo pregunta al design system, que compila la clase y lo dice, y esa misma respuesta sigue
+rechazando lo que el tipo de valor rechaza: con `--value(integer)`, `step-abc`, `step-1.5` y
+`step-[3]` se siguen reportando.
+
+Una consecuencia que conviene conocer: para esta familia no hay sugerencia ortográfica. La
+sugerencia sale de la lista de clases enumeradas y, por definición, tu utilidad abierta no está ahí
+— así que una errata real en la raíz (`stepp-1`) se reporta como desconocida a secas.
+
 ### Los marcadores group/peer con nombre son válidos
 
 `group/menu-item` y `peer/menu-button` son el idioma de v4 para atar una variante a **un** ancestro
@@ -77,6 +110,12 @@ del prefijo:
   selector: `tw:group-hover/menu-item:underline` compila a
   `:is(:where(.tw\:group\/menu-item):hover *)`, así que `tw:group/menu-item` es válida y un
   `group/menu-item` sin prefijo se reporta como que le falta.
+- Tu propia `@utility` sigue la misma regla, incluida la de valor abierto de más arriba: al design
+  system se le pregunta por la forma prefijada, así que `tw:step-1` es válida y un `step-1` pelado
+  recibe el quick-fix.
+- El prefijo solo se ofrece como arreglo cuando la forma prefijada compila de verdad. `bg-red-5000`
+  tiene forma de utility, pero `tw:bg-red-5000` está tan muerta como la versión sin prefijo, así que
+  esa se reporta como desconocida con una sugerencia ortográfica.
 
 El prefijo se detecta automáticamente desde tu `entryPoint`; no hay nada extra que configurar.
 
@@ -149,7 +188,11 @@ de mantener.
 <article className="prose prose-invert" />
 
 // Valores fuera de escala que Tailwind sí compila
-<div className="w-45 gap-13 min-h-17.5" />
+<div className="w-45 gap-13 min-h-17.5 from-33%" />
+
+// Tu propia utility, sea cual sea su tipo de valor
+// @utility step-* { --step: --value(integer) }
+<div className="step-1 step-42" />
 
 // Todas las formas de variant, funcionales y arbitrarias
 <div className="group-hover:flex data-[state=open]:grid @md:block [&>svg]:size-4" />

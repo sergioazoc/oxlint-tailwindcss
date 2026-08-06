@@ -494,6 +494,71 @@ describe('custom variants', () => {
 })
 
 /**
+ * Custom utilities whose value type is OPEN (#104).
+ *
+ * `@utility foo-* { --foo: --value(integer) }` has no finite value set, so
+ * `getClassList()` enumerates nothing for it — not `foo-1`, not even the root.
+ * `foo` therefore never reaches `validClasses`, the tolerant numeric heuristic
+ * has no prefix to match, and `foo-1` read as a typo of `top-1`. The design
+ * system was already being asked and already answering "compiles"; the answer
+ * just wasn't allowed to accept, only to refute.
+ *
+ * The enumerable siblings are in the fixture as the contrast: a theme namespace
+ * (`bar-*`) and a literal set (`baz-*`) both enumerate, which is why only some
+ * custom utilities were ever affected.
+ */
+describe('custom utilities with an open value type', () => {
+  const OPEN_VALUE = resolve(__dirname, '../fixtures/open-value-utility.css')
+
+  runWithFixture(new RuleTester(), 'open value types', noUnknownClasses, OPEN_VALUE, {
+    valid: [
+      { code: '<div className="foo-1" />', filename: 'test.tsx' },
+      { code: '<div className="foo-0 foo-42" />', filename: 'test.tsx' },
+      // The variant chain is still compiled over an accepted utility.
+      { code: '<div className="hover:foo-2" />', filename: 'test.tsx' },
+      { code: '<div className="!foo-3 foo-4!" />', filename: 'test.tsx' },
+      // Mixed batch: the precomputed classes must not disturb the verified one.
+      { code: '<div className="foo-1 flex items-center" />', filename: 'test.tsx' },
+      // Enumerable value types — these always worked, and are what made the
+      // report read as arbitrary.
+      { code: '<div className="bar-red-500" />', filename: 'test.tsx' },
+      { code: '<div className="baz-a baz-b" />', filename: 'test.tsx' },
+    ],
+    invalid: [
+      // `--value(integer)` compiles none of these, and the exact answer has to
+      // survive the new acceptance path — otherwise #104 trades one silence for
+      // another.
+      {
+        code: '<div className="foo-abcdef" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknown' }],
+      },
+      {
+        code: '<div className="foo-1.5" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+      {
+        code: '<div className="foo-[3]" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknown' }],
+      },
+      // A typo in the ROOT is not rescued by any of this.
+      {
+        code: '<div className="fooo-1" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+      {
+        code: '<div className="hoverr:foo-1" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownVariantWithSuggestion' }],
+      },
+    ],
+  })
+})
+
+/**
  * Named group/peer markers (#102).
  *
  * `group/menu-item` binds `group-hover/menu-item:` to ONE specific ancestor, and

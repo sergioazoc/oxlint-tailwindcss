@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+
+/*
+ * The enumerability boundary of `@utility` (issue #104), all three cases side by
+ * side — that contrast is the fixture.
+ *
+ * `--value(integer)` declares an OPEN value type: there is no finite set to list,
+ * so `getClassList()` returns NOTHING for `foo-*` — not `foo-1`, not even the
+ * root `foo`. The precompute therefore never learns that `foo` is a utility
+ * prefix, and the tolerant numeric heuristic has no prefix to match. Only the
+ * design system can answer whether `foo-1` compiles.
+ *
+ * `bar-*` (bounded by a theme namespace) and `baz-*` (a literal set) DO enumerate
+ * and land in `validClasses` the ordinary way, which is why only some custom
+ * utilities were ever affected.
+ */
+@utility foo-* {
+  --foo: --value(integer);
+}
+
+@utility bar-* {
+  --bar: --value(--color-*);
+}
+
+@utility baz-* {
+  --baz: --value('a', 'b', 'c');
+}

@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
-import { RULE_NAMES } from '../scripts/rules'
+// Extension included on purpose: Vite's native config loader (the planned
+// default) cannot resolve an extensionless relative import, and warns about
+// this one on every build.
+import { RULE_NAMES } from '../scripts/rules.ts'
 
 // Read the published package version so the nav label never drifts from the
 // real release. Resolved relative to this file, not the build cwd.

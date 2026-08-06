@@ -155,6 +155,89 @@ describe('isValid', () => {
 })
 
 /**
+ * Off-scale percentages, found auditing #104.
+ *
+ * Tailwind enumerates 21 of the 101 percentages it compiles (0, 5, …, 100), so
+ * `from-33%` is exactly as real as `w-45` — and was reported as a typo of
+ * `from-35%`, a quick-fix that silently moves the gradient stop. The prefix set
+ * is derived from the classes that DO enumerate with a `%`, which is what keeps
+ * the tolerance from spilling onto the ~1 780 prefixes that take no percentage:
+ * `enforce-logical` guards its replacement with `isValid` and nothing else, so a
+ * blanket rule would have it rewrite `ml-33%` to the equally dead `ms-33%`.
+ */
+describe('off-scale percentages', () => {
+  const percentData = (overrides: Partial<PrecomputedData> = {}) =>
+    makeData({
+      validClasses: [
+        'flex',
+        'p-4',
+        'w-4',
+        'ms-0',
+        '-m-0',
+        'from-0%',
+        'from-50%',
+        'font-stretch-50%',
+      ],
+      order: { flex: '100', 'p-4': '200', 'from-0%': '400', 'from-50%': '410' },
+      ...overrides,
+    })
+
+  it('accepts a percentage on a prefix that enumerates percentages', () => {
+    const cache = DesignSystemCache.fromPrecomputed(percentData())
+    expect(cache.isValid('from-33%')).toBe(true)
+    expect(cache.isValid('from-7%')).toBe(true)
+    expect(cache.isValid('font-stretch-57%')).toBe(true)
+  })
+
+  it('rejects a percentage on a prefix that enumerates none', () => {
+    const cache = DesignSystemCache.fromPrecomputed(percentData())
+    expect(cache.isValid('p-4%')).toBe(false)
+    expect(cache.isValid('ms-33%')).toBe(false)
+    expect(cache.isValid('w-45%')).toBe(false)
+    expect(cache.isValid('-m-3%')).toBe(false)
+  })
+
+  it('rejects shapes Tailwind does not compile', () => {
+    const cache = DesignSystemCache.fromPrecomputed(percentData())
+    // Decimals: `from-33%` compiles, `from-33.5%` does not.
+    expect(cache.isValid('from-33.5%')).toBe(false)
+    expect(cache.isValid('-from-10%')).toBe(false)
+  })
+
+  it('survives the ! modifier and a variant chain', () => {
+    const cache = DesignSystemCache.fromPrecomputed(percentData())
+    expect(cache.isValid('!from-33%')).toBe(true)
+    expect(cache.isValid('from-33%!')).toBe(true)
+    expect(cache.isValid('hover:from-33%')).toBe(true)
+  })
+
+  it('leaves the numeric tolerance untouched', () => {
+    const cache = DesignSystemCache.fromPrecomputed(percentData())
+    expect(cache.isValid('w-45')).toBe(true)
+    expect(cache.isValid('p-13')).toBe(true)
+    expect(cache.isValid('w-17.5')).toBe(true)
+  })
+
+  it('tells missing-prefix from unknown under a project prefix', () => {
+    const cache = DesignSystemCache.fromPrecomputed(percentData({ prefix: 'tw' }))
+    expect(cache.classValidity('tw:from-33%')).toBe('valid')
+    expect(cache.classValidity('from-33%')).toBe('missing-prefix')
+    expect(cache.classValidity('tw:p-4%')).toBe('unknown')
+  })
+
+  it('orders a percentage next to its siblings, approximately', () => {
+    const cache = DesignSystemCache.fromPrecomputed(percentData())
+    // Borrowed from the first `from-*` in iteration order, not looked up: which
+    // is why `hasExactOrder` still says no and `no-conflicting-classes` never
+    // names a winner from it.
+    expect(cache.getOrder('from-33%')).toBe(cache.getOrder('from-0%'))
+    expect(cache.hasExactOrder('from-33%')).toBe(false)
+    expect(cache.hasExactOrder('from-50%')).toBe(true)
+    expect(cache.getOrder('p-4%')).toBeNull()
+  })
+})
+
+/**
  * Named group/peer markers (#102).
  *
  * Derived rather than listed: a marker is a precomputed class that emits ZERO
