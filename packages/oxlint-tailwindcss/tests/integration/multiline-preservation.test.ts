@@ -9,9 +9,11 @@
  *
  * The fix: those rules now use `splitClassesWithSeparators` + `rebuildClassString`
  * from `class-splitter.ts`, which preserves separators verbatim for 1-to-1
- * transformations and degrades gracefully for length-changing ones (shorthand,
- * no-duplicate). This test pins down that property for every migrated rule:
- * given a multiline input, the autofix MUST keep the `\n` + indent intact.
+ * transformations and preserves the per-line structure for length-changing ones
+ * (shorthand, no-duplicate) via a `sourceIndices` map — so a block keeps its
+ * grouping instead of reflowing to one class per line. This test pins down that
+ * property for every migrated rule: given a multiline input, the autofix MUST
+ * keep the `\n` + indent intact and NOT collapse the block.
  */
 
 import { resolve } from 'node:path'
@@ -158,16 +160,17 @@ describe('multiline preservation under default theme', () => {
     ],
   })
 
-  // Length-shrinking — degrades gracefully to multiline join.
+  // Length-shrinking — preserves the block structure (the surviving line keeps
+  // its multi-class grouping; the merged shorthand lands at the end per the
+  // rule's filter+push order). NOT collapsed to one class per line.
   run('enforce-shorthand keeps multiline', enforceShorthand, {
     valid: [],
     invalid: [
       {
-        code: `const className = \`pl-2 pr-2${NL}text-white\``,
+        code: 'const className = `\n  flex mt-2 mb-2\n  bg-white p-4 text-black\n`',
         filename: 'a.tsx',
         errors: [{ messageId: 'shorthand' }],
-        // 3→2: rebuildClassString picks the newline+indent separator for the join.
-        output: `const className = \`text-white${NL}px-2\``,
+        output: 'const className = `\n  flex\n  bg-white p-4 text-black my-2\n`',
       },
     ],
   })
@@ -185,15 +188,16 @@ describe('multiline preservation under default theme', () => {
     ],
   })
 
-  // Length-shrinking — must preserve the surviving newline.
+  // Length-shrinking — removes the dup, keeps each line's grouping. The `\n`
+  // that the removed dup did NOT carry stays put; line 1 keeps two classes.
   run('no-duplicate-classes keeps multiline', noDuplicateClasses, {
     valid: [],
     invalid: [
       {
-        code: `const className = \`flex flex${NL}p-4\``,
+        code: 'const className = `\n  flex flex items-center\n  bg-white p-4\n`',
         filename: 'a.tsx',
         errors: [{ messageId: 'duplicate' }],
-        output: `const className = \`flex${NL}p-4\``,
+        output: 'const className = `\n  flex items-center\n  bg-white p-4\n`',
       },
     ],
   })

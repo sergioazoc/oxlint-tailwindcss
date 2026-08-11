@@ -1,5 +1,64 @@
 # Changelog
 
+## 1.8.0
+
+Three issues ([#109](https://github.com/sergioazoc/oxlint-tailwindcss/issues/109),
+[#110](https://github.com/sergioazoc/oxlint-tailwindcss/issues/110),
+[#111](https://github.com/sergioazoc/oxlint-tailwindcss/issues/111)) reported that the two
+formatting rules mishandled the **block convention** for multiline template literals — the common
+shape where the classes start and end on their own lines:
+
+```tsx
+const className = `
+  flex items-center justify-between
+  bg-white rounded-lg shadow-sm
+`
+```
+
+The cause was shared: for a template with no expressions, the raw value between the backticks
+includes the leading `\n`, every line's indentation, and the trailing `\n` + indentation before the
+closing backtick. The rules measured, counted, and trimmed that raw value as if it were a single
+line.
+
+### Bug fixes
+
+- **`enforce-consistent-line-wrapping` `printWidth` now measures the longest line, not the raw
+  total.** The check compared the entire raw string length — every `\n` and indent included —
+  against `printWidth`, so splitting a long string across lines only ever made it longer and could
+  never satisfy the rule (it even flagged its own `classesPerLine` output). It now measures the
+  longest individual line, and reports that length. A one-line string is unchanged (its only line is
+  its whole length). Closes [#110](https://github.com/sergioazoc/oxlint-tailwindcss/issues/110).
+
+- **`enforce-consistent-line-wrapping` `classesPerLine` now counts classes per line.** It counted
+  the flat total across all lines, so an already-correctly-wrapped block (say 3 per line, budget 4)
+  was reported as a false positive. It now checks each line independently. Closes
+  [#111](https://github.com/sergioazoc/oxlint-tailwindcss/issues/111).
+
+- **`no-unnecessary-whitespace` no longer strips the indented closing backtick.** When the closing
+  backtick sat on its own indented line (`\n    ` before the `` ` ``), the trailing-edge trim ate
+  one space of that indentation and reported it as unnecessary whitespace. That trailing indentation
+  is intentional block-convention formatting and is now preserved (a whitespace-only last line is
+  never trimmed); a genuine single-line trailing space is still stripped. Closes
+  [#109](https://github.com/sergioazoc/oxlint-tailwindcss/issues/109).
+
+### Changes
+
+- **The `classesPerLine` autofix now wraps into the block convention.** It previously produced a
+  hanging indent aligned to the opening backtick's column (absurdly deep inside nested JSX, and it
+  fought `printWidth`). It now emits the block shape — content on its own lines, one level of
+  indentation below the statement, closing backtick on its own line — with the base indentation read
+  from the source line so it nests correctly at any depth. The fix is **non-destructive**: a
+  template that is already wrapped only has its over-budget lines re-wrapped; conforming lines are
+  left verbatim.
+
+- **`no-duplicate-classes` and `enforce-shorthand` preserve a block's per-line grouping.** Removing
+  a duplicate or collapsing a shorthand pair changes the class count, which used to reflow a
+  multi-class-per-line block down to one class per line. Those fixers now keep each surviving line's
+  grouping (and transfer a line break forward when the class that opened a line is removed), so only
+  the changed classes move.
+
+The precompute is untouched, so the disk cache stays valid across the upgrade.
+
 ## 1.7.1
 
 `no-unknown-classes` was already asking the design system about the classes it could not enumerate,

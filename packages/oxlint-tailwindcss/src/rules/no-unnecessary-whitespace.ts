@@ -43,7 +43,14 @@ export const noUnnecessaryWhitespace = defineRule({
         if (normalized.startsWith(' ') && !loc.preserveLeadingSpace) {
           normalized = normalized.slice(1)
         }
-        if (normalized.endsWith(' ') && !loc.preserveTrailingSpace) {
+        // The trailing whitespace of an indented closing backtick (`\n    ` before
+        // the `` ` ``) is intentional formatting, not a stray trailing space — never
+        // strip it, or a block-convention template gets one indent space eaten (#109).
+        // Detect it as: the last line (after the final `\n`) is whitespace-only.
+        const lastNl = normalized.lastIndexOf('\n')
+        const trailingIsClosingIndent =
+          lastNl !== -1 && /^[ \t]*$/.test(normalized.slice(lastNl + 1))
+        if (normalized.endsWith(' ') && !loc.preserveTrailingSpace && !trailingIsClosingIndent) {
           normalized = normalized.slice(0, -1)
         }
 

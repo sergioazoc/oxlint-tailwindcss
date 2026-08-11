@@ -409,7 +409,21 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
 - **Multiline-safe class string rebuilding**: rules use `splitClassesWithSeparators` +
   `rebuildClassString` from `class-splitter.ts` to preserve `\n` + indent introduced by
   `enforce-consistent-line-wrapping`. The matrix test in
-  `tests/integration/multiline-preservation.test.ts` locks behavior down per rule.
+  `tests/integration/multiline-preservation.test.ts` locks behavior down per rule. Count-changing
+  fixers (`no-duplicate-classes`, `enforce-shorthand`) pass a `sourceIndices` array to
+  `rebuildClassString` so it recovers each output class's original separator (`pickSeparator`) and
+  keeps the block's per-line grouping instead of reflowing to one class per line; the legacy
+  no-mapping degrade branch survives as a fallback.
+- **`enforce-consistent-line-wrapping` block convention (#109/#110/#111)**: `printWidth` measures
+  the **longest individual line** of the class string (not the raw total — a multiline template's
+  raw value includes every `\n`+indent, which made wrapping unsatisfiable). `classesPerLine` counts
+  classes **per line**, not the flat total. Its `classesPerLine` autofix wraps into the **block
+  convention** (leading `\n`, one-level-deeper interior indent, trailing `\n` + base indent) and is
+  **non-destructive** (only over-budget lines are re-wrapped; conforming lines stay verbatim). The
+  base indent is derived from the source line via `safeSourceCode(context)` (`utils/context.ts`) —
+  the first rule to read `context.sourceCode`; `node.loc.start.column` is the backtick column, NOT
+  the base indent. `no-unnecessary-whitespace` must preserve the block's indented closing backtick
+  (`\n` + whitespace-only last line) or the two rules re-enter the #14 cycle.
 - **Worker services lifecycle**: `sort-service.ts` and `canonicalize-service.ts` are thin wrappers
   around `DesignSystemWorker<Req, Res>` (in `design-system/ds-worker.ts`). The class owns the
   SharedArrayBuffer + Atomics protocol, lifecycle (`worker.unref()` so the process can exit), and a

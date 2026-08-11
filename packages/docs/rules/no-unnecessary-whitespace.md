@@ -12,7 +12,9 @@ DS-independent — works without `settings.tailwindcss.entryPoint`. Pure whitesp
 
 The rule is **multiline-aware**: it deliberately preserves `\n` + the indentation that follows each
 newline. That's the format `enforce-consistent-line-wrapping` produces with `classesPerLine`, and
-collapsing it back would set up an unfixable cycle between the two rules (issue #14). Inside one
+collapsing it back would set up an unfixable cycle between the two rules (issue #14). This includes
+the indented closing backtick of the block convention (a `\n` + spaces before the closing `` ` ``) —
+that trailing indentation is intentional formatting and is never trimmed (issue #109). Inside one
 line, tabs and double spaces still collapse normally.
 
 Template literals get one extra rule: a single trailing space before an expression
@@ -55,6 +57,12 @@ const className = `flex\titems-center`
 // Multiline (e.g. from enforce-consistent-line-wrapping): preserved
 const className = `bg-red-500 text-white
                    hover:bg-red-600 focus:ring-2`
+
+// Block convention: the indented closing backtick is preserved (#109)
+const className = `
+  bg-red-500 text-white
+  hover:bg-red-600 focus:ring-2
+`
 ```
 
 ## Interactions with other rules
