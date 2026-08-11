@@ -110,3 +110,12 @@ encuentran strings de clases. No hace falta deshabilitar el plugin por archivo.
 Activa `settings.tailwindcss.debug` (o la variable `DEBUG=oxlint-tailwindcss`) y oxlint va a
 imprimir una línea por archivo mostrando qué CSS cargó el plugin para ese archivo. Útil cuando un
 glob matchea el mapping equivocado.
+
+## Motores de Tailwind por package
+
+Para cada entry point CSS resuelto, el plugin carga el motor de Tailwind (`@tailwindcss/node`) desde
+el `node_modules` de ese package, así los packages fijados a versiones distintas de Tailwind se
+lintean cada uno con el motor con el que compilan. El guard de versión corre por package también —
+un motor más viejo que v4.1, un major futuro, o un drift de major respecto del build de ese package
+falla fuerte (ver [`allowUntestedEngine`](/es/settings#allowuntestedengine)). No tenés que hacer
+nada para esto; sigue la misma resolución de entry point por archivo de arriba.

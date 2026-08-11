@@ -33,6 +33,14 @@ than the build compiled with** — with no warning
   could poison each other's cache entry. The key format is unchanged for the common single-engine
   case, so existing on-disk caches remain valid.
 
+### Dependencies
+
+- Dev tooling: `oxlint` / `@oxlint/plugins` 1.77.0 → 1.78.0 (fixes the 1.77.0 language-server crash
+  on JS-plugin diagnostics, [oxc#25280](https://github.com/oxc-project/oxc/pull/25280)), `oxfmt`
+  0.62.0 → 0.63.0, `@types/node` 26.1 → 26.2. Runtime dependencies are unchanged.
+
+## 1.8.0
+
 Three issues ([#109](https://github.com/sergioazoc/oxlint-tailwindcss/issues/109),
 [#110](https://github.com/sergioazoc/oxlint-tailwindcss/issues/110),
 [#111](https://github.com/sergioazoc/oxlint-tailwindcss/issues/111)) reported that the two

@@ -93,7 +93,7 @@ It grades that engine against the version it was built for:
 - **In range and aligned** → silent.
 
 Set this to `true` to downgrade the future-major / major-drift **fatals** to a warning and lint
-anyway (results may be inaccurate against an untested engine). An engine older than v4 stays fatal
+anyway (results may be inaccurate against an untested engine). An engine older than v4.1 stays fatal
 regardless.
 
 ```jsonc

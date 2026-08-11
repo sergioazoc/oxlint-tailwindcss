@@ -95,7 +95,7 @@ versiones distintas de Tailwind). Evalúa ese motor contra la versión para la q
 
 Ponlo en `true` para degradar los **fatales** de major futuro / drift de major a un warning y
 lintear igual (los resultados pueden ser inexactos contra un motor no probado). Un motor más viejo
-que v4 sigue siendo fatal de todos modos.
+que v4.1 sigue siendo fatal de todos modos.
 
 ```jsonc
 {

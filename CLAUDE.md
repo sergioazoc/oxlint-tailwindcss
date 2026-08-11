@@ -113,10 +113,20 @@ Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is 
    `canonicalize-service` adds a process-wide per-class cache keyed by
    `${cssPath}\0${rem}\0${class}`, rounding rem/em/px floats (`roundRemValue`) before storing so the
    worker path matches the precomputed map.
-3. **`@tailwindcss/node` path/version** lives in `design-system/tailwind-node.ts` as
-   `TAILWIND_NODE_PATH` and `TAILWIND_NODE_VERSION`, resolved once at module load. `sync-loader`,
-   `sort-service`, and `canonicalize-service` all consume those constants — no per-call
-   `require.resolve` dance.
+3. **`@tailwindcss/node` engine resolution** lives in `design-system/tailwind-node.ts`, two layers
+   (issue #114). (a) **Bundled fallback** — `TAILWIND_NODE_PATH` / `TAILWIND_NODE_VERSION`, resolved
+   ONCE at module load from the plugin's own copy: the path is the last-resort engine (and the
+   specifier workers resolve from a tmp-dir `eval` context), and `TAILWIND_NODE_VERSION` is the
+   "tested ceiling" the engine guard grades against. (b) **Per-entry-point resolution** —
+   `resolveTailwindNodeFor(cssPath)` resolves the CONSUMER's engine from the `node_modules` around
+   the resolved CSS entry point (CSS dir first, then via the build tool `@tailwindcss/postcss` /
+   `vite` / `cli` following pnpm symlinks with `realpathSync`, finally the bundled copy; prefers the
+   candidate whose version equals the build's `tailwindcss`). Returns
+   `{ nodePath, nodeVersion (E), buildVersion (B), usedBundled }`, memoized per CSS directory
+   (`resolutionCache`, cleared by `resetTailwindNode`). It's a pure function of the on-disk module
+   topology, so `sync-loader`, `ds-worker` (behind the sort/canonicalize services), the disk-cache
+   key, and the engine guard all independently agree on ONE engine per `cssPath` — no threading. In
+   a monorepo, packages pinned to different Tailwind versions each get their own engine.
 
 DS-dependent rules: `no-unknown-classes`, `no-conflicting-classes`, `enforce-canonical`,
 `enforce-sort-order`, `no-unnecessary-arbitrary-value`, `prefer-theme-tokens`.
@@ -237,10 +247,27 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
 - **Fail-loud (v1)**: If the DS can't load, DS-dependent rules emit a single
   `designSystemUnavailable` diagnostic via the shared `safeGetDS` helper in `src/utils/fatal.ts`.
   There is no silent fallback. The dedicated error types — `MissingEntryPointError`,
-  `DeprecatedEntryPointShapeError`, `DesignSystemLoadError`, `SortServiceError` — all extend
-  `OxlintTailwindError` and carry an optional `hint` field that renders alongside the message. The
-  one legitimate exception is `consistent-variant-order`, whose static fallback is itself
-  deterministic and can stand in for the DS.
+  `DeprecatedEntryPointShapeError`, `DesignSystemLoadError`, `SortServiceError`,
+  `UnsupportedEngineError` — all extend `OxlintTailwindError` and carry an optional `hint` field
+  that renders alongside the message. `UnsupportedEngineError` (from the engine guard, #114) routes
+  through the same `designSystemUnavailable` messageId, so no rule declares an engine-specific
+  messageId (locked by `fatal-errors.test.ts`). The one legitimate exception is
+  `consistent-variant-order`, whose static fallback is itself deterministic and can stand in for the
+  DS.
+- **Engine version guard (#114, `design-system/engine-guard.ts`)**: after `resolveTailwindNodeFor`
+  picks the consumer's engine, `guardEngine` — called once per entry point from
+  `getLoadedDesignSystem`, INSIDE the `dsFailureCache` try so a fatal verdict is memoized by
+  `(path, mtime)` like a load failure — grades
+  `(E = resolved @tailwindcss/node version, B = consumer's tailwindcss version)` against the tested
+  ceiling `TAILWIND_NODE_VERSION` and the supported floor `MIN_ENGINE = 4.1.0` (**4.0.x lacks
+  `ds.canonicalizeCandidates`**, so v4.1 is the hard floor). Verdicts: older than v4.1 → fatal
+  always (the flag never rescues it); a future major (v5+) or a major-level build drift → fatal
+  unless `settings.tailwindcss.allowUntestedEngine: true` downgrades it to a warn; a newer minor or
+  a minor-level build drift → one-time stderr warning (deduped in `warnedEngineKeys`, reset via
+  `resetEngineGuard`); in-range + aligned → silent. A fatal throws `UnsupportedEngineError`. The
+  comparator is a hand-rolled semver subset (`parseVersion`/`compareVersions`) — no `semver` dep;
+  `allowUntestedEngineFromSettings` reads the flag. `getLoadedDesignSystem` accepts an `engineInfo?`
+  test seam to inject `(E, B)` without a second Tailwind install.
 - **`!` (important) modifier**: Tailwind supports prefix (`!flex`) and suffix (`flex!`). ALL rules
   that do class lookups or transformations MUST round-trip through `splitImportant` +
   `reattachImportant` from `utils/class-parser.ts`. Cache methods (`getOrder`, `canonicalize`,
@@ -267,12 +294,19 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `os.tmpdir()/oxlint-tailwindcss-<uid>/` (namespaced by uid, created `mode 0o700`), keyed **only**
   by content hash. Per-user + `0700` closes the shared-`/tmp` cache-poisoning vector (a predictably
   named, world-writable cache fed autofixes). The legacy two-level mtime-index + content-cache
-  scheme is gone; mtime is tracked in memory inside `loader.ts` for the per-process fast path.
-  `CACHE_KEY` (computed once at module load) is
-  `${md5(PRECOMPUTE_SCRIPT).slice(0,8)}:${tailwindVersion}`. The content hash folds in the entry CSS
-  **and its locally-`@import`ed files** (`hashableContent`, recursive to a small depth), so editing
-  an imported `@theme`/component file invalidates the cache — not just editing the entry. Every read
-  is schema-validated (`isPrecomputedData`): a corrupt, truncated, or poisoned file (or a `{}` that
+  scheme is gone; mtime is tracked in memory inside `loader.ts` for the per-process fast path. The
+  module-level `CACHE_KEY` is gone (#114): `SCRIPT_HASH = md5(PRECOMPUTE_SCRIPT).slice(0,8)` (no
+  version), and the engine version is folded in **per entry point** via
+  `computeContentHash(content, engineVersion)` = `md5(${SCRIPT_HASH}:${engineVersion}:${content})`,
+  where `engineVersion` comes from `engineCacheKey(resolveTailwindNodeFor(css))` — the resolved
+  `@tailwindcss/node` version, tiebroken on `nodePath` when it reads `'unknown'`. The format is
+  byte-identical for the common single-engine case (existing on-disk caches stay valid), but two
+  monorepo packages with identical CSS and different engines no longer share (poison) a cache entry.
+  `computeCacheKey(script, version)` is kept exported ONLY for the unit tests that pin the
+  `${scriptHash}:${version}` shape. The content hash folds in the entry CSS **and its
+  locally-`@import`ed files** (`hashableContent`, recursive to a small depth), so editing an
+  imported `@theme`/component file invalidates the cache — not just editing the entry. Every read is
+  schema-validated (`isPrecomputedData`): a corrupt, truncated, or poisoned file (or a `{}` that
   would otherwise crash `fromPrecomputed`) reads as a miss, is deleted under the lock, and
   recomputed — never wedges the loader. Content-based caching enables monorepo deduplication.
 - **Cold-cache precompute coordination (#24)**: parallel oxlint isolates that all miss the cache for
@@ -348,7 +382,8 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   API that sees the root, and the plugin deliberately does not use it: of 316 functional roots only
   17 are missing from `knownPrefixes` and 16 are already recovered by existing passes, seeding would
   have to bypass `validClasses` (or `isKnownClass('foo')` starts accepting a valueless `foo`), and
-  touching `PRECOMPUTE_SCRIPT` changes `CACHE_KEY` and forces every consumer to recompute.
+  touching `PRECOMPUTE_SCRIPT` changes `SCRIPT_HASH` (folded into the content hash) and forces every
+  consumer to recompute.
 - **Off-scale percentages** (`cache.dynamicValuePrefix`, from the #104 audit): Tailwind enumerates
   21 of the 101 percentages it compiles, so `from-33%` is as real as `w-45`. `prefixSets()` derives,
   in the same lazy pass as `knownPrefixes`, the subset of prefixes with at least one enumerated `%`
@@ -445,7 +480,9 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `schema: []` (no options) deliberately do NOT declare it — oxlint's schema validator rejects `{}`
   against an empty schema. `consistent-variant-order` declares `defaultOptions: [{}]` (no `order`)
   so that leaving `order` undefined still triggers the DS-vs-static fallback detection.
-- **Runtime deps**: only `@tailwindcss/node` and `tailwindcss`. No synckit, no external workers.
+- **Runtime deps**: only `@tailwindcss/node` and `tailwindcss`. No synckit, no external workers, and
+  no `semver` — the engine guard's version comparator (`parseVersion`/`compareVersions` in
+  `engine-guard.ts`) is a hand-rolled subset to keep the runtime dependency set at two.
 - **Arbitrary→named overlap** (`enforce-canonical` ↔ `no-unnecessary-arbitrary-value` ↔
   `prefer-theme-tokens`): three rules can transform an arbitrary value into a named utility, each
   owning a distinct case so they don't double-fire on the same input. Coexistence matrix locked down
