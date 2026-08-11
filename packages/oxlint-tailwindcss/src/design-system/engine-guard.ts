@@ -34,8 +34,14 @@ export interface Semver {
   prerelease: string | null
 }
 
-/** `4.0.0`, the minimum engine version (a `4.0.0-*` prerelease sorts below it). */
-const MIN_ENGINE: Semver = { major: 4, minor: 0, patch: 0, prerelease: null }
+/**
+ * `4.1.0`, the minimum engine version. The precompute calls
+ * `ds.canonicalizeCandidates`, which the design system only exposes from
+ * Tailwind 4.1 onward — on 4.0.x it throws `is not a function`, so we fail loud
+ * with a clear message before spawning the worker. A `4.1.0-*` prerelease sorts
+ * below it.
+ */
+const MIN_ENGINE: Semver = { major: 4, minor: 1, patch: 0, prerelease: null }
 
 /**
  * Parse a version string into `{ major, minor, patch, prerelease }`, or `null`
@@ -130,13 +136,14 @@ export function assessEngine(E: string, B: string, opts: AssessOptions): EngineV
     }
   }
 
-  // 2 & 3. Older than v4 (including a 4.0.0 prerelease) → fatal, always (allow is for the future).
+  // 2 & 3. Older than v4.1 (v3, or a 4.0.x that lacks canonicalizeCandidates) →
+  // fatal, always (allow is for the future, not for ancient engines).
   if (pe.major < SUPPORTED_MAJOR || compareVersions(pe, MIN_ENGINE) < 0) {
     return {
       verdict: 'fatal',
       kind: 'engine-too-old',
-      message: `oxlint-tailwindcss requires Tailwind CSS v4 or newer, but the resolved engine is ${E}.`,
-      hint: 'Upgrade tailwindcss / @tailwindcss/node to v4, or pin an older oxlint-tailwindcss.',
+      message: `oxlint-tailwindcss requires Tailwind CSS v4.1 or newer, but the resolved engine is ${E}.`,
+      hint: 'Upgrade tailwindcss / @tailwindcss/node to v4.1+, or pin an older oxlint-tailwindcss.',
     }
   }
 

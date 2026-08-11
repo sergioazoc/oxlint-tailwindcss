@@ -85,7 +85,8 @@ El plugin carga **tu** motor de Tailwind — el `@tailwindcss/node` resuelto des
 alrededor de cada entry point, por entry point (así los paquetes de un monorepo pueden estar en
 versiones distintas de Tailwind). Evalúa ese motor contra la versión para la que fue construido:
 
-- **Más viejo que Tailwind v4** → fatal (`designSystemUnavailable`). No lo afecta esta opción.
+- **Más viejo que Tailwind v4.1** → fatal (`designSystemUnavailable`). No lo afecta esta opción
+  (4.0.x no tiene una API del design system que el plugin necesita).
 - **Un major más nuevo que el plugin** (p. ej. un futuro Tailwind 5), o un **drift de major** entre
   el motor y el `tailwindcss` que usa tu build → fatal por defecto.
 - **Un minor más nuevo**, o un **drift a nivel de minor** respecto de tu build → un warning único en

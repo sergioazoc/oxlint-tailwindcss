@@ -156,6 +156,23 @@ describe('assessEngine — decision table (bundled = 4.3.3 unless noted)', () =>
       verdict: 'fatal',
       kind: 'engine-too-old',
     },
+    {
+      // 4.0.x lacks ds.canonicalizeCandidates (added in 4.1) — fail loud before the precompute.
+      name: 'released 4.0.x is below the floor',
+      E: '4.0.9',
+      B: '4.0.9',
+      opts: B33,
+      verdict: 'fatal',
+      kind: 'engine-too-old',
+    },
+    {
+      name: 'a 4.1.0 prerelease is below the floor',
+      E: '4.1.0-beta.1',
+      B: '4.1.0-beta.1',
+      opts: B33,
+      verdict: 'fatal',
+      kind: 'engine-too-old',
+    },
     // Row 4 — future major.
     {
       name: 'v5 blocks by default',
@@ -266,7 +283,7 @@ describe('assessEngine — decision table (bundled = 4.3.3 unless noted)', () =>
     },
     // Row 8 — ok.
     { name: 'exactly bundled', E: '4.3.3', B: '4.3.3', opts: B33, verdict: 'ok', kind: 'ok' },
-    { name: 'floor version', E: '4.0.0', B: '4.0.0', opts: B33, verdict: 'ok', kind: 'ok' },
+    { name: 'floor version', E: '4.1.0', B: '4.1.0', opts: B33, verdict: 'ok', kind: 'ok' },
     {
       name: 'older-but-supported is silent',
       E: '4.2.0',
@@ -313,6 +330,11 @@ describe('assessEngine — decision table (bundled = 4.3.3 unless noted)', () =>
 
     const old = assessEngine('3.4.17', '3.4.17', B33)
     expect(old.message).toContain('3.4.17')
+    expect(old.message).toContain('v4.1') // names the supported floor
+
+    const tooOld40 = assessEngine('4.0.9', '4.0.9', B33)
+    expect(tooOld40.verdict).toBe('fatal')
+    expect(tooOld40.message).toContain('4.0.9')
 
     const driftMajor = assessEngine('4.3.3', '3.4.0', B33)
     expect(driftMajor.hint).toContain('allowUntestedEngine')

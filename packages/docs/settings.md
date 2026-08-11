@@ -84,7 +84,8 @@ The plugin loads **your** Tailwind engine — the `@tailwindcss/node` resolved f
 each entry point, per entry point (so a monorepo's packages can be on different Tailwind versions).
 It grades that engine against the version it was built for:
 
-- **Older than Tailwind v4** → fatal (`designSystemUnavailable`). Not affected by this flag.
+- **Older than Tailwind v4.1** → fatal (`designSystemUnavailable`). Not affected by this flag (4.0.x
+  lacks a design-system API the plugin needs).
 - **A major newer than the plugin** (e.g. a future Tailwind 5), or a **major-version drift** between
   the engine and the `tailwindcss` your build uses → fatal by default.
 - **A newer minor**, or a **minor-level drift** from your build → a one-time stderr warning; the

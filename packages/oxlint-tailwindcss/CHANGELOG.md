@@ -18,12 +18,13 @@ than the build compiled with** — with no warning
   violations from #114.
 
 - **Version safeguards for forward compatibility.** The resolved engine is graded per entry point:
-  an engine older than v4 or a major newer than the plugin was built for (e.g. a future Tailwind 5),
-  and a major-version drift between the engine and the build, fail loud as
-  `designSystemUnavailable`; a newer minor or a minor-level build drift emits a one-time stderr
-  warning and lints best-effort. The new `settings.tailwindcss.allowUntestedEngine: true` downgrades
-  the future-major / major-drift fatals to a warning so you can opt into linting against an untested
-  engine. An engine older than v4 stays fatal regardless.
+  an engine older than v4.1 (the supported floor — 4.0.x lacks a design-system API the plugin needs)
+  or a major newer than the plugin was built for (e.g. a future Tailwind 5), and a major-version
+  drift between the engine and the build, fail loud as `designSystemUnavailable`; a newer minor or a
+  minor-level build drift emits a one-time stderr warning and lints best-effort. The new
+  `settings.tailwindcss.allowUntestedEngine: true` downgrades the future-major / major-drift fatals
+  to a warning so you can opt into linting against an untested engine. An engine older than v4.1
+  stays fatal regardless.
 
 ### Bug fixes
 
