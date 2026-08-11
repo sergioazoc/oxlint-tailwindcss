@@ -5,6 +5,7 @@ import {
   MissingEntryPointError,
   OxlintTailwindError,
   SortServiceError,
+  UnsupportedEngineError,
   formatFatalError,
   isFatalError,
   reportFatalDsError,
@@ -29,10 +30,25 @@ describe('fatal errors', () => {
     expect(isFatalError(new DesignSystemLoadError('b'))).toBe(true)
     expect(isFatalError(new SortServiceError('c'))).toBe(true)
     expect(isFatalError(new DeprecatedEntryPointShapeError('d'))).toBe(true)
-    expect(isFatalError(new OxlintTailwindError('e'))).toBe(true)
+    expect(isFatalError(new UnsupportedEngineError('e'))).toBe(true)
+    expect(isFatalError(new OxlintTailwindError('f'))).toBe(true)
     expect(isFatalError(new Error('regular'))).toBe(false)
     expect(isFatalError('not an error')).toBe(false)
     expect(isFatalError(null)).toBe(false)
+  })
+
+  it('routes UnsupportedEngineError to designSystemUnavailable with no per-rule meta change', () => {
+    // A new OxlintTailwindError subclass is fatal and reports through the same
+    // messageId every DS-dependent rule already declares — the version guard
+    // needs no new messageId anywhere.
+    const report = vi.fn()
+    const err = new UnsupportedEngineError('engine 5.0.0 unverified', 'set allowUntestedEngine')
+    expect(reportFatalDsError({ report }, err)).toBe(true)
+    expect(report).toHaveBeenCalledWith({
+      node: undefined,
+      messageId: 'designSystemUnavailable',
+      data: { message: 'engine 5.0.0 unverified\n\nHint: set allowUntestedEngine' },
+    })
   })
 
   it('formatFatalError appends the hint when present', () => {

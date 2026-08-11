@@ -108,3 +108,12 @@ strings. There is no need to disable the plugin per-file.
 Set `settings.tailwindcss.debug` (or the `DEBUG=oxlint-tailwindcss` env var) and oxlint will print
 one line per file showing which CSS the plugin loaded for it. Useful when a glob is matching the
 wrong mapping.
+
+## Per-package Tailwind engines
+
+For each resolved CSS entry point the plugin loads the Tailwind engine (`@tailwindcss/node`) from
+that package's own `node_modules`, so packages pinned to different Tailwind versions are each linted
+with the engine they actually build with. The version guard runs per package too — an engine older
+than v4.1, a future major, or a major-version drift from that package's build fails loud (see
+[`allowUntestedEngine`](/settings#allowuntestedengine)). You don't need to do anything for this; it
+follows the same per-file entry-point resolution above.

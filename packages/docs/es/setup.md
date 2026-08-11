@@ -13,19 +13,19 @@ pnpm add -D oxlint oxlint-tailwindcss
 Requisitos:
 
 - **oxlint 1.43.0** o posterior.
-- **Tailwind CSS v4**. El plugin carga tu design system vía `@tailwindcss/node` y solo entiende
-  sintaxis v4 (`@import "tailwindcss";`, `@theme { ... }`).
+- **Tailwind CSS v4.1** o posterior. El plugin carga tu design system vía `@tailwindcss/node` y solo
+  entiende sintaxis v4 (`@import "tailwindcss";`, `@theme { ... }`). Resuelve el Tailwind de _tu_
+  proyecto por entry point; 4.0.x no está soportado (es anterior a una API del design system que el
+  plugin necesita) y se reporta con un diagnóstico claro.
 - **Node.js 20** o posterior para el proceso del linter.
 
-::: warning oxlint 1.77.0 crashea el language server No es un bug del plugin, pero te lo vas a
-encontrar a través nuestro: 1.77.0 trae una regresión que hace panic en el **language server** de
-oxlint ante cualquier diagnóstico de cualquier plugin JS — `disable_fix.rs:52`,
-`range end index N out of range for slice of length 0`, y después SIGABRT y bucle de reinicio. El
-repro upstream usa otro plugin ([oxc#25278](https://github.com/oxc-project/oxc/issues/25278)) y el
-arreglo ([oxc#25280](https://github.com/oxc-project/oxc/pull/25280)) todavía no está publicado.
-
-La CLI no está afectada — nunca pide ignore fixes — así que CI y `oxlint --fix` funcionan bien. Si
-usas la extensión del editor, fija `oxlint@1.76.0` hasta que salga una versión con el arreglo. :::
+::: warning Evita oxlint 1.77.0 con la extensión del editor oxlint **1.77.0** trae una regresión que
+hace panic en el **language server** ante cualquier diagnóstico de un plugin JS —
+`disable_fix.rs:52`, `range end index N out of range for slice of length 0`, y después SIGABRT y
+bucle de reinicio. Es un bug de oxlint, no del plugin, y la CLI no está afectada (CI y
+`oxlint --fix` funcionan bien). Está **corregido en oxlint 1.78.0**
+([oxc#25280](https://github.com/oxc-project/oxc/pull/25280)) — sube a `oxlint@1.78.0` o posterior (o
+quédate en `1.76.0`) si usas la extensión del editor. :::
 
 ## 2. Configuración mínima
 
@@ -175,5 +175,10 @@ y plugins como `@tailwindcss/typography`.
   plugin al worker (hilo) que precomputa el design system. CI lento puede necesitar subirlo.
 - **Logging de debug**: `settings.tailwindcss.debug: true` (o `DEBUG=oxlint-tailwindcss`) loguea qué
   CSS entry point resolvió por cada archivo lintado.
+- **Qué Tailwind se usa**: el plugin carga el motor de Tailwind de _tu_ proyecto, resuelto por entry
+  point, así el linter y tu build coinciden. Si el motor resuelto es un major más nuevo que el
+  plugin (un futuro Tailwind 5) o tiene un drift de major respecto de tu build, falla fuerte;
+  `settings.tailwindcss.allowUntestedEngine: true` permite correr igual. Ver la
+  [referencia de settings](/es/settings#allowuntestedengine).
 - **¿Vienes de v0.x?** Lee la [guía de migración](/es/migration/v0-to-v1) — `entryPoint` ahora es
   obligatorio y la forma legacy `string[]` fue removida.

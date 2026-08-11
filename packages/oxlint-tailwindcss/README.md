@@ -18,8 +18,11 @@ Read the story behind this plugin:
   per package. Both fully deterministic.
 - **Coexists with oxfmt and Prettier** — Point all tools at the same CSS and they agree
   byte-for-byte. See the [interop guide](https://oxlint-tailwindcss.pages.dev/interop).
-- **Tailwind CSS v4** — Designed for v4 from day one. Reads your `@theme { ... }` custom tokens,
-  your shadcn variables, your typography plugin.
+- **Tailwind CSS v4.1+** — Designed for v4 from day one. Reads your `@theme { ... }` custom tokens,
+  your shadcn variables, your typography plugin. It loads _your_ project's Tailwind engine, resolved
+  per entry point, so the linter and your build agree; an engine older than v4.1, a future major, or
+  a major-version drift from your build fails loud (opt back in with
+  `settings.tailwindcss.allowUntestedEngine`).
 - **Fail loud** — Misconfiguration surfaces as a single `designSystemUnavailable` diagnostic with an
   actionable hint. Never silently skipped rules.
 - **Fast** — Native oxlint plugin with per-entry-point caching and content-hash disk cache for
@@ -987,15 +990,15 @@ the box. If you find one that doesn't, open an issue.
 ## Requirements
 
 - Node.js >= 20
-- Tailwind CSS v4
+- Tailwind CSS v4.1 or newer (4.0.x is not supported — it predates a design-system API the plugin
+  needs, and is reported with a clear diagnostic)
 - oxlint >= 1.43.0
 
-> **oxlint 1.77.0 crashes the language server.** Not a plugin bug, but you'll hit it through us:
-> 1.77.0 panics the oxlint **language server** on any diagnostic from any JS plugin
-> (`disable_fix.rs:52`, then SIGABRT and a restart loop). The upstream repro uses a different plugin
-> — [oxc#25278](https://github.com/oxc-project/oxc/issues/25278) — and the fix
-> ([oxc#25280](https://github.com/oxc-project/oxc/pull/25280)) is not released yet. The CLI is
-> unaffected, so CI is fine; if you use the editor extension, pin `oxlint@1.76.0` for now.
+> **Avoid oxlint 1.77.0 with the editor extension.** 1.77.0 panics the oxlint **language server** on
+> any diagnostic from any JS plugin (`disable_fix.rs:52`, then SIGABRT and a restart loop). It's an
+> oxlint bug, not a plugin one, and the CLI is unaffected (CI is fine). It's **fixed in oxlint
+> 1.78.0** ([oxc#25280](https://github.com/oxc-project/oxc/pull/25280)) — upgrade to `oxlint@1.78.0`
+> or newer (or stay on `1.76.0`) if you use the editor extension.
 
 ## License
 

@@ -34,6 +34,16 @@ export interface PluginSettings {
   entryPoint?: string | EntryPointMapping[]
   /** Enable debug logging to stderr (also activable via DEBUG=oxlint-tailwindcss env var) */
   debug?: boolean
+  /**
+   * Run even when the resolved Tailwind engine is a major version newer than
+   * the one this plugin was built for (e.g. a future Tailwind 5), or drifts a
+   * major from the version your build uses. Off by default: those cases are
+   * fatal (`designSystemUnavailable`) because the plugin's results may not
+   * match your compiled CSS. Setting this to `true` downgrades them to a
+   * one-time stderr warning and lints best-effort. An engine older than v4 is
+   * never allowed — it stays fatal regardless of this flag.
+   */
+  allowUntestedEngine?: boolean
   /** Root font size in pixels for px→named conversion (default: 16). Used by enforce-canonical. */
   rootFontSize?: number
   /** Timeout in milliseconds for design system loading (default: 60000) */

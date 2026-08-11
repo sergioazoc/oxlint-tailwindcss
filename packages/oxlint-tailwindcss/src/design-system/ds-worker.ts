@@ -17,7 +17,7 @@
 
 import { Worker } from 'node:worker_threads'
 import { SortServiceError } from '../utils/fatal'
-import { TAILWIND_NODE_PATH } from './tailwind-node'
+import { resolveTailwindNodeFor } from './tailwind-node'
 
 // SharedArrayBuffer layout:
 //   [0] Int32 — requestSignal  (0=idle, 1=has_request)
@@ -143,6 +143,13 @@ export interface DesignSystemWorkerOptions {
 export class DesignSystemWorker<Req, Res> {
   // One warm worker per cssPath (#77), insertion-ordered so the first key is
   // the least-recently-used; `ensure` re-inserts on a hit to mark it MRU.
+  //
+  // Keyed by cssPath alone (NOT cssPath+engine): one engine per cssPath per
+  // process is guaranteed by the memoized `resolveTailwindNodeFor` + require
+  // cache pinning, so a fixed cssPath can never need two engines in-process. An
+  // engine upgrade is only ever observed by a fresh process (empty maps). If
+  // hot engine reload is ever introduced, switch the key to
+  // `${cssPath}\0${nodeVersion}` and pair it with a resolver-memo invalidation.
   private workers = new Map<string, ReadyState>()
   // Sticky errors keyed per cssPath. A failure for one entry point must not be
   // forgotten when another entry point is linted in between — the old single
@@ -177,7 +184,11 @@ export class DesignSystemWorker<Req, Res> {
       return existing
     }
 
-    if (TAILWIND_NODE_PATH === null) {
+    // Resolve the consumer's engine for this entry point (issue #114). The same
+    // memoized pure resolver feeds the precompute and the disk-cache key, so all
+    // layers load the identical @tailwindcss/node for a given cssPath.
+    const { nodePath: tailwindNodePath } = resolveTailwindNodeFor(cssPath)
+    if (tailwindNodePath === null) {
       throw this.remember(
         cssPath,
         new SortServiceError(
@@ -196,7 +207,7 @@ export class DesignSystemWorker<Req, Res> {
     try {
       worker = new Worker(this.opts.workerScript, {
         eval: true,
-        workerData: { sharedBuffer, cssPath, tailwindNodePath: TAILWIND_NODE_PATH },
+        workerData: { sharedBuffer, cssPath, tailwindNodePath },
       })
     } catch (cause) {
       throw this.remember(

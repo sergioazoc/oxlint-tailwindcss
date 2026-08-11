@@ -31,7 +31,7 @@ import {
 import { dirname, join, resolve } from 'node:path'
 import { tmpdir, userInfo } from 'node:os'
 import { DesignSystemLoadError } from '../utils/fatal'
-import { TAILWIND_NODE_PATH, TAILWIND_NODE_VERSION } from './tailwind-node'
+import { resolveTailwindNodeFor, type TailwindNodeResolution } from './tailwind-node'
 import { type CssDeclarationIndex, isCssDeclarationIndex } from './css-declarations'
 
 export interface PrecomputedData {
@@ -137,7 +137,7 @@ export interface PrecomputedData {
  * `tests/benchmarks/precompute-phases.test.ts` used to keep a hand-copied
  * duplicate of the extractor that silently drifted from the real one, and it is
  * interpolated (not concatenated at runtime), so its text still feeds the
- * `CACHE_KEY` md5 and any edit here invalidates the disk cache automatically.
+ * `SCRIPT_HASH` md5 and any edit here invalidates the disk cache automatically.
  *
  * Exports (in the worker scope): `walkDeclarations`, `scanVarReads`,
  * `isPureVarRead`.
@@ -1057,18 +1057,36 @@ const CACHE_DIR = join(tmpdir(), cacheDirName())
  *   - md5(PRECOMPUTE_SCRIPT): auto-invalidates when our precompute logic changes,
  *     since the shape and content of the cached JSON is fully determined by what
  *     this script prints to stdout.
- *   - @tailwindcss/node version: auto-invalidates when the consumer upgrades
- *     tailwindcss (e.g. 4.2 → 4.3 adding `zoom-*`, `tab-*`, `scrollbar-*` etc.),
- *     so `validClasses`, `cssProps`, `canonical`, and `arbitraryEquivalents`
- *     reflect the installed version. @tailwindcss/node and tailwindcss are
- *     published together, so their versions match.
+ *   - the resolved `@tailwindcss/node` version: auto-invalidates when the engine
+ *     changes (e.g. 4.2 → 4.3 adding `zoom-*`, `tab-*`, `scrollbar-*` etc.), so
+ *     `validClasses`, `cssProps`, `canonical`, and `arbitraryEquivalents` reflect
+ *     the installed version.
+ *
+ * Kept exported (with the same `${scriptHash}:${version}` shape it always had)
+ * for the unit tests that pin the key format. The hot path uses `SCRIPT_HASH` +
+ * the per-entry-point engine version via `computeContentHash`, NOT a single
+ * module-global key — in a monorepo two packages can resolve different engines.
  */
 export function computeCacheKey(scriptContent: string, tailwindVersion: string): string {
   const scriptHash = createHash('md5').update(scriptContent).digest('hex').slice(0, 8)
   return `${scriptHash}:${tailwindVersion}`
 }
 
-const CACHE_KEY = computeCacheKey(PRECOMPUTE_SCRIPT, TAILWIND_NODE_VERSION)
+/** md5 of the precompute script (no version) — the version is folded in per entry point. */
+const SCRIPT_HASH = createHash('md5').update(PRECOMPUTE_SCRIPT).digest('hex').slice(0, 8)
+
+/**
+ * The engine identifier folded into the content hash. Normally the resolved
+ * `@tailwindcss/node` version; when that is `'unknown'` (unreadable
+ * `package.json`) two genuinely different engines would both hash as `unknown`,
+ * so tiebreak on the resolved path (machine-local, but the disk cache is
+ * per-uid/per-machine anyway, and under pnpm the path encodes the version).
+ */
+function engineCacheKey(res: TailwindNodeResolution): string {
+  return res.nodeVersion === 'unknown' && res.nodePath !== null
+    ? `unknown@${res.nodePath}`
+    : res.nodeVersion
+}
 
 /**
  * Single-level disk cache keyed by content hash only.
@@ -1087,8 +1105,8 @@ const CACHE_KEY = computeCacheKey(PRECOMPUTE_SCRIPT, TAILWIND_NODE_VERSION)
 
 export const DEFAULT_LOAD_TIMEOUT_MS = 60_000
 
-function computeContentHash(content: string): string {
-  return createHash('md5').update(`${CACHE_KEY}:${content}`).digest('hex')
+function computeContentHash(content: string, engineVersion: string): string {
+  return createHash('md5').update(`${SCRIPT_HASH}:${engineVersion}:${content}`).digest('hex')
 }
 
 // Captures the target of `@import "..."`, `@import '...'` and `@import url("...")`.
@@ -1103,7 +1121,7 @@ const IMPORT_RE = /@import\s+(?:url\(\s*)?['"]([^'"]+)['"]/g
  *
  * Resolves RELATIVE imports (`./`, `../`) recursively up to a small depth;
  * package imports (`@import "tailwindcss"`, `tw-animate-css`) are already
- * covered by the `@tailwindcss/node` version baked into CACHE_KEY. Best-effort:
+ * covered by the engine version folded into the content hash. Best-effort:
  * an unreadable import contributes nothing (it can't affect the DS either).
  */
 function hashableContent(entryPath: string, entryContent: string): string {
@@ -1150,7 +1168,8 @@ function getContentCachePath(contentHash: string): string {
 export function cacheArtifactPaths(cssPath: string): { json: string; lock: string } {
   const resolved = resolve(cssPath)
   const content = readFileSync(resolved, 'utf-8')
-  const hash = computeContentHash(hashableContent(resolved, content))
+  const res = resolveTailwindNodeFor(resolved)
+  const hash = computeContentHash(hashableContent(resolved, content), engineCacheKey(res))
   return { json: getContentCachePath(hash), lock: join(CACHE_DIR, `${hash}.lock`) }
 }
 
@@ -1491,7 +1510,14 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
     )
   }
 
-  const contentHash = computeContentHash(hashableContent(resolvedPath, content))
+  // Resolve the engine from the CONSUMER's project (issue #114), anchored on
+  // the entry point's directory. The version discriminates the disk cache so a
+  // monorepo's per-package engines never share a cache entry.
+  const engine = resolveTailwindNodeFor(resolvedPath)
+  const contentHash = computeContentHash(
+    hashableContent(resolvedPath, content),
+    engineCacheKey(engine),
+  )
   const contentCachePath = getContentCachePath(contentHash)
 
   const cached = tryReadCache(contentCachePath)
@@ -1501,7 +1527,7 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
   // Bare-specifier resolution from the worker's cwd would fail under pnpm
   // strict workspaces where the consumer's project root has no direct
   // access to the plugin's transitive deps.
-  if (TAILWIND_NODE_PATH === null) {
+  if (engine.nodePath === null) {
     throw new DesignSystemLoadError(
       `Could not resolve '@tailwindcss/node' while loading "${resolvedPath}".`,
       "Install '@tailwindcss/node' (or upgrade oxlint-tailwindcss) and re-run.",
@@ -1515,7 +1541,7 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
   // Returns validated `PrecomputedData` — malformed payloads are caught inside.
   return computeWithLock(
     resolvedPath,
-    TAILWIND_NODE_PATH,
+    engine.nodePath,
     contentHash,
     contentCachePath,
     timeout ?? DEFAULT_LOAD_TIMEOUT_MS,

@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.9.0
+
+The plugin declared `tailwindcss` and `@tailwindcss/node` as dependencies and resolved the engine
+relative to its own location, so when a project pinned a Tailwind version outside the plugin's
+range, npm/pnpm silently installed a second copy and **the linter analyzed with a different engine
+than the build compiled with** — with no warning
+([#114](https://github.com/sergioazoc/oxlint-tailwindcss/issues/114)).
+
+### Features
+
+- **The plugin now loads the consumer's own Tailwind engine, resolved per entry point.** For each
+  resolved CSS entry point it resolves `@tailwindcss/node` from the project's `node_modules` (via
+  the CSS directory, falling back through the build tool — `@tailwindcss/postcss` / `vite` / `cli` —
+  following pnpm's symlinks, then to the bundled copy). In a monorepo, packages pinned to different
+  Tailwind versions each get their own engine. This fixes the version-drift false positives / missed
+  violations from #114.
+
+- **Version safeguards for forward compatibility.** The resolved engine is graded per entry point:
+  an engine older than v4.1 (the supported floor — 4.0.x lacks a design-system API the plugin needs)
+  or a major newer than the plugin was built for (e.g. a future Tailwind 5), and a major-version
+  drift between the engine and the build, fail loud as `designSystemUnavailable`; a newer minor or a
+  minor-level build drift emits a one-time stderr warning and lints best-effort. The new
+  `settings.tailwindcss.allowUntestedEngine: true` downgrades the future-major / major-drift fatals
+  to a warning so you can opt into linting against an untested engine. An engine older than v4.1
+  stays fatal regardless.
+
+### Bug fixes
+
+- **The disk cache key now folds the per-entry-point engine version.** Previously it baked a single
+  module-global version, so in a monorepo two packages with identical CSS but different engines
+  could poison each other's cache entry. The key format is unchanged for the common single-engine
+  case, so existing on-disk caches remain valid.
+
+### Dependencies
+
+- Dev tooling: `oxlint` / `@oxlint/plugins` 1.77.0 → 1.78.0 (fixes the 1.77.0 language-server crash
+  on JS-plugin diagnostics, [oxc#25280](https://github.com/oxc-project/oxc/pull/25280)), `oxfmt`
+  0.62.0 → 0.63.0, `@types/node` 26.1 → 26.2. Runtime dependencies are unchanged.
+
 ## 1.8.0
 
 Three issues ([#109](https://github.com/sergioazoc/oxlint-tailwindcss/issues/109),

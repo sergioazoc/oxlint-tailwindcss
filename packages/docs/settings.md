@@ -76,6 +76,36 @@ When on, the plugin logs to stderr:
 
 Use this when you're debugging which CSS the plugin actually loaded.
 
+## `allowUntestedEngine`
+
+`boolean`, default `false`.
+
+The plugin loads **your** Tailwind engine — the `@tailwindcss/node` resolved from the project around
+each entry point, per entry point (so a monorepo's packages can be on different Tailwind versions).
+It grades that engine against the version it was built for:
+
+- **Older than Tailwind v4.1** → fatal (`designSystemUnavailable`). Not affected by this flag (4.0.x
+  lacks a design-system API the plugin needs).
+- **A major newer than the plugin** (e.g. a future Tailwind 5), or a **major-version drift** between
+  the engine and the `tailwindcss` your build uses → fatal by default.
+- **A newer minor**, or a **minor-level drift** from your build → a one-time stderr warning; the
+  plugin lints best-effort.
+- **In range and aligned** → silent.
+
+Set this to `true` to downgrade the future-major / major-drift **fatals** to a warning and lint
+anyway (results may be inaccurate against an untested engine). An engine older than v4.1 stays fatal
+regardless.
+
+```jsonc
+{
+  "settings": {
+    "tailwindcss": {
+      "allowUntestedEngine": true
+    }
+  }
+}
+```
+
 ## Extractor configuration
 
 The plugin scans these locations by default:
@@ -129,6 +159,7 @@ Or remove from the defaults:
       "rootFontSize": 16,                  // optional
       "timeout": 60000,                    // optional
       "debug": false,                      // optional
+      "allowUntestedEngine": false,        // optional
       "attributes": [],                    // optional
       "callees": [],                       // optional
       "tags": [],                          // optional
