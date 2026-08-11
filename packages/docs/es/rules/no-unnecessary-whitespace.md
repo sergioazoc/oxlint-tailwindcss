@@ -13,8 +13,10 @@ whitespace.
 
 La regla es **multiline-aware**: a propósito preserva `\n` + la indentación que sigue a cada
 newline. Ese es el formato que produce `enforce-consistent-line-wrapping` con `classesPerLine`, y
-colapsarlo de vuelta armaría un ciclo no fixeable entre las dos reglas (issue #14). Dentro de una
-línea, tabs y dobles espacios siguen colapsando normalmente.
+colapsarlo de vuelta armaría un ciclo no fixeable entre las dos reglas (issue #14). Esto incluye el
+backtick de cierre indentado de la convención bloque (un `\n` + espacios antes del `` ` `` de
+cierre) — esa indentación trailing es formato intencional y nunca se trimea (issue #109). Dentro de
+una línea, tabs y dobles espacios siguen colapsando normalmente.
 
 Los template literals tienen una regla extra: un único espacio trailing antes de una expresión
 (`` `flex ${x}` ``) o un único espacio leading después de una (`` `${x} flex` ``) se preserva — esos
@@ -56,6 +58,12 @@ const className = `flex\titems-center`
 // Multilínea (e.g. de enforce-consistent-line-wrapping): preservado
 const className = `bg-red-500 text-white
                    hover:bg-red-600 focus:ring-2`
+
+// Convención bloque: el backtick de cierre indentado se preserva (#109)
+const className = `
+  bg-red-500 text-white
+  hover:bg-red-600 focus:ring-2
+`
 ```
 
 ## Interacciones con otras reglas

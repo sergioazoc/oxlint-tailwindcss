@@ -176,3 +176,50 @@ describe('rebuildClassString', () => {
     expect(rebuildClassString(split, ['a', 'b', 'c'])).toBe('a b c')
   })
 })
+
+describe('rebuildClassString with sourceIndices (structure-preserving)', () => {
+  // no-duplicate: remove a MID-line dup — each line keeps its grouping.
+  it('dedup preserves per-line grouping in a block', () => {
+    const split = splitClassesWithSeparators('\n  flex flex items-center\n  bg-white p-4\n')
+    // unique = [flex, items-center, bg-white, p-4]; first-occurrence indices.
+    expect(
+      rebuildClassString(split, ['flex', 'items-center', 'bg-white', 'p-4'], [0, 2, 3, 4]),
+    ).toBe('\n  flex items-center\n  bg-white p-4\n')
+  })
+
+  // no-duplicate: removing the class that OPENED a line transfers the `\n` to
+  // the next survivor, so it keeps its own line instead of joining the previous.
+  it('dedup transfers the newline when a line-leading class is removed', () => {
+    const split = splitClassesWithSeparators('\n  flex items-center\n  flex bg-white\n')
+    // unique = [flex, items-center, bg-white]; first-occurrence indices.
+    expect(rebuildClassString(split, ['flex', 'items-center', 'bg-white'], [0, 1, 3])).toBe(
+      '\n  flex items-center\n  bg-white\n',
+    )
+  })
+
+  // shorthand: the merged replacement is appended (non-monotonic index). It must
+  // never inherit the empty leader — a single space keeps classes from gluing.
+  it('appended replacement never glues to the previous class (single line)', () => {
+    const split = splitClassesWithSeparators('flex mt-2 mb-2 items-center')
+    // remaining = [flex, items-center] then push my-2 (firstMatchedIdx = 1).
+    expect(rebuildClassString(split, ['flex', 'items-center', 'my-2'], [0, 3, 1])).toBe(
+      'flex items-center my-2',
+    )
+  })
+
+  // shorthand: when the merged pair opened a block line, the appended
+  // replacement inherits that newline+indent and lands on its own line.
+  it('appended replacement inherits the block newline when the pair opened a line', () => {
+    const split = splitClassesWithSeparators('\n  mt-2 mb-2\n  flex\n')
+    // remaining = [flex] then push my-2 (firstMatchedIdx = 0).
+    expect(rebuildClassString(split, ['flex', 'my-2'], [2, 0])).toBe('\n  flex\n  my-2\n')
+  })
+
+  // shorthand on a hanging first line (no leading newline): the appended
+  // replacement gets a space, not the empty leader.
+  it('appended replacement on a hanging first line gets a space', () => {
+    const split = splitClassesWithSeparators('pl-2 pr-2\n   text-white')
+    // remaining = [text-white] then push px-2 (firstMatchedIdx = 0).
+    expect(rebuildClassString(split, ['text-white', 'px-2'], [2, 0])).toBe('text-white px-2')
+  })
+})

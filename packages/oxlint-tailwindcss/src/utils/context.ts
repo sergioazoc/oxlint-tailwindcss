@@ -12,11 +12,18 @@
  * tree-shaking and makes the module boundary honest.
  */
 
+/** The slice of oxlint's `context.sourceCode` we consume (line-indexed text). */
+export interface SourceCodeLike {
+  lines?: readonly string[]
+  text?: string
+}
+
 interface ContextLike {
   options?: readonly unknown[]
   settings?: Readonly<Record<string, unknown>>
   filename?: string
   cwd?: string
+  sourceCode?: SourceCodeLike
 }
 
 /**
@@ -47,6 +54,23 @@ export function safeSettings(context: ContextLike): Readonly<Record<string, unkn
 export function safeFilename(context: ContextLike): string | undefined {
   try {
     return context.filename ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Safely read `context.sourceCode`. Same try/catch pattern as the other
+ * accessors (the getter may throw inside `createOnce`). Used by
+ * `enforce-consistent-line-wrapping` to derive a statement's real base
+ * indentation (the line's leading whitespace) when wrapping a single-line
+ * template into the block convention — the backtick column
+ * (`node.loc.start.column`) is NOT the base indent. Returns `undefined` if
+ * unavailable; callers fall back to a zero base indent.
+ */
+export function safeSourceCode(context: ContextLike): SourceCodeLike | undefined {
+  try {
+    return context.sourceCode ?? undefined
   } catch {
     return undefined
   }

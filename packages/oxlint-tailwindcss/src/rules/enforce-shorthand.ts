@@ -279,10 +279,28 @@ export const enforceShorthand = defineRule({
             const matched = family.parts.map((part) => group.byPart.get(part)!)
             const replacement =
               group.variant + reattachImportant(`${family.to}-${group.value}`, group.position)
-            const remaining = classes.filter((cls) => !matched.includes(cls))
+            // Positional walk: keep the non-matched classes (with their original
+            // index) and append the merged shorthand at the end, tagged with the
+            // pair's first index so `rebuildClassString` preserves the multiline
+            // layout instead of reflowing a block to one class per line.
+            const matchedSet = new Set(matched)
+            const remaining: string[] = []
+            const sourceIndices: number[] = []
+            let firstMatchedIdx = -1
+            classes.forEach((cls, i) => {
+              if (matchedSet.has(cls)) {
+                if (firstMatchedIdx === -1) firstMatchedIdx = i
+                return
+              }
+              remaining.push(cls)
+              sourceIndices.push(i)
+            })
             // `mt-2 mb-2 my-2` already carries the shorthand: appending it again
             // would fix one problem into a duplicate class.
-            if (!remaining.includes(replacement)) remaining.push(replacement)
+            if (!remaining.includes(replacement)) {
+              remaining.push(replacement)
+              sourceIndices.push(firstMatchedIdx)
+            }
             for (const part of family.parts) consumed.add(part)
 
             context.report({
@@ -295,7 +313,7 @@ export const enforceShorthand = defineRule({
               fix(fixer) {
                 return fixer.replaceTextRange(
                   loc.range,
-                  preserveSpaces(loc, rebuildClassString(split, remaining)),
+                  preserveSpaces(loc, rebuildClassString(split, remaining, sourceIndices)),
                 )
               },
             })

@@ -31,8 +31,16 @@ export const noDuplicateClasses = defineRule({
         }
 
         if (duplicates.length > 0) {
-          const unique = [...new Set(classes)]
-          const fixed = rebuildClassString(split, unique)
+          // Keep the first occurrence of each class, and remember its original
+          // index so `rebuildClassString` can preserve the multiline layout
+          // (a `\n` that the removed dup carried transfers to the next survivor).
+          const firstIdx = new Map<string, number>()
+          classes.forEach((c, i) => {
+            if (!firstIdx.has(c)) firstIdx.set(c, i)
+          })
+          const unique = [...firstIdx.keys()]
+          const sourceIndices = unique.map((c) => firstIdx.get(c)!)
+          const fixed = rebuildClassString(split, unique, sourceIndices)
 
           for (const dup of duplicates) {
             context.report({

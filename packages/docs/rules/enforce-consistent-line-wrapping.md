@@ -12,10 +12,13 @@ per line (autofix on template literals).
 DS-independent — works without `settings.tailwindcss.entryPoint`. The rule operates on the raw class
 string and doesn't care what the classes mean.
 
-The autofix path preserves the indentation of the host node — when splitting a template literal
-across lines, the rule inserts `\n` + the column offset of the opening backtick. Other rules
-(`no-unnecessary-whitespace`, `enforce-sort-order`, …) are aware of this multiline shape and won't
-collapse it back.
+The autofix wraps template literals into the **block convention**: the content starts on its own
+line, each wrapped line is indented one level below the statement's own indentation, and the closing
+backtick sits on its own line. The base indentation is read from the source line (not the backtick
+column), so the block nests correctly even inside deeply-indented JSX. The fix is
+**non-destructive** — a template that is already wrapped only has its over-budget lines re-wrapped;
+conforming lines are left untouched. Other rules (`no-unnecessary-whitespace`, `enforce-sort-order`,
+…) are aware of this multiline shape and won't collapse it back.
 
 ## Options
 
@@ -23,9 +26,11 @@ collapse it back.
 
 `number`, default `80`.
 
-Maximum total length of the class string. When exceeded, the rule reports `tooLong` but does **not**
-autofix — splitting a long string into a multiline literal is a judgment call (extract a component
-vs. just wrap it), so the rule surfaces the warning and lets you decide.
+Maximum length of any **single line** of the class string. For a one-line string that is its whole
+length; for a multiline template it is the longest individual line, so splitting a long string
+across lines can actually satisfy the rule. When exceeded, the rule reports `tooLong` but does
+**not** autofix — splitting a long string into a multiline literal is a judgment call (extract a
+component vs. just wrap it), so the rule surfaces the warning and lets you decide.
 
 ```jsonc
 { "tailwindcss/enforce-consistent-line-wrapping": ["error", { "printWidth": 100 }] }
@@ -36,8 +41,8 @@ vs. just wrap it), so the rule surfaces the warning and lets you decide.
 `number`, optional. No default.
 
 Maximum number of classes on a single line. When exceeded inside a template literal (`` `…` ``), the
-rule autofixes by splitting the classes into chunks of `classesPerLine` separated by `\n` + indent.
-Inside string literals (`"…"`) the rule reports `tooManyPerLine` but doesn't autofix — string
+rule autofixes by wrapping the classes into the block convention, chunks of `classesPerLine` per
+line. Inside string literals (`"…"`) the rule reports `tooManyPerLine` but doesn't autofix — string
 literals can't safely span lines without manual intervention.
 
 ```jsonc
@@ -53,9 +58,12 @@ literals can't safely span lines without manual intervention.
 <div className="flex items-center justify-between p-4 m-2 bg-white text-black rounded shadow-lg border w-full" />
 //              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ tooLong
 
-// 6 classes with classesPerLine: 3 — template literal autofixes
+// 6 classes with classesPerLine: 3 — template literal autofixes into a block
 const className = `flex items-center justify-between p-4 m-2 bg-white`
-// → `flex items-center justify-between\n        p-4 m-2 bg-white`
+// → const className = `
+//     flex items-center justify-between
+//     p-4 m-2 bg-white
+//   `
 
 // Same count, string literal — reports but no autofix
 <div className="flex items-center justify-between p-4 m-2 bg-white" />
@@ -67,9 +75,11 @@ const className = `flex items-center justify-between p-4 m-2 bg-white`
 // Fits within printWidth
 <div className="flex items-center p-4" />
 
-// Already wrapped at classesPerLine
-const className = `flex items-center p-4
-                   bg-white text-black`
+// Already wrapped at classesPerLine (block convention)
+const className = `
+  flex items-center p-4
+  bg-white text-black
+`
 ```
 
 ## Interactions with other rules

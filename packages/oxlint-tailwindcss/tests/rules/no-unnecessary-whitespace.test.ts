@@ -28,6 +28,17 @@ ruleTester.run('no-unnecessary-whitespace', noUnnecessaryWhitespace, {
       code: 'const className = `flex items-center\n\t\t\tjustify-between`',
       filename: 'test.tsx',
     },
+    // Indented closing backtick (block convention) — the trailing `\n    ` before
+    // the closing backtick is intentional formatting, not a stray space (#109).
+    {
+      code: 'const className = `\n    bg-red-500 text-white hover:bg-red-600\n    `',
+      filename: 'test.tsx',
+    },
+    // Same, deeper indent + a conforming line above the closing backtick.
+    {
+      code: 'const className = `\n      flex items-center\n      justify-between\n    `',
+      filename: 'test.tsx',
+    },
   ],
   invalid: [
     {
@@ -75,6 +86,14 @@ ruleTester.run('no-unnecessary-whitespace', noUnnecessaryWhitespace, {
       filename: 'test.tsx',
       errors: [{ messageId: 'unnecessaryWhitespace' }],
       output: 'const className = `flex items-center`',
+    },
+    // A genuine trailing space (single line, no newline before it) is still
+    // stripped — the #109 guard only protects a whitespace-only closing line.
+    {
+      code: '<div className={`flex items-center `} />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'unnecessaryWhitespace' }],
+      output: '<div className={`flex items-center`} />',
     },
   ],
 })

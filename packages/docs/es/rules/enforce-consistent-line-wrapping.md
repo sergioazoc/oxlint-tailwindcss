@@ -12,10 +12,13 @@ una sola línea debería cargar. Dos triggers independientes: un print width bas
 DS-independiente — funciona sin `settings.tailwindcss.entryPoint`. La regla opera sobre el string
 crudo de clases y no le importa qué significan.
 
-El path de autofix preserva la indentación del nodo host — al partir un template literal en varias
-líneas, la regla inserta `\n` + el offset de columna del backtick de apertura. Las otras reglas
-(`no-unnecessary-whitespace`, `enforce-sort-order`, …) están al tanto de esta forma multilínea y no
-la colapsan de vuelta.
+El autofix envuelve los template literals en la **convención bloque**: el contenido empieza en su
+propia línea, cada línea envuelta se indenta un nivel por debajo de la indentación del statement, y
+el backtick de cierre queda en su propia línea. La indentación base se lee de la línea de código (no
+de la columna del backtick), así que el bloque anida bien incluso dentro de JSX muy indentado. El
+fix es **no destructivo** — un template que ya está envuelto solo re-envuelve sus líneas que exceden
+el budget; las líneas conformes quedan intactas. Las otras reglas (`no-unnecessary-whitespace`,
+`enforce-sort-order`, …) están al tanto de esta forma multilínea y no la colapsan de vuelta.
 
 ## Opciones
 
@@ -23,9 +26,12 @@ la colapsan de vuelta.
 
 `number`, default `80`.
 
-Largo total máximo del string de clases. Cuando se excede, la regla reporta `tooLong` pero **no**
-autofixea — partir un string largo en un literal multilínea es una decisión de criterio (extraer un
-componente vs. solo wrappearlo), así que la regla saca el warning y te deja decidir.
+Largo máximo de cualquier **línea individual** del string de clases. Para un string de una línea es
+su largo completo; para un template multilínea es la línea individual más larga, así que partir un
+string largo en varias líneas sí puede satisfacer la regla. Cuando se excede, la regla reporta
+`tooLong` pero **no** autofixea — partir un string largo en un literal multilínea es una decisión de
+criterio (extraer un componente vs. solo wrappearlo), así que la regla saca el warning y te deja
+decidir.
 
 ```jsonc
 { "tailwindcss/enforce-consistent-line-wrapping": ["error", { "printWidth": 100 }] }
@@ -36,9 +42,9 @@ componente vs. solo wrappearlo), así que la regla saca el warning y te deja dec
 `number`, opcional. Sin default.
 
 Cantidad máxima de clases en una sola línea. Cuando se excede dentro de un template literal
-(`` `…` ``), la regla autofixea partiendo las clases en chunks de `classesPerLine` separados por
-`\n` + indent. Dentro de string literals (`"…"`) la regla reporta `tooManyPerLine` pero no autofixea
-— los string literals no pueden cruzar líneas con seguridad sin intervención manual.
+(`` `…` ``), la regla autofixea envolviendo las clases en la convención bloque, en chunks de
+`classesPerLine` por línea. Dentro de string literals (`"…"`) la regla reporta `tooManyPerLine` pero
+no autofixea — los string literals no pueden cruzar líneas con seguridad sin intervención manual.
 
 ```jsonc
 { "tailwindcss/enforce-consistent-line-wrapping": ["error", { "classesPerLine": 5 }] }
@@ -53,9 +59,12 @@ Cantidad máxima de clases en una sola línea. Cuando se excede dentro de un tem
 <div className="flex items-center justify-between p-4 m-2 bg-white text-black rounded shadow-lg border w-full" />
 //              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ tooLong
 
-// 6 clases con classesPerLine: 3 — el template literal autofixea
+// 6 clases con classesPerLine: 3 — el template literal autofixea a un bloque
 const className = `flex items-center justify-between p-4 m-2 bg-white`
-// → `flex items-center justify-between\n        p-4 m-2 bg-white`
+// → const className = `
+//     flex items-center justify-between
+//     p-4 m-2 bg-white
+//   `
 
 // Mismo conteo, string literal — reporta pero no autofixea
 <div className="flex items-center justify-between p-4 m-2 bg-white" />
@@ -67,9 +76,11 @@ const className = `flex items-center justify-between p-4 m-2 bg-white`
 // Cabe dentro del printWidth
 <div className="flex items-center p-4" />
 
-// Ya wrappeado al classesPerLine
-const className = `flex items-center p-4
-                   bg-white text-black`
+// Ya wrappeado al classesPerLine (convención bloque)
+const className = `
+  flex items-center p-4
+  bg-white text-black
+`
 ```
 
 ## Interacciones con otras reglas
