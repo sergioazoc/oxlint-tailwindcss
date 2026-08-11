@@ -175,5 +175,10 @@ y plugins como `@tailwindcss/typography`.
   plugin al worker (hilo) que precomputa el design system. CI lento puede necesitar subirlo.
 - **Logging de debug**: `settings.tailwindcss.debug: true` (o `DEBUG=oxlint-tailwindcss`) loguea qué
   CSS entry point resolvió por cada archivo lintado.
+- **Qué Tailwind se usa**: el plugin carga el motor de Tailwind de _tu_ proyecto, resuelto por entry
+  point, así el linter y tu build coinciden. Si el motor resuelto es un major más nuevo que el
+  plugin (un futuro Tailwind 5) o tiene un drift de major respecto de tu build, falla fuerte;
+  `settings.tailwindcss.allowUntestedEngine: true` permite correr igual. Ver la
+  [referencia de settings](/es/settings#allowuntestedengine).
 - **¿Vienes de v0.x?** Lee la [guía de migración](/es/migration/v0-to-v1) — `entryPoint` ahora es
   obligatorio y la forma legacy `string[]` fue removida.

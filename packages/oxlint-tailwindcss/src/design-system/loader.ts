@@ -1,6 +1,13 @@
 import { DesignSystemCache } from './cache'
 import { loadDesignSystemSync } from './sync-loader'
 import { debugLog, isDebugEnabled, setDebugEnabled, resetDebug } from './debug'
+import {
+  allowUntestedEngineFromSettings,
+  type EngineOverride,
+  guardEngine,
+  resetEngineGuard,
+} from './engine-guard'
+import { resetTailwindNode } from './tailwind-node'
 import { existsSync, statSync } from 'node:fs'
 import { dirname, isAbsolute, relative, resolve } from 'node:path'
 import {
@@ -261,6 +268,10 @@ function timeoutFromSettings(settings?: Readonly<Record<string, unknown>>): numb
 export function getLoadedDesignSystem(
   cssPath: string,
   settings?: Readonly<Record<string, unknown>>,
+  // Test-only seam: inject the resolved engine facts so the version guard can
+  // be exercised without a second Tailwind install. Production omits it and
+  // `guardEngine` resolves from the consumer's project for real.
+  engineInfo?: EngineOverride,
 ): LoadResult {
   const resolvedPath = resolve(cssPath)
 
@@ -285,6 +296,10 @@ export function getLoadedDesignSystem(
 
   let data
   try {
+    // Version guard BEFORE the load, inside this try so a fatal
+    // `UnsupportedEngineError` is memoized in `dsFailureCache` by (path, mtime)
+    // exactly like a load failure — one assessment per entry point per process.
+    guardEngine(resolvedPath, allowUntestedEngineFromSettings(settings), engineInfo)
     data = loadDesignSystemSync(resolvedPath, timeoutFromSettings(settings))
   } catch (err) {
     // Memoize only plugin-fatal load errors; let genuine bugs propagate without
@@ -421,5 +436,7 @@ export function resetDesignSystem(): void {
   dsCache.clear()
   dsFailureCache.clear()
   nearestConfigDirCache.clear()
+  resetTailwindNode()
+  resetEngineGuard()
   resetDebug()
 }

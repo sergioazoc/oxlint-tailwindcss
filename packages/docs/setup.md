@@ -173,5 +173,10 @@ plugins like `@tailwindcss/typography`.
   waits for the worker thread that precomputes the design system. Slow CI may need this raised.
 - **Debug logging**: `settings.tailwindcss.debug: true` (or `DEBUG=oxlint-tailwindcss`) logs which
   CSS entry point resolved per linted file.
+- **Which Tailwind gets used**: the plugin loads _your_ project's Tailwind engine, resolved per
+  entry point, so the linter and your build agree. If the resolved engine is a major newer than the
+  plugin (a future Tailwind 5) or drifts a major from your build, it fails loud;
+  `settings.tailwindcss.allowUntestedEngine: true` opts into running anyway. See
+  [settings reference](/settings#allowuntestedengine).
 - **Upgrading from v0.x?** Read the [migration guide](/migration/v0-to-v1) — `entryPoint` is now
   required and the legacy `string[]` shape was removed.

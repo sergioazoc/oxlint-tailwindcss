@@ -77,6 +77,35 @@ Cuando está activo, el plugin loguea a stderr:
 
 Útil cuando estás depurando qué CSS terminó cargando el plugin.
 
+## `allowUntestedEngine`
+
+`boolean`, default `false`.
+
+El plugin carga **tu** motor de Tailwind — el `@tailwindcss/node` resuelto desde el proyecto
+alrededor de cada entry point, por entry point (así los paquetes de un monorepo pueden estar en
+versiones distintas de Tailwind). Evalúa ese motor contra la versión para la que fue construido:
+
+- **Más viejo que Tailwind v4** → fatal (`designSystemUnavailable`). No lo afecta esta opción.
+- **Un major más nuevo que el plugin** (p. ej. un futuro Tailwind 5), o un **drift de major** entre
+  el motor y el `tailwindcss` que usa tu build → fatal por defecto.
+- **Un minor más nuevo**, o un **drift a nivel de minor** respecto de tu build → un warning único en
+  stderr; el plugin lintea best-effort.
+- **En rango y alineado** → silencioso.
+
+Ponlo en `true` para degradar los **fatales** de major futuro / drift de major a un warning y
+lintear igual (los resultados pueden ser inexactos contra un motor no probado). Un motor más viejo
+que v4 sigue siendo fatal de todos modos.
+
+```jsonc
+{
+  "settings": {
+    "tailwindcss": {
+      "allowUntestedEngine": true
+    }
+  }
+}
+```
+
 ## Configuración del extractor
 
 El plugin escanea estas ubicaciones por defecto:
@@ -130,6 +159,7 @@ Las exclusiones de `variablePatterns` matchean contra `RegExp.source` literal.
       "rootFontSize": 16,                  // opcional
       "timeout": 60000,                    // opcional
       "debug": false,                      // opcional
+      "allowUntestedEngine": false,        // opcional
       "attributes": [],                    // opcional
       "callees": [],                       // opcional
       "tags": [],                          // opcional

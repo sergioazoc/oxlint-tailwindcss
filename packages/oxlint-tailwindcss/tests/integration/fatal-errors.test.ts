@@ -24,6 +24,7 @@ import { DS_UNAVAILABLE_MESSAGE_ID, SortServiceError } from '../../src/utils/fat
 import { noDarkWithoutLight } from '../../src/rules/no-dark-without-light'
 import { noConflictingClasses } from '../../src/rules/no-conflicting-classes'
 import { noUnknownClasses } from '../../src/rules/no-unknown-classes'
+import plugin from '../../src/index'
 
 const NONEXISTENT_CSS = '/tmp/this-css-does-not-exist-for-fatal-test.css'
 
@@ -128,5 +129,19 @@ describe('declaration service — fail-loud', () => {
     expect(noConflictingClasses.meta?.messages).toHaveProperty(DS_UNAVAILABLE_MESSAGE_ID)
     expect(noUnknownClasses.meta?.messages).toHaveProperty(DS_UNAVAILABLE_MESSAGE_ID)
     expect(noDarkWithoutLight.meta?.messages).not.toHaveProperty(DS_UNAVAILABLE_MESSAGE_ID)
+  })
+
+  test('the version guard reuses designSystemUnavailable — no rule declares an engine messageId', () => {
+    // UnsupportedEngineError routes through the SAME messageId, so no rule needed
+    // a new one. Lock it: no rule may introduce an engine-/unsupported-specific id.
+    for (const [name, rule] of Object.entries(plugin.rules)) {
+      const messages = (rule.meta?.messages ?? {}) as Record<string, unknown>
+      for (const id of Object.keys(messages)) {
+        expect(
+          /engine|unsupported/i.test(id),
+          `${name} declares unexpected messageId "${id}"`,
+        ).toBe(false)
+      }
+    }
   })
 })

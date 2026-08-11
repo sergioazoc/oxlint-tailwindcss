@@ -1,12 +1,14 @@
-import { describe, it, expect } from 'vitest'
-import { resolve } from 'node:path'
-import { existsSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { describe, it, expect, afterAll, beforeEach } from 'vitest'
+import { join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import {
   cacheArtifactPaths,
   computeCacheKey,
   loadDesignSystemSync,
 } from '../../src/design-system/sync-loader'
 import { TAILWIND_NODE_VERSION } from '../../src/design-system/tailwind-node'
+import { resetDesignSystem } from '../../src/design-system/loader'
 import { DesignSystemLoadError } from '../../src/utils/fatal'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
@@ -117,6 +119,55 @@ describe('TAILWIND_NODE_VERSION', () => {
     // Format is semver — fallback "unknown" would mean @tailwindcss/node isn't resolvable,
     // which would also break loadDesignSystemSync entirely (covered by tests above).
     expect(TAILWIND_NODE_VERSION).toMatch(/^\d+\.\d+\.\d+/)
+  })
+})
+
+// The disk cache key must fold the PER-ENTRY engine version (issue #114): in a
+// monorepo, two packages with byte-identical CSS but different Tailwind engines
+// must not share a cache entry (cross-package poisoning), while two with the
+// same engine SHOULD share (the dedup property). Build synthetic trees so the
+// resolved engine version differs without a second install.
+describe('per-engine-version cache isolation', () => {
+  const roots: string[] = []
+  const CSS = "@import 'tailwindcss';\n/* identical content across trees */\n"
+
+  function tree(engineVersion: string): string {
+    const root = mkdtempSync(join(tmpdir(), 'oxtw-cachever-'))
+    roots.push(root)
+    for (const name of ['@tailwindcss/node', 'tailwindcss']) {
+      const dir = join(root, 'node_modules', name)
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(
+        join(dir, 'package.json'),
+        JSON.stringify({ name, version: engineVersion, main: 'index.js' }),
+      )
+      writeFileSync(join(dir, 'index.js'), '')
+    }
+    const css = join(root, 'src/app.css')
+    mkdirSync(join(css, '..'), { recursive: true })
+    writeFileSync(css, CSS)
+    return css
+  }
+
+  beforeEach(() => resetDesignSystem())
+  afterAll(() => {
+    for (const r of roots) {
+      try {
+        rmSync(r, { recursive: true, force: true })
+      } catch {}
+    }
+  })
+
+  it('different engine versions with identical CSS → different cache files', () => {
+    const a = cacheArtifactPaths(tree('4.4.0')).json
+    const b = cacheArtifactPaths(tree('4.5.0')).json
+    expect(a).not.toBe(b)
+  })
+
+  it('same engine version with identical CSS → same cache file (dedup preserved)', () => {
+    const a = cacheArtifactPaths(tree('4.4.0')).json
+    const b = cacheArtifactPaths(tree('4.4.0')).json
+    expect(a).toBe(b)
   })
 })
 

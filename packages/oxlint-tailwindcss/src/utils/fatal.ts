@@ -43,11 +43,21 @@ export class DesignSystemLoadError extends OxlintTailwindError {}
 /** The sort or canonicalize worker thread failed to initialize or timed out. */
 export class SortServiceError extends OxlintTailwindError {}
 
+/**
+ * The resolved Tailwind engine version is outside the range this plugin
+ * supports: older than v4, a future major (v5+) the plugin was not built for,
+ * or a major-version drift from the version the consumer's build compiles
+ * with. Fail-loud rather than lint against semantics that don't match the
+ * build. See `design-system/engine-guard.ts` for the decision table.
+ */
+export class UnsupportedEngineError extends OxlintTailwindError {}
+
 export type FatalError =
   | MissingEntryPointError
   | DeprecatedEntryPointShapeError
   | DesignSystemLoadError
   | SortServiceError
+  | UnsupportedEngineError
 
 /** Type-guard: did this error originate from the plugin's fail-loud infrastructure? */
 export function isFatalError(err: unknown): err is FatalError {
