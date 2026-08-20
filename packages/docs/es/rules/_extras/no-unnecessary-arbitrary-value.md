@@ -54,11 +54,14 @@ para todo el proyecto en vez de por-regla cuando puedas.
 
 ## Interacciones con otras reglas
 
-- **`enforce-canonical`**: complementaria, no hay doble-fire. Esta regla se dispara solo cuando la
-  forma arbitraria mapea directo a una utility con nombre que produce el mismo CSS (`h-[auto]` →
-  `h-auto`, `bg-[var(--color-red-500)]` → `bg-red-500`). `enforce-canonical` se dispara cuando la
-  forma canónica es otra shape distinta que igual produce el CSS correcto vía tus tokens (`p-[2px]`
-  → `p-0.5` vía escala de spacing). Las dos parten el espacio arbitrario→nombrado de forma limpia.
+- **`enforce-canonical`**: complementaria, no hay doble-fire. Las dos actúan solo cuando la forma
+  arbitraria y su reemplazo nombrado emiten CSS **idéntico**; se reparten por forma. Esta regla es
+  dueña del caso directo arbitrario→nombrado (`h-[auto]` → `h-auto`, `bg-[var(--color-red-500)]` →
+  `bg-red-500`); `enforce-canonical` es dueña de los renombres canónicos y la normalización de
+  sintaxis de variables CSS. Las dos parten el espacio arbitrario→nombrado de forma limpia.
+- **`prefer-scale-token`**: dueña de lo que ninguna de las anteriores toca — un valor que solo es
+  _numéricamente_ igual a un paso de la escala o a un token de tema (`p-[2px]` → `p-0.5`), cuyo
+  texto CSS difiere (`calc(var(--spacing) * 0.5)` vs `2px`). Solo-reporte, apagada por defecto.
 - **`prefer-theme-tokens`**: también complementaria. Se dispara para referencias a variables CSS en
   el shorthand de paréntesis `prefix-(--name)` / `prefix-[var(--name)]` cuando no existe un
   equivalente bracket — ese es el caso solo-heurístico que esta regla rechaza explícitamente (ver el

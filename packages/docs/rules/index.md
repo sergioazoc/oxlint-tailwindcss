@@ -1,6 +1,6 @@
 # Rules
 
-The 23 rules in `oxlint-tailwindcss`, grouped by what they enforce. Click into any rule for examples
+The 24 rules in `oxlint-tailwindcss`, grouped by what they enforce. Click into any rule for examples
 and option reference.
 
 ## Correctness

@@ -3,6 +3,23 @@
 Reporta un valor hardcodeado que es **numéricamente igual** a algo que tu design system ya nombra, y
 sugiere el nombre — `p-[10px]` → `p-2.5`, `w-[140px]` → `w-35`, `rounded-[0.5rem]` → `rounded-lg`.
 
+### Paridad con Tailwind CSS IntelliSense
+
+Esta es la regla que reproduce el diagnóstico `suggestCanonicalClasses` de Tailwind CSS IntelliSense
+para longitudes arbitrarias — el aviso "`pl-[15px]` can be written as `pl-3.75`".
+`enforce-canonical` y `no-unnecessary-arbitrary-value` deliberadamente **no** lo reportan: las dos
+exigen CSS byte-idéntico, y `pl-3.75` compila a `calc(var(--spacing) * 3.75)`, no a `15px`
+([#78](https://github.com/sergioazoc/oxlint-tailwindcss/issues/78)).
+
+Las sugerencias las aplica `oxlint --fix-suggestions` (nunca el `oxlint --fix` normal), igual que la
+experiencia en el editor. Para reproducir el ejemplo de IntelliSense exactamente — pasos dinámicos
+como `pl-3.75` que caen entre los stops enumerados de `0.5` — configura un `step` más fino (ver
+[`step`](#step) más abajo):
+
+```jsonc
+{ "tailwindcss/prefer-scale-token": ["warn", { "step": 0.25 }] }
+```
+
 Existe porque las otras tres reglas de arbitrario→nombrado se apoyan cada una en algo que este caso
 no cumple:
 

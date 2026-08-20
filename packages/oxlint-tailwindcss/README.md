@@ -1,6 +1,6 @@
 # oxlint-tailwindcss
 
-23 Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). Built for
+24 Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). Built for
 Tailwind CSS v4 with deterministic config, typo suggestions, and autofixes.
 
 > **v1.0.0** — Upgrading from v0.x? See the
@@ -30,7 +30,7 @@ Read the story behind this plugin:
 - **Typo suggestions** — `itms-center` → "Did you mean `items-center`?"
 - **Conflict detection** — Shows exactly which CSS properties conflict and which class wins.
 - **Lightweight** — Only 2 runtime dependencies: `@tailwindcss/node` and `tailwindcss`.
-- **23 rules** — Correctness, style, complexity, and restriction rules with autofixes where
+- **24 rules** — Correctness, style, complexity, and restriction rules with autofixes where
   possible.
 - **Variable detection** — Lints variables matching `/^classNames?$/`, `/^classes$/`, `/^styles?$/`
   (e.g. `className`, `classNames`, `classes`, `styles`) automatically.
@@ -247,7 +247,7 @@ entries are appended to the built-in defaults:
 }
 ```
 
-This applies to all 23 rules at once. For example, adding `"classNames"` to `attributes` makes every
+This applies to all 24 rules at once. For example, adding `"classNames"` to `attributes` makes every
 rule lint `<Input classNames={{ root: "..." }} />`.
 
 To **remove** specific items from the built-in defaults, use `exclude`:
@@ -528,18 +528,22 @@ class the component merges in), so they are skipped to avoid false positives.
 
 Enforces canonical Tailwind CSS class names. Uses `canonicalizeCandidates()` from the Tailwind CSS
 engine dynamically — the same API that powers Tailwind CSS IntelliSense's `suggestCanonicalClasses`.
+It only rewrites when the canonical form emits **byte-identical CSS** (a value-preserving rename or
+syntax normalization), so `--fix` never changes how your design renders.
 
 ```tsx
 // ❌ Bad → ✅ Fixed
-"-m-0"                              → "m-0"
-"-mt-0"                             → "mt-0"
-"p-[2px]"                           → "p-0.5"
-"max-w-[400px]"                     → "max-w-100"
-"text-[var(--color-text)]/90"       → "text-(--color-text)/90"
-"[--w-padding:theme(spacing.1)]"    → "[--w-padding:--spacing(1)]"
+"-m-0"                         → "m-0"
+"-mt-0"                        → "mt-0"
+"flex-grow-[2]"                → "grow-2"
+"text-[var(--color-text)]/90"  → "text-(--color-text)/90"
 ```
 
-The px→named conversion (e.g. `p-[2px]` → `p-0.5`) depends on `rootFontSize` (default: 16).
+It does **not** rewrite an arbitrary length into a spacing-scale step (`pl-[15px]` → `pl-3.75`),
+even though IntelliSense suggests it: `pl-3.75` compiles to `calc(var(--spacing) * 3.75)`, which is
+not byte-identical to `15px`, so the two can diverge under a `:root` override or a different root
+font size. Those value-changing suggestions live in [`prefer-scale-token`](#prefer-scale-token),
+report-only.
 
 **Requires design system.** **Autofix:** Replaces with canonical form.
 
@@ -935,6 +939,35 @@ CSS in those setups. (When the theme exposes the variable directly with no wrapp
 
 ---
 
+#### `prefer-scale-token`
+
+Reports a hardcoded value that is **numerically equal** to a spacing-scale step or a named theme
+token, and suggests the token. This is the rule that matches Tailwind CSS IntelliSense's
+`suggestCanonicalClasses` suggestion for arbitrary lengths (e.g. `pl-[15px]` → `pl-3.75`) — the
+conversion `enforce-canonical` deliberately leaves alone because the CSS isn't byte-identical (see
+[#78](https://github.com/sergioazoc/oxlint-tailwindcss/issues/78)).
+
+**Report-only, on purpose.** There is no autofix: the token resolves through `var(--spacing)`, so a
+`:root` override or a different root font size can make the two diverge. It only ever suggests, so
+`oxlint --fix` skips it while `oxlint --fix-suggestions` applies it in bulk.
+
+```tsx
+// ⚠️ Suggested (not auto-fixed)
+"p-[10px]"          → "p-2.5"
+"rounded-[0.5rem]"  → "rounded-lg"
+```
+
+By default it reports values on the granularity Tailwind's own scale enumerates (multiples of
+`0.5`). To match IntelliSense exactly — including dynamic steps like `pl-3.75` — set a finer `step`:
+
+```jsonc
+{ "tailwindcss/prefer-scale-token": ["warn", { "step": 0.25 }] }
+```
+
+**Off by default.** **Requires design system.** **No autofix — suggestions only.**
+
+---
+
 ## Edge cases
 
 The class parser correctly handles:
@@ -952,9 +985,10 @@ The class parser correctly handles:
 - **`enforce-canonical`**: Named classes are canonicalized via the precomputed map (covers
   everything in `getClassList()` plus a curated list of legacy v3 spellings like `break-words`,
   `flex-grow`, `start-N`, `bg-gradient-to-*`, `bg-left-top` → `bg-top-left`). Arbitrary/CSS-var
-  forms (`p-[2px]`, `bg-(--c)`) are canonicalized dynamically via the worker. Some valid v4 classes
-  that don't appear in `getClassList()` and have no canonical rewrite (e.g. `border-1` is valid as a
-  dynamic numeric value but isn't enumerated) are left untouched.
+  forms (`bg-(--c)`, `text-[var(--x)]`) are canonicalized dynamically via the worker when the result
+  is byte-identical; a value-changing form like `p-[2px]` → `p-0.5` is left to `prefer-scale-token`.
+  Some valid v4 classes that don't appear in `getClassList()` and have no canonical rewrite (e.g.
+  `border-1` is valid as a dynamic numeric value but isn't enumerated) are left untouched.
 - **`no-conflicting-classes`**: compares the emitted declarations (property, value, the custom
   properties each value reads, and which box it applies to), so compositions are derived rather than
   enumerated. Two exceptions cannot be derived and stay declared in the source: `prose` variants and

@@ -1,6 +1,6 @@
 # Reglas
 
-Las 23 reglas de `oxlint-tailwindcss`, agrupadas por lo que hacen cumplir. Haz clic en cualquier
+Las 24 reglas de `oxlint-tailwindcss`, agrupadas por lo que hacen cumplir. Haz clic en cualquier
 regla para ver ejemplos y referencia de opciones.
 
 ## Corrección

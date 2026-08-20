@@ -4,6 +4,23 @@ Reports a hardcoded value that is **numerically equal** to something your design
 names, and suggests the name — `p-[10px]` → `p-2.5`, `w-[140px]` → `w-35`, `rounded-[0.5rem]` →
 `rounded-lg`.
 
+### Parity with Tailwind CSS IntelliSense
+
+This is the rule that reproduces Tailwind CSS IntelliSense's `suggestCanonicalClasses` diagnostic
+for arbitrary lengths — the "`pl-[15px]` can be written as `pl-3.75`" hint. `enforce-canonical` and
+`no-unnecessary-arbitrary-value` deliberately do **not** report it: both require byte-identical CSS,
+and `pl-3.75` compiles to `calc(var(--spacing) * 3.75)`, not `15px`
+([#78](https://github.com/sergioazoc/oxlint-tailwindcss/issues/78)).
+
+The suggestions are applied by `oxlint --fix-suggestions` (never by plain `oxlint --fix`), which
+matches the editor experience. To reproduce the IntelliSense example exactly — dynamic steps like
+`pl-3.75` that fall between the enumerated `0.5` stops — set a finer `step` (see [`step`](#step)
+below):
+
+```jsonc
+{ "tailwindcss/prefer-scale-token": ["warn", { "step": 0.25 }] }
+```
+
 It exists because the other three arbitrary→named rules each key on something this case does not
 satisfy:
 
