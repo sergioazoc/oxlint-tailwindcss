@@ -52,11 +52,14 @@ for the whole project instead of per-rule whenever possible.
 
 ## Interactions with other rules
 
-- **`enforce-canonical`**: complementary, no double-fire. This rule fires only when the arbitrary
-  form maps directly to a named utility producing the same CSS (`h-[auto]` → `h-auto`,
-  `bg-[var(--color-red-500)]` → `bg-red-500`). `enforce-canonical` fires when the canonical form is
-  a different shape that still happens to produce the right CSS via your tokens (`p-[2px]` →
-  `p- 0.5` via the spacing scale). The two carve up the arbitrary→named space cleanly.
+- **`enforce-canonical`**: complementary, no double-fire. Both act only when the arbitrary form and
+  its named replacement emit **identical** CSS. This rule owns the direct arbitrary→named case
+  (`h-[auto]` → `h-auto`, `bg-[var(--color-red-500)]` → `bg-red-500`); `enforce-canonical` owns
+  canonical renames and CSS-var syntax normalization. The two carve up the arbitrary→named space
+  cleanly.
+- **`prefer-scale-token`**: owns what neither of the above touches — a value that is only
+  _numerically_ equal to a scale step or theme token (`p-[2px]` → `p-0.5`), whose CSS text differs
+  (`calc(var(--spacing) * 0.5)` vs `2px`). Report-only, off by default.
 - **`prefer-theme-tokens`**: also complementary. It fires for CSS-var references in the
   `prefix-(--name)` / `prefix-[var(--name)]` paren shorthand when no bracket-equivalent exists —
   that's the heuristic- only case this rule explicitly rejects (see the `getNamedEquivalent` guard).

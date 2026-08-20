@@ -70,7 +70,7 @@ That's it — the push fast-forwards `release` to `main` and `release.yml` takes
 
 ## Architecture
 
-oxlint plugin with 23 Tailwind CSS v4 linting rules. Uses `@oxlint/plugins`' `createOnce` API (runs
+oxlint plugin with 24 Tailwind CSS v4 linting rules. Uses `@oxlint/plugins`' `createOnce` API (runs
 once per lint session; returned visitors run on every matching AST node).
 
 **v1.0.0 philosophy — deterministic, explicit, fail-loud.** The plugin used to auto-detect the CSS

@@ -4,7 +4,7 @@ layout: home
 hero:
   name: oxlint-tailwindcss
   text: Tailwind CSS linting for oxlint.
-  tagline: 23 rules, designed for Tailwind v4. Deterministic, fast, fail-loud.
+  tagline: 24 rules, designed for Tailwind v4. Deterministic, fast, fail-loud.
   actions:
     - theme: brand
       text: Get started

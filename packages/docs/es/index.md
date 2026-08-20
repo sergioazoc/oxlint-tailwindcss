@@ -4,7 +4,7 @@ layout: home
 hero:
   name: oxlint-tailwindcss
   text: Linting de Tailwind CSS para oxlint.
-  tagline: 23 reglas pensadas para Tailwind v4. Determinista, rápido, fail-loud.
+  tagline: 24 reglas pensadas para Tailwind v4. Determinista, rápido, fail-loud.
   actions:
     - theme: brand
       text: Empezar

@@ -9,9 +9,9 @@ that aren't already canonical. "Canonical" is whatever `canonicalizeCandidates()
 `@tailwindcss/node` returns — the same source of truth used by prettier-plugin-tailwindcss, oxfmt,
 and the official Tailwind tooling. Examples: `-m-0` → `m-0` (no negative is needed for a zero),
 `bg-gradient-to-r` → `bg-linear-to-r`, `break-words` → `wrap-break-word`, `start-2` → `inset-s-2`,
-`flex-grow-1` → `grow`, `p-[2px]` → `p-0.5` (arbitrary value normalized to a named token via your
-`--spacing` scale), `text-[var(--color-text)]/90` → `text-(--color-text)/90`. Auto- fix lands the
-first hit, suggestions cover the rest in the same string.
+`flex-grow-1` → `grow`, `flex-grow-[2]` → `grow-2` (an arbitrary value whose named form emits
+identical CSS), `text-[var(--color-text)]/90` → `text-(--color-text)/90`. Auto- fix lands the first
+hit, suggestions cover the rest in the same string.
 
 Named classes resolve through a precomputed in-memory `canonicalMap` (sub-microsecond). Arbitrary
 values (`p-[2px]`, `bg-(--c)`) go through the `canonicalize-service` worker because they need a live
@@ -41,8 +41,8 @@ for the whole project instead of per-rule whenever possible.
 // Logical inset shorthand → canonical inset-s-* / inset-e-*
 <div className="start-2 end-4" />
 
-// Arbitrary values that match a named token via your spacing scale
-<div className="p-[2px] max-w-[400px]" />
+// An arbitrary value whose named form emits identical CSS
+<div className="flex-grow-[2]" />
 
 // Variants and important are preserved
 <div className="hover:!break-words" />
@@ -57,18 +57,19 @@ for the whole project instead of per-rule whenever possible.
 
 <div className="inset-s-2 inset-e-4" />
 
-<div className="p-0.5 max-w-100" />
+<div className="grow-2" />
 
 <div className="hover:!wrap-break-word" />
 ```
 
 ## Interactions with other rules
 
-- **`no-unnecessary-arbitrary-value`**: complementary, no double-fire. This rule rewrites arbitrary
-  values to named utilities only when the canonical resolution produces a different CSS shape (e.g.
-  `p-[2px]` → `p-0.5` via spacing scale). `no-unnecessary-arbitrary-value` covers the cases where
-  the arbitrary already maps directly to a named utility producing the same CSS (e.g. `h-[auto]` →
-  `h-auto`).
+- **`no-unnecessary-arbitrary-value`**: complementary, no double-fire. Both rewrite an arbitrary
+  value to a named utility only when the two emit **identical** CSS; they split on shape.
+  `no-unnecessary-arbitrary-value` owns the cases where the arbitrary maps directly to a single
+  named utility (e.g. `h-[auto]` → `h-auto`). A value that is only _numerically_ equal to a scale
+  step (`p-[2px]` → `p-0.5`, whose CSS text differs) is neither rule's business — that is
+  `prefer-scale-token`, report-only.
 - **`prefer-theme-tokens`**: the third partner of the arbitrary→named trio. It catches CSS-var
   references like `border-(--border)` → `border-border` where neither `enforce-canonical` (the CSS
   differs) nor `no-unnecessary-arbitrary-value` (no shared bracket equivalent) would fire.
