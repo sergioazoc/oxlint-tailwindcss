@@ -80,9 +80,41 @@ missing design system.
 - **`no-dark-without-light`**: opposite shape. This rule flags `base + variant:same-utility`; that
   one flags `dark:foo` with no light counterpart at all.
 
+## Composition and merge helpers (`cn` / `twMerge` / `cva`)
+
+"`hover:flex` is redundant because `flex` already applies" only holds when the string being checked
+is the element's **final, self-contained class list**. In a `tailwind-merge` composition — the
+`cn`/`twMerge` + `cva` pattern shadcn-style codebases use — a `className` is frequently an
+**override fragment** that gets merged at runtime with classes contributed elsewhere, often in
+another module. There the variant is usually **load-bearing**: it exists to beat a same-group class
+the component merges in from its own `cva`.
+
+Take `<Button className="bg-transparent hover:bg-transparent" />`, where `Button` does
+`twMerge(buttonVariants(), className)` and `buttonVariants()` contributes `hover:bg-accent`.
+`bg-transparent` (no modifier) and `hover:bg-accent` (a `hover` modifier) sit in different
+`tailwind-merge` conflict groups, so the unconditional `bg-transparent` does **not** evict
+`hover:bg-accent` — only `hover:bg-transparent` does. Removing the "redundant"
+`hover:bg-transparent` therefore restores the accent hover. The class looks redundant in isolation
+but is required in context (issue #117).
+
+Because the base the variant defeats lives in another argument or module, redundancy is not
+decidable from the fragment alone without emulating `tailwind-merge`. So the rule only evaluates a
+string it can be sure is the final list: a literal (or template) used directly as
+`class`/`className` on a **native host element** (`<div>`, `<button>`, …). It does **not** report
+strings that are:
+
+- arguments to a merge-aware call — `cn(...)`, `twMerge(...)`, `cva(...)`, `tv(...)`, etc.;
+- the `className`/`class` of a **custom component** (`<Button …>`, `<Field.Root …>`), which is
+  opaque — the component may re-merge it internally;
+- assigned to a variable, or emitted from a tagged template.
+
+The trade-off is deliberate: it accepts a few false negatives (a genuinely redundant pair hidden in
+one of those positions is not caught) to eliminate the false positives, which read as obviously
+correct and invite a rendering regression.
+
 ## When to disable it
 
-- **Code generators / class-name builders** that intentionally emit both a base and a same-utility
-  variant (rare, but happens when a framework merges class lists from different sources and prefers
-  not to deduplicate).
+- **Code generators / class-name builders** on a native element that intentionally emit both a base
+  and a same-utility variant. (Override fragments passed through `cn`/`twMerge` or a custom
+  component are already skipped — see the section above.)
 - **Snapshot tests / fixtures** that need the redundant pair to exercise downstream tooling.

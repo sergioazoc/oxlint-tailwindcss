@@ -1,5 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
-import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { createExtractorVisitors, isFinalClassList, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import {
   extractVariants,
@@ -157,6 +157,10 @@ export const noDarkWithoutLight = defineRule({
       const cache = ds ? ds.cache : null
 
       for (const loc of locations) {
+        // Composition guard (issue #117): this relational check is only sound on
+        // a final, self-contained class list — not on merge/component fragments.
+        if (!isFinalClassList(loc)) continue
+
         const classes = splitClasses(loc.value)
 
         // Classes whose value the user wrote have no precomputed declarations;

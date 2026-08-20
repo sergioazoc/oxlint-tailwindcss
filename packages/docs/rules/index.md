@@ -11,8 +11,10 @@ These rules catch problems that would generate invalid or unexpected CSS.
   about.
 - [no-conflicting-classes](./no-conflicting-classes) — flag classes that fight over the same CSS
   property.
-- [no-contradicting-variants](./no-contradicting-variants) — `flex hover:flex` is redundant.
-- [no-dark-without-light](./no-dark-without-light) — `dark:` should usually have a light-mode pair.
+- [no-contradicting-variants](./no-contradicting-variants) — `flex hover:flex` is redundant (only on
+  literal class lists on native elements, not `cn`/`twMerge` fragments).
+- [no-dark-without-light](./no-dark-without-light) — `dark:` should usually have a light-mode pair
+  (only on literal class lists on native elements, not `cn`/`twMerge` fragments).
 - [no-duplicate-classes](./no-duplicate-classes) — same class twice is dead weight.
 
 ## Modernization

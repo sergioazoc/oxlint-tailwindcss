@@ -68,9 +68,6 @@ la regla funciona sin él.
 
 // `bg-*` tiene base, pero `text-*` no
 <div className="bg-white dark:bg-gray-900 dark:text-white" />
-
-// Dentro de un helper de class-names — mismo problema, menos visible
-cn("dark:bg-gray-900")
 ```
 
 ### ✓ Correcto
@@ -95,6 +92,12 @@ cn("dark:bg-gray-900")
   className="bg-white contrast-more:bg-black"
   // con options: [{ variants: ["contrast-more"] }]
 />
+
+// Un string sólo-dark dentro de un helper de merge o en un componente custom es
+// un fragmento de override — la base light vive en otro lado, así que NO se
+// reporta. Mira "Composición y helpers de merge" abajo.
+cn("dark:bg-gray-900")
+;<Field className="dark:bg-transparent" />
 ```
 
 ## Interacciones con otras reglas
@@ -109,12 +112,36 @@ cn("dark:bg-gray-900")
 - **`enforce-sort-order`**: no afecta la detección (la regla no mira el orden), pero al ordenar la
   base y la variante dark tienden a quedar pegadas, lo que hace evidente la que falta en review.
 
+## Composición y helpers de merge (`cn` / `twMerge` / `cva`)
+
+"No hay base para esta clase `dark:`" sólo se sostiene cuando el string que se revisa es la lista de
+clases **final y autocontenida** del elemento. En una composición con `tailwind-merge` — el patrón
+`cn`/`twMerge` + `cva` que usan los codebases estilo shadcn — un `className` suele ser un
+**fragmento de override** que se fusiona en runtime con clases aportadas en otro lado, muchas veces
+en otro módulo. Un override sólo-dark como `<Field className="dark:bg-transparent" />` no le falta
+nada: la base light (`bg-white`) vive en el `cva` propio del componente, y `tailwind-merge` conserva
+ambas porque están en scopes de modificador distintos. Reportarlo — y "arreglarlo" agregando una
+base light al override — cambia en silencio el render en light mode (issue #117).
+
+Como esa base vive en otro argumento o módulo, la redundancia no es decidible desde el fragmento
+solo sin emular `tailwind-merge`. Por eso la regla sólo evalúa un string que puede asegurar que es
+la lista final: un literal (o template) usado directamente como `class`/`className` en un **elemento
+host nativo** (`<div>`, `<input>`, …). **No** reporta strings que sean:
+
+- argumentos de una llamada merge-aware — `cn(...)`, `twMerge(...)`, `cva(...)`, `tv(...)`, etc.;
+- el `className`/`class` de un **componente custom** (`<Field …>`, `<Card.Body …>`), que es opaco —
+  el componente puede volver a fusionarlo internamente;
+- asignados a una variable, o emitidos desde un tagged template.
+
+El trade-off es deliberado: acepta algunos falsos negativos (una clase genuinamente sólo-dark
+escondida en una de esas posiciones no se atrapa) para eliminar los falsos positivos, que se leen
+como obviamente correctos e invitan a una regresión de render.
+
 ## Cuándo desactivarla
 
 - **Apps con un único color scheme** que igual incluyen algunas clases `dark:` para overrides
   puntuales sobre una base ya correcta en un componente padre. Prefiere angostar `variants` (e.g.
   sacar `dark`) antes que desactivarla.
-- **Design systems / primitives** donde el consumidor se espera que aporte la base vía `className`.
-  Desactiva por archivo y documenta el contrato; si no, cada primitive va a romper la regla.
-- **Strings de clases servidas desde el server** donde la base vive en CSS y sólo el override dark
-  se emite desde JS. Tratalo como el patrón anterior.
+- **Strings de clases servidas desde el server** en un elemento nativo donde la base vive en CSS y
+  sólo el override dark se emite desde JS. (Los fragmentos de override que pasan por `cn`/`twMerge`
+  o por un componente custom ya se omiten — mira la sección de arriba.)

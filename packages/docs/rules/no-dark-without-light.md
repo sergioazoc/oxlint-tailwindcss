@@ -67,9 +67,6 @@ works without it.
 
 // `bg-*` has a base, but `text-*` doesn't
 <div className="bg-white dark:bg-gray-900 dark:text-white" />
-
-// Inside a class-name helper — same problem, just less visible
-cn("dark:bg-gray-900")
 ```
 
 ### ✓ Correct
@@ -94,6 +91,12 @@ cn("dark:bg-gray-900")
   className="bg-white contrast-more:bg-black"
   // with options: [{ variants: ["contrast-more"] }]
 />
+
+// A dark-only string inside a merge helper or on a custom component is an
+// override fragment — the light base lives elsewhere, so it is NOT reported.
+// See "Composition and merge helpers" below.
+cn("dark:bg-gray-900")
+;<Field className="dark:bg-transparent" />
 ```
 
 ## Interactions with other rules
@@ -108,12 +111,36 @@ cn("dark:bg-gray-900")
   sorting tends to put the base and the dark variant adjacent, which makes the missing one obvious
   in review.
 
+## Composition and merge helpers (`cn` / `twMerge` / `cva`)
+
+"There is no base for this `dark:` class" only holds when the string being checked is the element's
+**final, self-contained class list**. In a `tailwind-merge` composition — the `cn`/`twMerge` + `cva`
+pattern shadcn-style codebases use — a `className` is frequently an **override fragment** that gets
+merged at runtime with classes contributed elsewhere, often in another module. A dark-only override
+like `<Field className="dark:bg-transparent" />` is not missing anything: the light base
+(`bg-white`) lives in the component's own `cva`, and `tailwind-merge` keeps both because they sit in
+different modifier scopes. Reporting it — and "fixing" it by adding a light base to the override —
+silently changes light-mode rendering (issue #117).
+
+Because that base lives in another argument or module, redundancy is not decidable from the fragment
+alone without emulating `tailwind-merge`. So the rule only evaluates a string it can be sure is the
+final list: a literal (or template) used directly as `class`/`className` on a **native host
+element** (`<div>`, `<input>`, …). It does **not** report strings that are:
+
+- arguments to a merge-aware call — `cn(...)`, `twMerge(...)`, `cva(...)`, `tv(...)`, etc.;
+- the `className`/`class` of a **custom component** (`<Field …>`, `<Card.Body …>`), which is opaque
+  — the component may re-merge it internally;
+- assigned to a variable, or emitted from a tagged template.
+
+The trade-off is deliberate: it accepts a few false negatives (a genuinely dark-only class hidden in
+one of those positions is not caught) to eliminate the false positives, which read as obviously
+correct and invite a rendering regression.
+
 ## When to disable it
 
 - **Apps with a single color scheme** that nevertheless ship a few `dark:` classes for one-off
   overrides on top of a known-correct base in a parent component. Prefer narrowing `variants` (e.g.
   drop `dark`) before disabling.
-- **Design systems / primitives** where the consumer is expected to supply the base via `className`.
-  Disable per-file and document the contract; otherwise every primitive will trip the rule.
-- **Server-driven class strings** where the base lives in CSS and only the dark override is emitted
-  from JS. Treat as the same pattern above.
+- **Server-driven class strings** on a native element where the base lives in CSS and only the dark
+  override is emitted from JS. (Override fragments passed through `cn`/`twMerge` or a custom
+  component are already skipped — see the section above.)

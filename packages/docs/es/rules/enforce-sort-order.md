@@ -98,3 +98,12 @@ sub-app). Casi nadie lo necesita — define el entry point una vez en `settings`
 - **Trabajando en un codebase que ordena clases a propósito por intent de autoría** (e.g.
   agrupamiento visual que no matchea la prioridad de Tailwind). Desactívala localmente en vez de
   globalmente si es una preferencia por componente.
+
+> **Caveat de `tailwind-merge`.** `tailwind-merge` resuelve un grupo de conflicto conservando la
+> _última_ aparición en el string. Si un mismo string de clases contiene dos clases del mismo grupo
+> (`cn("pl-4 px-2", …)`), ordenarlas en orden canónico (`px-2 pl-4`) invierte cuál queda última y
+> por lo tanto cuál conserva `twMerge` — un cambio de render, no cosmético. Es el mismo
+> comportamiento que `prettier-plugin-tailwindcss`, así que el fixer se deja tal cual; solo afecta a
+> dos clases en conflicto co-ubicadas en un string, que de por sí es un antipatrón que
+> [`no-conflicting-classes`](./no-conflicting-classes) ya marca. Separar el override en un argumento
+> `cn`/`twMerge` aparte lo evita.

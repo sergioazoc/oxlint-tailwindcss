@@ -2,6 +2,27 @@ import type { ESTree } from '@oxlint/plugins'
 import type { PluginSettings } from '../types'
 import { compileRegexList } from './allowlist'
 
+/**
+ * Where a class string was extracted from. This is the single fact a
+ * *relational* rule needs to know whether the string is the element's FINAL,
+ * self-contained class list or merely an OVERRIDE FRAGMENT that gets merged at
+ * runtime (via `cn`/`twMerge`/`cva`) with classes contributed elsewhere.
+ *
+ * Only `jsx-native` — a literal/template used directly as `class`/`className`
+ * on a native (lowercase) host element — is guaranteed to be the final list.
+ * Every other origin can be a fragment whose siblings live in another argument
+ * or another module, so a rule whose verdict depends on the OTHER classes in
+ * the string (`no-contradicting-variants`, `no-dark-without-light`) must not
+ * fire there (issue #117).
+ */
+export type ClassOrigin =
+  | 'jsx-native'
+  | 'jsx-component'
+  | 'callee'
+  | 'template-tag'
+  | 'variable'
+  | 'jsx-object'
+
 export interface ClassLocation {
   value: string
   node: ESTree.Node
@@ -10,6 +31,27 @@ export interface ClassLocation {
   preserveLeadingSpace?: boolean
   /** Preserve a trailing space (quasi followed by template expression) */
   preserveTrailingSpace?: boolean
+  /**
+   * Extraction site of this string (issue #117). Optional and purely additive:
+   * per-class rules ignore it. Relational rules gate on `jsx-native`.
+   */
+  origin?: ClassOrigin
+}
+
+/**
+ * Whether this string is the element's FINAL, self-contained class list — the
+ * only position where a RELATIONAL rule (one whose verdict for a class depends
+ * on the OTHER classes in the string) can decide safely. Everywhere else the
+ * string may be an override FRAGMENT merged at runtime — by `cn`/`twMerge`/
+ * `cva`, or inside a custom component — with classes contributed in another
+ * argument or another module, where claims like "the base already applies
+ * unconditionally" or "there is no light base" are undecidable without
+ * emulating tailwind-merge (issue #117). The two relational rules
+ * (`no-contradicting-variants`, `no-dark-without-light`) gate on this; it is
+ * the single home for that decision so it can't drift between them.
+ */
+export function isFinalClassList(loc: ClassLocation): boolean {
+  return loc.origin === 'jsx-native'
 }
 
 /**
@@ -190,6 +232,40 @@ export function createExtractorVisitors(
 }
 
 /**
+ * Stamps every location with its extraction origin and returns the array.
+ * Origin is set once at each of the 4 entry points, so the recursive
+ * `extractFromExpression` helpers stay origin-agnostic.
+ */
+function withOrigin(locations: ClassLocation[], origin: ClassOrigin): ClassLocation[] {
+  for (const loc of locations) loc.origin = origin
+  return locations
+}
+
+// A lowercase-initial JSX tag is an intrinsic/host element; capitalized (or
+// member/namespaced) names are components. Compiled once — `jsxHostOrigin` runs
+// on every JSXAttribute node (hot path).
+const NATIVE_JSX_TAG = /^[a-z]/
+
+/**
+ * Classifies the JSX host element of an attribute as a native (lowercase) host
+ * — where the `className` literal IS the element's final class list — or a
+ * custom component, where the string is opaque (it may be re-merged inside the
+ * component with `cva`/`twMerge`). Conservative: unknown parent shapes →
+ * component, so a relational rule under-reports rather than emitting a false
+ * positive.
+ */
+function jsxHostOrigin(node: ESTree.JSXAttribute): ClassOrigin {
+  const parent = node.parent
+  if (parent && parent.type === 'JSXOpeningElement') {
+    const elementName = parent.name
+    if (elementName.type === 'JSXIdentifier' && NATIVE_JSX_TAG.test(elementName.name)) {
+      return 'jsx-native'
+    }
+  }
+  return 'jsx-component'
+}
+
+/**
  * Extracts class locations from a JSXAttribute node.
  * Handles: className="...", className={`...`}, className={cond ? "..." : "..."}
  */
@@ -202,6 +278,8 @@ export function extractFromJSXAttribute(
 
   if (!node.value) return []
 
+  const hostOrigin = jsxHostOrigin(node)
+
   // className="literal string"
   if (node.value.type === 'Literal' && typeof node.value.value === 'string') {
     return [
@@ -209,6 +287,7 @@ export function extractFromJSXAttribute(
         value: node.value.value,
         node: node.value,
         range: [node.value.range[0] + 1, node.value.range[1] - 1],
+        origin: hostOrigin,
       },
     ]
   }
@@ -216,11 +295,13 @@ export function extractFromJSXAttribute(
   // className={expression} or classNames={{ root: "flex" }}
   if (node.value.type === 'JSXExpressionContainer') {
     const expr = node.value.expression
-    // classNames={{ root: "flex flex-col", label: "text-sm" }} — extract string values
+    // classNames={{ root: "flex flex-col", label: "text-sm" }} — extract string values.
+    // Object values are prop payloads, not the host's own final class list, so
+    // they are never `jsx-native`.
     if (expr.type === 'ObjectExpression') {
-      return extractObjectValues(expr as ESTree.ObjectExpression)
+      return withOrigin(extractObjectValues(expr as ESTree.ObjectExpression), 'jsx-object')
     }
-    return extractFromExpression(expr)
+    return withOrigin(extractFromExpression(expr), hostOrigin)
   }
 
   return []
@@ -237,15 +318,18 @@ export function extractFromCallExpression(
   const calleeName = getCalleeName(node.callee)
   if (!calleeName || !config.callees.includes(calleeName)) return []
 
-  if (calleeName === 'cva') return extractFromCvaCall(node)
-  if (calleeName === 'tv') return extractFromTvCall(node)
-  if (calleeName === 'classed') return extractFromClassedCall(node)
+  // Every callee (cn/twMerge/cva/tv/classed/…) produces override FRAGMENTS: each
+  // argument is merged at runtime with the others (and with the host component's
+  // own classes), so no argument is a final, self-contained class list.
+  if (calleeName === 'cva') return withOrigin(extractFromCvaCall(node), 'callee')
+  if (calleeName === 'tv') return withOrigin(extractFromTvCall(node), 'callee')
+  if (calleeName === 'classed') return withOrigin(extractFromClassedCall(node), 'callee')
 
   const results: ClassLocation[] = []
   for (const arg of node.arguments) {
     extractFromExpression(arg, results)
   }
-  return results
+  return withOrigin(results, 'callee')
 }
 
 /**
@@ -258,7 +342,7 @@ export function extractFromTaggedTemplate(
   const tagName = getCalleeName(node.tag)
   if (!tagName || !config.tags.includes(tagName)) return []
 
-  return extractFromTemplateLiteral(node.quasi)
+  return withOrigin(extractFromTemplateLiteral(node.quasi), 'template-tag')
 }
 
 /**
@@ -472,7 +556,10 @@ export function extractFromVariableDeclarator(
   if (!config.variablePatterns.some((p) => p.test((node.id as ESTree.BindingIdentifier).name)))
     return []
   if (!node.init) return []
-  return extractFromExpression(node.init)
+  // A `const className = "..."` can flow into a native attribute (final list) or
+  // into a merge call (fragment) — we can't tell statically, so it is never
+  // `jsx-native`.
+  return withOrigin(extractFromExpression(node.init), 'variable')
 }
 
 /**

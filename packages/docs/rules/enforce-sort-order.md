@@ -96,3 +96,12 @@ sub-app). Almost nobody needs this — set the entry point once in `settings` an
 - **Working in a codebase that intentionally orders classes by authoring intent** (e.g. visual
   grouping that doesn't match Tailwind's priority). Disable locally rather than globally if it's a
   per-component preference.
+
+> **`tailwind-merge` caveat.** `tailwind-merge` resolves a conflict group by keeping the _last_
+> occurrence in the string. If a single class string contains two classes from the same group
+> (`cn("pl-4 px-2", …)`), sorting them into canonical order (`px-2 pl-4`) flips which one is last
+> and therefore which one `twMerge` keeps — a rendering change, not a cosmetic one. This is the same
+> behavior as `prettier-plugin-tailwindcss`, so the fixer is left as-is; it only bites two
+> conflicting classes co-located in one string, which is itself an anti-pattern
+> [`no-conflicting-classes`](./no-conflicting-classes) already flags. Splitting the override into a
+> separate `cn`/`twMerge` argument avoids it.

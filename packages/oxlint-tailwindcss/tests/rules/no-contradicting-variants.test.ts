@@ -30,6 +30,25 @@ ruleTester.run('no-contradicting-variants', noContradictingVariants, {
     // Child/descendant selectors target different elements
     { code: '<div className="flex *:data-[slot=select-value]:flex" />', filename: 'test.tsx' },
     { code: '<div className="flex *:[span]:last:flex" />', filename: 'test.tsx' },
+    // Composition guard (issue #117): "base + variant:same-utility is redundant"
+    // only holds for the element's FINAL class list. In a `cn`/`twMerge`
+    // fragment or a custom component's `className`, the variant is often
+    // load-bearing — it exists to beat a same-group class the component merges
+    // in from its own `cva` (another module). These must NOT report.
+    // The exact reproduction from the issue:
+    {
+      code: '<Button className="bg-transparent hover:bg-transparent" />',
+      filename: 'test.tsx',
+    },
+    // Each merge-call argument is analyzed in isolation, so the override
+    // fragment `"bg-transparent hover:bg-transparent"` must not be flagged even
+    // when the base it defeats sits in a sibling argument.
+    {
+      code: 'twMerge("rounded hover:bg-accent", "bg-transparent hover:bg-transparent")',
+      filename: 'test.tsx',
+    },
+    { code: 'cn("flex", "flex dark:flex")', filename: 'test.tsx' },
+    { code: '<Field.Root className="flex dark:flex" />', filename: 'test.tsx' },
   ],
   invalid: [
     // Base flex + dark:flex → dark:flex is redundant

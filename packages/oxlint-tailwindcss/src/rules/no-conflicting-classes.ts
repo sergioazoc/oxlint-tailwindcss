@@ -213,6 +213,14 @@ export const noConflictingClasses = defineRule({
       const { reportRedundant, allowClasses, allowPairs } = getOptions()
 
       for (const loc of locations) {
+        // NO composition guard here, unlike no-contradicting-variants /
+        // no-dark-without-light (issue #117). Those make a whole-element claim
+        // ("the base applies unconditionally" / "no base exists") that a merge
+        // fragment can invalidate. This rule only claims "of these two
+        // co-located classes, one loses" — which is invariant to whatever merges
+        // in: within one string, tailwind-merge (last-wins) or the CSS cascade
+        // genuinely drops the loser regardless of the host or sibling arguments.
+        // Gating on `loc.origin` would suppress correct intra-string reports.
         const classes = splitClasses(loc.value)
         if (classes.length < 2) continue
 
