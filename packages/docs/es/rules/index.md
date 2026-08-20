@@ -10,9 +10,11 @@ Reglas que atrapan problemas que generarían CSS inválido o inesperado.
 - [no-unknown-classes](./no-unknown-classes) — prohíbe clases que el design system desconoce.
 - [no-conflicting-classes](./no-conflicting-classes) — marca clases que pelean por la misma
   propiedad CSS.
-- [no-contradicting-variants](./no-contradicting-variants) — `flex hover:flex` es redundante.
+- [no-contradicting-variants](./no-contradicting-variants) — `flex hover:flex` es redundante (solo
+  en listas de clases literales en elementos nativos, no en fragmentos de `cn`/`twMerge`).
 - [no-dark-without-light](./no-dark-without-light) — `dark:` debería usualmente tener pareja en modo
-  claro.
+  claro (solo en listas de clases literales en elementos nativos, no en fragmentos de
+  `cn`/`twMerge`).
 - [no-duplicate-classes](./no-duplicate-classes) — la misma clase dos veces es peso muerto.
 
 ## Modernización

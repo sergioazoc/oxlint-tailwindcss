@@ -61,6 +61,7 @@ Add the plugin to your `.oxlintrc.json`:
     "tailwindcss/no-conflicting-classes": "error",
     "tailwindcss/no-deprecated-classes": "error",
     "tailwindcss/no-unnecessary-whitespace": "error",
+    // These two only inspect literal class lists on native elements; cn()/twMerge() fragments and custom-component classNames are skipped (issue #117).
     "tailwindcss/no-dark-without-light": "warn",
     "tailwindcss/no-contradicting-variants": "warn",
     // Style
@@ -476,6 +477,11 @@ Requires a base (light) utility when using the `dark:` variant on the same eleme
 Groups by utility prefix (`bg-`, `text-`, `border-`, etc.) — only checks that a base utility of the
 same type exists.
 
+**Scope (issue #117):** only inspects literal class lists on **native host elements** (`<div>`,
+`<input>`, …). Strings passed to `cn`/`twMerge`/`cva` or set on a custom component's `className` are
+override fragments whose light base commonly lives in another module, so they are skipped to avoid
+false positives.
+
 **Options:**
 
 | Option     | Type       | Default    | Description                          |
@@ -506,6 +512,11 @@ unconditionally.
 Only flags when the exact same utility exists both as base and with a conditional variant. Variants
 that change the selector target (pseudo-elements, child/descendant selectors, arbitrary selectors)
 are not flagged.
+
+**Scope (issue #117):** only inspects literal class lists on **native host elements** (`<div>`,
+`<button>`, …). Strings passed to `cn`/`twMerge`/`cva` or set on a custom component's `className`
+are override fragments where the "redundant" variant is often load-bearing (it beats a same-group
+class the component merges in), so they are skipped to avoid false positives.
 
 **No options.** **No autofix.**
 

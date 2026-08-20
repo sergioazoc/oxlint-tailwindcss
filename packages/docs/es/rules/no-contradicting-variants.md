@@ -81,9 +81,41 @@ design system.
 - **`no-dark-without-light`**: forma inversa. Esta regla marca `base + variant:misma-utility`; esa
   marca `dark:foo` sin ninguna contraparte en light.
 
+## Composición y helpers de merge (`cn` / `twMerge` / `cva`)
+
+"`hover:flex` es redundante porque `flex` ya aplica" sólo se sostiene cuando el string que se revisa
+es la lista de clases **final y autocontenida** del elemento. En una composición con
+`tailwind-merge` — el patrón `cn`/`twMerge` + `cva` que usan los codebases estilo shadcn — un
+`className` suele ser un **fragmento de override** que se fusiona en runtime con clases aportadas en
+otro lado, muchas veces en otro módulo. Ahí la variante suele ser **load-bearing**: existe para
+ganarle a una clase del mismo grupo que el componente mergea desde su propio `cva`.
+
+Toma `<Button className="bg-transparent hover:bg-transparent" />`, donde `Button` hace
+`twMerge(buttonVariants(), className)` y `buttonVariants()` aporta `hover:bg-accent`.
+`bg-transparent` (sin modificador) y `hover:bg-accent` (un modificador `hover`) están en grupos de
+conflicto distintos de `tailwind-merge`, así que el `bg-transparent` incondicional **no** desaloja a
+`hover:bg-accent` — sólo `hover:bg-transparent` lo hace. Quitar el "redundante"
+`hover:bg-transparent` restaura entonces el hover con accent. La clase parece redundante en
+aislamiento pero es necesaria en contexto (issue #117).
+
+Como la base a la que le gana la variante vive en otro argumento o módulo, la redundancia no es
+decidible desde el fragmento solo sin emular `tailwind-merge`. Por eso la regla sólo evalúa un
+string que puede asegurar que es la lista final: un literal (o template) usado directamente como
+`class`/`className` en un **elemento host nativo** (`<div>`, `<button>`, …). **No** reporta strings
+que sean:
+
+- argumentos de una llamada merge-aware — `cn(...)`, `twMerge(...)`, `cva(...)`, `tv(...)`, etc.;
+- el `className`/`class` de un **componente custom** (`<Button …>`, `<Field.Root …>`), que es opaco
+  — el componente puede volver a fusionarlo internamente;
+- asignados a una variable, o emitidos desde un tagged template.
+
+El trade-off es deliberado: acepta algunos falsos negativos (un par genuinamente redundante
+escondido en una de esas posiciones no se atrapa) para eliminar los falsos positivos, que se leen
+como obviamente correctos e invitan a una regresión de render.
+
 ## Cuándo desactivarla
 
-- **Generadores de código / class-name builders** que a propósito emiten una base y una variante con
-  la misma utility (raro, pero pasa cuando un framework mergea listas de clases de distintas fuentes
-  y prefiere no deduplicar).
+- **Generadores de código / class-name builders** en un elemento nativo que a propósito emiten una
+  base y una variante con la misma utility. (Los fragmentos de override que pasan por `cn`/`twMerge`
+  o por un componente custom ya se omiten — mira la sección de arriba.)
 - **Snapshots / fixtures** que necesitan el par redundante para ejercitar tooling downstream.

@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.10.0
+
+`no-contradicting-variants` and `no-dark-without-light` decide by looking at the _other_ classes in
+the same string — "the base already applies unconditionally", "there is no light base". That only
+holds when the string is the element's final class list. In the `cn`/`twMerge` + `cva` pattern
+shadcn-style codebases use, a `className` is often an **override fragment** whose sibling (the base
+it defeats, or the light base it pairs with) lives in another argument or another module, so both
+rules fired confident-but-wrong findings that invited a rendering regression when acted on
+([#117](https://github.com/sergioazoc/oxlint-tailwindcss/issues/117)).
+
+### Bug fixes
+
+- **`no-contradicting-variants` and `no-dark-without-light` no longer report composition
+  fragments.** Extracted class strings now carry their origin, and both rules only evaluate a string
+  they can be sure is the element's final class list: a literal (or template) used directly as
+  `class`/ `className` on a **native host element**. Strings passed to a merge-aware call (`cn`,
+  `twMerge`, `cva`, `tv`, …), set on a **custom component's** `className`, assigned to a variable,
+  or emitted from a tagged template are skipped — their base/counterpart routinely lives elsewhere
+  and redundancy isn't decidable there without emulating `tailwind-merge`. This trades a few false
+  negatives for eliminating the false positives. Reports on native-element literals are unchanged.
+
+### Documentation
+
+- Documented the composition limitation on both rules (including the exact reproduction from #117),
+  and noted the narrower scope in the recommended config. Also flagged a bounded `tailwind-merge`
+  caveat on `enforce-sort-order` — reordering two same-conflict-group classes co-located in one
+  string can flip which one `tailwind-merge` keeps (behavior shared with
+  `prettier-plugin-tailwindcss`, so the fixer is unchanged) — and corrected the
+  `no-conflicting-classes` note that claimed sorting can never change a conflict outcome.
+
 ## 1.9.0
 
 The plugin declared `tailwindcss` and `@tailwindcss/node` as dependencies and resolved the engine

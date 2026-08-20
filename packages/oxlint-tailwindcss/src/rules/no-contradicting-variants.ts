@@ -1,5 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
-import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { createExtractorVisitors, isFinalClassList, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import {
   type VariantFacts,
@@ -51,6 +51,10 @@ export const noContradictingVariants = defineRule({
       const factsFor = variantFactsLookup()
 
       for (const loc of locations) {
+        // Composition guard (issue #117): this relational check is only sound on
+        // a final, self-contained class list — not on merge/component fragments.
+        if (!isFinalClassList(loc)) continue
+
         const classes = splitClasses(loc.value)
 
         // Collect base classes (no variants) — store their full utility string

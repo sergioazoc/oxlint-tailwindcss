@@ -24,6 +24,15 @@ ruleTester.run('no-dark-without-light', noDarkWithoutLight, {
     { code: '<div className="hidden dark:block" />', filename: 'test.tsx' },
     { code: '<div className="flex dark:hidden" />', filename: 'test.tsx' },
     { code: '<div className="relative dark:absolute" />', filename: 'test.tsx' },
+    // Composition guard (issue #117): a dark-only string is only "missing a
+    // base" when it is the element's FINAL class list. In a `cn`/`twMerge`
+    // fragment or a custom component's `className`, the light base routinely
+    // lives in another argument or in the component's own `cva`, so these must
+    // NOT report — acting on the finding removes a load-bearing dark override.
+    { code: 'cn("dark:bg-gray-900")', filename: 'test.tsx' },
+    { code: 'twMerge(fieldVariants(), "dark:bg-transparent")', filename: 'test.tsx' },
+    { code: '<Field className="dark:bg-transparent" />', filename: 'test.tsx' },
+    { code: '<Card.Body className="dark:bg-gray-900" />', filename: 'test.tsx' },
   ],
   invalid: [
     {
@@ -33,11 +42,6 @@ ruleTester.run('no-dark-without-light', noDarkWithoutLight, {
     },
     {
       code: '<div className="bg-white dark:bg-gray-900 dark:text-white" />',
-      filename: 'test.tsx',
-      errors: [{ messageId: 'missingBase' }],
-    },
-    {
-      code: 'cn("dark:bg-gray-900")',
       filename: 'test.tsx',
       errors: [{ messageId: 'missingBase' }],
     },

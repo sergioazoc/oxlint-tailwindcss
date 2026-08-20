@@ -103,9 +103,13 @@ pasar en silencio.
 
 - **`no-duplicate-classes`**: complementaria. Los duplicados son la misma clase repetida; los
   conflictos son clases distintas que pegan en la misma propiedad. Mantén ambas activas.
-- **`enforce-sort-order`**: aquí es cosmética. Quién gana lo decide el stylesheet generado, no el
-  orden del atributo, así que ordenar no crea ni resuelve un conflicto — solo hace el par más fácil
-  de leer.
+- **`enforce-sort-order`**: cosmética para la **cascada CSS plana** — quién gana lo decide el
+  stylesheet generado, no el orden del atributo, así que ordenar solo hace el par más fácil de leer.
+  La única excepción es **`tailwind-merge`**: resuelve las clases del mismo grupo por _última
+  aparición en el string_, así que reordenar un fragmento puede invertir cuál sobrevive. Eso solo
+  afecta a dos clases en conflicto co-ubicadas en un mismo fragmento de merge — el antipatrón que
+  esta regla ya marca — así que arreglar el conflicto también elimina el riesgo del sort. Mira la
+  nota de esa regla.
 
 - **`no-deprecated-classes`**: un alias deprecado y su equivalente moderno (`flex-grow` + `grow`)
   van a chocar a nivel de propiedad. Arreglar la deprecación suele resolver el conflicto.

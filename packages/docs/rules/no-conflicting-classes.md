@@ -105,9 +105,12 @@ rule emits a single fatal `designSystemUnavailable` diagnostic per file instead 
 
 - **`no-duplicate-classes`**: complementary. Duplicates are the exact same class repeated; conflicts
   are different classes that hit the same property. Keep both rules on.
-- **`enforce-sort-order`**: cosmetic here. Which class wins is decided by the generated stylesheet,
-  not by the order of the attribute, so sorting cannot create or resolve a conflict — it only makes
-  the pair easier to read.
+- **`enforce-sort-order`**: cosmetic for the **plain CSS cascade** — which class wins is decided by
+  the generated stylesheet, not by attribute order, so sorting only makes the pair easier to read.
+  The one exception is **`tailwind-merge`**: it resolves same-group classes by _last occurrence in
+  the string_, so reordering a fragment can flip which one survives. That only bites two conflicting
+  classes co-located in a single merge fragment — the anti-pattern this rule already flags — so
+  fixing the conflict removes the sort hazard too. See that rule's own note.
 - **`no-deprecated-classes`**: a deprecated alias and its modern equivalent (`flex-grow` + `grow`)
   will trip this rule on the property level. Fixing the deprecation usually resolves the conflict.
 - **`enforce-canonical`**: rewriting to canonical forms collapses trivially-aliased pairs before
