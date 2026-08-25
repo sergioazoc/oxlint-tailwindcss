@@ -6,8 +6,8 @@
 
 Flags long class strings so they don't sprawl past a sensible line length and, optionally, splits
 them into multiple lines when they contain more classes than your team agrees a single line should
-carry. Two independent triggers: a character-based print width (warn only) and a class-count budget
-per line (autofix on template literals).
+carry. Two independent triggers: a character-based print width and a class-count budget per line,
+both autofixing template literals (string literals only report — they can't safely span lines).
 
 DS-independent — works without `settings.tailwindcss.entryPoint`. The rule operates on the raw class
 string and doesn't care what the classes mean.
@@ -28,9 +28,16 @@ conforming lines are left untouched. Other rules (`no-unnecessary-whitespace`, `
 
 Maximum length of any **single line** of the class string. For a one-line string that is its whole
 length; for a multiline template it is the longest individual line, so splitting a long string
-across lines can actually satisfy the rule. When exceeded, the rule reports `tooLong` but does
-**not** autofix — splitting a long string into a multiline literal is a judgment call (extract a
-component vs. just wrap it), so the rule surfaces the warning and lets you decide.
+across lines can actually satisfy the rule. A line whose single class alone exceeds the width is not
+reported — it can't be wrapped any shorter.
+
+When `classesPerLine` is **not** set, template literals get a **width-based autofix**: classes are
+grouped into runs sharing a variant chain (`hover:`, `md:hover:`, or none), each run starts its own
+line, and within a run classes are packed onto a line until adding the next would exceed
+`printWidth` (indentation included). Multiline templates that fit the width but don't match that
+layout are normalized too, under the `inconsistentWrapping` message. In string literals the rule
+reports `tooLong` without a fix — splitting a string literal into a multiline template is a judgment
+call (extract a component vs. just wrap it), so the rule surfaces the warning and lets you decide.
 
 ```jsonc
 { "tailwindcss/enforce-consistent-line-wrapping": ["error", { "printWidth": 100 }] }
@@ -44,6 +51,9 @@ Maximum number of classes on a single line. When exceeded inside a template lite
 rule autofixes by wrapping the classes into the block convention, chunks of `classesPerLine` per
 line. Inside string literals (`"…"`) the rule reports `tooManyPerLine` but doesn't autofix — string
 literals can't safely span lines without manual intervention.
+
+Setting `classesPerLine` switches the template-literal fixer to this chunk-based mode and turns the
+width-based (variant-grouped) fixer off — `printWidth` then only reports.
 
 ```jsonc
 { "tailwindcss/enforce-consistent-line-wrapping": ["error", { "classesPerLine": 5 }] }
@@ -67,6 +77,14 @@ const className = `flex items-center justify-between p-4 m-2 bg-white`
 
 // Same count, string literal — reports but no autofix
 <div className="flex items-center justify-between p-4 m-2 bg-white" />
+
+// printWidth: 40 without classesPerLine — width-based fix, grouped by variant
+const buttonClass = `flex items-center gap-2 hover:bg-red-500 hover:underline focus:outline-none`
+// → const buttonClass = `
+//     flex items-center gap-2
+//     hover:bg-red-500 hover:underline
+//     focus:outline-none
+//   `
 ```
 
 ### ✓ Correct
