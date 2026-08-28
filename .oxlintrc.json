@@ -1,4 +1,15 @@
 {
   "plugins": ["typescript", "unicorn"],
-  "rules": {}
+  "rules": {},
+  "overrides": [
+    {
+      "files": ["packages/oxlint-tailwindcss/src/**/*.ts"],
+      "rules": {
+        "typescript/no-floating-promises": "error",
+        "typescript/no-misused-promises": "error",
+        "typescript/await-thenable": "error",
+        "typescript/no-for-in-array": "error"
+      }
+    }
+  ]
 }

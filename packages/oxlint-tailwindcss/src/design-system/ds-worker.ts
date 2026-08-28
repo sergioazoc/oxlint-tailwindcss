@@ -373,7 +373,9 @@ export class DesignSystemWorker<Req, Res> {
       // Remove the crash listener first so an intentional teardown (evict,
       // drop, reset) never fires the sticky-error handler for this cssPath.
       worker.removeAllListeners('error')
-      worker.terminate()
+      // Fire-and-forget: teardown never needs the exit code. `void` marks the
+      // returned promise as intentionally unawaited (typescript/no-floating-promises).
+      void worker.terminate()
     } catch {
       // Already dead — nothing to do.
     }
