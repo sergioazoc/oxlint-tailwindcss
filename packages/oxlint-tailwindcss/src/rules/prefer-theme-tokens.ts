@@ -71,8 +71,16 @@ export const preferThemeTokens = defineRule({
           const match = detectRawVariable(bareUtility)
           if (!match) return []
 
-          const candidate = `${match.prefix}-${match.varName}${match.modifier}`
-          if (!cache.isValid(candidate)) return []
+          // Validate the BASE named token (`prefix-name`), NOT the full string with the
+          // modifier attached. `isValid` is tolerant: any string containing brackets/parens
+          // counts as a valid arbitrary value, so a modifier like `/(--opacity)` or `/[0.8]`
+          // would make `fill-color/…` pass even when `fill-color` is not a token — and
+          // rewriting to it yields a class that emits no CSS, dropping the color and its
+          // opacity. The modifier is not part of the token lookup; it rides along verbatim
+          // into the replacement.
+          const baseCandidate = `${match.prefix}-${match.varName}`
+          if (!cache.isValid(baseCandidate)) return []
+          const candidate = `${baseCandidate}${match.modifier}`
 
           // `cache.isValid` only says the name exists. Whether the named token
           // means the SAME thing as the variable the user wrote depends on the
@@ -86,7 +94,6 @@ export const preferThemeTokens = defineRule({
           const target = `--${match.varName}`
           // The modifier (`/80`) is not part of the token lookup: `bg-primary/80`
           // is a user-written value the precompute never saw, `bg-primary` is not.
-          const baseCandidate = `${match.prefix}-${match.varName}`
           const resolves = cache
             .getCssDeclarations(baseCandidate)
             .some((decl) =>
