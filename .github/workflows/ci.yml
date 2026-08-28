@@ -61,6 +61,13 @@ jobs:
       - name: Type check
         run: pnpm typecheck
 
+      # Type-aware lint (tsgolint) over the plugin source only. The linux binary
+      # resolves via oxlint-tsgolint's optionalDependencies; the curated error
+      # set (no-floating-promises, etc.) is scoped to src/**/*.ts in .oxlintrc.json.
+      # Deliberately NOT in release.yml — releases stay decoupled from this gate.
+      - name: Type-aware lint
+        run: pnpm lint:types
+
       - name: Build
         run: pnpm build
 
