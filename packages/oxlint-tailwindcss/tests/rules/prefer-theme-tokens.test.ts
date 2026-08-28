@@ -49,6 +49,16 @@ describe('prefer-theme-tokens (shadcn-style theme)', () => {
       // Bracket form is CSS-equivalent to `border-border` with this fixture —
       // owned by no-unnecessary-arbitrary-value; the getNamedEquivalent guard silences this rule.
       { code: '<div className="border-[var(--border)]" />', filename: 'test.tsx' },
+      // The color side has no named token (`fill-color` does not exist), so the class is valid
+      // Tailwind and must NEVER be rewritten — regardless of the opacity-modifier form. Deciding
+      // by the base token (not the modifier) covers every modifier shape at once: the CSS-variable
+      // forms and the arbitrary-bracket forms that a tolerant validity check would leak through.
+      { code: '<svg className="fill-(--color)/(--opacity)" />', filename: 'test.tsx' },
+      { code: '<svg className="fill-[var(--color)]/(--opacity)" />', filename: 'test.tsx' },
+      { code: '<svg className="fill-(--color)/[var(--opacity)]" />', filename: 'test.tsx' },
+      { code: '<svg className="fill-(--color)/[0.8]" />', filename: 'test.tsx' },
+      { code: '<svg className="fill-(--color)/[50%]" />', filename: 'test.tsx' },
+      { code: '<svg className="fill-[var(--color)]/[0.8]" />', filename: 'test.tsx' },
     ],
     invalid: [
       // Paren shorthand — the case from the issue
@@ -132,6 +142,27 @@ describe('prefer-theme-tokens (shadcn-style theme)', () => {
         filename: 'test.tsx',
         errors: [{ messageId: 'preferNamed' }],
         output: '<div className="bg-primary/50" />',
+      },
+      // Color side HAS a named token (`bg-primary`) and the opacity is a CSS variable — the
+      // rewrite is legitimate and must still fire, keeping the variable modifier verbatim.
+      // Deciding by the base token (not the modifier shape) preserves these.
+      {
+        code: '<div className="bg-(--primary)/(--opacity)" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'preferNamed' }],
+        output: '<div className="bg-primary/(--opacity)" />',
+      },
+      {
+        code: '<div className="bg-[var(--primary)]/(--opacity)" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'preferNamed' }],
+        output: '<div className="bg-primary/(--opacity)" />',
+      },
+      {
+        code: '<div className="bg-(--primary)/[0.5]" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'preferNamed' }],
+        output: '<div className="bg-primary/[0.5]" />',
       },
       // Directional sub-utility (border-l, border-x, etc.)
       {

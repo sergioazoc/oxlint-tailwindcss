@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.10.1
+
+`prefer-theme-tokens` autofixes `prefix-(--var)` → `prefix-name` when a named token exists. Its
+validity gate checked the candidate **with the opacity modifier still attached**
+(`fill-color/(--opacity)`), and the tolerant validity check accepts any string containing
+parentheses or brackets as an arbitrary value — so the modifier's own `(...)`/`[...]` made the gate
+approve `fill-color/…` even when `fill-color` is not a token. The rule then rewrote a **valid**
+class into one that emits no CSS, silently dropping the color and its opacity — a destructive
+autofix ([#125](https://github.com/sergioazoc/oxlint-tailwindcss/issues/125), reported by
+@nbazille-ipsos).
+
+### Bug fixes
+
+- **`prefer-theme-tokens` no longer rewrites `prefix-(--var)/<modifier>` when the color has no named
+  token.** The rule now decides from the **base** token (`prefix-name`) instead of the full string
+  with the modifier, so the decision no longer depends on the modifier's shape. This fixes the
+  reported `fill-(--color)/(--opacity)` case **and** its siblings that a modifier-shape guard would
+  miss — `fill-(--color)/[0.8]`, `fill-(--color)/[50%]`, `fill-[var(--color)]/[0.8]` — all of which
+  were the same destructive rewrite. Legitimate rewrites are preserved: when the color **does** have
+  a named token, `bg-(--primary)/(--opacity)` still becomes `bg-primary/(--opacity)`, keeping the
+  variable opacity verbatim. Supersedes
+  [#129](https://github.com/sergioazoc/oxlint-tailwindcss/pull/129) (thanks @Steve0x2a for the
+  initial fix).
+
 ## 1.10.0
 
 `no-contradicting-variants` and `no-dark-without-light` decide by looking at the _other_ classes in
