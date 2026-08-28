@@ -28,6 +28,13 @@ function detectRawVariable(
   return null
 }
 
+/** Opacity/modifier that is itself a CSS custom property (`/(--x)` or `/[var(--x)]`). */
+const CSS_VAR_MODIFIER_RE = /^\/(\(--[\w-]+\)|\[var\(--[\w-]+\)\])$/
+
+function isCssVarModifier(modifier: string): boolean {
+  return CSS_VAR_MODIFIER_RE.test(modifier)
+}
+
 export const preferThemeTokens = defineRule({
   meta: {
     type: 'suggestion',
@@ -70,6 +77,11 @@ export const preferThemeTokens = defineRule({
           const { bare: bareUtility, position } = splitImportant(utility)
           const match = detectRawVariable(bareUtility)
           if (!match) return []
+
+          // #125: when the opacity segment is itself a CSS variable, rewriting
+          // only the color side to a named token is a false positive
+          // (`fill-(--color)/(--opacity)` → `fill-color/(--opacity)`).
+          if (isCssVarModifier(match.modifier)) return []
 
           const candidate = `${match.prefix}-${match.varName}${match.modifier}`
           if (!cache.isValid(candidate)) return []

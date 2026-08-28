@@ -49,6 +49,11 @@ describe('prefer-theme-tokens (shadcn-style theme)', () => {
       // Bracket form is CSS-equivalent to `border-border` with this fixture —
       // owned by no-unnecessary-arbitrary-value; the getNamedEquivalent guard silences this rule.
       { code: '<div className="border-[var(--border)]" />', filename: 'test.tsx' },
+      // #125: CSS-variable opacity modifier — both color and opacity are custom properties.
+      // Named rewrite to `fill-color/(--opacity)` is a false positive (bare `fill-(--color)` is silent).
+      { code: '<svg className="fill-(--color)/(--opacity)" />', filename: 'test.tsx' },
+      { code: '<svg className="fill-[var(--color)]/(--opacity)" />', filename: 'test.tsx' },
+      { code: '<svg className="fill-(--color)/[var(--opacity)]" />', filename: 'test.tsx' },
     ],
     invalid: [
       // Paren shorthand — the case from the issue
