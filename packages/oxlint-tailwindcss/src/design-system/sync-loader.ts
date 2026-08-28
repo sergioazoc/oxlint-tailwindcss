@@ -1349,6 +1349,9 @@ function runPrecomputeViaWorker(
   // blaming the user's machine ("raise the timeout"), which is how an editing
   // mistake in the precompute costs an hour to find.
   try {
+    // Deliberate parse-only probe (never invoked) to surface a syntax error in
+    // the precompute script before it reaches a worker; see the note above.
+    // oxlint-disable-next-line typescript/no-implied-eval -- intentional syntax validation, not code execution
     new Function(PRECOMPUTE_SCRIPT)
   } catch (cause) {
     throw precomputeLoadError(resolvedPath, cause)

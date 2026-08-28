@@ -27,11 +27,40 @@ pnpm build            # build the plugin (delegates to packages/oxlint-tailwindc
 pnpm test             # run plugin test suite (vitest run, excluding benchmarks)
 pnpm test:watch       # watch mode
 pnpm lint             # oxlint over the whole monorepo (root config)
+pnpm lint:types       # type-aware lint (tsgolint) over packages/oxlint-tailwindcss/src
 pnpm format           # oxfmt --write over the whole monorepo
 pnpm format:check     # oxfmt --check (verify only, no write)
 pnpm typecheck        # tsc --noEmit
 pnpm -C packages/docs dev   # local docs site
 ```
+
+## Type-aware linting (`lint:types`)
+
+oxlint 1.80 exposes type-aware rules via the optional `oxlint-tsgolint` engine (a root
+devDependency; ships a per-platform binary through optionalDependencies, so CI on `ubuntu-latest`
+resolves the linux build automatically). It needs TypeScript type information, which this repo
+satisfies for free — `typescript@7` (tsgo), `moduleResolution: "bundler"`, no `baseUrl`.
+`pnpm lint:types` runs `oxlint --type-aware` scoped to `packages/oxlint-tailwindcss/src`, where
+tsgolint discovers the plugin's `tsconfig.json` on its own (there is deliberately no root
+`tsconfig.json`).
+
+- **Curated rule set** (root `.oxlintrc.json`, under an `overrides` block matching
+  `packages/oxlint-tailwindcss/src/**/*.ts` so type-aware rules NEVER reach `tests/` — excluded from
+  the plugin tsconfig — or `packages/docs`): `typescript/no-floating-promises`,
+  `no-misused-promises`, `await-thenable`, `no-for-in-array`, all `error`. They guard the sync/async
+  worker bridge (`worker_threads` + `SharedArrayBuffer` + `Atomics`), which is the codebase's most
+  error-prone surface.
+- **Inert without the flag**: type-aware rules only run under `--type-aware`, so the
+  release-blocking `pnpm lint` (whole monorepo, no flag) is unaffected — verified. `lint:types` is a
+  **separate, not-yet-release-gating** script; wiring it into `release.yml` is a deliberate
+  follow-up.
+- **Two findings handled at adoption**: `no-floating-promises` on `worker.terminate()` (fixed with a
+  `void` — fire-and-forget teardown), and `no-implied-eval` on the deliberate
+  `new Function(PRECOMPUTE_SCRIPT)` parse-probe in `sync-loader.ts` (suppressed inline with a
+  justification, not code execution).
+- **Deferred**: `typescript/no-unnecessary-condition` is intentionally OFF — it surfaced ~25
+  warnings (a mix of intentional defensive checks and simplifiable optional chains). It's a separate
+  incremental cleanup, not part of enabling type-aware linting.
 
 Run a single test file:
 `pnpm -C packages/oxlint-tailwindcss exec vitest run tests/rules/no-duplicate-classes.test.ts`

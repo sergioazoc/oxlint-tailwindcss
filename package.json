@@ -23,6 +23,7 @@
     "bench": "pnpm -C packages/oxlint-tailwindcss bench",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
+    "lint:types": "oxlint --type-aware packages/oxlint-tailwindcss/src",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "typecheck": "pnpm -C packages/oxlint-tailwindcss typecheck",
@@ -31,7 +32,8 @@
   },
   "devDependencies": {
     "oxfmt": "catalog:",
-    "oxlint": "catalog:"
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "^7.0.2001"
   },
   "engines": {
     "node": ">=20",
