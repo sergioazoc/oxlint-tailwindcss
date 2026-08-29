@@ -309,14 +309,17 @@ export class DesignSystemWorker<Req, Res> {
 
     const result = Atomics.wait(state.controlArray, 1, 0, REQUEST_TIMEOUT)
     if (result === 'timed-out') {
+      // Per-request failure (#130): drop the worker so the next call re-spawns
+      // and retries, but do NOT remember() it as sticky. A request-level failure
+      // is a property of one input, not of the entry point — making it sticky
+      // (as init failures are) let one malformed/transient input permanently
+      // disable the rule for the whole cssPath until the process restarted.
+      // Mirrors the already-non-sticky "payload too large" branch above.
       this.dropWorker(cssPath)
-      throw this.remember(
-        cssPath,
-        new SortServiceError(
-          `${this.opts.serviceName} worker request timed out after ${REQUEST_TIMEOUT}ms.`,
-          // Fixed internal limit, not settings.tailwindcss.timeout.
-          'This is unexpected for typical class lists; please open an issue if it persists.',
-        ),
+      throw new SortServiceError(
+        `${this.opts.serviceName} worker request timed out after ${REQUEST_TIMEOUT}ms.`,
+        // Fixed internal limit, not settings.tailwindcss.timeout.
+        'This is unexpected for typical class lists; please open an issue if it persists.',
       )
     }
 
@@ -328,25 +331,25 @@ export class DesignSystemWorker<Req, Res> {
     try {
       parsed = JSON.parse(responseStr)
     } catch (cause) {
+      // Per-request failure (#130): drop-and-retry, not sticky. See the
+      // request-timeout branch above for the rationale.
       this.dropWorker(cssPath)
-      throw this.remember(
-        cssPath,
-        new SortServiceError(
-          `${this.opts.serviceName} worker returned non-JSON response.`,
-          'This is a bug; please open an issue.',
-          { cause: cause instanceof Error ? cause : undefined },
-        ),
+      throw new SortServiceError(
+        `${this.opts.serviceName} worker returned non-JSON response.`,
+        'This is a bug; please open an issue.',
+        { cause: cause instanceof Error ? cause : undefined },
       )
     }
 
     if (parsed === null) {
+      // Per-request failure (#130): drop-and-retry, not sticky. After the
+      // handler guards land, the only realistic cause here is an oversized
+      // response (the response-side twin of "payload too large"), so a later
+      // request with different input must be free to succeed, not rethrow.
       this.dropWorker(cssPath)
-      throw this.remember(
-        cssPath,
-        new SortServiceError(
-          `${this.opts.serviceName} worker returned null — the request body was rejected or its response did not fit the buffer.`,
-          'This is a bug; please open an issue with the input that triggered it.',
-        ),
+      throw new SortServiceError(
+        `${this.opts.serviceName} worker returned null — the request body was rejected or its response did not fit the buffer.`,
+        'This is a bug; please open an issue with the input that triggered it.',
       )
     }
 

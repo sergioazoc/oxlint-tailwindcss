@@ -48,7 +48,7 @@ export interface DeclarationResponse {
   invalid: string[]
 }
 
-const DECLARATION_HANDLER = `(ds, request) => {
+export const DECLARATION_HANDLER = `(ds, request) => {
   const decls = {};
   const values = {};
   const invalid = [];
@@ -60,14 +60,28 @@ const DECLARATION_HANDLER = `(ds, request) => {
   // so every user-written value went silently uncompared.
   const prefix = (ds.theme && ds.theme.prefix) || '';
   const pfx = (c) => (prefix && !c.startsWith(prefix + ':')) ? prefix + ':' + c : c;
-  const css = ds.candidatesToCss(request.classes.map(pfx));
+  // Resolve one class at a time rather than a single batch call: a malformed/
+  // mid-typing arbitrary value can make ds.candidatesToCss throw on some engine
+  // versions (#130), and a batched throw blanked the whole request AND masked
+  // real typos (a valid sibling like \`bg-red-5000\` went unflagged), then became
+  // the worker's 'null' sentinel → a process-sticky fatal error. Per-class,
+  // distinguish a THROW (incanonicalizable input → OMIT, so no-unknown-classes
+  // stays lenient instead of flagging a transient false "unknown class") from a
+  // FALSY result (compiles to nothing → invalid).
   for (let i = 0; i < request.classes.length; i++) {
-    if (!css[i]) { invalid.push(request.classes[i]); continue; }
     const cls = request.classes[i];
+    let one;
+    try {
+      const out = ds.candidatesToCss([pfx(cls)]);
+      one = out && out[0];
+    } catch (e) {
+      continue; // omit: neither decls nor invalid
+    }
+    if (!one) { invalid.push(cls); continue; }
     const list = [];
     // The selector carries the prefix, so the scope classifier needs the
     // prefixed name even though the result is keyed by the bare one.
-    walkDeclarations(css[i], pfx(cls), (scope, prop, value) => {
+    walkDeclarations(one, pfx(cls), (scope, prop, value) => {
       list.push([scope, prop, value]);
       if (!(value in values)) {
         const reads = scanVarReads(value);

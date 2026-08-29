@@ -65,7 +65,7 @@ export interface CanonicalizeResult {
 // source of truth; when the canonical form resolves through a `var()`/`calc()`
 // whose value a `:root` override can change, the declarations differ and the
 // rewrite is flagged unsafe.
-const CANONICALIZE_HANDLER = `(ds, request) => {
+export const CANONICALIZE_HANDLER = `(ds, request) => {
   const { classes, rem } = request;
   const options = rem ? { rem } : undefined;
   const declsOf = (cls) => {
@@ -79,7 +79,17 @@ const CANONICALIZE_HANDLER = `(ds, request) => {
     return css.slice(open + 1, close).replace(/\\s+/g, ' ').trim();
   };
   return classes.map((cls) => {
-    const r = ds.canonicalizeCandidates([cls], options);
+    // A malformed/mid-typing arbitrary value (e.g. \`px-[calc(var(--a)+)]\`) can
+    // make the Tailwind parser throw on some engine versions (#130). Treat it
+    // as an incanonicalizable no-op — same posture declsOf already takes for
+    // candidatesToCss — instead of letting the throw become the worker's 'null'
+    // sentinel, which the host used to turn into a process-sticky fatal error.
+    let r;
+    try {
+      r = ds.canonicalizeCandidates([cls], options);
+    } catch (e) {
+      return { canonical: cls, safe: true };
+    }
     const canonical = r[0] ?? cls;
     if (canonical === cls) return { canonical: cls, safe: true };
     const a = declsOf(cls);

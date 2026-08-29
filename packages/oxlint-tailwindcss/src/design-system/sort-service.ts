@@ -11,8 +11,18 @@ import { DesignSystemWorker, makeWorkerScript } from './ds-worker'
 // Handler: sort the requested classes into Tailwind-canonical order.
 // `null` sort indices (unknown classes) sort first, preserving their relative
 // position. The shared protocol/load/loop lives in makeWorkerScript.
-const SORT_HANDLER = `(ds, classes) => {
-  const ordered = ds.getClassOrder(classes);
+export const SORT_HANDLER = `(ds, classes) => {
+  // A malformed/mid-typing arbitrary value can make ds.getClassOrder throw on
+  // some engine versions (#130). Degrade to the input order (no reordering):
+  // the rule reads an unchanged order as "already sorted" and emits nothing,
+  // instead of the throw becoming the worker's 'null' sentinel → a
+  // process-sticky fatal error that disabled the rule until restart.
+  let ordered;
+  try {
+    ordered = ds.getClassOrder(classes);
+  } catch (e) {
+    return classes;
+  }
   return [...ordered]
     .sort((a, b) => {
       if (a[1] === null && b[1] === null) return 0;
