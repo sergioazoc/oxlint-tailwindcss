@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.10.2
+
+Typing an **incomplete** arbitrary value in a `className` (e.g. `px-[calc(var(--a)+var(--b)+)]`, a
+`calc()` mid-edit) could make a Tailwind design-system API throw inside the worker
+`enforce-canonical` uses. The worker turns any handler throw into a `null` sentinel, which the host
+treated as a fatal `designSystemUnavailable` diagnostic — and, worse, cached it as **sticky per
+entry point for the whole process**, so the warning stayed even after the class was completed to a
+valid one, clearing only when the editor extension restarted
+([#130](https://github.com/sergioazoc/oxlint-tailwindcss/issues/130), reported by @KoenCa). Whether
+the specific input throws depends on the consumer's resolved Tailwind engine version
+([#114](https://github.com/sergioazoc/oxlint-tailwindcss/issues/114)); the sticky mechanism was
+version-independent.
+
+### Bug fixes
+
+- **A malformed / mid-typing arbitrary value no longer disables a rule until restart.** Two
+  independent fixes: (1) each worker handler now guards its `ds.*` call — `enforce-canonical`
+  (`canonicalizeCandidates`), `enforce-sort-order` (`getClassOrder`), and the declaration service
+  behind `no-unknown-classes` / `no-conflicting-classes` (`candidatesToCss`) — so an
+  incanonicalizable input degrades to a no-op instead of the `null` sentinel; and (2)
+  per-**request** worker failures are no longer remembered as sticky (only genuine init/load
+  failures are), so the next keystroke re-spawns and retries instead of rethrowing the cached error.
+  The declaration service now also resolves one class at a time, so a single malformed class can no
+  longer blank a whole batch and mask a real typo such as `bg-red-5000`.
+
 ## 1.10.1
 
 `prefer-theme-tokens` autofixes `prefix-(--var)` → `prefix-name` when a named token exists. Its

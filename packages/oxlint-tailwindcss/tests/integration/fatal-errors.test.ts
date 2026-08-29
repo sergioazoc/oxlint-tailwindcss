@@ -6,17 +6,25 @@
  * `designSystemUnavailable` diagnostic.
  */
 
-import { beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { resolve } from 'node:path'
 import {
   canonicalizeClassesSync,
   resetCanonicalizeService,
+  CANONICALIZE_HANDLER,
 } from '../../src/design-system/canonicalize-service'
-import { sortClassesSync, resetSortService } from '../../src/design-system/sort-service'
+import {
+  sortClassesSync,
+  resetSortService,
+  SORT_HANDLER,
+} from '../../src/design-system/sort-service'
 import {
   resolveDeclarationsSync,
   resetDeclarationService,
   validateClassesSync,
+  DECLARATION_HANDLER,
 } from '../../src/design-system/declaration-service'
+import { DesignSystemWorker, makeWorkerScript } from '../../src/design-system/ds-worker'
 import { DesignSystemCache } from '../../src/design-system/cache'
 import { type PrecomputedData } from '../../src/design-system/sync-loader'
 import { makeDeclarations } from '../utils/declarations'
@@ -143,5 +151,112 @@ describe('declaration service — fail-loud', () => {
         ).toBe(false)
       }
     }
+  })
+})
+
+/**
+ * Issue #130. A per-REQUEST worker failure (the handler threw, the response
+ * didn't fit the buffer, a timeout, a non-JSON reply) used to be stored as a
+ * process-lifetime sticky error keyed by cssPath — exactly like an INIT failure.
+ * That let one malformed/mid-typing arbitrary value permanently disable a rule
+ * for the whole entry point until the editor's oxlint process restarted.
+ *
+ * The specific trigger is engine-version-dependent (Tailwind 4.3.3 does NOT
+ * throw on `px-[calc(var(--a)+)]` — it echoes it back), so the sticky behavior
+ * is exercised with a custom worker whose handler throws on a sentinel input.
+ */
+describe('per-request worker failure — retryable, not sticky (#130)', () => {
+  const CSS = resolve(__dirname, '../fixtures/default.css')
+  let worker: DesignSystemWorker<unknown, unknown> | null = null
+
+  afterEach(() => {
+    worker?.reset()
+    worker = null
+  })
+
+  test('a per-request handler throw does not poison later valid calls', () => {
+    worker = new DesignSystemWorker({
+      // Load the real DS (so init succeeds), but throw on one sentinel request.
+      workerScript: makeWorkerScript(
+        "(ds, req) => { if (req === '__BOOM__') throw new Error('boom'); return req; }",
+      ),
+      serviceName: 'canonicalize',
+    })
+
+    // The handler throws → the worker replies with the 'null' sentinel → the
+    // per-request null branch throws SortServiceError.
+    expect(() => worker!.callSync(CSS, '__BOOM__')).toThrow(SortServiceError)
+
+    // Regression: the SAME instance + SAME cssPath must retry (re-spawn) and
+    // succeed. With the old sticky remember() this rethrew the error forever.
+    expect(worker!.callSync(CSS, ['flex', 'p-2'])).toEqual(['flex', 'p-2'])
+  })
+})
+
+/**
+ * Issue #130 (RC1). Each worker handler's risky `ds.*` call is guarded so a
+ * Tailwind parser throw on a malformed arbitrary value degrades to a no-op
+ * instead of the 'null' sentinel. Tested by evaluating the exact handler string
+ * that ships (the same one hashed into the on-disk cache key) against a fake
+ * design system whose method throws — no worker, no real Tailwind, so it is
+ * deterministic on 4.3.3.
+ */
+describe('worker handlers — a throwing ds.* degrades to a no-op (#130)', () => {
+  const unreached = () => {
+    throw new Error('preamble helper should not be reached on the throw path')
+  }
+
+  test('canonicalize: a throwing canonicalizeCandidates leaves the class unchanged', () => {
+    const handler = new Function(`return (${CANONICALIZE_HANDLER})`)() as (
+      ds: unknown,
+      req: unknown,
+    ) => unknown
+    const ds = {
+      canonicalizeCandidates() {
+        throw new Error('boom')
+      },
+      candidatesToCss() {
+        throw new Error('boom')
+      },
+    }
+    expect(handler(ds, { classes: ['px-[calc(var(--a)+)]'] })).toEqual([
+      { canonical: 'px-[calc(var(--a)+)]', safe: true },
+    ])
+  })
+
+  test('sort: a throwing getClassOrder leaves the input order unchanged', () => {
+    const handler = new Function(`return (${SORT_HANDLER})`)() as (
+      ds: unknown,
+      classes: string[],
+    ) => string[]
+    const ds = {
+      getClassOrder() {
+        throw new Error('boom')
+      },
+    }
+    expect(handler(ds, ['flex', 'p-2'])).toEqual(['flex', 'p-2'])
+  })
+
+  test('declaration: a throwing class is omitted, a falsy sibling stays invalid', () => {
+    const handler = new Function(
+      'walkDeclarations',
+      'scanVarReads',
+      'isPureVarRead',
+      `return (${DECLARATION_HANDLER})`,
+    )(unreached, unreached, unreached) as (ds: unknown, req: unknown) => unknown
+    const ds = {
+      theme: { prefix: '' },
+      candidatesToCss(arr: string[]) {
+        if (arr[0].includes('calc')) throw new Error('boom')
+        return [''] // compiles to nothing → invalid
+      },
+    }
+    // The malformed class is omitted (so no-unknown-classes stays lenient); the
+    // real typo `bg-red-5000` is still flagged invalid instead of being masked.
+    expect(handler(ds, { classes: ['bg-red-5000', 'px-[calc(var(--a)+)]'] })).toEqual({
+      decls: {},
+      values: {},
+      invalid: ['bg-red-5000'],
+    })
   })
 })
