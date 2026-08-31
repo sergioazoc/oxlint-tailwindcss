@@ -4,12 +4,55 @@ import { splitClasses } from '../utils/class-splitter'
 import { createLazyOptions, safeSourceCode } from '../utils/context'
 import { getVariantPrefix } from '../utils/class-parser'
 
+/*
+ * A template literal is linted per QUASI — each run of static text between
+ * the backticks and any `${}` interpolations. In `` `flex ${a} p-2` `` there
+ * are two quasis: the LEADING one (`flex `, between the opening backtick and
+ * the first `${}`) and the TRAILING one (` p-2`, between the last `${}` and
+ * the closing backtick); a template without interpolations is one quasi. On
+ * a quasi's ClassLocation, `preserveLeadingSpace` means a `${}` sits
+ * directly before it, `preserveTrailingSpace` that one sits directly after.
+ *
+ * The fixers wrap a quasi according to what borders it:
+ *  - opening backtick before it (whole template, or a leading quasi):
+ *    BLOCK form — classes move onto their own indented lines below the
+ *    backtick;
+ *  - `${}` before it: HANGING form — the first packed line stays beside the
+ *    interpolation, continuation lines are indented below it;
+ *  - GLUED to a `${}` (no whitespace at the boundary, as in `${a}flex`):
+ *    never autofixed, warn-only — the quasi text concatenates with the
+ *    interpolation into ONE runtime class, so inserting whitespace at the
+ *    boundary would split that class in two.
+ */
+
+/**
+ * Which lines the width-based autofix re-wraps. No default — unset means
+ * `printWidth` is warn-only (no autofix), like `classesPerLine`.
+ *  - 'overWidth' — only lines exceeding `printWidth`, greedily re-packed;
+ *                  conforming lines are left exactly as hand-formatted.
+ *  - 'all'       — every multiline or over-width template is re-laid-out
+ *                  into the canonical layout shaped by `group`.
+ */
+type WrapLinesMode = 'overWidth' | 'all'
+
+/**
+ * How the `wrapLines: 'all'` canonical layout separates variant groups
+ * ('overWidth' never re-groups, so this option does not affect it):
+ *  - 'newLine'   — each variant run starts its own line. The default.
+ *  - 'emptyLine' — additionally, a blank line separates the runs.
+ *  - 'never'     — no grouping: classes pack greedily across run boundaries.
+ */
+type GroupMode = 'newLine' | 'emptyLine' | 'never'
+
 interface Options {
   printWidth?: number
   classesPerLine?: number
+  wrapLines?: WrapLinesMode
+  group?: GroupMode
 }
 
 const DEFAULT_PRINT_WIDTH = 80
+const DEFAULT_GROUP: GroupMode = 'newLine'
 
 /** One indentation level added below the statement's base indent for wrapped lines. */
 const INDENT_UNIT = '  '
@@ -24,9 +67,10 @@ function chunkList(classes: string[], n: number): string[] {
 }
 
 /**
- * Greedily pack `classes` into space-joined lines, adding classes to the
- * current line until `indent` + the line would exceed `width`. A single class
- * that alone exceeds the budget still gets its own line.
+ * Greedily pack `classes` into space-joined lines: a line takes classes until
+ * `indent` + the next one would exceed `width`; a single class over the
+ * budget still gets its own line. Widths count characters, so a tab in
+ * `indent` is 1 column (detection uses the same yardstick, so tabs converge).
  */
 function packToWidth(classes: string[], indent: string, width: number): string[] {
   const lines: string[] = []
@@ -66,9 +110,25 @@ function groupByVariantRun(classes: string[]): string[][] {
   return groups
 }
 
-/** Pack each variant group onto its own line(s): groups never share a line. */
-function packGroupedToWidth(classes: string[], indent: string, width: number): string[] {
-  return groupByVariantRun(classes).flatMap((group) => packToWidth(group, indent, width))
+/**
+ * Pack `classes` per the `group` mode: 'never' packs greedily across
+ * variant-run boundaries, 'newLine' starts each run on its own line(s), and
+ * 'emptyLine' additionally inserts an extra line between runs — emitted as a
+ * blank line with no indent.
+ */
+function packGroupedToWidth(
+  classes: string[],
+  indent: string,
+  width: number,
+  group: GroupMode,
+): string[] {
+  if (group === 'never') return packToWidth(classes, indent, width)
+  const lines: string[] = []
+  for (const run of groupByVariantRun(classes)) {
+    if (group === 'emptyLine' && lines.length > 0) lines.push('')
+    lines.push(...packToWidth(run, indent, width))
+  }
+  return lines
 }
 
 export const enforceConsistentLineWrapping = defineRule({
@@ -84,18 +144,22 @@ export const enforceConsistentLineWrapping = defineRule({
         properties: {
           printWidth: { type: 'number' },
           classesPerLine: { type: 'number' },
+          wrapLines: { type: 'string', enum: ['overWidth', 'all'] },
+          group: { type: 'string', enum: ['newLine', 'emptyLine', 'never'] },
         },
         additionalProperties: false,
       },
     ],
-    defaultOptions: [{ printWidth: DEFAULT_PRINT_WIDTH }],
+    // `wrapLines` and `classesPerLine` deliberately have no default:
+    // leaving either unset turns its fixer off.
+    defaultOptions: [{ printWidth: DEFAULT_PRINT_WIDTH, group: DEFAULT_GROUP }],
     messages: {
       tooLong:
         'Class string exceeds the print width of {{printWidth}} (longest line is {{length}} characters). Consider splitting into multiple lines or extracting into a component.',
       tooManyPerLine:
         'Too many classes on a single line ({{count}}). Maximum allowed per line is {{max}}.',
       inconsistentWrapping:
-        'Class string is not wrapped consistently. Classes should be grouped by variant and wrapped within the print width of {{printWidth}}.',
+        'Class string is not wrapped consistently. Classes should be re-wrapped to the configured layout within the print width of {{printWidth}}.',
     },
   },
   createOnce(context) {
@@ -106,6 +170,14 @@ export const enforceConsistentLineWrapping = defineRule({
     const getClassesPerLine = createLazyOptions<Options, number | undefined>(
       context,
       (o) => o?.classesPerLine,
+    )
+    const getWrapLines = createLazyOptions<Options, WrapLinesMode | undefined>(
+      context,
+      (o) => o?.wrapLines,
+    )
+    const getGroup = createLazyOptions<Options, GroupMode>(
+      context,
+      (o) => o?.group ?? DEFAULT_GROUP,
     )
 
     /**
@@ -163,46 +235,94 @@ export const enforceConsistentLineWrapping = defineRule({
     }
 
     /**
-     * Width-based variant of `rewrapTemplate`: classes are grouped into runs
-     * sharing a variant chain (each run starts its own line), and within a
-     * run classes are packed onto a line until adding the next one would
-     * exceed `printWidth` (indent included). Multiline templates are fully
-     * re-laid-out into that canonical grouped form, not just their
-     * offending lines. Same indentation conventions as `rewrapTemplate`.
-     * Reserves one character per preserved leading/trailing space, since
-     * `preserveSpaces` re-adds them after packing — without the reserve a
-     * line packed to exactly `printWidth` lands at `printWidth + 1` and the
-     * fix never converges.
+     * `wrapLines: 'all'` fixer (also the single-line conversion for
+     * 'overWidth', which passes `group: 'never'`): the WHOLE quasi is
+     * re-laid-out into lines packed to `printWidth` per the `group` mode,
+     * in the block or hanging form its position dictates (see the quasi
+     * note at the top of the file).
      */
-    function rewrapTemplateToWidth(loc: ClassLocation, printWidth: number): string {
+    function rewrapTemplateToWidth(
+      loc: ClassLocation,
+      printWidth: number,
+      group: GroupMode,
+    ): string {
       const baseIndent = deriveBaseIndent(loc)
       const interiorIndent = baseIndent + INDENT_UNIT
-      const leadingReserve = loc.preserveLeadingSpace ? 1 : 0
-      const trailingReserve = loc.preserveTrailingSpace ? 1 : 0
       const classes = splitClasses(loc.value)
       if (classes.length === 0) return loc.value
-      if (!loc.preserveLeadingSpace && !loc.preserveTrailingSpace) {
-        const packed = packGroupedToWidth(classes, interiorIndent, printWidth)
-        return '\n' + packed.map((c) => interiorIndent + c).join('\n') + '\n' + baseIndent
+      if (!loc.preserveLeadingSpace) {
+        // Block form. Keyed off `preserveLeadingSpace` ALONE: a leading quasi
+        // must not take the hanging form below — its first line would land on
+        // the code before the backtick, over-width in the source yet
+        // invisible to the per-quasi line measurement. A `${}` after the
+        // quasi goes on its own interior-indented line.
+        const packed = packGroupedToWidth(classes, interiorIndent, printWidth, group)
+        const close = loc.preserveTrailingSpace ? interiorIndent : baseIndent
+        // `''` entries (blank group separators) take no indent.
+        return (
+          '\n' + packed.map((c) => (c === '' ? c : interiorIndent + c)).join('\n') + '\n' + close
+        )
       }
-      // Fragment adjacent to a `${}`: hanging join, no leading/trailing newline.
-      return packGroupedToWidth(
-        classes,
-        interiorIndent,
-        printWidth - leadingReserve - trailingReserve,
-      ).join('\n' + interiorIndent)
+      // Hanging form. One character is reserved per bordering `${}` for the
+      // boundary space `preserveSpaces` re-adds after packing — without the
+      // reserve a line packed to exactly `printWidth` lands at
+      // `printWidth + 1` and the fix never converges.
+      const trailingReserve = loc.preserveTrailingSpace ? 1 : 0
+      return packGroupedToWidth(classes, interiorIndent, printWidth - 1 - trailingReserve, group)
+        .map((c, i) => (i === 0 || c === '' ? c : interiorIndent + c))
+        .join('\n')
+    }
+
+    /**
+     * `wrapLines: 'overWidth'` fixer: non-destructive like `rewrapTemplate`
+     * — only lines exceeding `printWidth` are greedily re-packed, each
+     * keeping its own indent; conforming lines are left verbatim. A
+     * single-line value has no layout to preserve and converts to the block
+     * form. Returns the FINAL value, `${}` boundary spaces included — never
+     * run it through `preserveSpaces`, which would prepend a stray space to
+     * a quasi that legitimately starts with `\n`.
+     */
+    function rewrapOverBudgetLinesToWidth(loc: ClassLocation, printWidth: number): string {
+      const lines = loc.value.split('\n')
+      if (lines.length === 1) {
+        return preserveSpaces(loc, rewrapTemplateToWidth(loc, printWidth, 'never'))
+      }
+      const interiorIndent = deriveBaseIndent(loc) + INDENT_UNIT
+      // Reserve for the boundary space before a `${}` after the quasi,
+      // re-appended below if repacking dropped it.
+      const width = printWidth - (loc.preserveTrailingSpace ? 1 : 0)
+      const fixed = lines
+        .map((line) => {
+          const classes = splitClasses(line)
+          if (line.length <= printWidth || classes.length <= 1) return line
+          const m = /^[ \t]*/.exec(line)
+          const lead = m ? m[0] : ''
+          const contIndent = lead.length > 0 ? lead : interiorIndent
+          // First chunk keeps the line's original position (its `lead`,
+          // possibly none); continuation lines reuse that indent.
+          return packToWidth(classes, contIndent, width)
+            .map((c, i) => (i === 0 ? lead + c : contIndent + c))
+            .join('\n')
+        })
+        .join('\n')
+      // Leading boundary whitespace always survives as the first line's
+      // `lead`; only a repacked last line loses its trailing boundary space.
+      if (loc.preserveTrailingSpace && !/\s$/.test(fixed)) return fixed + ' '
+      return fixed
     }
 
     function check(locations: ClassLocation[]) {
       const printWidth = getPrintWidth()
       const classesPerLine = getClassesPerLine()
+      const wrapLines = getWrapLines()
+      const group = getGroup()
 
       for (const loc of locations) {
         // #110: measure the LONGEST INDIVIDUAL LINE, not the raw total. The raw
         // value of a multiline template includes every `\n` and indent, so
         // comparing its total length made wrapping impossible to satisfy.
-        // A line holding a single class can never be wrapped shorter, so an
-        // over-budget single class is not counted against the print width.
+        // An over-budget line holding a single class is skipped — it can't
+        // be wrapped any shorter.
         let maxLine = 0
         for (const line of loc.value.split('\n')) {
           if (line.length <= maxLine) continue
@@ -214,19 +334,26 @@ export const enforceConsistentLineWrapping = defineRule({
           printWidth: String(printWidth),
         }
         const isMultiline = loc.value.includes('\n')
+        // Glued quasis are warn-only (see the quasi note at the top).
+        const glued =
+          (loc.preserveLeadingSpace === true && !/^\s/.test(loc.value)) ||
+          (loc.preserveTrailingSpace === true && !/\s$/.test(loc.value))
         if (
+          wrapLines !== undefined &&
           classesPerLine === undefined &&
           loc.node.type === 'TemplateElement' &&
-          (maxLine > printWidth || isMultiline)
+          !glued &&
+          (maxLine > printWidth || (wrapLines === 'all' && isMultiline))
         ) {
-          // printWidth set without classesPerLine: enforce (and autofix to)
-          // variant-grouped lines packed to the print width. A multiline
-          // template that already fits is still normalized to that canonical
-          // form; one that matches it is valid. Compare AFTER preserveSpaces:
-          // a fragment's raw value carries the preserved space, and comparing
-          // without it re-reports an already-canonical fragment with a no-op
-          // fix.
-          const fixedValue = preserveSpaces(loc, rewrapTemplateToWidth(loc, printWidth))
+          // Compare the FINAL value (boundary spaces included), or an
+          // already-canonical quasi re-reports with a no-op fix. Equal values
+          // need no warn-only fallback: at a fixed point of either fixer
+          // every multi-class line fits the budget, and over-budget
+          // single-class lines were already excluded from `maxLine`.
+          const fixedValue =
+            wrapLines === 'all'
+              ? preserveSpaces(loc, rewrapTemplateToWidth(loc, printWidth, group))
+              : rewrapOverBudgetLinesToWidth(loc, printWidth)
           if (fixedValue !== loc.value) {
             context.report({
               node: loc.node,
@@ -236,8 +363,6 @@ export const enforceConsistentLineWrapping = defineRule({
                 return fixer.replaceTextRange(loc.range, fixedValue)
               },
             })
-          } else if (maxLine > printWidth) {
-            context.report({ node: loc.node, messageId: 'tooLong', data })
           }
         } else if (maxLine > printWidth) {
           context.report({ node: loc.node, messageId: 'tooLong', data })

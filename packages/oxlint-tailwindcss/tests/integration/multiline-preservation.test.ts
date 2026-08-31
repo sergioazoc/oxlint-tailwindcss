@@ -202,6 +202,35 @@ describe('multiline preservation under default theme', () => {
     ],
   })
 
+  // Blank-line group separators (`\n\n` + indent, produced by
+  // enforce-consistent-line-wrapping's `group: 'emptyLine'` layout) must
+  // round-trip the fixers exactly like single-newline separators: verbatim
+  // through 1-to-1 reordering, and recovered via `pickSeparator` through
+  // count-changing fixes.
+  run('enforce-sort-order keeps emptyLine group separators', enforceSortOrder, {
+    valid: [],
+    invalid: [
+      {
+        code: 'const className = `text-white bg-red-500\n\n  focus:ring-2\n`',
+        filename: 'a.tsx',
+        errors: [{ messageId: 'unsorted' }],
+        output: 'const className = `bg-red-500 text-white\n\n  focus:ring-2\n`',
+      },
+    ],
+  })
+
+  run('no-duplicate-classes keeps emptyLine group separators', noDuplicateClasses, {
+    valid: [],
+    invalid: [
+      {
+        code: 'const className = `\n  flex flex items-center\n\n  hover:bg-white\n`',
+        filename: 'a.tsx',
+        errors: [{ messageId: 'duplicate' }],
+        output: 'const className = `\n  flex items-center\n\n  hover:bg-white\n`',
+      },
+    ],
+  })
+
   // Suggestion-only (typo fix); still needs to preserve multiline in the suggestion.
   run('no-unknown-classes suggestion keeps multiline', noUnknownClasses, {
     valid: [],
