@@ -159,12 +159,15 @@ Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is 
 
 DS-dependent rules: `no-unknown-classes`, `no-conflicting-classes`, `enforce-canonical`,
 `enforce-sort-order`, `no-unnecessary-arbitrary-value`, `prefer-theme-tokens`.
-`consistent-variant-order` and `no-contradicting-variants` are the DS-optional rules: their static
-fallbacks (variant order, and the pseudo-element/barrier name lists) are themselves deterministic,
-so a missing entryPoint is tolerated silently in both — neither may ever emit
-`designSystemUnavailable`. `no-deprecated-classes` is DS-independent outright (guard removed in
-#69): it consults only the hardcoded `DEPRECATED_MAP`, so it never loads the design system and never
-emits `designSystemUnavailable`.
+`consistent-variant-order`, `no-contradicting-variants`, and `enforce-consistent-line-wrapping` are
+the DS-optional rules: their static fallbacks (variant order, the pseudo-element/barrier name lists,
+and prefix-unaware variant-run grouping respectively) are themselves deterministic, so a missing
+entryPoint is tolerated silently — none may ever emit `designSystemUnavailable`.
+`enforce-consistent-line-wrapping` consults the DS ONLY for the project prefix (so
+`wrapLines: 'all'` grouping treats `tw:` as transparent, matching the prefix invariant); everything
+else it does is DS-free. `no-deprecated-classes` is DS-independent outright (guard removed in #69):
+it consults only the hardcoded `DEPRECATED_MAP`, so it never loads the design system and never emits
+`designSystemUnavailable`.
 
 ## Extraction System
 

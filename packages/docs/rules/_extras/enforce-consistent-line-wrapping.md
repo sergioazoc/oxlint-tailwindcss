@@ -5,8 +5,12 @@ wraps them into multiple lines. Two independent formatting modes: a width-based 
 `wrapLines`) and a class-count budget per line (`classesPerLine`), both autofixing template literals
 (string literals only report — they can't safely span lines).
 
-DS-independent — works without `settings.tailwindcss.entryPoint`. The rule operates on the raw class
-string and doesn't care what the classes mean.
+DS-optional — works without `settings.tailwindcss.entryPoint`. The rule operates on the raw class
+string and doesn't care what the classes mean, with one exception: when a design system **is**
+available, the `wrapLines: "all"` grouping consults it for the Tailwind v4 project prefix
+(`@import "tailwindcss" prefix(tw)`) so the prefix is transparent to grouping — `tw:flex` groups as
+a base utility and `tw:hover:x` as `hover:`. Without an entry point the rule silently falls back to
+treating the prefix as part of the variant chain (it never reports a missing design system).
 
 Both fixers wrap template literals into the **block convention**: the content starts on its own
 line, each wrapped line is indented one level below the statement's own indentation, and the closing

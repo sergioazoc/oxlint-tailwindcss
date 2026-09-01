@@ -44,6 +44,14 @@ autofix for template literals — **off by default and opt-in via the new `wrapL
   under a small width). Such a line cannot be wrapped any shorter, so the report was unactionable
   noise. If you relied on it to catch very long single classes,
   `max-class-count`/`no-arbitrary-value` remain the right tools.
+- **`enforce-consistent-line-wrapping` is now design-system optional**. When
+  `settings.tailwindcss.entryPoint` is configured, the `wrapLines: "all"` with either
+  `group: "newLine"` or `group: "emptyLine"` consults the design system for the project prefix
+  (`@import "tailwindcss" prefix(tw)`) and strips that prefix before determining variant groups. If
+  `entryPoint` is not configured, these rules silently fall back to treating the prefix as part of
+  the variant chain. It never reports `designSystemUnavailable`, and the design system is only
+  consulted for these two specific fixers so no performance penalty is applied to the rule if those
+  fixers are not used.
 
 ## 1.10.2
 

@@ -17,6 +17,7 @@ import { enforceSortOrder } from '../../src/rules/enforce-sort-order'
 import { enforceCanonical } from '../../src/rules/enforce-canonical'
 import { noDeprecatedClasses } from '../../src/rules/no-deprecated-classes'
 import { noConflictingClasses } from '../../src/rules/no-conflicting-classes'
+import { enforceConsistentLineWrapping } from '../../src/rules/enforce-consistent-line-wrapping'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
 import { makeFixtureRunner } from '../utils/with-fixture'
 
@@ -310,6 +311,36 @@ run('no-conflicting-classes (prefix)', noConflictingClasses, {
       code: '<div className="tw:flex tw:block" />',
       filename: 'test.tsx',
       errors: [{ messageId: 'conflict' }],
+    },
+  ],
+})
+
+// ── enforce-consistent-line-wrapping (prefix transparent to grouping) ────────
+// With the design system available, the `wrapLines: 'all'` grouping key
+// strips the project prefix: `tw:flex` groups as a base utility (one run with
+// an unprefixed component class), `tw:hover:x` keys as `hover:`. The emitted
+// classes keep the prefix untouched. Without a DS the prefix reads as part of
+// the variant chain — that fallback is locked in the rule's own test file.
+
+run('enforce-consistent-line-wrapping (prefix)', enforceConsistentLineWrapping, {
+  valid: [
+    // Canonical: prefixed base utilities and the unprefixed component class
+    // share one run; the hover run starts its own line.
+    {
+      code: 'const className = `\n  tw:flex my-card tw:items-center\n  tw:hover:underline\n`',
+      filename: 'test.tsx',
+      options: [{ printWidth: 40, wrapLines: 'all' }],
+    },
+  ],
+  invalid: [
+    // An unprefixed component class between prefixed utilities must NOT
+    // split the base run into three.
+    {
+      code: 'const className = `tw:flex my-card tw:items-center tw:hover:underline`',
+      filename: 'test.tsx',
+      options: [{ printWidth: 40, wrapLines: 'all' }],
+      errors: [{ messageId: 'tooLong' }],
+      output: 'const className = `\n  tw:flex my-card tw:items-center\n  tw:hover:underline\n`',
     },
   ],
 })

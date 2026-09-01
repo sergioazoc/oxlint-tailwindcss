@@ -483,7 +483,8 @@ ruleTester.run(
         output:
           'const className = `\n  !flex items-center! gap-2\n  hover:!bg-red-500 hover:!underline\n  focus:!outline-none\n`',
       },
-      // Tailwind v4 project prefix: `tw:` counts toward the variant chain, so
+      // Tailwind v4 project prefix WITHOUT a design system (no entryPoint):
+      // the prefix can't be known, so `tw:` counts toward the variant chain —
       // base utilities (`tw:`) and variants (`tw:hover:`) form separate runs.
       {
         code: 'const className = `tw:flex tw:items-center tw:gap-2 tw:hover:bg-red-500 tw:hover:underline`',
@@ -492,6 +493,17 @@ ruleTester.run(
         errors: [{ messageId: 'tooLong' }],
         output:
           'const className = `\n  tw:flex tw:items-center tw:gap-2\n  tw:hover:bg-red-500 tw:hover:underline\n`',
+      },
+      // Same fallback: an unprefixed class between prefixed ones splits the
+      // runs. With a DS (entryPoint configured) the prefix is transparent and
+      // this stays one run — locked in prefix.test.ts.
+      {
+        code: 'const className = `tw:flex my-card tw:items-center tw:hover:underline`',
+        filename: 'test.tsx',
+        options: [{ printWidth: 40, wrapLines: 'all' }],
+        errors: [{ messageId: 'tooLong' }],
+        output:
+          'const className = `\n  tw:flex\n  my-card\n  tw:items-center\n  tw:hover:underline\n`',
       },
       // Tab-indented source: the tab is reused as the base indent (the width
       // budget counts it as one column — see packToWidth).

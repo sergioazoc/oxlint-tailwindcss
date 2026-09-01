@@ -3,6 +3,8 @@ import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../
 import { splitClasses } from '../utils/class-splitter'
 import { createLazyOptions, safeSourceCode } from '../utils/context'
 import { getVariantPrefix } from '../utils/class-parser'
+import { createLazyLoader } from '../design-system/loader'
+import { softGetDS } from '../utils/fatal'
 
 /*
  * A template literal is linted per QUASI — each run of static text between
@@ -45,6 +47,7 @@ type WrapLinesMode = 'overWidth' | 'all'
 type GroupMode = 'newLine' | 'emptyLine' | 'never'
 
 interface Options {
+  entryPoint?: string
   printWidth?: number
   classesPerLine?: number
   wrapLines?: WrapLinesMode
@@ -89,16 +92,29 @@ function packToWidth(classes: string[], indent: string, width: number): string[]
 }
 
 /**
+ * Variant chain used as the grouping key. A Tailwind v4 project prefix
+ * (`tw:`) is structurally a variant but pinned first, so it is stripped
+ * before the key is computed — `tw:flex` keys as a base utility (grouping
+ * with unprefixed component classes) and `tw:hover:x` keys as `hover:`,
+ * matching how consistent-variant-order / enforce-sort-order treat the
+ * prefix. Grouping only: emitted classes are never rewritten.
+ */
+function groupingKey(cls: string, prefix: string): string {
+  const bare = prefix !== '' && cls.startsWith(prefix + ':') ? cls.slice(prefix.length + 1) : cls
+  return getVariantPrefix(bare)
+}
+
+/**
  * Split `classes` into runs of consecutive classes sharing the same variant
  * chain ("hover:", "md:hover:", "" for base utilities), so wrapping breaks
  * between variant groups rather than mid-group.
  */
-function groupByVariantRun(classes: string[]): string[][] {
+function groupByVariantRun(classes: string[], prefix: string): string[][] {
   const groups: string[][] = []
   let current: string[] = []
   let currentVariant: string | null = null
   for (const cls of classes) {
-    const variant = getVariantPrefix(cls)
+    const variant = groupingKey(cls, prefix)
     if (currentVariant !== null && variant !== currentVariant) {
       groups.push(current)
       current = []
@@ -121,10 +137,11 @@ function packGroupedToWidth(
   indent: string,
   width: number,
   group: GroupMode,
+  prefix: string,
 ): string[] {
   if (group === 'never') return packToWidth(classes, indent, width)
   const lines: string[] = []
-  for (const run of groupByVariantRun(classes)) {
+  for (const run of groupByVariantRun(classes, prefix)) {
     if (group === 'emptyLine' && lines.length > 0) lines.push('')
     lines.push(...packToWidth(run, indent, width))
   }
@@ -142,6 +159,7 @@ export const enforceConsistentLineWrapping = defineRule({
       {
         type: 'object',
         properties: {
+          entryPoint: { type: 'string' },
           printWidth: { type: 'number' },
           classesPerLine: { type: 'number' },
           wrapLines: { type: 'string', enum: ['overWidth', 'all'] },
@@ -179,6 +197,7 @@ export const enforceConsistentLineWrapping = defineRule({
       context,
       (o) => o?.group ?? DEFAULT_GROUP,
     )
+    const getDS = createLazyLoader(context)
 
     /**
      * The statement's real base indentation — the leading whitespace of the
@@ -245,6 +264,7 @@ export const enforceConsistentLineWrapping = defineRule({
       loc: ClassLocation,
       printWidth: number,
       group: GroupMode,
+      prefix: string,
     ): string {
       const baseIndent = deriveBaseIndent(loc)
       const interiorIndent = baseIndent + INDENT_UNIT
@@ -256,7 +276,7 @@ export const enforceConsistentLineWrapping = defineRule({
         // the code before the backtick, over-width in the source yet
         // invisible to the per-quasi line measurement. A `${}` after the
         // quasi goes on its own interior-indented line.
-        const packed = packGroupedToWidth(classes, interiorIndent, printWidth, group)
+        const packed = packGroupedToWidth(classes, interiorIndent, printWidth, group, prefix)
         const close = loc.preserveTrailingSpace ? interiorIndent : baseIndent
         // `''` entries (blank group separators) take no indent.
         return (
@@ -268,7 +288,13 @@ export const enforceConsistentLineWrapping = defineRule({
       // reserve a line packed to exactly `printWidth` lands at
       // `printWidth + 1` and the fix never converges.
       const trailingReserve = loc.preserveTrailingSpace ? 1 : 0
-      return packGroupedToWidth(classes, interiorIndent, printWidth - 1 - trailingReserve, group)
+      return packGroupedToWidth(
+        classes,
+        interiorIndent,
+        printWidth - 1 - trailingReserve,
+        group,
+        prefix,
+      )
         .map((c, i) => (i === 0 || c === '' ? c : interiorIndent + c))
         .join('\n')
     }
@@ -285,7 +311,8 @@ export const enforceConsistentLineWrapping = defineRule({
     function rewrapOverBudgetLinesToWidth(loc: ClassLocation, printWidth: number): string {
       const lines = loc.value.split('\n')
       if (lines.length === 1) {
-        return preserveSpaces(loc, rewrapTemplateToWidth(loc, printWidth, 'never'))
+        // group 'never' does no grouping, so the prefix is irrelevant.
+        return preserveSpaces(loc, rewrapTemplateToWidth(loc, printWidth, 'never', ''))
       }
       const interiorIndent = deriveBaseIndent(loc) + INDENT_UNIT
       // Reserve for the boundary space before a `${}` after the quasi,
@@ -316,6 +343,15 @@ export const enforceConsistentLineWrapping = defineRule({
       const classesPerLine = getClassesPerLine()
       const wrapLines = getWrapLines()
       const group = getGroup()
+      // DS-OPTIONAL (see `softGetDS`): the design system is consulted ONLY
+      // for the Tailwind v4 project prefix, and only when the 'all' layout
+      // will actually group. With no entryPoint configured (or a failed
+      // load) the prefix silently falls back to '' and reads as part of the
+      // variant chain — this rule never emits `designSystemUnavailable`.
+      const prefix =
+        wrapLines === 'all' && group !== 'never' && classesPerLine === undefined
+          ? (softGetDS(getDS)?.cache.prefix ?? '')
+          : ''
 
       for (const loc of locations) {
         // #110: measure the LONGEST INDIVIDUAL LINE, not the raw total. The raw
@@ -352,7 +388,7 @@ export const enforceConsistentLineWrapping = defineRule({
           // single-class lines were already excluded from `maxLine`.
           const fixedValue =
             wrapLines === 'all'
-              ? preserveSpaces(loc, rewrapTemplateToWidth(loc, printWidth, group))
+              ? preserveSpaces(loc, rewrapTemplateToWidth(loc, printWidth, group, prefix))
               : rewrapOverBudgetLinesToWidth(loc, printWidth)
           if (fixedValue !== loc.value) {
             context.report({

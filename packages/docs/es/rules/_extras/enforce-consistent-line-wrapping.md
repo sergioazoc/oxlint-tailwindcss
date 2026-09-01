@@ -6,8 +6,12 @@ basado en el width (opt-in vía `wrapLines`) y un budget de clases por línea (`
 ambos con autofix en template literals (los string literals solo reportan — no pueden cruzar líneas
 con seguridad).
 
-DS-independiente — funciona sin `settings.tailwindcss.entryPoint`. La regla opera sobre el string
-crudo de clases y no le importa qué significan.
+DS-opcional — funciona sin `settings.tailwindcss.entryPoint`. La regla opera sobre el string crudo
+de clases y no le importa qué significan, con una excepción: cuando **sí** hay un design system
+disponible, el agrupado de `wrapLines: "all"` le consulta el prefix de proyecto de Tailwind v4
+(`@import "tailwindcss" prefix(tw)`) para que el prefix sea transparente al agrupar — `tw:flex`
+agrupa como utility base y `tw:hover:x` como `hover:`. Sin entry point la regla cae silenciosamente
+a tratar el prefix como parte de la cadena de variantes (nunca reporta un design system faltante).
 
 Ambos fixers envuelven los template literals en la **convención bloque**: el contenido empieza en su
 propia línea, cada línea envuelta se indenta un nivel por debajo de la indentación del statement, y
