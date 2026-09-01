@@ -1,5 +1,58 @@
 # Changelog
 
+## 1.11.0
+
+`enforce-consistent-line-wrapping`'s `printWidth` reported over-width class strings but offered no
+fix, so satisfying it in a large codebase meant re-wrapping by hand. This release adds a width-based
+autofix for template literals — **off by default and opt-in via the new `wrapLines` option**
+([#126](https://github.com/sergioazoc/oxlint-tailwindcss/pull/126)).
+
+### New features
+
+- **`enforce-consistent-line-wrapping`: new `wrapLines` option** (`"overWidth" | "all"`, optional).
+  Like `classesPerLine`, it has no default: left unset, `printWidth` stays exactly as it was —
+  warn-only, no autofix — so existing configs see no behavior change; nothing is re-wrapped until
+  you explicitly choose one of the two modes (and `classesPerLine` is not set).
+  - `"overWidth"` re-wraps **only the lines that actually exceed `printWidth`**, greedily packing
+    each into the fewest lines that fit the budget while reusing that line's own indentation — the
+    same non-destructive contract as the `classesPerLine` fixer. Templates whose lines all fit, and
+    the conforming lines of a template that does get touched, keep their hand-formatted layout
+    untouched.
+  - `"all"` normalizes every multiline (or over-width) template to a canonical layout, mirroring
+    better-tailwindcss's fixer: classes sharing a variant chain (`hover:`, `md:hover:`, or none)
+    form runs, and a run wraps when adding the next class would exceed `printWidth` (indentation
+    included). A within-budget template that doesn't match that layout reports
+    `inconsistentWrapping`.
+
+  In both modes class **order is never changed** — the fixer only chooses where the line breaks go.
+  Template fragments glued to a `${}` with no whitespace (`` `${a}flex …` `` — one runtime class)
+  are never autofixed: introducing whitespace at the boundary would split the class in two.
+
+- **`enforce-consistent-line-wrapping`: new `group` option** (`"newLine" | "emptyLine" | "never"`,
+  default `"newLine"`), controlling how the `wrapLines: "all"` layout separates variant groups. It
+  matches better-tailwindcss's `group` option — same name, values, and default — so a migrated
+  config carries over unchanged: `"newLine"` starts each variant run on its own line (the default,
+  and the previous behavior), `"emptyLine"` additionally separates runs with a blank line (blank
+  lines carry no trailing whitespace and survive `no-unnecessary-whitespace` and the other fixers),
+  and `"never"` skips grouping entirely, packing classes greedily into the fewest lines that fit.
+  `"overWidth"` and the `classesPerLine` fixer never re-group, so they ignore `group`.
+
+### Changed
+
+- **`enforce-consistent-line-wrapping` no longer reports `tooLong` for a line whose single class
+  alone exceeds `printWidth`** (e.g. a long arbitrary value like `w-[calc(100vw-theme(spacing.24))]`
+  under a small width). Such a line cannot be wrapped any shorter, so the report was unactionable
+  noise. If you relied on it to catch very long single classes,
+  `max-class-count`/`no-arbitrary-value` remain the right tools.
+- **`enforce-consistent-line-wrapping` is now design-system optional**. When
+  `settings.tailwindcss.entryPoint` is configured, the `wrapLines: "all"` with either
+  `group: "newLine"` or `group: "emptyLine"` consults the design system for the project prefix
+  (`@import "tailwindcss" prefix(tw)`) and strips that prefix before determining variant groups. If
+  `entryPoint` is not configured, these rules silently fall back to treating the prefix as part of
+  the variant chain. It never reports `designSystemUnavailable`, and the design system is only
+  consulted for these two specific fixers so no performance penalty is applied to the rule if those
+  fixers are not used.
+
 ## 1.10.2
 
 Typing an **incomplete** arbitrary value in a `className` (e.g. `px-[calc(var(--a)+var(--b)+)]`, a

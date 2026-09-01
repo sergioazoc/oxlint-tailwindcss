@@ -86,4 +86,81 @@ describe('issue #14 — whitespace × line-wrapping no longer cycle', () => {
       invalid: [],
     },
   )
+
+  // Step 5: the width-based fixer (opt-in via `wrapLines`, no classesPerLine)
+  // wraps into the same block convention, grouped by variant run.
+  new RuleTester().run('step 5: width-based line-wrapping autofix', enforceConsistentLineWrapping, {
+    valid: [
+      // Its own output is the canonical form — the fix converges.
+      {
+        code: 'const className = `\n  bg-red-500 text-white\n  hover:bg-red-600\n  focus:ring-2 focus:ring-red-500\n  disabled:bg-gray-300\n`',
+        filename: 'a.tsx',
+        options: [{ printWidth: 40, wrapLines: 'all' }],
+      },
+    ],
+    invalid: [
+      {
+        code: 'const className = `bg-red-500 text-white hover:bg-red-600 focus:ring-2 focus:ring-red-500 disabled:bg-gray-300`',
+        filename: 'a.tsx',
+        options: [{ printWidth: 40, wrapLines: 'all' }],
+        errors: [{ messageId: 'tooLong' }],
+        output:
+          'const className = `\n  bg-red-500 text-white\n  hover:bg-red-600\n  focus:ring-2 focus:ring-red-500\n  disabled:bg-gray-300\n`',
+      },
+    ],
+  })
+
+  // Step 6: whitespace stays silent on the width-fixer output too.
+  new RuleTester().run(
+    'step 6: whitespace stays silent on width-wrapped output',
+    noUnnecessaryWhitespace,
+    {
+      valid: [
+        {
+          code: 'const className = `\n  bg-red-500 text-white\n  hover:bg-red-600\n  focus:ring-2 focus:ring-red-500\n  disabled:bg-gray-300\n`',
+          filename: 'a.tsx',
+        },
+      ],
+      invalid: [],
+    },
+  )
+
+  // Step 7: group: 'emptyLine' separates the variant runs with blank lines.
+  new RuleTester().run('step 7: width fixer with group: emptyLine', enforceConsistentLineWrapping, {
+    valid: [
+      // Its own output is the canonical form — the fix converges.
+      {
+        code: 'const className = `\n  bg-red-500 text-white\n\n  hover:bg-red-600\n\n  focus:ring-2 focus:ring-red-500\n\n  disabled:bg-gray-300\n`',
+        filename: 'a.tsx',
+        options: [{ printWidth: 40, wrapLines: 'all', group: 'emptyLine' }],
+      },
+    ],
+    invalid: [
+      {
+        code: 'const className = `bg-red-500 text-white hover:bg-red-600 focus:ring-2 focus:ring-red-500 disabled:bg-gray-300`',
+        filename: 'a.tsx',
+        options: [{ printWidth: 40, wrapLines: 'all', group: 'emptyLine' }],
+        errors: [{ messageId: 'tooLong' }],
+        output:
+          'const className = `\n  bg-red-500 text-white\n\n  hover:bg-red-600\n\n  focus:ring-2 focus:ring-red-500\n\n  disabled:bg-gray-300\n`',
+      },
+    ],
+  })
+
+  // Step 8: whitespace stays silent on the blank-line-separated output — a
+  // blank line has no horizontal whitespace to collapse, so the emptyLine
+  // shape must not re-enter the #14 cycle.
+  new RuleTester().run(
+    'step 8: whitespace stays silent on emptyLine-grouped output',
+    noUnnecessaryWhitespace,
+    {
+      valid: [
+        {
+          code: 'const className = `\n  bg-red-500 text-white\n\n  hover:bg-red-600\n\n  focus:ring-2 focus:ring-red-500\n\n  disabled:bg-gray-300\n`',
+          filename: 'a.tsx',
+        },
+      ],
+      invalid: [],
+    },
+  )
 })
