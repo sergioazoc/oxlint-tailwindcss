@@ -1,5 +1,5 @@
 import type { ESTree } from '@oxlint/plugins'
-import type { PluginSettings } from '../types'
+import type { CalleeExtractorKind, PluginSettings } from '../types'
 import { compileRegexList } from './allowlist'
 
 /**
@@ -79,7 +79,22 @@ export interface ExtractorConfig {
   callees: string[]
   tags: string[]
   variablePatterns: RegExp[]
+  /**
+   * Maps a custom callee name to the structured extractor it should be routed
+   * through (#155). Built once in `getExtractorConfig` (validated, with the
+   * reserved builtins and `exclude`d names already removed) so the hot-path
+   * dispatch is an O(1) `Map.get`. Empty by default.
+   */
+  calleeExtractors: Map<string, CalleeExtractorKind>
 }
+
+/** The structured extractor kinds `calleeExtractors` accepts (#155). */
+const CALLEE_EXTRACTOR_KINDS: ReadonlySet<CalleeExtractorKind> = new Set([
+  'tv',
+  'cva',
+  'classed',
+  'flat',
+])
 
 const DEFAULT_VARIABLE_PATTERNS = [/^classNames?$/, /^classes$/, /^styles?$/]
 
@@ -107,6 +122,7 @@ export const DEFAULT_EXTRACTOR_CONFIG: ExtractorConfig = {
   ],
   tags: ['tw'],
   variablePatterns: DEFAULT_VARIABLE_PATTERNS,
+  calleeExtractors: new Map(),
 }
 
 // --- Custom config resolution via settings.tailwindcss ---
@@ -134,6 +150,29 @@ function mergeUnique(defaults: string[], extras?: string[], exclusions?: string[
   const set = new Set(base)
   for (const e of extras) set.add(e)
   return [...set]
+}
+
+/**
+ * Builds the validated `calleeExtractors` map from raw settings (#155).
+ * Mirrors the graceful degradation of `compileRegexList`: a malformed shape or
+ * an unrecognized kind is skipped rather than thrown, so a typo in the config
+ * can never crash the lint from inside a visitor. Names present in
+ * `excluded` (from `exclude.callees`) are dropped so exclusion still wins over
+ * a callee that would otherwise be auto-registered.
+ */
+function compileCalleeExtractors(
+  raw: PluginSettings['calleeExtractors'],
+  excluded: Set<string>,
+): Map<string, CalleeExtractorKind> {
+  const map = new Map<string, CalleeExtractorKind>()
+  if (!raw || typeof raw !== 'object') return map
+  for (const [name, kind] of Object.entries(raw)) {
+    if (!name || typeof kind !== 'string') continue
+    if (!CALLEE_EXTRACTOR_KINDS.has(kind as CalleeExtractorKind)) continue
+    if (excluded.has(name)) continue
+    map.set(name, kind as CalleeExtractorKind)
+  }
+  return map
 }
 
 /**
@@ -180,6 +219,13 @@ export function getExtractorConfig(context: {
         )
       : DEFAULT_EXTRACTOR_CONFIG.variablePatterns
 
+  // Structured extractor routing (#155): validate the map, then auto-register
+  // its keys as callees so users need not list every name twice. `exclude` is
+  // honoured up front (excluded names never enter the map), matching how the
+  // rest of the extractor config lets `exclude` win.
+  const excludedCallees = new Set(exclude?.callees ?? [])
+  const calleeExtractors = compileCalleeExtractors(tw.calleeExtractors, excludedCallees)
+
   const resolved: ExtractorConfig = {
     attributes: mergeUnique(
       DEFAULT_EXTRACTOR_CONFIG.attributes,
@@ -191,7 +237,11 @@ export function getExtractorConfig(context: {
     // throwing (same graceful degradation as variablePatterns). No defaults, so
     // nothing to exclude.
     attributePatterns: compileRegexList(tw.attributePatterns),
-    callees: mergeUnique(DEFAULT_EXTRACTOR_CONFIG.callees, tw.callees, exclude?.callees),
+    callees: mergeUnique(
+      DEFAULT_EXTRACTOR_CONFIG.callees,
+      [...(tw.callees ?? []), ...calleeExtractors.keys()],
+      exclude?.callees,
+    ),
     tags: mergeUnique(DEFAULT_EXTRACTOR_CONFIG.tags, tw.tags, exclude?.tags),
     variablePatterns: [
       // compileRegexList skips invalid sources instead of throwing, so a typo
@@ -200,6 +250,7 @@ export function getExtractorConfig(context: {
       ...filteredPatterns,
       ...compileRegexList(tw.variablePatterns),
     ],
+    calleeExtractors,
   }
   configCache.set(context as ContextKey, resolved)
   return resolved
@@ -348,9 +399,18 @@ export function extractFromCallExpression(
   // Every callee (cn/twMerge/cva/tv/classed/…) produces override FRAGMENTS: each
   // argument is merged at runtime with the others (and with the host component's
   // own classes), so no argument is a final, self-contained class list.
-  if (calleeName === 'cva') return withOrigin(extractFromCvaCall(node), 'callee')
-  if (calleeName === 'tv') return withOrigin(extractFromTvCall(node), 'callee')
-  if (calleeName === 'classed') return withOrigin(extractFromClassedCall(node), 'callee')
+  //
+  // Built-in structured extractors take precedence over `calleeExtractors`
+  // (#155): the reserved `cva`/`tv`/`classed` names can't be remapped. A custom
+  // callee mapped to one of those is routed through the same extractor; `flat`
+  // (and any unmapped callee) falls through to the generic argument walk below.
+  const structured =
+    calleeName === 'cva' || calleeName === 'tv' || calleeName === 'classed'
+      ? calleeName
+      : config.calleeExtractors.get(calleeName)
+  if (structured === 'cva') return withOrigin(extractFromCvaCall(node), 'callee')
+  if (structured === 'tv') return withOrigin(extractFromTvCall(node), 'callee')
+  if (structured === 'classed') return withOrigin(extractFromClassedCall(node), 'callee')
 
   const results: ClassLocation[] = []
   for (const arg of node.arguments) {

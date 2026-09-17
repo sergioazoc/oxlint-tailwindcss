@@ -35,7 +35,8 @@ Read the story behind this plugin:
 - **Variable detection** — Lints variables matching `/^classNames?$/`, `/^classes$/`, `/^styles?$/`
   (e.g. `className`, `classNames`, `classes`, `styles`) automatically.
 - **Customizable** — Extend class detection with custom attributes, attribute patterns (regex, for
-  `*ClassName` props), callees, tags, and variable patterns.
+  `*ClassName` props), callees, callee extractors (route a wrapper through the `tv`/`cva`/`classed`
+  extractor), tags, and variable patterns.
 - **Component class support** — Recognizes `@layer components { .btn {} }` in your CSS.
 
 Full documentation: **https://oxlint-tailwindcss.pages.dev** (English) ·
@@ -250,6 +251,8 @@ entries are appended to the built-in defaults:
       "attributePatterns": ["ClassName$"],
       // Additional function names to scan
       "callees": ["myHelper"],
+      // Route a custom wrapper through a structured extractor (tv/cva/classed/flat)
+      "calleeExtractors": { "defineStyles": "tv" },
       // Additional tagged template tags to scan
       "tags": ["css"],
       // Additional regex patterns for variable names (as strings)
@@ -265,6 +268,13 @@ entries are appended to the built-in defaults:
 
 This applies to all 24 rules at once. For example, adding `"classNames"` to `attributes` makes every
 rule lint `<Input classNames={{ root: "..." }} />`.
+
+> **`calleeExtractors`** — `cva`, `tv`, and `classed` are extracted with logic that understands
+> their config shape (`base`, `slots`, `variants`, …). If a shared package re-exports one under
+> another name (e.g. `defineStyles = createTV(config)`), map it —
+> `"calleeExtractors": { "defineStyles": "tv" }` — so the wrapper gets the same deep extraction
+> without renaming imports. Mapped names are auto-registered as callees; values are one of `tv`,
+> `cva`, `classed`, or `flat` (the reserved names can't be remapped).
 
 > **`attributePatterns` vs `variablePatterns`** — both match by regex, but on different things.
 > `attributePatterns` matches **JSX attribute names** (`contentContainerClassName`,

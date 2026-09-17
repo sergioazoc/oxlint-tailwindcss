@@ -257,6 +257,62 @@ describe('custom extractor settings', () => {
     ],
   })
 
+  // calleeExtractors (#155): route a custom callee through a structured
+  // extractor. Exercises the full getExtractorConfig path — auto-registration,
+  // exclude, and built-in precedence — which the unit tests bypass.
+  settingsTester.run('no-duplicate-classes (calleeExtractors)', noDuplicateClasses, {
+    valid: [
+      // Without the mapping the wrapper is invisible — its config is not scanned.
+      { code: 'defineStyles({ slots: { root: "flex flex" } })', filename: 'test.tsx' },
+      // exclude.callees wins over the auto-registered mapped name.
+      {
+        code: 'defineStyles({ slots: { root: "flex flex" } })',
+        filename: 'test.tsx',
+        settings: {
+          tailwindcss: {
+            calleeExtractors: { defineStyles: 'tv' },
+            exclude: { callees: ['defineStyles'] },
+          },
+        },
+      },
+    ],
+    invalid: [
+      // "tv" routing reaches into slots (auto-registered, no need to list in callees).
+      {
+        code: 'defineStyles({ slots: { root: "flex flex items-center" } })',
+        filename: 'test.tsx',
+        settings: { tailwindcss: { calleeExtractors: { defineStyles: 'tv' } } },
+        errors: [{ messageId: 'duplicate' }],
+        output: 'defineStyles({ slots: { root: "flex items-center" } })',
+      },
+      // "tv" routing reaches nested slot-level variants too.
+      {
+        code: 'defineStyles({ variants: { tone: { primary: { root: "flex flex" } } } })',
+        filename: 'test.tsx',
+        settings: { tailwindcss: { calleeExtractors: { defineStyles: 'tv' } } },
+        errors: [{ messageId: 'duplicate' }],
+        output: 'defineStyles({ variants: { tone: { primary: { root: "flex" } } } })',
+      },
+      // "flat" routing = generic cn-style extraction, auto-registered.
+      {
+        code: 'cnx("flex flex items-center")',
+        filename: 'test.tsx',
+        settings: { tailwindcss: { calleeExtractors: { cnx: 'flat' } } },
+        errors: [{ messageId: 'duplicate' }],
+        output: 'cnx("flex items-center")',
+      },
+      // Built-in precedence: remapping the reserved `tv` to "flat" is ignored —
+      // it is still extracted structurally (flat would find nothing in the object).
+      {
+        code: 'tv({ slots: { root: "flex flex items-center" } })',
+        filename: 'test.tsx',
+        settings: { tailwindcss: { calleeExtractors: { tv: 'flat' } } },
+        errors: [{ messageId: 'duplicate' }],
+        output: 'tv({ slots: { root: "flex items-center" } })',
+      },
+    ],
+  })
+
   // Object values in JSX attributes
   settingsTester.run('no-duplicate-classes (object values in JSX)', noDuplicateClasses, {
     valid: [

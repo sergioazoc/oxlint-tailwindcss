@@ -1,5 +1,6 @@
 import type { ESTree } from '@oxlint/plugins'
 import { describe, expect, it } from 'vitest'
+import type { CalleeExtractorKind } from '../../src/types'
 import {
   DEFAULT_EXTRACTOR_CONFIG,
   type ExtractorConfig,
@@ -7,6 +8,7 @@ import {
   extractFromJSXAttribute,
   extractFromTaggedTemplate,
   extractFromVariableDeclarator,
+  getExtractorConfig,
 } from '../../src/utils/extractors'
 
 /**
@@ -168,5 +170,151 @@ describe('attributePatterns — regex JSX attribute matching (#134)', () => {
 
   it('matches nothing extra with the default empty patterns', () => {
     expect(extractFromJSXAttribute(namedAttr('contentContainerClassName', 'p-4'))).toHaveLength(0)
+  })
+})
+
+/**
+ * Issue #155: `calleeExtractors` routes a custom callee (a wrapper re-exported
+ * under another name) through a known structured extractor — `tv`/`cva`/
+ * `classed` reuse the dedicated extractors; `flat` is the generic cn-style walk.
+ */
+describe('calleeExtractors — structured routing for custom callees (#155)', () => {
+  const prop = (name: string, value: ESTree.Node): ESTree.Node =>
+    ({ type: 'Property', key: { type: 'Identifier', name }, value }) as unknown as ESTree.Node
+  const obj = (props: ESTree.Node[]): ESTree.Node =>
+    ({ type: 'ObjectExpression', properties: props }) as unknown as ESTree.Node
+  const arr = (elements: ESTree.Node[]): ESTree.Node =>
+    ({ type: 'ArrayExpression', elements }) as unknown as ESTree.Node
+  const call = (name: string, args: ESTree.Node[]): ESTree.CallExpression =>
+    ({
+      type: 'CallExpression',
+      callee: { type: 'Identifier', name },
+      arguments: args,
+    }) as unknown as ESTree.CallExpression
+
+  // Injects a config with the given routes, auto-registering the names as
+  // callees (production does this in getExtractorConfig; the unit-level dispatch
+  // guard reads config.callees directly).
+  const withRoutes = (entries: [string, CalleeExtractorKind][]): ExtractorConfig => ({
+    ...DEFAULT_EXTRACTOR_CONFIG,
+    callees: [...DEFAULT_EXTRACTOR_CONFIG.callees, ...entries.map(([n]) => n)],
+    calleeExtractors: new Map(entries),
+  })
+  const values = (locs: ReturnType<typeof extractFromCallExpression>): string[] =>
+    locs.map((l) => l.value)
+
+  describe('dispatch', () => {
+    it('routes a custom callee mapped to "tv" through the tv extractor', () => {
+      const node = call('defineStyles', [
+        obj([
+          prop('base', stringLiteral('flex')),
+          prop(
+            'slots',
+            obj([prop('header', stringLiteral('p-2')), prop('body', stringLiteral('p-4'))]),
+          ),
+          prop(
+            'variants',
+            obj([
+              prop(
+                'size',
+                obj([prop('sm', stringLiteral('text-sm')), prop('lg', stringLiteral('text-lg'))]),
+              ),
+            ]),
+          ),
+          prop(
+            'compoundVariants',
+            arr([obj([prop('size', stringLiteral('sm')), prop('class', stringLiteral('gap-1'))])]),
+          ),
+          prop('defaultVariants', obj([prop('size', stringLiteral('sm'))])),
+        ]),
+      ])
+      const got = values(extractFromCallExpression(node, withRoutes([['defineStyles', 'tv']])))
+      // base + both slots + both variant values + compoundVariant class; the
+      // variant *names* (`sm`/`lg`) and `defaultVariants` are never classes.
+      expect(got.sort()).toEqual(['flex', 'gap-1', 'p-2', 'p-4', 'text-lg', 'text-sm'])
+    })
+
+    it('routes a custom callee mapped to "cva" through the cva extractor', () => {
+      const node = call('makeVariants', [
+        stringLiteral('flex'),
+        obj([
+          prop('variants', obj([prop('size', obj([prop('sm', stringLiteral('text-sm'))]))])),
+          prop(
+            'compoundVariants',
+            arr([
+              obj([prop('size', stringLiteral('sm')), prop('className', stringLiteral('gap-1'))]),
+            ]),
+          ),
+          prop('defaultVariants', obj([prop('size', stringLiteral('sm'))])),
+        ]),
+      ])
+      const got = values(extractFromCallExpression(node, withRoutes([['makeVariants', 'cva']])))
+      expect(got.sort()).toEqual(['flex', 'gap-1', 'text-sm'])
+    })
+
+    it('routes a custom callee mapped to "classed" and skips the element-type arg', () => {
+      const node = call('styledEl', [
+        stringLiteral('button'), // element type — must be skipped
+        stringLiteral('flex items-center'),
+        obj([prop('variants', obj([prop('size', obj([prop('sm', stringLiteral('text-sm'))]))]))]),
+      ])
+      const got = values(extractFromCallExpression(node, withRoutes([['styledEl', 'classed']])))
+      expect(got.sort()).toEqual(['flex items-center', 'text-sm'])
+    })
+
+    it('treats a callee mapped to "flat" as generic cn-style extraction', () => {
+      const node = call('cnx', [stringLiteral('flex'), stringLiteral('p-2')])
+      const got = values(extractFromCallExpression(node, withRoutes([['cnx', 'flat']])))
+      expect(got.sort()).toEqual(['flex', 'p-2'])
+    })
+
+    it('leaves a built-in structured callee untouched even if remapped (builtins win)', () => {
+      // Map the reserved `tv` to "flat"; a real tv({ slots }) must still be
+      // extracted structurally, not flattened (flat would find no class here).
+      const node = call('tv', [obj([prop('slots', obj([prop('header', stringLiteral('p-2'))]))])])
+      const got = values(extractFromCallExpression(node, withRoutes([['tv', 'flat']])))
+      expect(got).toEqual(['p-2'])
+    })
+  })
+
+  describe('config resolution (getExtractorConfig)', () => {
+    it('auto-registers mapped names as callees and keeps the routes', () => {
+      const cfg = getExtractorConfig({
+        settings: { tailwindcss: { calleeExtractors: { defineStyles: 'tv', mk: 'cva' } } },
+      })
+      expect(cfg.calleeExtractors.get('defineStyles')).toBe('tv')
+      expect(cfg.calleeExtractors.get('mk')).toBe('cva')
+      expect(cfg.callees).toContain('defineStyles')
+      expect(cfg.callees).toContain('mk')
+    })
+
+    it('skips an unrecognized kind without throwing', () => {
+      const cfg = getExtractorConfig({
+        settings: { tailwindcss: { calleeExtractors: { defineStyles: 'tv', bad: 'cvaa' } } },
+      })
+      expect(cfg.calleeExtractors.get('defineStyles')).toBe('tv')
+      expect(cfg.calleeExtractors.has('bad')).toBe(false)
+      expect(cfg.callees).not.toContain('bad')
+    })
+
+    it('ignores a non-object calleeExtractors without throwing', () => {
+      const cfg = getExtractorConfig({
+        settings: { tailwindcss: { calleeExtractors: 'nope' } },
+      })
+      expect(cfg.calleeExtractors.size).toBe(0)
+    })
+
+    it('lets exclude.callees win over an auto-registered mapped name', () => {
+      const cfg = getExtractorConfig({
+        settings: {
+          tailwindcss: {
+            calleeExtractors: { defineStyles: 'tv' },
+            exclude: { callees: ['defineStyles'] },
+          },
+        },
+      })
+      expect(cfg.calleeExtractors.has('defineStyles')).toBe(false)
+      expect(cfg.callees).not.toContain('defineStyles')
+    })
   })
 })
