@@ -177,6 +177,33 @@ O quita de los defaults:
 
 Las exclusiones de `variablePatterns` coinciden con `RegExp.source` literal.
 
+### Wrappers estructurados (`calleeExtractors`)
+
+`cva`, `tv` y `classed` se extraen con lógica dedicada que entiende la forma de config de cada
+helper (`base`, `slots`, `variants`, `compoundVariants`, …). Si un paquete compartido re-exporta uno
+de ellos con tu propio nombre, mapea ese nombre a la estructura que sigue para que reciba la misma
+extracción profunda — sin renombrar imports en cada punto de llamada:
+
+```jsonc
+{
+  "settings": {
+    "tailwindcss": {
+      "calleeExtractors": {
+        "defineStyles": "tv",     // lee base / slots / variants / compoundVariants
+        "makeVariants": "cva",    // lee base / variants / compoundVariants
+        "styledEl": "classed",    // omite el primer argumento (tipo de elemento)
+        "cnx": "flat"             // extracción plana estilo cn/clsx/twMerge
+      }
+    }
+  }
+}
+```
+
+Los nombres mapeados se registran como callees automáticamente — no hace falta listarlos también en
+`callees`. El valor debe ser uno de `tv`, `cva`, `classed` o `flat`; cualquier otro valor se ignora
+en vez de lanzar. Los nombres reservados `tv`, `cva` y `classed` siempre usan su extractor integrado
+y no se pueden remapear.
+
 ## Cheat sheet
 
 ```jsonc
@@ -191,6 +218,7 @@ Las exclusiones de `variablePatterns` coinciden con `RegExp.source` literal.
       "attributes": [],                    // opcional
       "attributePatterns": [],             // opcional
       "callees": [],                       // opcional
+      "calleeExtractors": {},              // opcional (nombre → tv|cva|classed|flat)
       "tags": [],                          // opcional
       "variablePatterns": [],              // opcional
       "exclude": {                         // opcional

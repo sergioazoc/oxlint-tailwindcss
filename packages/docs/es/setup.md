@@ -170,7 +170,8 @@ y plugins como `@tailwindcss/typography`.
 - **Ajustar extractors**: por defecto el plugin escanea `className` / `class`, ~14 callees (`cn`,
   `clsx`, `cva`, `twMerge`, …), templates con `tw`, y variables que coinciden con `/^classNames?$/`,
   `/^classes$/`, `/^styles?$/`. Agrega `attributes`, `attributePatterns` (regex para props tipo
-  `*ClassName`), `callees`, `tags`, `variablePatterns`, o quita defaults vía `exclude`. Mira la
+  `*ClassName`), `callees`, `calleeExtractors` (enruta un wrapper propio por el extractor de
+  `tv`/`cva`/`classed`), `tags`, `variablePatterns`, o quita defaults vía `exclude`. Mira la
   [referencia de settings](/es/settings).
 - **Ajustar timeouts**: `settings.tailwindcss.timeout` (ms, default 60000) limita cuánto espera el
   plugin al worker (hilo) que precomputa el design system. CI lento puede necesitar subirlo.

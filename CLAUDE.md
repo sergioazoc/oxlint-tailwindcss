@@ -210,6 +210,17 @@ the extractor config lazily from `settings.tailwindcss`.
 - `attributePatterns: string[]` — regex patterns matched against JSX attribute NAMES (as strings,
   compiled to RegExp; default `[]`, #134). Distinct from `variablePatterns`, which matches variable
   names. Additive; not covered by `exclude`.
+- `calleeExtractors: Record<string, 'tv' | 'cva' | 'classed' | 'flat'>` — routes a custom callee
+  through a known structured extractor (#155). Lets a wrapper re-exported under another name
+  (`defineStyles = createTV(config)`) get the same deep extraction as `tv()` without renaming
+  imports. Dispatch lives after the three hardcoded `cva`/`tv`/`classed` checks in
+  `extractFromCallExpression`, so the **reserved names win** (can't be remapped); `'flat'` is the
+  generic cn-style walk. Keys are **auto-registered** into `callees` inside `getExtractorConfig`
+  (else the `config.callees.includes` guard would make them dead code), and dropped when they also
+  appear in `exclude.callees` (so exclusion wins). Validation mirrors `compileRegexList`: an
+  unrecognized value or a non-object map is skipped, never thrown. Empty by default → byte-identical
+  behavior. All locations stay `origin: 'callee'` (fragment), so relational rules (#117) gain no
+  false positives.
 - `exclude: { attributes?, callees?, tags?, variablePatterns? }` — remove specific items from
   defaults. For `variablePatterns`, exclusions match against `RegExp.source`.
 

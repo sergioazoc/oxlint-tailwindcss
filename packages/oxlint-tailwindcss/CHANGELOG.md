@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.13.0
+
+Wrapping `cva`/`tv`/`classed` behind a shared design-system package — re-exporting them under your
+own names — is a common monorepo pattern, but a wrapper registered in `callees` was extracted with
+the generic cn-style walk, so the classes nested in its `slots`/`variants` config went unseen and no
+rule fired. This release adds `settings.tailwindcss.calleeExtractors`, which maps a custom callee to
+the structured extractor it follows so it gets the same deep extraction as the built-in helper —
+without renaming imports at every call site
+([#155](https://github.com/sergioazoc/oxlint-tailwindcss/issues/155), reported by @azu).
+
+### Features
+
+- **`settings.tailwindcss.calleeExtractors` routes a custom callee through a known structured
+  extractor.** Map a wrapper name to `tv`, `cva`, `classed`, or `flat` (e.g.
+  `{ "defineStyles": "tv" }`) and it is extracted like the helper it wraps, across all 24 rules.
+  Mapped names are auto-registered as callees (no need to list them in `callees` too); an
+  unrecognized value is skipped rather than throwing, `exclude.callees` still wins, and the reserved
+  names `tv`/`cva`/`classed` always use their built-in extractor and can't be remapped.
+
 ## 1.12.0
 
 `enforce-canonical` and `enforce-consistent-variable-syntax` both rewrote the CSS-variable shorthand

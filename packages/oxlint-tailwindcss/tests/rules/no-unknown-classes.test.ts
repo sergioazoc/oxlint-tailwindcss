@@ -751,3 +751,41 @@ describe('real-world variant chains', () => {
     },
   )
 })
+
+// Issue #155: a shared-package wrapper re-exported under another name
+// (`defineStyles = createTV(config)`) is linted like `tv()` once mapped via
+// `settings.tailwindcss.calleeExtractors`, without renaming imports.
+describe('calleeExtractors — shared styling wrapper (#155)', () => {
+  runWithFixture(new RuleTester(), 'tv wrapper', noUnknownClasses, ENTRY_POINT, {
+    valid: [
+      // Without the mapping the wrapper's config is not scanned, so the unknown
+      // class inside it is silently accepted (the exact status quo the issue reports).
+      {
+        code: 'defineStyles({ slots: { root: "definitely-not-a-class" } })',
+        filename: 'test.tsx',
+      },
+    ],
+    invalid: [
+      // Mapped to "tv", both invalid classes are reported — including the one
+      // nested in a slot-level variant, matching the issue's expected result.
+      {
+        code: `defineStyles({
+  slots: {
+    root: "definitely-not-a-class",
+    conflicting: "flex grid",
+    arbitrary: "p-[13px]",
+    restricted: "hidden",
+  },
+  variants: {
+    tone: {
+      primary: { root: "another-invalid-class" },
+    },
+  },
+})`,
+        filename: 'test.tsx',
+        settings: { tailwindcss: { calleeExtractors: { defineStyles: 'tv' } } },
+        errors: [{ messageId: 'unknown' }, { messageId: 'unknown' }],
+      },
+    ],
+  })
+})

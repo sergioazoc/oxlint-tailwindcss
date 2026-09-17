@@ -20,6 +20,15 @@ export interface EntryPointMapping {
   use: string
 }
 
+/**
+ * The structured extractor a custom callee should be routed through
+ * (`settings.tailwindcss.calleeExtractors`). `tv`/`cva`/`classed` reuse the
+ * dedicated extractors that understand each helper's config shape; `flat` is
+ * the generic cn/clsx/twMerge-style extraction (every string argument plus
+ * object keys) — the same behaviour every plain `callees` entry already gets.
+ */
+export type CalleeExtractorKind = 'tv' | 'cva' | 'classed' | 'flat'
+
 export interface PluginSettings {
   /**
    * CSS entry point. Required in v1.0.0+ for any DS-dependent rule to run.
@@ -60,6 +69,18 @@ export interface PluginSettings {
   attributePatterns?: string[]
   /** Additional function names to scan for Tailwind classes (added to defaults) */
   callees?: string[]
+  /**
+   * Route a custom callee through a known structured extractor by mapping its
+   * local name to `'tv' | 'cva' | 'classed' | 'flat'`. Lets a wrapper
+   * re-exported under another name (e.g. `defineStyles = createTV(config)`) be
+   * linted with the same deep extraction as `tv()` — without renaming imports
+   * at every call site (#155). Keys are auto-registered as callees (no need to
+   * also list them in `callees`); an unknown value is skipped rather than
+   * throwing, and the reserved names `tv`/`cva`/`classed` cannot be remapped
+   * (the built-in extractor wins). `'flat'` is the default cn/clsx-style
+   * extraction, offered so every custom callee can live in one map.
+   */
+  calleeExtractors?: Record<string, CalleeExtractorKind>
   /** Additional tagged template tag names to scan (added to defaults) */
   tags?: string[]
   /** Additional regex patterns (as strings) for variable names to scan (added to defaults) */
