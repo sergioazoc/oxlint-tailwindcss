@@ -138,12 +138,27 @@ export function hasArbitraryValue(cls: string): boolean {
  * Unlike `hasArbitraryValue`, this also catches `(--var)` shorthand — both
  * forms are what require the async Tailwind DS to canonicalize, because
  * their value space is unbounded. Simple named classes (`flex`, `px-4`,
- * even with variants like `[&>svg]:hover:flex`) can be canonicalized from
- * the precomputed cache without touching the worker.
+ * `hover:flex`) can be canonicalized from the precomputed cache without
+ * touching the worker. See `variantHasArbitraryValue` for the variant side.
  */
 export function utilityHasDynamicValue(cls: string): boolean {
   const utility = extractUtility(cls)
   return utility.includes('[') || utility.includes('(')
+}
+
+/**
+ * Checks if a class's VARIANT part carries an arbitrary value — an arbitrary
+ * variant (`[&>svg]:`) or a bracketed/parenthesized argument (`data-[open]:`,
+ * `min-[40rem]:`, `supports-(--x):`).
+ *
+ * The precompute only knows utilities, so the cache canonicalizes the utility
+ * and passes the variant through untouched; Tailwind also canonicalizes
+ * variants (`data-[open]:` → `data-open:`, `min-[40rem]:` → `sm:`), which only
+ * the design system can answer. Bracket-aware via `splitUtilityAndVariant`.
+ */
+export function variantHasArbitraryValue(cls: string): boolean {
+  const { variant } = splitUtilityAndVariant(cls)
+  return variant.includes('[') || variant.includes('(')
 }
 
 /**

@@ -60,23 +60,33 @@ export interface CanonicalizeResult {
 //
 // `safe` (#78) is computed here, inside the worker, where the design system
 // lives: a rewrite is value-preserving iff the two classes emit byte-identical
-// CSS *declarations* (the selector differs by construction, so it is stripped —
-// everything between the first `{` and the last `}`). candidatesToCss is the
-// source of truth; when the canonical form resolves through a `var()`/`calc()`
-// whose value a `:root` override can change, the declarations differ and the
-// rewrite is flagged unsafe.
+// CSS apart from the class's own name. candidatesToCss is the source of truth;
+// when the canonical form resolves through a `var()`/`calc()` whose value a
+// `:root` override can change, the declarations differ and the rewrite is
+// flagged unsafe.
+//
+// Only the class token that OPENS a selector is neutralized (#156). Slicing
+// between the first `{` and the last `}` — what this used to do — drops the
+// selector only when it comes first: a variant wraps the rule in an at-rule
+// (`@media (hover: hover) { .hover\:z-\[10\]:hover { … } }`), the escaped name
+// landed inside the slice, and every variant-prefixed rewrite read as unsafe.
+// A token at the start of a statement can never be a declaration (a property
+// doesn't start with `.`) nor an at-rule prelude (those start with `@`), and
+// strings are stepped over, so declaration values are compared untouched. The
+// rest of the selector is kept: a canonicalization that changes the variant's
+// selector (`[&>*]:` → `*:`) still differs, and stays unsafe.
 export const CANONICALIZE_HANDLER = `(ds, request) => {
   const { classes, rem } = request;
   const options = rem ? { rem } : undefined;
+  const OWN_CLASS = /("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(^|[{};])(\\s*)\\.(?:\\\\[0-9a-fA-F]{1,6}\\s?|\\\\[^0-9a-fA-F\\s]|[\\w-])+/g;
   const declsOf = (cls) => {
     let out;
     try { out = ds.candidatesToCss([cls]); } catch (e) { return null; }
     if (!out || !out[0]) return null;
-    const css = out[0];
-    const open = css.indexOf('{');
-    const close = css.lastIndexOf('}');
-    if (open < 0 || close < 0) return null;
-    return css.slice(open + 1, close).replace(/\\s+/g, ' ').trim();
+    return out[0]
+      .replace(OWN_CLASS, (m, str, start, ws) => (str !== undefined ? str : start + ws + '.__c'))
+      .replace(/\\s+/g, ' ')
+      .trim();
   };
   return classes.map((cls) => {
     // A malformed/mid-typing arbitrary value (e.g. \`px-[calc(var(--a)+)]\`) can

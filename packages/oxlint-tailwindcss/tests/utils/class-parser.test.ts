@@ -8,6 +8,7 @@ import {
   hasArbitraryValue,
   getArbitraryValue,
   utilityHasDynamicValue,
+  variantHasArbitraryValue,
   splitImportant,
   reattachImportant,
 } from '../../src/utils/class-parser'
@@ -207,6 +208,24 @@ describe('typed CSS-variable shorthand is paren-aware (#76)', () => {
   it('utilityHasDynamicValue still routes the shorthand to the DS path', () => {
     expect(utilityHasDynamicValue('border-(length:--stroke)')).toBe(true)
     expect(utilityHasDynamicValue('bg-(color:--c)')).toBe(true)
+  })
+})
+
+describe('variantHasArbitraryValue', () => {
+  it.each([
+    ['data-[open]:flex', true],
+    ['min-[40rem]:flex', true],
+    ['[&>svg]:w-4', true],
+    ['hover:[&>svg]:w-4', true],
+    ['supports-(--x):flex', true],
+    ['flex', false],
+    ['hover:md:flex', false],
+    ['tw:hover:flex', false],
+    // The utility's own brackets are not the variant's.
+    ['w-[200px]', false],
+    ['hover:bg-(--c)', false],
+  ])('%s → %s', (cls, expected) => {
+    expect(variantHasArbitraryValue(cls)).toBe(expected)
   })
 })
 

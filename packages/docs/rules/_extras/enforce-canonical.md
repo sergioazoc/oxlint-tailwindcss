@@ -11,9 +11,10 @@ hit, suggestions cover the rest in the same string. The v3 renames (`bg-gradient
 rule — see Interactions.
 
 Named classes resolve through a precomputed in-memory `canonicalMap` (sub-microsecond). Arbitrary
-values (`p-[2px]`, `bg-(--c)`) go through the `canonicalize-service` worker because they need a live
-DS lookup; results are cached process-wide per `(entryPoint, rem, class)`. The worker preserves the
-position of `!` (important prefix vs suffix vs none).
+values (`p-[2px]`, `bg-(--c)`) and arbitrary variants (`data-[open]:`, `min-[40rem]:`) go through
+the `canonicalize-service` worker because they need a live DS lookup; results are cached
+process-wide per `(entryPoint, rem, class)`. The worker preserves the position of `!` (important
+prefix vs suffix vs none).
 
 DS-dependent — requires `settings.tailwindcss.entryPoint`. If the design system can't load, the rule
 emits a single fatal `designSystemUnavailable` diagnostic per file instead of silently passing.
@@ -40,6 +41,9 @@ for the whole project instead of per-rule whenever possible.
 
 // Variants and important are preserved
 <div className="hover:!flex-grow-[2]" />
+
+// Opacity modifiers and arbitrary variants, with or without other variants
+<div className="dark:bg-white/[.08] data-[open]:flex min-[40rem]:flex" />
 ```
 
 ### ✓ Correct
@@ -52,6 +56,8 @@ for the whole project instead of per-rule whenever possible.
 <div className="grow-2" />
 
 <div className="hover:!grow-2" />
+
+<div className="dark:bg-white/8 data-open:flex sm:flex" />
 ```
 
 ## Interactions with other rules

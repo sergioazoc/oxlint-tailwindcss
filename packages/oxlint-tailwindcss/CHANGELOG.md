@@ -19,6 +19,25 @@ without renaming imports at every call site
   unrecognized value is skipped rather than throwing, `exclude.callees` still wins, and the reserved
   names `tv`/`cva`/`classed` always use their built-in extractor and can't be remapped.
 
+### Bug fixes
+
+- **`enforce-canonical` now rewrites arbitrary values under a variant.** `bg-white/[.08]` →
+  `bg-white/8` was reported, but `dark:bg-white/[.08]`, `hover:z-[10]` or `sm:dark:bg-white/[.08]`
+  were silently left alone. The value-preserving check (#78) compared the emitted CSS after cutting
+  it between the first `{` and the last `}`, which drops the selector only when it comes first; a
+  variant wraps the rule in an at-rule (`@media (hover: hover) { .hover\:z-\[10\]:hover { … } }`),
+  so the escaped class name — different by construction — stayed in the comparison and every
+  variant-prefixed rewrite read as unsafe. The check now neutralizes only the class's own name and
+  compares everything else, so #78's guarantee is unchanged: `dark:text-[#fff]` is still not
+  rewritten to `dark:text-white`, which reads a theme variable
+  ([#156](https://github.com/sergioazoc/oxlint-tailwindcss/issues/156), reported by @Nayeem-XTREME).
+- **`enforce-canonical` canonicalizes arbitrary variants.** Tailwind rewrites `data-[open]:` →
+  `data-open:`, `aria-[checked=true]:` → `aria-checked:` and `min-[40rem]:` → `sm:`, but these
+  classes never reached the design system: only the utility was checked for brackets, and the
+  precomputed map knows utilities, not variants. They are now asked too, under the same
+  value-preserving check — a variant rewrite that changes the selector (`has-[:checked]:` →
+  `has-checked:`, `[&>*]:` → `*:`) is left as written.
+
 ## 1.12.0
 
 `enforce-canonical` and `enforce-consistent-variable-syntax` both rewrote the CSS-variable shorthand

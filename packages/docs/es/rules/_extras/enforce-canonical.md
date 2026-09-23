@@ -11,9 +11,10 @@ sugerencias cubren el resto en el mismo string. Los renombres de v3 (`bg-gradien
 esta regla — ver Interacciones.
 
 Las clases con nombre resuelven contra un `canonicalMap` precomputado en memoria (sub-microsegundo).
-Los valores arbitrarios (`p-[2px]`, `bg-(--c)`) pasan por el worker `canonicalize-service` porque
-necesitan una consulta viva al DS; los resultados se cachean a nivel proceso por
-`(entryPoint, rem, class)`. El worker preserva la posición del `!` (prefix vs suffix vs ninguno).
+Los valores arbitrarios (`p-[2px]`, `bg-(--c)`) y las variantes arbitrarias (`data-[open]:`,
+`min-[40rem]:`) pasan por el worker `canonicalize-service` porque necesitan una consulta viva al DS;
+los resultados se cachean a nivel proceso por `(entryPoint, rem, class)`. El worker preserva la
+posición del `!` (prefix vs suffix vs ninguno).
 
 DS-dependiente — requiere `settings.tailwindcss.entryPoint`. Si el design system no puede cargar, la
 regla emite un único diagnóstico fatal `designSystemUnavailable` por archivo en vez de pasar en
@@ -41,6 +42,9 @@ defecto es `settings.tailwindcss.entryPoint`). Configura el entry point en
 
 // Variants e important se preservan
 <div className="hover:!flex-grow-[2]" />
+
+// Modificadores de opacidad y variantes arbitrarias, con o sin otras variantes
+<div className="dark:bg-white/[.08] data-[open]:flex min-[40rem]:flex" />
 ```
 
 ### ✓ Correcto
@@ -53,6 +57,8 @@ defecto es `settings.tailwindcss.entryPoint`). Configura el entry point en
 <div className="grow-2" />
 
 <div className="hover:!grow-2" />
+
+<div className="dark:bg-white/8 data-open:flex sm:flex" />
 ```
 
 ## Interacciones con otras reglas

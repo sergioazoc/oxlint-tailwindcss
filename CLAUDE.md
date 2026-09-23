@@ -558,6 +558,15 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `prefer-theme-tokens`): three rules can transform an arbitrary value into a named utility, each
   owning a distinct case so they don't double-fire on the same input. Coexistence matrix locked down
   in `tests/integration/prefer-theme-tokens-coexistence.test.ts`.
+- **`enforce-canonical` safe gate (#78, #156)**: `declsOf` in `CANONICALIZE_HANDLER` compares the
+  FULL `candidatesToCss` output with only the class token that opens a selector neutralized (strings
+  stepped over, at-rule preludes and declaration values untouched). Never go back to slicing
+  `{`…`}`: under a variant the rule is wrapped in an at-rule, the escaped class name lands inside
+  the slice, and every variant-prefixed rewrite reads as unsafe (#156). Classes whose VARIANT is
+  arbitrary (`data-[open]:`, `min-[40rem]:`, via `variantHasArbitraryValue`) also go to the worker —
+  the precomputed `canonicalMap` knows utilities only. Beware: Tailwind's DS is stateful here —
+  `candidatesToCss` for a token can change after other `canonicalizeCandidates` calls (seen on
+  shadcn's `rounded-sm`), so don't write tests that depend on call order.
 - **`arbitraryEquivalents` precompute**: for each named utility, the precompute step enumerates
   every dash split point and emits one candidate per prefix (e.g. `bg-card-foreground` produces both
   `bg-[<value>]` and `bg-card-[<value>]`). Loop starts at `cls.indexOf('-', 1)` so negative
