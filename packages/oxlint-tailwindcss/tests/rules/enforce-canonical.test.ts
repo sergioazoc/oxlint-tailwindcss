@@ -39,8 +39,57 @@ runWithFixture(ruleTester, 'enforce-canonical', enforceCanonical, ENTRY_POINT, {
     // theme(spacing.1) (compile-time literal 0.25rem) → --spacing(1) (runtime
     // var(--spacing)) is the same literal→var hazard, so it is left as written.
     { code: '<div className="[--w-padding:theme(spacing.1)]" />', filename: 'test.tsx' },
+    // #156: the #78 guard still holds under a variant — `text-white` reads
+    // `var(--color-white)`, not the literal `#fff`.
+    { code: '<div className="dark:text-[#fff]" />', filename: 'test.tsx' },
+    { code: '<div className="md:rounded-[4px]" />', filename: 'test.tsx' },
+    // A variant canonicalization that changes the SELECTOR is not
+    // value-preserving: `has-checked:` drops the `:is()` wrapper, `*:` wraps
+    // the rule in `:is()` (different specificity). Left as written.
+    { code: '<div className="has-[:checked]:flex" />', filename: 'test.tsx' },
+    { code: '<div className="[&>*]:flex" />', filename: 'test.tsx' },
+    // Already canonical: Tailwind has no shorthand for a valued data attribute.
+    { code: '<div className="data-[state=open]:flex" />', filename: 'test.tsx' },
+    // #152 under a variant: the pure var-syntax swap is ceded to
+    // enforce-consistent-variable-syntax, same as the bare form.
+    { code: '<div className="hover:bg-[var(--x)]" />', filename: 'test.tsx' },
   ],
   invalid: [
+    // #156: the value-preserving rewrite applies under a variant too. The
+    // safe gate used to slice between the first `{` and the last `}`, which
+    // under a variant's wrapping at-rule kept the (always differing) escaped
+    // class name in the comparison — so no variant-prefixed rewrite ever fired.
+    ...(
+      [
+        ['dark:bg-white/[.08]', 'dark:bg-white/8'],
+        ['hover:bg-black/[.06]', 'hover:bg-black/6'],
+        ['sm:dark:bg-white/[.08]', 'sm:dark:bg-white/8'],
+        ['hover:z-[10]', 'hover:z-10'],
+        // Leading digit: the selector escapes it as `\32 xl\:…`.
+        ['2xl:z-[10]', '2xl:z-10'],
+        ['md:!z-[10]', 'md:!z-10'],
+        ['md:z-[10]!', 'md:z-10!'],
+        ['[&>svg]:z-[10]', '[&>svg]:z-10'],
+        ['group-hover/item:z-[10]', 'group-hover/item:z-10'],
+        // Arbitrary VARIANTS Tailwind canonicalizes — never reached the worker
+        // before, since only the utility was checked for brackets.
+        ['data-[open]:flex', 'data-open:flex'],
+        ['aria-[checked=true]:flex', 'aria-checked:flex'],
+        ['min-[40rem]:flex', 'sm:flex'],
+        ['data-[open]:z-[10]', 'data-open:z-10'],
+      ] as const
+    ).map(([cls, canonical]) => ({
+      code: `<div className="${cls}" />`,
+      filename: 'test.tsx',
+      errors: [{ messageId: 'nonCanonical' as const }],
+      output: `<div className="${canonical}" />`,
+    })),
+    {
+      code: '<div className="bg-black dark:bg-white/[.08] hover:bg-black/[.06]" />',
+      filename: 'test.tsx',
+      errors: [{ messageId: 'nonCanonical' }, { messageId: 'nonCanonical' }],
+      output: '<div className="bg-black dark:bg-white/8 hover:bg-black/6" />',
+    },
     {
       code: '<div className="-m-0" />',
       filename: 'test.tsx',

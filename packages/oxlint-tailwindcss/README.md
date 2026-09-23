@@ -180,8 +180,11 @@ the run fails fast, and the state self-heals once the machine recovers.
 
 ### Root font size
 
-The `enforce-canonical` rule converts px-based arbitrary values to named classes (e.g. `p-[2px]` →
-`p-0.5`). This conversion depends on the root font size:
+Comparing a px value against a rem-based scale depends on the root font size. `prefer-scale-token`
+uses it to suggest `p-[10px]` → `p-2.5`, and `enforce-canonical` passes it to Tailwind's
+canonicalizer. `enforce-canonical` only autofixes rewrites that emit identical CSS, so a px value is
+never rewritten to a token that resolves through `var(--spacing)`. Change it only if your project
+sets a root size other than 16 on `<html>`:
 
 ```jsonc
 {
@@ -579,7 +582,13 @@ syntax normalization), so `--fix` never changes how your design renders.
 "-mt-0"                        → "mt-0"
 "flex-grow-[2]"                → "grow-2"
 "text-[var(--color-text)]/90"  → "text-(--color-text)/90"
+"dark:bg-white/[.08]"          → "dark:bg-white/8"
+"data-[open]:flex"             → "data-open:flex"
+"min-[40rem]:flex"             → "sm:flex"
 ```
+
+Variants and the `!` position are preserved. A variant rewrite that would change the selector
+(`has-[:checked]:` → `has-checked:`, `[&>*]:` → `*:`) is left as written.
 
 It does **not** rewrite an arbitrary length into a spacing-scale step (`pl-[15px]` → `pl-3.75`),
 even though IntelliSense suggests it: `pl-3.75` compiles to `calc(var(--spacing) * 3.75)`, which is
@@ -1030,10 +1039,11 @@ The class parser correctly handles:
 - **`enforce-canonical`**: Named classes are canonicalized via the precomputed map (covers
   everything in `getClassList()` plus a curated list of legacy v3 spellings like `break-words`,
   `flex-grow`, `start-N`, `bg-gradient-to-*`, `bg-left-top` → `bg-top-left`). Arbitrary/CSS-var
-  forms (`bg-(--c)`, `text-[var(--x)]`) are canonicalized dynamically via the worker when the result
-  is byte-identical; a value-changing form like `p-[2px]` → `p-0.5` is left to `prefer-scale-token`.
-  Some valid v4 classes that don't appear in `getClassList()` and have no canonical rewrite (e.g.
-  `border-1` is valid as a dynamic numeric value but isn't enumerated) are left untouched.
+  forms (`bg-(--c)`, `text-[var(--x)]`) and arbitrary variants (`data-[open]:`, `min-[40rem]:`) are
+  canonicalized dynamically via the worker when the result is byte-identical; a value-changing form
+  like `p-[2px]` → `p-0.5` is left to `prefer-scale-token`. Some valid v4 classes that don't appear
+  in `getClassList()` and have no canonical rewrite (e.g. `border-1` is valid as a dynamic numeric
+  value but isn't enumerated) are left untouched.
 - **`no-conflicting-classes`**: compares the emitted declarations (property, value, the custom
   properties each value reads, and which box it applies to), so compositions are derived rather than
   enumerated. Two exceptions cannot be derived and stay declared in the source: `prose` variants and

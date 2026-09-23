@@ -10,6 +10,11 @@ the structured extractor it follows so it gets the same deep extraction as the b
 without renaming imports at every call site
 ([#155](https://github.com/sergioazoc/oxlint-tailwindcss/issues/155), reported by @azu).
 
+It also fixes `enforce-canonical` under variants: the autofix that turned `bg-white/[.08]` into
+`bg-white/8` never applied to `dark:bg-white/[.08]` or `hover:z-[10]`, and arbitrary variants like
+`data-[open]:` were never canonicalized at all
+([#156](https://github.com/sergioazoc/oxlint-tailwindcss/issues/156), reported by @Nayeem-XTREME).
+
 ### Features
 
 - **`settings.tailwindcss.calleeExtractors` routes a custom callee through a known structured
@@ -18,6 +23,32 @@ without renaming imports at every call site
   Mapped names are auto-registered as callees (no need to list them in `callees` too); an
   unrecognized value is skipped rather than throwing, `exclude.callees` still wins, and the reserved
   names `tv`/`cva`/`classed` always use their built-in extractor and can't be remapped.
+
+### Bug fixes
+
+- **`enforce-canonical` now rewrites arbitrary values under a variant.** `bg-white/[.08]` →
+  `bg-white/8` was reported, but `dark:bg-white/[.08]`, `hover:z-[10]` or `sm:dark:bg-white/[.08]`
+  were silently left alone. The value-preserving check (#78) compared the emitted CSS after cutting
+  it between the first `{` and the last `}`, which drops the selector only when it comes first; a
+  variant wraps the rule in an at-rule (`@media (hover: hover) { .hover\:z-\[10\]:hover { … } }`),
+  so the escaped class name — different by construction — stayed in the comparison and every
+  variant-prefixed rewrite read as unsafe. The check now neutralizes only the class's own name and
+  compares everything else, so #78's guarantee is unchanged: `dark:text-[#fff]` is still not
+  rewritten to `dark:text-white`, which reads a theme variable
+  ([#156](https://github.com/sergioazoc/oxlint-tailwindcss/issues/156), reported by @Nayeem-XTREME).
+- **`enforce-canonical` canonicalizes arbitrary variants.** Tailwind rewrites `data-[open]:` →
+  `data-open:`, `aria-[checked=true]:` → `aria-checked:` and `min-[40rem]:` → `sm:`, but these
+  classes never reached the design system: only the utility was checked for brackets, and the
+  precomputed map knows utilities, not variants. They are now asked too, under the same
+  value-preserving check — a variant rewrite that changes the selector (`has-[:checked]:` →
+  `has-checked:`, `[&>*]:` → `*:`) is left as written.
+
+### Documentation
+
+- **`rootFontSize` no longer claims `enforce-canonical` rewrites `p-[2px]` → `p-0.5`.** It hasn't
+  since #78 (the CSS isn't byte-identical); the README and the settings page now say what the
+  setting actually feeds: `prefer-scale-token`'s px-to-scale comparison and Tailwind's
+  canonicalizer.
 
 ## 1.12.0
 

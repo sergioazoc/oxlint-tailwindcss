@@ -8,6 +8,7 @@ import {
   splitImportant,
   splitUtilityAndVariant,
   utilityHasDynamicValue,
+  variantHasArbitraryValue,
 } from '../utils/class-parser'
 import { createLazyLoader, rootFontSizeFromSettings } from '../design-system/loader'
 import { canonicalizeClassesSync } from '../design-system/canonicalize-service'
@@ -81,8 +82,10 @@ export const enforceCanonical = defineRule({
         //   - named classes → precomputed `canonicalMap` is ground truth,
         //     resolved via `cache.canonicalize` (sync, sub-microsecond).
         //   - classes with arbitrary/CSS-var values in the utility
-        //     (`p-[2px]`, `bg-(--c)`) → need the async DS to canonicalize,
-        //     routed through the worker.
+        //     (`p-[2px]`, `bg-(--c)`) or in a variant (`data-[open]:flex`,
+        //     `min-[40rem]:flex`) → need the async DS to canonicalize, routed
+        //     through the worker. The precompute knows utilities only, so the
+        //     cache would pass an arbitrary variant through untouched.
         //
         // Keeping named classes out of the worker call avoids the round-trip
         // entirely for the majority of locations, and shrinks the payload for
@@ -103,7 +106,7 @@ export const enforceCanonical = defineRule({
             canonicals[i] = classes[i]
             continue
           }
-          if (utilityHasDynamicValue(classes[i])) {
+          if (utilityHasDynamicValue(classes[i]) || variantHasArbitraryValue(classes[i])) {
             arbitraryIdx.push(i)
             arbitrary.push(classes[i])
           } else {
@@ -114,7 +117,7 @@ export const enforceCanonical = defineRule({
         if (arbitrary.length > 0) {
           const rem = getRem()
           // Worker provides the authoritative canonicalization for arbitrary
-          // values. Failures throw SortServiceError, surfaced as a fatal
+          // values and variants. Failures throw SortServiceError, surfaced as a fatal
           // diagnostic via safeGetDS — no heuristic fallback.
           const dynamic = safeGetDS(
             () => canonicalizeClassesSync(entryPoint, arbitrary, rem),
