@@ -55,8 +55,9 @@ any of them.
 
 `number`, default `16`.
 
-The font size in pixels used to convert between px and rem inside `enforce-canonical`. Change this
-only if your project sets a non-16 root size on `<html>`.
+The font size in pixels used to convert between px and rem. `prefer-scale-token` uses it to compare
+a px value against the rem-based scale (`p-[10px]` → `p-2.5`), and `enforce-canonical` passes it to
+Tailwind's canonicalizer. Change this only if your project sets a non-16 root size on `<html>`.
 
 ## `timeout`
 

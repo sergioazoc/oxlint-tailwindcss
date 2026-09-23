@@ -10,6 +10,11 @@ the structured extractor it follows so it gets the same deep extraction as the b
 without renaming imports at every call site
 ([#155](https://github.com/sergioazoc/oxlint-tailwindcss/issues/155), reported by @azu).
 
+It also fixes `enforce-canonical` under variants: the autofix that turned `bg-white/[.08]` into
+`bg-white/8` never applied to `dark:bg-white/[.08]` or `hover:z-[10]`, and arbitrary variants like
+`data-[open]:` were never canonicalized at all
+([#156](https://github.com/sergioazoc/oxlint-tailwindcss/issues/156), reported by @Nayeem-XTREME).
+
 ### Features
 
 - **`settings.tailwindcss.calleeExtractors` routes a custom callee through a known structured
@@ -37,6 +42,13 @@ without renaming imports at every call site
   precomputed map knows utilities, not variants. They are now asked too, under the same
   value-preserving check — a variant rewrite that changes the selector (`has-[:checked]:` →
   `has-checked:`, `[&>*]:` → `*:`) is left as written.
+
+### Documentation
+
+- **`rootFontSize` no longer claims `enforce-canonical` rewrites `p-[2px]` → `p-0.5`.** It hasn't
+  since #78 (the CSS isn't byte-identical); the README and the settings page now say what the
+  setting actually feeds: `prefer-scale-token`'s px-to-scale comparison and Tailwind's
+  canonicalizer.
 
 ## 1.12.0
 
