@@ -5,3 +5,8 @@ dist/
 .claude/settings.local.json
 .bench-tmp/
 AUDIT.md
+# Per-run (pid-suffixed) test scratch files; left behind if a run is killed or a test fails
+# before its cleanup.
+packages/oxlint-tailwindcss/tests/e2e/tmp-*/
+packages/oxlint-tailwindcss/tests/fixtures/.worker-*.css
+packages/oxlint-tailwindcss/tests/fixtures/.lock-coordination-*.css

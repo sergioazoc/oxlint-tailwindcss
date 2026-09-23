@@ -15,8 +15,9 @@
  * null) are SOFT sticky (#145): unbounded retrying re-pays the full request
  * timeout on every class list (O(files)), so after a few consecutive failures
  * the error goes sticky for a backoff window and the rest of the run fails fast;
- * any success clears it. Callers wrap via `safeGetDS` to surface the failure as
- * a single `designSystemUnavailable` diagnostic.
+ * any success clears it. DS-dependent callers surface the failure as
+ * `designSystemUnavailable` (via `safeGetDS`, or `reportFatalDsError` directly);
+ * the DS-optional caller of the declaration service catches it and degrades.
  */
 
 import { Worker } from 'node:worker_threads'
@@ -77,13 +78,16 @@ function envRequestTimeout(): number | undefined {
 const MAX_WORKERS = 8
 
 /**
- * Build the worker script shared by `sort-service` and `canonicalize-service`.
+ * Build the worker script shared by `sort-service`, `canonicalize-service`, and
+ * `declaration-service`.
  * Owns the entire SharedArrayBuffer protocol (offsets derived from the same
  * constants the host uses, so they can't drift), the design-system load with
  * error propagation (DS-M4: the real cause is written into the buffer so the
  * host can surface it, not a generic "failed to load"), the ready signal, and
  * the request loop. `handlerExpr` is a function expression `(ds, request) =>
- * result` — the only part that differs between services.
+ * result` — the part that differs between services — and `preamble` is
+ * optional source prepended to the script (declaration-service injects the
+ * shared `DECL_EXTRACTOR_SOURCE`).
  */
 export function makeWorkerScript(handlerExpr: string, preamble = ''): string {
   return `

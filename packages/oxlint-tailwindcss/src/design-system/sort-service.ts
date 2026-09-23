@@ -3,7 +3,7 @@
  *
  * Calls `ds.getClassOrder(classes)` and returns the class names in the
  * Tailwind-canonical order. The shared protocol (SharedArrayBuffer,
- * Atomics.wait, fail-loud, sticky lastError) lives in `./ds-worker.ts`.
+ * Atomics.wait, fail-loud, per-cssPath sticky errors) lives in `./ds-worker.ts`.
  */
 
 import { DesignSystemWorker, makeWorkerScript } from './ds-worker'

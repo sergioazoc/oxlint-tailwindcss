@@ -1,6 +1,7 @@
 /**
- * Shared regex-allowlist helpers used by rules that accept an `allowlist`
- * option of regex source strings (currently enforce-logical / enforce-physical).
+ * Shared regex-allowlist helpers for options and settings that take regex
+ * source strings: the directional rules' `allowlist`, `no-conflicting-classes`'
+ * `allow`, and the extractor's `attributePatterns` / `variablePatterns`.
  *
  * Invalid regex sources are skipped rather than thrown so a typo in one
  * pattern doesn't blow up the entire lint run.

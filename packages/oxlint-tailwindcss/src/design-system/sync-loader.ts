@@ -7,7 +7,7 @@
  * SharedArrayBuffer, while the main thread blocks on `Atomics.wait`. This runs ONCE per
  * unique CSS entry point at plugin init time.
  *
- * Why a worker_thread and not a forked child process (the pre-1.1 design): `execFileSync`
+ * Why a worker_thread and not a forked child process (the design before 1.0.1): `execFileSync`
  * does `fork()` of the oxlint host (Rust + embedded Node). Under Linux overcommit
  * accounting on memory-constrained CI runners, forking a large-RSS process is rejected
  * with `spawnSync … ENOMEM` even though the child immediately `exec`s (#24). A
@@ -1083,7 +1083,7 @@ const CACHE_DIR = resolveCacheDir()
  *     this script prints to stdout.
  *   - the resolved `@tailwindcss/node` version: auto-invalidates when the engine
  *     changes (e.g. 4.2 → 4.3 adding `zoom-*`, `tab-*`, `scrollbar-*` etc.), so
- *     `validClasses`, `cssProps`, `canonical`, and `arbitraryEquivalents` reflect
+ *     `validClasses`, `cssDeclarations`, `canonical`, and `arbitraryEquivalents` reflect
  *     the installed version.
  *
  * Kept exported (with the same `${scriptHash}:${version}` shape it always had)
@@ -1116,8 +1116,9 @@ function engineCacheKey(res: TailwindNodeResolution): string {
  * Single-level disk cache keyed by content hash only.
  *
  * `loader.ts` keeps a per-process in-memory cache keyed by `(path, mtime)`
- * to avoid re-stat'ing the same file repeatedly. The disk cache lives in
- * `os.tmpdir()/oxlint-tailwindcss/` and is shared across processes — and
+ * to avoid re-stat'ing the same file repeatedly. The disk cache lives in the
+ * per-user `os.tmpdir()/oxlint-tailwindcss-<uid>/` (or `OXLINT_TAILWINDCSS_CACHE_DIR`,
+ * see `resolveCacheDir`) and is shared across processes — and
  * across packages in a monorepo, since two packages with identical CSS
  * content produce the same hash.
  *
@@ -1422,6 +1423,10 @@ function runPrecomputeViaWorker(
     // Success: the worker wrote the cache file. Nothing else to do here.
   } finally {
     tryUnlink(tmpPath)
+    // Fire-and-forget: nothing after teardown waits on the worker's exit (on
+    // success the result is already on disk; on failure we are about to throw).
+    // `void` marks the promise as intentionally unawaited
+    // (typescript/no-floating-promises).
     void worker.terminate()
   }
 }

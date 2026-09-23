@@ -40,12 +40,15 @@ export class DeprecatedEntryPointShapeError extends OxlintTailwindError {}
 /** `__unstable__loadDesignSystem` failed (bad CSS path, malformed CSS, install issue). */
 export class DesignSystemLoadError extends OxlintTailwindError {}
 
-/** The sort or canonicalize worker thread failed to initialize or timed out. */
+/**
+ * A sort, canonicalize, or declarations worker failed: init/spawn/crash, a
+ * request timeout, or a rejected (oversized / non-JSON) request or response.
+ */
 export class SortServiceError extends OxlintTailwindError {}
 
 /**
  * The resolved Tailwind engine version is outside the range this plugin
- * supports: older than v4, a future major (v5+) the plugin was not built for,
+ * supports: older than v4.1, a future major (v5+) the plugin was not built for,
  * or a major-version drift from the version the consumer's build compiles
  * with. Fail-loud rather than lint against semantics that don't match the
  * build. See `design-system/engine-guard.ts` for the decision table.

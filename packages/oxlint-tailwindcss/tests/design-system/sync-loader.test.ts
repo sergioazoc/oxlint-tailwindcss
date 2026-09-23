@@ -65,30 +65,36 @@ describe('loadDesignSystemSync', () => {
 describe('cold-cache fork coordination (issue #24)', () => {
   // Unique CSS content → unique content hash → cache artifacts isolated from
   // every other test that shares default.css and runs in parallel.
-  const UNIQUE_CSS = resolve(__dirname, '../fixtures/lock-coordination.css')
+  // `process.pid` keeps the FILE PATH private too: two overlapping `pnpm test`
+  // runs would otherwise rewrite (and `rmSync`) the same fixture mid-load.
+  const UNIQUE_CSS = resolve(__dirname, `../fixtures/.lock-coordination-${process.pid}.css`)
 
   it('breaks a stale lock and still loads', () => {
     writeFileSync(UNIQUE_CSS, `@import 'tailwindcss';\n/* lock-coordination ${Date.now()} */\n`)
     const { json, lock } = cacheArtifactPaths(UNIQUE_CSS)
 
-    // Force the cold path: no cached JSON, and a stale lock left behind by a
-    // hypothetical isolate that died mid-precompute.
-    rmSync(json, { force: true })
-    mkdirSync(resolve(lock, '..'), { recursive: true })
-    writeFileSync(lock, '')
-    const stale = new Date(Date.now() - 1000 * 60 * 60) // 1h ago
-    utimesSync(lock, stale, stale)
+    try {
+      // Force the cold path: no cached JSON, and a stale lock left behind by a
+      // hypothetical isolate that died mid-precompute.
+      rmSync(json, { force: true })
+      mkdirSync(resolve(lock, '..'), { recursive: true })
+      writeFileSync(lock, '')
+      const stale = new Date(Date.now() - 1000 * 60 * 60) // 1h ago
+      utimesSync(lock, stale, stale)
 
-    // Must reclaim the stale lock and complete instead of waiting forever.
-    const result = loadDesignSystemSync(UNIQUE_CSS)
-    expect(result).toBeDefined()
-    expect(result.validClasses.length).toBeGreaterThan(1000)
+      // Must reclaim the stale lock and complete instead of waiting forever.
+      const result = loadDesignSystemSync(UNIQUE_CSS)
+      expect(result).toBeDefined()
+      expect(result.validClasses.length).toBeGreaterThan(1000)
 
-    // Lock is released after a successful compute.
-    expect(existsSync(lock)).toBe(false)
-
-    rmSync(json, { force: true })
-    rmSync(UNIQUE_CSS, { force: true })
+      // Lock is released after a successful compute.
+      expect(existsSync(lock)).toBe(false)
+    } finally {
+      // The path is pid-unique, so a failed run would otherwise leave it behind.
+      rmSync(json, { force: true })
+      rmSync(lock, { force: true })
+      rmSync(UNIQUE_CSS, { force: true })
+    }
   })
 })
 

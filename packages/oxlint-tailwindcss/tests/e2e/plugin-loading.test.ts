@@ -10,7 +10,9 @@ const DIST_CJS = resolve(ROOT, 'dist/index.cjs')
 // the right shim per platform and only opt into the shell where it's needed.
 const IS_WINDOWS = process.platform === 'win32'
 const OXLINT = resolve(ROOT, 'node_modules/.bin', IS_WINDOWS ? 'oxlint.cmd' : 'oxlint')
-const E2E_DIR = resolve(__dirname, 'tmp')
+// `process.pid` keeps this scratch dir private to this run, so two overlapping
+// `pnpm test` invocations don't write (and delete) each other's config files.
+const E2E_DIR = resolve(__dirname, `tmp-${process.pid}`)
 const FIXTURE_CSS = resolve(__dirname, '../fixtures/default.css')
 
 function runOxlint(configFile: string, targetFile: string): { stdout: string; exitCode: number } {
