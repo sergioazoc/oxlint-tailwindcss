@@ -65,7 +65,9 @@ describe('loadDesignSystemSync', () => {
 describe('cold-cache fork coordination (issue #24)', () => {
   // Unique CSS content → unique content hash → cache artifacts isolated from
   // every other test that shares default.css and runs in parallel.
-  const UNIQUE_CSS = resolve(__dirname, '../fixtures/lock-coordination.css')
+  // `process.pid` keeps the FILE PATH private too: two overlapping `pnpm test`
+  // runs would otherwise rewrite (and `rmSync`) the same fixture mid-load.
+  const UNIQUE_CSS = resolve(__dirname, `../fixtures/.lock-coordination-${process.pid}.css`)
 
   it('breaks a stale lock and still loads', () => {
     writeFileSync(UNIQUE_CSS, `@import 'tailwindcss';\n/* lock-coordination ${Date.now()} */\n`)
