@@ -1423,8 +1423,9 @@ function runPrecomputeViaWorker(
     // Success: the worker wrote the cache file. Nothing else to do here.
   } finally {
     tryUnlink(tmpPath)
-    // Fire-and-forget: the result is already on disk, so teardown never needs the
-    // exit code. `void` marks the promise as intentionally unawaited
+    // Fire-and-forget: nothing after teardown waits on the worker's exit (on
+    // success the result is already on disk; on failure we are about to throw).
+    // `void` marks the promise as intentionally unawaited
     // (typescript/no-floating-promises).
     void worker.terminate()
   }
