@@ -53,7 +53,10 @@ export interface PluginSettings {
    * never allowed — it stays fatal regardless of this flag.
    */
   allowUntestedEngine?: boolean
-  /** Root font size in pixels for px→named conversion (default: 16). Used by enforce-canonical. */
+  /**
+   * Root font size in pixels for px→named conversion (default: 16). Used by
+   * enforce-canonical and prefer-scale-token.
+   */
   rootFontSize?: number
   /** Timeout in milliseconds for design system loading (default: 60000) */
   timeout?: number

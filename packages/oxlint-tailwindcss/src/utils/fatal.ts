@@ -40,7 +40,10 @@ export class DeprecatedEntryPointShapeError extends OxlintTailwindError {}
 /** `__unstable__loadDesignSystem` failed (bad CSS path, malformed CSS, install issue). */
 export class DesignSystemLoadError extends OxlintTailwindError {}
 
-/** A sort, canonicalize, or declarations worker thread failed to initialize or timed out. */
+/**
+ * A sort, canonicalize, or declarations worker failed: init/spawn/crash, a
+ * request timeout, or a rejected (oversized / non-JSON) request or response.
+ */
 export class SortServiceError extends OxlintTailwindError {}
 
 /**

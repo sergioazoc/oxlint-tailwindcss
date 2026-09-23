@@ -15,8 +15,9 @@
  * null) are SOFT sticky (#145): unbounded retrying re-pays the full request
  * timeout on every class list (O(files)), so after a few consecutive failures
  * the error goes sticky for a backoff window and the rest of the run fails fast;
- * any success clears it. Callers wrap via `safeGetDS` to surface the failure as
- * a single `designSystemUnavailable` diagnostic.
+ * any success clears it. DS-dependent callers surface the failure as
+ * `designSystemUnavailable` (via `safeGetDS`, or `reportFatalDsError` directly);
+ * the DS-optional caller of the declaration service catches it and degrades.
  */
 
 import { Worker } from 'node:worker_threads'

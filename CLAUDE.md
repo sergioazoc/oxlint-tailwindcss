@@ -140,14 +140,14 @@ Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is 
    load (with error-cause propagation), ready signal, and request loop, so the services don't
    duplicate the protocol. Each loads the DS once per entry point and accepts sync requests with a
    fixed 60 s init timeout and a 30 s default per-request timeout that only the
-   `OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT` env var can raise (#145) — neither is governed by
+   `OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT` env var can override (#145) — neither is governed by
    `settings.tailwindcss.timeout`, which only affects the precompute loader. Failures throw
    `SortServiceError`: DS-dependent rules surface it as `designSystemUnavailable` (via `safeGetDS`,
    or `reportFatalDsError` directly in `no-unknown-classes`), while the DS-optional caller of the
    declaration service (`no-dark-without-light`) catches it with `isFatalError` and degrades to
-   prefix-only grouping. `canonicalize-service` adds a process-wide per-class cache keyed by
-   `${cssPath}\0${rem}\0${class}`, rounding rem/em/px floats (`roundRemValue`) before storing so the
-   worker path matches the precomputed map.
+   prefix-only grouping for the classes it could not resolve. `canonicalize-service` adds a
+   process-wide per-class cache keyed by `${cssPath}\0${rem}\0${class}`, rounding rem/em/px floats
+   (`roundRemValue`) before storing so the worker path matches the precomputed map.
 3. **`@tailwindcss/node` engine resolution** lives in `design-system/tailwind-node.ts`, two layers
    (issue #114). (a) **Bundled fallback** — `TAILWIND_NODE_PATH` / `TAILWIND_NODE_VERSION`, resolved
    ONCE at module load from the plugin's own copy: the path is the last-resort engine (and the
@@ -318,21 +318,21 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
 - **Configurable timeout**: `settings.tailwindcss.timeout` (number, default 60_000 ms in v1) governs
   the **precompute loader** (`sync-loader.ts`) only. The worker services (sort, canonicalize, and
   declaration, all on `DesignSystemWorker`) use a fixed 60 s init timeout and a 30 s per-request
-  default that only the `OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT` env var can raise (#145). They
-  never read this setting, and their hints point at the env var rather than at a knob that won't
-  move them.
+  default that only the `OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT` env var can override (#145).
+  They never read this setting: the request-timeout hint points at that env var, and the
+  init-timeout hint names neither knob, since nothing configurable moves it.
 - **Debug logging**: `settings.tailwindcss.debug: true` or `DEBUG=oxlint-tailwindcss` env var. Off
   by default — fatal errors always surface as rule diagnostics, not console output.
 - **Fail-loud (v1)**: If the DS can't load, DS-dependent rules emit a single
   `designSystemUnavailable` diagnostic via the shared `safeGetDS` helper in `src/utils/fatal.ts`.
-  There is no silent fallback. The dedicated error types — `MissingEntryPointError`,
+  There is no silent fallback; the exceptions are the 8 DS-optional rules listed under Architecture,
+  which go through `softGetDS`, fall back to a deterministic static path, and never emit
+  `designSystemUnavailable`. The dedicated error types — `MissingEntryPointError`,
   `DeprecatedEntryPointShapeError`, `DesignSystemLoadError`, `SortServiceError`,
   `UnsupportedEngineError` — all extend `OxlintTailwindError` and carry an optional `hint` field
   that renders alongside the message. `UnsupportedEngineError` (from the engine guard, #114) routes
   through the same `designSystemUnavailable` messageId, so no rule declares an engine-specific
-  messageId (locked by `fatal-errors.test.ts`). The exceptions are the 8 DS-optional rules listed
-  under Architecture: they go through `softGetDS`, fall back to a deterministic static path, and
-  never emit `designSystemUnavailable`.
+  messageId (locked by `fatal-errors.test.ts`).
 - **Engine version guard (#114, `design-system/engine-guard.ts`)**: after `resolveTailwindNodeFor`
   picks the consumer's engine, `guardEngine` — called once per entry point from
   `getLoadedDesignSystem`, INSIDE the `dsFailureCache` try so a fatal verdict is memoized by
