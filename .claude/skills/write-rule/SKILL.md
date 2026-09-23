@@ -4,156 +4,39 @@ description: Patterns, conventions, and examples for implementing new oxlint Tai
 argument-hint: '[rule-name]'
 ---
 
-If a rule name is provided as `$ARGUMENTS`, scaffold the rule file at `src/rules/$ARGUMENTS.ts` and its test at `tests/rules/$ARGUMENTS.test.ts` following the patterns below. Read existing rules for reference.
+If a rule name is provided as `$ARGUMENTS`, scaffold the rule at `packages/oxlint-tailwindcss/src/rules/$ARGUMENTS.ts` and its test at `packages/oxlint-tailwindcss/tests/rules/$ARGUMENTS.test.ts`, then register it (see Registration). The helpers named here are documented in CLAUDE.md ("Shared helpers", "Key Constraints"); the reference files below are the patterns to copy — read the one that matches the rule's kind before writing.
 
-## Design-system-dependent rule
+## Pick the reference by rule kind
 
-DS loading is **deferred** to the first visitor call via `createLazyLoader(context)`. Never call `getLoadedDesignSystem()` directly in `createOnce()` — `context.settings` and `context.filename` are not available there.
+Every rule is `defineRule({ meta, createOnce })` from `@oxlint/plugins`, builds a `check(locations: ClassLocation[])` function, and returns `createExtractorVisitors(context, check)` from `../utils/extractors`. Don't hand-write the four visitors or pass `DEFAULT_EXTRACTOR_CONFIG`: that ignores the user's `settings.tailwindcss` extractor config. `context.settings`, `context.filename`, and options are unavailable in `createOnce()`, so read them lazily inside `check` through the helpers below.
 
-```ts
-import { createLazyLoader } from '../design-system/loader'
-import { safeOptions } from '../types'
+| Kind | Copy | Key pieces |
+|---|---|---|
+| DS-dependent (needs the design system, fails loud) | `src/rules/no-unnecessary-arbitrary-value.ts` | `createLazyLoader(context)`; in `check`, `safeGetDS(getDS, context, locations[0].node)`, which reports `designSystemUnavailable` and returns null; `...DS_UNAVAILABLE_MESSAGE` in `meta.messages`; an `entryPoint` option in the schema with `defaultOptions: [{}]` |
+| DS-optional (uses the DS when configured, static fallback otherwise) | `src/rules/no-deprecated-classes.ts` | `softGetDS(getDS)` plus a deterministic static path when it returns null; never declares `DS_UNAVAILABLE_MESSAGE` |
+| No DS, with options | `src/rules/max-class-count.ts` | `createLazyOptions<Options, T>(context, compile)` from `../utils/context`; `meta.defaultOptions` (omit it when `schema: []`) |
 
-export const myRule = defineRule({
-  meta: { ... },
-  createOnce(context) {
-    const getDS = createLazyLoader(context)
+## Fixes
 
-    function check(locations: ClassLocation[]) {
-      const ds = getDS()
-      if (!ds) return  // Graceful degradation — never crash
-      const { cache } = ds
-      for (const loc of locations) { /* ... */ }
-    }
+Split with `splitClassesWithSeparators(loc.value)`, build `offending: { cls, replacement }[]` from `split.classes`, and pass it to `reportClassReplacements(context, loc, split, split.classes, offending, { messageId })` from `../utils/report`. It puts the autofix on the first offender and a `suggestReplace` suggestion on each later one, and rebuilds with `rebuildClassString`, which keeps the multiline wrapping `enforce-consistent-line-wrapping` introduces — rebuilding with `.join(' ')` would flatten it. Declare `fixable: 'code'`, `hasSuggestions: true`, and a `suggestReplace` message. Round-trip `!` through `splitImportant` / `reattachImportant`. Suggestion-only rules (`prefer-scale-token`, `no-unknown-classes`) report `suggest` by hand instead.
 
-    return {
-      JSXAttribute(node) { check(extractFromJSXAttribute(node, DEFAULT_EXTRACTOR_CONFIG)) },
-      CallExpression(node) { check(extractFromCallExpression(node, DEFAULT_EXTRACTOR_CONFIG)) },
-      TaggedTemplateExpression(node) { check(extractFromTaggedTemplate(node, DEFAULT_EXTRACTOR_CONFIG)) },
-      VariableDeclarator(node) { check(extractFromVariableDeclarator(node, DEFAULT_EXTRACTOR_CONFIG)) },
-    }
-  },
-})
-```
+## Tests
 
-## Non-DS rule with options
+Tests live in `packages/oxlint-tailwindcss/tests/rules/<rule-name>.test.ts`, use `RuleTester` from `oxlint/plugins-dev`, and give JSX cases `filename: 'test.tsx'`.
 
-Use a lazy getter pattern — options are null in `createOnce()`, only available in visitors:
+- DS-dependent: run every case through `runWithFixture(ruleTester, name, rule, ENTRY_POINT, cases)` or `makeFixtureRunner(ENTRY_POINT)` from `../utils/with-fixture`. They inject `settings.tailwindcss.entryPoint`; without it the rule reports `designSystemUnavailable`. A `beforeAll` that calls `resetDesignSystem()` + `getLoadedDesignSystem(ENTRY_POINT)` only warms the cache. Reference: `tests/rules/no-unnecessary-arbitrary-value.test.ts`.
+- DS-optional: a plain `ruleTester.run` (no entryPoint) exercises the static fallback, and a `makeFixtureRunner` block exercises the DS path. Reference: `tests/rules/no-dark-without-light.test.ts`.
+- Options only: a plain `ruleTester.run`. Reference: `tests/rules/max-class-count.test.ts`.
+- A fixer also gets its row in `tests/integration/multiline-preservation.test.ts`.
 
-```ts
-let _max: number | null = null
-function getMax(): number {
-  if (_max === null) {
-    const options = safeOptions<Options>(context)
-    _max = options?.max ?? 20
-  }
-  return _max
-}
-```
+Fixtures live in `tests/fixtures/` (`default.css` is the usual entry point). Run one file with `pnpm -C packages/oxlint-tailwindcss exec vitest run tests/rules/<rule-name>.test.ts`.
 
-## Fix pattern: avoid double computation
+## Registration
 
-When a rule collects offending classes and builds a fixed string, reuse results from the first pass. Use `preserveSpaces()` to maintain spacing in template literals and expressions:
+A new rule is wired in at:
 
-```ts
-import { preserveSpaces, type ClassLocation } from '../utils/extractors'
-
-const offending: Array<{ cls: string; replacement: string }> = []
-for (const cls of classes) {
-  const fixed = transform(cls)
-  if (fixed) offending.push({ cls, replacement: fixed })
-}
-if (offending.length === 0) continue
-
-const replacements = new Map(offending.map(({ cls, replacement }) => [cls, replacement]))
-const fixedValue = classes.map((cls) => replacements.get(cls) ?? cls).join(' ')
-
-// Attach fix only to the first report
-for (let i = 0; i < offending.length; i++) {
-  const { cls, replacement } = offending[i]
-  if (i === 0) {
-    context.report({
-      node: loc.node,
-      messageId: '...',
-      data: { className: cls, replacement },
-      fix(fixer) {
-        return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-      },
-    })
-  } else {
-    context.report({
-      node: loc.node,
-      messageId: '...',
-      data: { className: cls, replacement },
-    })
-  }
-}
-```
-
-## Testing with RuleTester
-
-Tests live in `tests/rules/<rule-name>.test.ts`.
-
-### DS-dependent rule (simple)
-
-Pre-load the singleton before tests run:
-
-```ts
-import { resolve } from 'node:path'
-import { beforeAll } from 'vitest'
-import { RuleTester } from 'oxlint/plugins-dev'
-import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
-
-const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
-
-beforeAll(() => {
-  resetDesignSystem()
-  getLoadedDesignSystem(ENTRY_POINT)
-})
-
-const ruleTester = new RuleTester()
-ruleTester.run('my-rule', myRule, { valid: [...], invalid: [...] })
-```
-
-### Rule with multiple test suites (e.g., static fallback + DS)
-
-Use separate `describe` blocks when testing behavior with and without the design system:
-
-```ts
-import { beforeAll, afterAll, describe } from 'vitest'
-
-describe('my-rule (static fallback)', () => {
-  beforeAll(() => {
-    resetDesignSystem()  // No DS loaded
-  })
-  const ruleTester = new RuleTester()
-  ruleTester.run('my-rule', myRule, { valid: [...], invalid: [...] })
-})
-
-describe('my-rule (design system)', () => {
-  beforeAll(() => {
-    resetDesignSystem()
-    getLoadedDesignSystem(ENTRY_POINT)
-  })
-  afterAll(() => {
-    resetDesignSystem()  // Clean up for other tests
-  })
-  const ruleTester = new RuleTester()
-  ruleTester.run('my-rule', myRule, { valid: [...], invalid: [...] })
-})
-```
-
-### Test case format
-
-Each test case must include `filename: 'test.tsx'` for JSX:
-
-```ts
-// valid
-{ code: '<div className="flex items-center" />', filename: 'test.tsx' }
-// invalid with autofix
-{ code: '<div className="bad-class" />', filename: 'test.tsx', errors: [{ messageId: 'myError' }], output: '<div className="fixed-class" />' }
-```
-
-## Self-maintenance
-
-After finishing the rule implementation and tests, review whether any pattern used in the new rule diverges from what this skill documents. If you find new patterns, conventions, or API changes not covered here, update this SKILL.md to reflect them.
+1. `packages/oxlint-tailwindcss/src/index.ts` — the import and the `rules` map entry (the docs generator reads this registry).
+2. `packages/docs/rules/_extras/<rule>.md` and `packages/docs/es/rules/_extras/<rule>.md`, then `pnpm -C packages/docs generate`.
+3. The hand-written rule lists and rule counts: `packages/docs/rules/index.md`, `packages/docs/es/rules/index.md`, `packages/docs/index.md`, `packages/docs/es/index.md`, `README.md`, `packages/oxlint-tailwindcss/README.md`.
+4. CLAUDE.md's rule count and rule lists (DS-dependent / DS-optional users, suggestion and `reportClassReplacements` counts) when the new rule changes them.
+5. A `packages/oxlint-tailwindcss/CHANGELOG.md` entry.

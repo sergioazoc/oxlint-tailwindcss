@@ -49,7 +49,7 @@ export interface PluginSettings {
    * major from the version your build uses. Off by default: those cases are
    * fatal (`designSystemUnavailable`) because the plugin's results may not
    * match your compiled CSS. Setting this to `true` downgrades them to a
-   * one-time stderr warning and lints best-effort. An engine older than v4 is
+   * one-time stderr warning and lints best-effort. An engine older than v4.1 is
    * never allowed — it stays fatal regardless of this flag.
    */
   allowUntestedEngine?: boolean

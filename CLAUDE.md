@@ -22,7 +22,7 @@ rule pages it emits, so `generate` output and `format:check` agree.
 From the workspace root:
 
 ```bash
-pnpm install          # install all workspaces (requires pnpm ≥ 11.4.0)
+pnpm install          # install all workspaces (pnpm version pinned by the root `packageManager`)
 pnpm build            # build the plugin (delegates to packages/oxlint-tailwindcss)
 pnpm test             # run plugin test suite (vitest run, excluding benchmarks)
 pnpm test:watch       # watch mode
@@ -36,13 +36,12 @@ pnpm -C packages/docs dev   # local docs site
 
 ## Type-aware linting (`lint:types`)
 
-oxlint 1.80 exposes type-aware rules via the optional `oxlint-tsgolint` engine (a root
-devDependency; ships a per-platform binary through optionalDependencies, so CI on `ubuntu-latest`
-resolves the linux build automatically). It needs TypeScript type information, which this repo
-satisfies for free — `typescript@7` (tsgo), `moduleResolution: "bundler"`, no `baseUrl`.
-`pnpm lint:types` runs `oxlint --type-aware` scoped to `packages/oxlint-tailwindcss/src`, where
-tsgolint discovers the plugin's `tsconfig.json` on its own (there is deliberately no root
-`tsconfig.json`).
+oxlint exposes type-aware rules via the optional `oxlint-tsgolint` engine (a root devDependency;
+ships a per-platform binary through optionalDependencies, so CI on `ubuntu-latest` resolves the
+linux build automatically). It needs TypeScript type information, which this repo satisfies for free
+— `typescript@7` (tsgo), `moduleResolution: "bundler"`, no `baseUrl`. `pnpm lint:types` runs
+`oxlint --type-aware` scoped to `packages/oxlint-tailwindcss/src`, where tsgolint discovers the
+plugin's `tsconfig.json` on its own (there is deliberately no root `tsconfig.json`).
 
 - **Curated rule set** (root `.oxlintrc.json`, under an `overrides` block matching
   `packages/oxlint-tailwindcss/src/**/*.ts` so type-aware rules NEVER reach `tests/` — excluded from
@@ -51,13 +50,13 @@ tsgolint discovers the plugin's `tsconfig.json` on its own (there is deliberatel
   worker bridge (`worker_threads` + `SharedArrayBuffer` + `Atomics`), which is the codebase's most
   error-prone surface.
 - **Inert without the flag**: type-aware rules only run under `--type-aware`, so the
-  release-blocking `pnpm lint` (whole monorepo, no flag) is unaffected — verified. `lint:types` is a
-  **separate, not-yet-release-gating** script; wiring it into `release.yml` is a deliberate
-  follow-up.
-- **Two findings handled at adoption**: `no-floating-promises` on `worker.terminate()` (fixed with a
-  `void` — fire-and-forget teardown), and `no-implied-eval` on the deliberate
-  `new Function(PRECOMPUTE_SCRIPT)` parse-probe in `sync-loader.ts` (suppressed inline with a
-  justification, not code execution).
+  release-blocking `pnpm lint` (whole monorepo, no flag) is unaffected. `lint:types` is a separate
+  script that `ci.yml` runs on PRs and pushes to `main`; it is deliberately NOT in `release.yml`, so
+  releases stay decoupled from this gate.
+- **Two deliberate exceptions**: `void worker.terminate()` (fire-and-forget teardown, for
+  `no-floating-promises`) and the inline `no-implied-eval` suppression on the
+  `new Function(PRECOMPUTE_SCRIPT)` parse-probe in `sync-loader.ts` (syntax validation, not code
+  execution). Both carry inline justifications; keep them.
 - **Deferred**: `typescript/no-unnecessary-condition` is intentionally OFF — it surfaced ~25
   warnings (a mix of intentional defensive checks and simplifiable optional chains). It's a separate
   incremental cleanup, not part of enabling type-aware linting.
@@ -94,8 +93,7 @@ That's it — the push fast-forwards `release` to `main` and `release.yml` takes
 > fast-forwarding (non-fast-forward rejection), and — because `release` is a **protected branch with
 > `allow_force_pushes: false` and `enforce_admins: true`** — you can't just force it back.
 > Recovering then requires temporarily flipping `allow_force_pushes` to reset `release = main`, or a
-> conflict-resolving merge commit. This is exactly what happened around v1.3.1 (issue #39 work) and
-> cost a detour. Keep `release` clean and the one-liner keeps working.
+> conflict-resolving merge commit. Keep `release` clean and the one-liner keeps working.
 
 ## Architecture
 
@@ -104,13 +102,13 @@ once per lint session; returned visitors run on every matching AST node). This d
 error-prone subsystems, not every rule; the canonical per-rule reference (all 24, with options and
 defaults) is `packages/docs/rules/index.md`.
 
-**v1.0.0 philosophy — deterministic, explicit, fail-loud.** The plugin used to auto-detect the CSS
-entry point, fall back to a module-level `lastLoadedPath`, and silently skip rules when the design
-system could not be loaded. v1.0.0 removed all of that: `settings.tailwindcss.entryPoint` is
-mandatory; failures surface as a fatal `designSystemUnavailable` diagnostic; mtime is in-memory only
-(content hash is the disk-cache key). The trade-off — one extra config line for every project, in
-exchange for "configure once, never fails" — was an intentional alignment with
-prettier-plugin-tailwindcss / oxfmt / better-tailwindcss.
+**Design principle — deterministic, explicit, fail-loud.** `settings.tailwindcss.entryPoint` is
+mandatory: the plugin never auto-detects the CSS entry point and never falls back to a previously
+loaded design system. A DS-dependent rule never silently skips when the design system can't load —
+it reports a fatal `designSystemUnavailable` diagnostic (the DS-optional rules below fall back to a
+deterministic static path instead). mtime is in-memory only (content hash is the disk-cache key).
+The trade-off — one extra config line for every project, in exchange for "configure once, never
+fails" — is an intentional alignment with prettier-plugin-tailwindcss / oxfmt / better-tailwindcss.
 
 Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is async, but
 `createOnce` is sync. Two strategies:
@@ -122,26 +120,32 @@ Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is 
    v1). Throws `DesignSystemLoadError` on any failure — never returns null. Content-based caching
    allows monorepo packages with identical CSS to share a single cache entry. Across parallel oxlint
    isolates a content-hash-scoped file lock (`computeWithLock`) serializes the cold-cache compute —
-   only one worker runs per hash, the rest busy-wait (Atomics) for the cache file. **v1.0.1 (#24):
-   precompute moved off `execFileSync` to a worker_thread.** `execFileSync` `fork()`s the oxlint
-   host (Rust + embedded Node); under Linux overcommit accounting on memory-constrained CI runners
-   (GitHub `ubuntu-latest`), forking a large-RSS process is rejected with `spawnSync … ENOMEM` even
-   though the child immediately `exec`s. A worker_thread creates a thread in-process — no
-   address-space duplication — so it is immune. The disk cache is the worker→main payload channel
-   (the 4 MB SharedArrayBuffer in `ds-worker.ts` is too small for the multi-MB precompute JSON),
-   written atomically (tmp + `renameSync`).
+   only one worker runs per hash, the rest busy-wait (Atomics) for the cache file. **Why a
+   worker_thread, not a child process (#24):** `execFileSync` `fork()`s the oxlint host (Rust +
+   embedded Node); under Linux overcommit accounting on memory-constrained CI runners (GitHub
+   `ubuntu-latest`), forking a large-RSS process is rejected with `spawnSync … ENOMEM` even though
+   the child immediately `exec`s. A worker_thread creates a thread in-process — no address-space
+   duplication — so it is immune. The disk cache is the worker→main payload channel (the 4 MB
+   SharedArrayBuffer in `ds-worker.ts` is too small for the multi-MB precompute JSON), written
+   atomically (tmp + `renameSync`).
 2. **Worker services** (`sort-service.ts`, `canonicalize-service.ts`, `declaration-service.ts`): all
    three wrap the shared `DesignSystemWorker<Req, Res>` class in `design-system/ds-worker.ts`. The
    class owns the SharedArrayBuffer layout, the Atomics protocol, worker lifecycle
-   (`worker.unref()`, error handler), and the sticky `lastError`. The worker script itself is built
-   by the shared `makeWorkerScript(handlerExpr)` factory (also in `ds-worker.ts`) — each service
-   passes only its handler expression (`ds.getClassOrder` vs `ds.canonicalizeCandidates`); the
-   factory owns the buffer offsets, DS load (with error-cause propagation), ready signal, and
-   request loop, so the two services no longer duplicate the protocol. Both load the DS once and
-   accept sync requests with fixed 60 s init / 30 s per-request timeouts (NOT governed by
-   `settings.tailwindcss.timeout`, which only affects the precompute loader). Failures throw
-   `SortServiceError`; the rule layer catches via `safeGetDS` and reports `designSystemUnavailable`.
-   `canonicalize-service` adds a process-wide per-class cache keyed by
+   (`worker.unref()`, error handler, one warm worker per `cssPath`), and the sticky errors (see
+   "Worker services lifecycle" under Key Constraints). The worker script itself is built by the
+   shared `makeWorkerScript(handlerExpr, preamble = '')` factory (also in `ds-worker.ts`) — each
+   service passes its handler expression (`ds.getClassOrder` for sort, `ds.canonicalizeCandidates`
+   for canonicalize, `ds.candidatesToCss` for declarations) and optionally a preamble
+   (declaration-service injects `DECL_EXTRACTOR_SOURCE`); the factory owns the buffer offsets, DS
+   load (with error-cause propagation), ready signal, and request loop, so the services don't
+   duplicate the protocol. Each loads the DS once per entry point and accepts sync requests with a
+   fixed 60 s init timeout and a 30 s default per-request timeout that only the
+   `OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT` env var can raise (#145) — neither is governed by
+   `settings.tailwindcss.timeout`, which only affects the precompute loader. Failures throw
+   `SortServiceError`: DS-dependent rules surface it as `designSystemUnavailable` (via `safeGetDS`,
+   or `reportFatalDsError` directly in `no-unknown-classes`), while the DS-optional caller of the
+   declaration service (`no-dark-without-light`) catches it with `isFatalError` and degrades to
+   prefix-only grouping. `canonicalize-service` adds a process-wide per-class cache keyed by
    `${cssPath}\0${rem}\0${class}`, rounding rem/em/px floats (`roundRemValue`) before storing so the
    worker path matches the precomputed map.
 3. **`@tailwindcss/node` engine resolution** lives in `design-system/tailwind-node.ts`, two layers
@@ -155,9 +159,10 @@ Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is 
    candidate whose version equals the build's `tailwindcss`). Returns
    `{ nodePath, nodeVersion (E), buildVersion (B), usedBundled }`, memoized per CSS directory
    (`resolutionCache`, cleared by `resetTailwindNode`). It's a pure function of the on-disk module
-   topology, so `sync-loader`, `ds-worker` (behind the sort/canonicalize services), the disk-cache
-   key, and the engine guard all independently agree on ONE engine per `cssPath` — no threading. In
-   a monorepo, packages pinned to different Tailwind versions each get their own engine.
+   topology, so `sync-loader`, `ds-worker` (behind the sort/canonicalize/declaration services), the
+   disk-cache key, and the engine guard all independently agree on ONE engine per `cssPath` — no
+   threading. In a monorepo, packages pinned to different Tailwind versions each get their own
+   engine.
 
 DS-dependent rules (the 7 users of `safeGetDS`, which reports `designSystemUnavailable`):
 `no-unknown-classes`, `no-conflicting-classes`, `enforce-canonical`, `enforce-sort-order`,
@@ -224,19 +229,20 @@ the extractor config lazily from `settings.tailwindcss`.
 - `exclude: { attributes?, callees?, tags?, variablePatterns? }` — remove specific items from
   defaults. For `variablePatterns`, exclusions match against `RegExp.source`.
 
-Config is resolved lazily by `getExtractorConfig(context)` on first visitor call. **v1 cache:
-per-context `WeakMap`** — module-level state is gone. Two parallel rule contexts no longer race on a
-global. `resetExtractorConfig(context?)` survives for test isolation but is now mostly a no-op (the
-WeakMap drops entries automatically when the context goes out of scope).
+Config is resolved lazily by `getExtractorConfig(context)` on first visitor call and cached in a
+per-context `WeakMap` — no module-level state, so two parallel rule contexts can't race on a global.
+`resetExtractorConfig(context?)` exists for test isolation and is mostly a no-op (the WeakMap drops
+entries automatically when the context goes out of scope).
 
 **Deep extraction**: `cva()` understands `variants`, `compoundVariants`, ignores `defaultVariants`.
 `tv()` understands `base`, `slots`, `variants` (with slot sub-objects), `compoundVariants`,
 `compoundSlots`. `classed()` (tw-classed) skips first arg (element type), then extracts class
 strings and cva-like config from remaining args.
 
-- **JSX object values**: `classNames={{ root: "flex", label: "text-sm" }}` extracts string values
-  from the object (not keys). This is distinct from call-expression objects like
-  `cn({ "bg-red-500": cond })` which extract keys.
+- **JSX object values**: an object-valued matched attribute extracts string values from the object
+  (not keys) — e.g. `classNames={{ root: "flex", label: "text-sm" }}`, once `classNames` is added
+  via `settings.tailwindcss.attributes` (it is not a default attribute). This is distinct from
+  call-expression objects like `cn({ "bg-red-500": cond })` which extract keys.
 - **Expressions**: ternaries (`cond ? "a" : "b"`), logical (`flag && "a"`), object keys
   (`cn({ "bg-red-500": cond })`), arrays (`cn(['a', 'b'])`, `tv({ base: ['a', 'b'] })` — the
   idiomatic multi-line form; `extractFromExpression` recurses into elements, skipping holes and
@@ -249,8 +255,10 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
 - **`utils/context.ts`** — `safeOptions(context)`, `safeSettings(context)`, `safeFilename(context)`
   absorb the "context field throws inside `createOnce`" oxlint quirk. Plus
   `createLazyOptions(context, compile)` for the lazy-init memoized-options pattern that every rule
-  with options consumes — `const getX = createLazyOptions<Options, T>(context, (o) => compile(o))`.
-  Lives in `utils/`, not `types.ts` (which is import-type-only).
+  with rule-specific options consumes (rules whose only option is `entryPoint` read it through
+  `createLazyLoader` → `safeOptions` instead) —
+  `const getX = createLazyOptions<Options, T>(context, (o) => compile(o))`. Lives in `utils/`, not
+  `types.ts` (which is import-type-only).
 - **`utils/class-parser.ts`** — `splitImportant(utility) → { bare, position }` +
   `reattachImportant(bare, position) → string` are the canonical homes for the `!`
   strip-and-reattach invariant. Every rule that does class lookups MUST round-trip through them; the
@@ -261,13 +269,15 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   match its message template.
 - **`utils/fatal.ts`** — `safeGetDS(getDS, context, node)` (generic structurally typed so callers
   retain oxlint's strict `RuleContext`) catches plugin-fatal errors and reports
-  `designSystemUnavailable`. Constants `DS_UNAVAILABLE_MESSAGE_ID` + `DS_UNAVAILABLE_MESSAGE` are
-  spread into each rule's `meta.messages` so the messageId can't drift between rule and reporter.
+  `designSystemUnavailable`. `DS_UNAVAILABLE_MESSAGE` (keyed by the `DS_UNAVAILABLE_MESSAGE_ID`
+  constant) is spread into each DS-dependent rule's `meta.messages`, and `reportFatalDsError`
+  reports with that same ID, so the messageId can't drift between rule and reporter.
   `softGetDS(getDS)` is the quiet sibling: it returns the DS or `null`, swallowing the fatal instead
   of reporting it — the mechanism every DS-optional rule uses to fall back to its static path (so
   those rules never emit `designSystemUnavailable`).
-- **`utils/allowlist.ts`** — `compileRegexList(patterns)` + `matchesAny(value, list)`, shared
-  between the directional rules.
+- **`utils/allowlist.ts`** — `compileRegexList(patterns)` + `matchesAny(value, list)`, shared by the
+  directional rules' `allowlist`, `no-conflicting-classes`' `allow` option, and (`compileRegexList`
+  only) the extractor's `attributePatterns` / `variablePatterns` settings.
 
 ## Key Constraints
 
@@ -282,10 +292,11 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `settings.tailwindcss.entryPoint`. The settings value is either:
   - `string` — a single CSS path for the whole project, or
   - `EntryPointMapping[]` (`{ files: glob | glob[], use: path }[]`) — first matching glob wins,
-    evaluated against the linted file's path relative to `process.cwd()`. The legacy `string[]`
-    shape is removed; supplying it throws `DeprecatedEntryPointShapeError` with the migration
-    snippet inline. If nothing resolves, `MissingEntryPointError` is thrown and the rule emits a
-    `designSystemUnavailable` diagnostic.
+    evaluated against the linted file's path relative to the linter CWD (`context.cwd` via
+    `safeCwd`, falling back to `process.cwd()`); `use` paths resolve against that same base. The
+    legacy `string[]` shape is removed; supplying it throws `DeprecatedEntryPointShapeError` with
+    the migration snippet inline. If nothing resolves, `MissingEntryPointError` is thrown and the
+    rule emits a `designSystemUnavailable` diagnostic.
 - **Relative string `entryPoint` anchoring (#39)**: a relative **string** entry (rule option or
   settings string — NOT the mapping shape) is resolved by `resolveStringEntryPoint` in `loader.ts`,
   NOT against `process.cwd()`. oxlint doesn't expose the config path to plugins, so the loader walks
@@ -305,9 +316,11 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   design systems simultaneously. Each unique resolved CSS gets its own entry. In monorepos with the
   mapping shape, distinct globs can map to distinct CSS files in the same lint run.
 - **Configurable timeout**: `settings.tailwindcss.timeout` (number, default 60_000 ms in v1) governs
-  the **precompute loader** (`sync-loader.ts`) only. The sort/canonicalize worker services use fixed
-  60 s init / 30 s per-request timeouts and do NOT read this setting — their error hints say so
-  rather than pointing users at a knob that won't move them.
+  the **precompute loader** (`sync-loader.ts`) only. The worker services (sort, canonicalize, and
+  declaration, all on `DesignSystemWorker`) use a fixed 60 s init timeout and a 30 s per-request
+  default that only the `OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT` env var can raise (#145). They
+  never read this setting, and their hints point at the env var rather than at a knob that won't
+  move them.
 - **Debug logging**: `settings.tailwindcss.debug: true` or `DEBUG=oxlint-tailwindcss` env var. Off
   by default — fatal errors always surface as rule diagnostics, not console output.
 - **Fail-loud (v1)**: If the DS can't load, DS-dependent rules emit a single
@@ -317,9 +330,9 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `UnsupportedEngineError` — all extend `OxlintTailwindError` and carry an optional `hint` field
   that renders alongside the message. `UnsupportedEngineError` (from the engine guard, #114) routes
   through the same `designSystemUnavailable` messageId, so no rule declares an engine-specific
-  messageId (locked by `fatal-errors.test.ts`). The one legitimate exception is
-  `consistent-variant-order`, whose static fallback is itself deterministic and can stand in for the
-  DS.
+  messageId (locked by `fatal-errors.test.ts`). The exceptions are the 8 DS-optional rules listed
+  under Architecture: they go through `softGetDS`, fall back to a deterministic static path, and
+  never emit `designSystemUnavailable`.
 - **Engine version guard (#114, `design-system/engine-guard.ts`)**: after `resolveTailwindNodeFor`
   picks the consumer's engine, `guardEngine` — called once per entry point from
   `getLoadedDesignSystem`, INSIDE the `dsFailureCache` try so a fatal verdict is memoized by
@@ -328,12 +341,14 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   ceiling `TAILWIND_NODE_VERSION` and the supported floor `MIN_ENGINE = 4.1.0` (**4.0.x lacks
   `ds.canonicalizeCandidates`**, so v4.1 is the hard floor). Verdicts: older than v4.1 → fatal
   always (the flag never rescues it); a future major (v5+) or a major-level build drift → fatal
-  unless `settings.tailwindcss.allowUntestedEngine: true` downgrades it to a warn; a newer minor or
-  a minor-level build drift → one-time stderr warning (deduped in `warnedEngineKeys`, reset via
-  `resetEngineGuard`); in-range + aligned → silent. A fatal throws `UnsupportedEngineError`. The
-  comparator is a hand-rolled semver subset (`parseVersion`/`compareVersions`) — no `semver` dep;
-  `allowUntestedEngineFromSettings` reads the flag. `getLoadedDesignSystem` accepts an `engineInfo?`
-  test seam to inject `(E, B)` without a second Tailwind install.
+  unless `settings.tailwindcss.allowUntestedEngine: true` downgrades it to a warn; any v4 engine
+  newer than the tested ceiling (a patch bump counts; the verdict kind is still named
+  `engine-newer-minor`) or a minor-level build drift → one-time stderr warning (patch-only build
+  drift stays silent; deduped in `warnedEngineKeys`, reset via `resetEngineGuard`); in-range +
+  aligned → silent. A fatal throws `UnsupportedEngineError`. The comparator is a hand-rolled semver
+  subset (`parseVersion`/`compareVersions`) — no `semver` dep; `allowUntestedEngineFromSettings`
+  reads the flag. `getLoadedDesignSystem` accepts an `engineInfo?` test seam to inject `(E, B)`
+  without a second Tailwind install.
 - **`!` (important) modifier**: Tailwind supports prefix (`!flex`) and suffix (`flex!`). ALL rules
   that do class lookups or transformations MUST round-trip through `splitImportant` +
   `reattachImportant` from `utils/class-parser.ts`. Cache methods (`getOrder`, `canonicalize`,
@@ -354,32 +369,34 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   by `no-unknown-classes`, which distinguishes Tailwind utilities (prefix required) from component
   classes (`componentSet`, prefix optional). `consistent-variant-order` and `enforce-sort-order`
   (strict) split the prefix off before reordering/grouping so it never moves out of first position.
-  Worker services need no changes — they pass the full class to the DS, which understands the prefix
-  natively. All prefix-handling is gated on `_prefix !== ''`, so no-prefix projects are unaffected.
+  The sort/canonicalize services pass the full class to the DS unchanged, and the DS understands the
+  prefix natively. The declaration-service worker is the exception: the host sends it prefix-free
+  names, so it re-applies `ds.theme.prefix` before asking the DS and keys results prefix-free. All
+  prefix-handling is gated on `_prefix !== ''`, so no-prefix projects are unaffected.
 - **Disk cache (v1)**: `sync-loader.ts` caches precomputed DS JSON in a **per-user** dir
   `os.tmpdir()/oxlint-tailwindcss-<uid>/` (namespaced by uid, created `mode 0o700`), keyed **only**
   by content hash. Per-user + `0700` closes the shared-`/tmp` cache-poisoning vector (a predictably
-  named, world-writable cache fed autofixes). The legacy two-level mtime-index + content-cache
-  scheme is gone; mtime is tracked in memory inside `loader.ts` for the per-process fast path. The
-  module-level `CACHE_KEY` is gone (#114): `SCRIPT_HASH = md5(PRECOMPUTE_SCRIPT).slice(0,8)` (no
-  version), and the engine version is folded in **per entry point** via
-  `computeContentHash(content, engineVersion)` = `md5(${SCRIPT_HASH}:${engineVersion}:${content})`,
-  where `engineVersion` comes from `engineCacheKey(resolveTailwindNodeFor(css))` — the resolved
-  `@tailwindcss/node` version, tiebroken on `nodePath` when it reads `'unknown'`. The format is
-  byte-identical for the common single-engine case (existing on-disk caches stay valid), but two
-  monorepo packages with identical CSS and different engines no longer share (poison) a cache entry.
-  `computeCacheKey(script, version)` is kept exported ONLY for the unit tests that pin the
-  `${scriptHash}:${version}` shape. The content hash folds in the entry CSS **and its
-  locally-`@import`ed files** (`hashableContent`, recursive to a small depth), so editing an
-  imported `@theme`/component file invalidates the cache — not just editing the entry. Every read is
-  schema-validated (`isPrecomputedData`): a corrupt, truncated, or poisoned file (or a `{}` that
-  would otherwise crash `fromPrecomputed`) reads as a miss, is deleted under the lock, and
-  recomputed — never wedges the loader. Content-based caching enables monorepo deduplication. The
-  cache dir honours `OXLINT_TAILWINDCSS_CACHE_DIR` (`resolveCacheDir` in `sync-loader.ts`): when set
-  to a non-empty value it replaces the per-uid default, letting CI/sandboxes pin the cache location
-  and letting the test suite give each `pnpm test` invocation a private dir (see Tests). A dir the
-  plugin creates is still `mode 0o700`; pointing it at a pre-existing world-writable dir re-opens
-  the poisoning vector, so that's the caller's responsibility.
+  named, world-writable cache fed autofixes). mtime is tracked only in memory inside `loader.ts`,
+  for the per-process fast path. There is no module-level cache key (#114):
+  `SCRIPT_HASH = md5(PRECOMPUTE_SCRIPT).slice(0,8)` carries no version, and the engine version is
+  folded in **per entry point** via `computeContentHash(content, engineVersion)` =
+  `md5(${SCRIPT_HASH}:${engineVersion}:${content})`, where `engineVersion` comes from
+  `engineCacheKey(resolveTailwindNodeFor(css))` — the resolved `@tailwindcss/node` version,
+  tiebroken on `nodePath` when it reads `'unknown'`. The format is byte-identical for the common
+  single-engine case (existing on-disk caches stay valid), and two monorepo packages with identical
+  CSS but different engines never share (poison) a cache entry. `computeCacheKey(script, version)`
+  is kept exported ONLY for the unit tests that pin the `${scriptHash}:${version}` shape. The
+  content hash folds in the entry CSS **and its locally-`@import`ed files** (`hashableContent`,
+  recursive to a small depth), so editing an imported `@theme`/component file invalidates the cache
+  — not just editing the entry. Every read is schema-validated (`isPrecomputedData`): a corrupt,
+  truncated, or poisoned file (or a `{}` that would otherwise crash `fromPrecomputed`) reads as a
+  miss, is deleted under the lock, and recomputed — never wedges the loader. Content-based caching
+  enables monorepo deduplication. The cache dir honours `OXLINT_TAILWINDCSS_CACHE_DIR`
+  (`resolveCacheDir` in `sync-loader.ts`): when set to a non-empty value it replaces the per-uid
+  default, letting CI/sandboxes pin the cache location and letting the test suite give each
+  `pnpm test` invocation a private dir (see Tests). A dir the plugin creates is still `mode 0o700`;
+  pointing it at a pre-existing world-writable dir re-opens the poisoning vector, so that's the
+  caller's responsibility.
 - **Cold-cache precompute coordination (#24)**: parallel oxlint isolates that all miss the cache for
   the same CSS would each spawn their own precompute worker. `computeWithLock` in `sync-loader.ts`
   gates it behind a `<contentHash>.lock` file (atomic `openSync(..., 'wx')`): the winner runs the
@@ -389,13 +406,10 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   stale would otherwise both `unlink`, and the second could delete a fresh lock a third isolate just
   created, re-spawning parallel precomputes. A non-writable cache dir degrades to an uncoordinated
   compute rather than spinning. `cacheArtifactPaths(cssPath)` exposes the json/lock paths for tests.
-  **The original #24 ENOMEM had two parts**: (1) the fork itself — fixed by moving to a
-  worker*thread (see Precompute above); (2) **amplification** —
-  `getLoadedDesignSystem`/`createLazyLoader` in `loader.ts` only cached \_successes*, so a single
-  load failure was re-attempted on every AST node × rule × file (~18k re-spawns, 21k per-class
-  errors on the birdman CI). v1.0.1 adds `dsFailureCache` (keyed by `resolvedPath`+`mtime`, fatal
-  errors only) plus a per-rule sticky `lastError`, collapsing a failure to one attempt per entry
-  point per process. Hint is now cause-classified (`precomputeHint`): ENOMEM/EAGAIN →
+  **Failures are memoized per entry point (#24)**: `getLoadedDesignSystem`/`createLazyLoader` in
+  `loader.ts` cache fatal failures in `dsFailureCache` (keyed by `resolvedPath`+`mtime`) plus a
+  per-rule sticky `lastError`, so a load failure costs one attempt per entry point per process, not
+  one per AST node × rule × file. `precomputeHint` classifies the cause: ENOMEM/EAGAIN →
   memory-pressure guidance, not the misleading "check CSS syntax / raise timeout".
 - **CSS declaration extraction**: `DECL_EXTRACTOR_SOURCE` in `sync-loader.ts` (interpolated into
   PRECOMPUTE_SCRIPT, and into the `declaration-service` worker, so there is ONE extractor) walks the
@@ -467,12 +481,14 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   declaration that LOSES the cascade carries something the winner does not reproduce — equal value
   ids never clash, the winner absorbing the loser is followed transitively through the group's
   surviving writer, a pure `var()` forwarder whose variables the group supplies carries nothing of
-  its own, and a custom property reset to `initial` carries no information (that last one is what
-  covers the animate plugins, derived rather than whitelisted). The winner comes from
-  `cache.getOrder`, and `!` beats it; an order synthesised from a prefix sibling counts as unknown,
-  so the message never names a winner it cannot know. `spec.ts` holds ONLY what no CSS comparison
-  can infer (prose variants, prose + max-w, mask-composite), and `allow` is the user's escape hatch
-  — do not grow `spec.ts` with third-party knowledge.
+  its own, and a custom property reset to `initial`/`unset`/empty carries no information unless
+  resetting is all the losing class does (`blur-none`, `via-none`, `drop-shadow-none` keep their
+  reset; `animate-in` can lose its `--tw-enter-*` resets) — that last one is what covers the animate
+  plugins, derived rather than whitelisted. The winner comes from `cache.getOrder`, and `!` beats
+  it; an order synthesised from a prefix sibling counts as unknown, so the message never names a
+  winner it cannot know. `spec.ts` holds ONLY what no CSS comparison can infer (prose variants,
+  prose + max-w, prose + text/leading/tracking, space/divide + `*-reverse`, mask-composite), and
+  `allow` is the user's escape hatch — do not grow `spec.ts` with third-party knowledge.
 - **`canonicalizeCandidates()`**: Deduplicates results — must be called one class at a time, NOT in
   batch.
 - **`getClassList()` gaps** (issue #37): some valid v4 classes never appear in `getClassList()`. The
@@ -485,8 +501,9 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   2. **Special-cased compiler utilities** absent from `getClassList()` AND the utility registry
      (`ds.utilities.keys('static')`): `@container-size`, `filter-none`, `backdrop-filter-none`,
      `max-w-screen`. A curated `staticExtras` seed in `sync-loader.ts` validates + pushes them to
-     `validClasses` and captures their CSS so they get `cssProps` (so `@container @container-size`
-     conflicts like `@container @container-normal`, not silently accepted).
+     `validClasses` and captures their CSS (into `declCss`) so they get entries in `cssDeclarations`
+     (so `@container @container-size` conflicts like `@container @container-normal`, not silently
+     accepted).
   3. **Negative utilities** whose negative form `getClassList()` omits (`-col-N`, `-row-N`,
      `-hue-rotate-N`, `-backdrop-hue-rotate-N`): auto-discovered by probing `-<prefix>-1` for every
      known prefix; `candidatesToCss()` rejects non-negatable prefixes (`-p-1` → null), so only real
@@ -499,7 +516,10 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `object-{left,right}-{top,bottom}`) plus dynamic `start-*`/`end-*` derived from existing
   `inset-{s,e}-*` utilities into `canonicalizeCandidates()` and adds the diffs to the canonical map.
   Legacy classes are also pushed into `validClasses` so `no-unknown-classes` doesn't flag them.
-- **Floating point**: All rem/em/px operations go through `roundRemValue()`.
+- **Floating point**: canonical class strings with rem/em/px values go through `roundRemValue()`
+  (the precomputed `canonicalMap` in `cache.ts` and the canonicalize-service results).
+  `prefer-scale-token` compares numerically instead, with its own epsilon-tolerant px arithmetic
+  (`sameMeasure` / `isOnStep` / `formatStep`).
 - **Variant reordering barriers**: `consistent-variant-order` pulls pseudo-elements innermost
   (closest to the utility), but also treats selector-changing variants — `*`, `**`, `[&>svg]`, `*:…`
   — as hard barriers: state variants never reorder across them, because `hover:[&>svg]`
@@ -530,23 +550,30 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   the first rule to read `context.sourceCode`; `node.loc.start.column` is the backtick column, NOT
   the base indent. `no-unnecessary-whitespace` must preserve the block's indented closing backtick
   (`\n` + whitespace-only last line) or the two rules re-enter the #14 cycle.
-- **Worker services lifecycle**: `sort-service.ts` and `canonicalize-service.ts` are thin wrappers
-  around `DesignSystemWorker<Req, Res>` (in `design-system/ds-worker.ts`). The class owns the
-  SharedArrayBuffer + Atomics protocol, lifecycle (`worker.unref()` so the process can exit), and a
-  sticky `lastError`. The sticky error is keyed by `lastErrorCssPath` (not `ready?.cssPath`): every
-  failure path leaves `ready === null`, so the old guard never matched and the next call re-paid the
-  full init — tracking the path makes it genuinely sticky. On entry-point change it cleans up and
-  re-inits. Failures throw `SortServiceError` — no silent fallback to heuristic sort or precomputed
-  canonicalize.
+- **Worker services lifecycle**: `sort-service.ts`, `canonicalize-service.ts` and
+  `declaration-service.ts` are thin wrappers around `DesignSystemWorker<Req, Res>` (in
+  `design-system/ds-worker.ts`). The class owns the SharedArrayBuffer + Atomics protocol and the
+  lifecycle (`worker.unref()` so the process can exit). It keeps one warm worker per cssPath in an
+  LRU pool (`workers` Map, capped at `MAX_WORKERS = 8`, #77): switching entry points reuses the warm
+  worker, and past the cap only the least-recently-used one is terminated. HARD sticky errors
+  (init/spawn/crash/DS-load) are kept per cssPath in `errors: Map<cssPath, SortServiceError>`, so a
+  failure is never forgotten when another entry point is linted in between, and `ensure()` rethrows
+  it without retrying. Per-request failures (timeout, oversized or non-JSON response) are SOFT
+  sticky (#145): the worker is dropped and, after `MAX_CONSECUTIVE_REQUEST_FAILURES` (3), calls
+  fast-fail for a `REQUEST_STICKY_BACKOFF_MS` (60 s) window before one retry is allowed; any success
+  clears the count. Failures throw `SortServiceError` — no silent fallback to heuristic sort or
+  precomputed canonicalize.
 - **Suggestions API**: 12 rules provide `suggest` in `context.report()` for IDE quick-fixes (the 12
   with `hasSuggestions: true` in meta). All use `messageId: 'suggestReplace'`. The 9 rules that emit
   autofix-then-suggestions delegate the loop to `reportClassReplacements` in `utils/report.ts`.
 - **Directional rules** (`enforce-logical` ↔ `enforce-physical`): both consume
   `createDirectionalMapper(context, { mappings, messageId })` from `enforce-logical.ts`. The mapping
-  type is `AxisMapping { from, to, axis }`; `enforce-physical` inverts via `invertAxisMappings()`.
-  The shared schema lives in `LOGICAL_PHYSICAL_SCHEMA`. `convertClass` strips a leading `-` before
-  matching the mapping keys and re-prepends it on the replacement, so negative utilities convert too
-  (`-ml-2` → `-ms-2`, `-left-4` → `-start-4`).
+  type is `AxisMapping { from, to, axis, exact? }` (`exact` for utilities whose value is the
+  direction, such as `float-left` / `clear-left` / `text-left`, which must match whole);
+  `enforce-physical` inverts via `invertAxisMappings()` and appends `LOGICAL_INSET_ALIASES`
+  (`inset-s` / `inset-e` → `left` / `right`). The shared schema lives in `LOGICAL_PHYSICAL_SCHEMA`.
+  `convertClass` strips a leading `-` before matching the mapping keys and re-prepends it on the
+  replacement, so negative utilities convert too (`-ml-2` → `-ms-2`, `-left-4` → `-start-4`).
 - **`defaultOptions`**: every rule with options declares `meta.defaultOptions`. Rules with
   `schema: []` (no options) deliberately do NOT declare it — oxlint's schema validator rejects `{}`
   against an empty schema. `consistent-variant-order` declares `defaultOptions: [{}]` (no `order`)
@@ -555,9 +582,10 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   no `semver` — the engine guard's version comparator (`parseVersion`/`compareVersions` in
   `engine-guard.ts`) is a hand-rolled subset to keep the runtime dependency set at two.
 - **Arbitrary→named overlap** (`enforce-canonical` ↔ `no-unnecessary-arbitrary-value` ↔
-  `prefer-theme-tokens`): three rules can transform an arbitrary value into a named utility, each
-  owning a distinct case so they don't double-fire on the same input. Coexistence matrix locked down
-  in `tests/integration/prefer-theme-tokens-coexistence.test.ts`.
+  `prefer-theme-tokens` ↔ `prefer-scale-token`): four rules can turn an arbitrary value into a named
+  utility (`prefer-scale-token` suggestion-only, because its equivalence is numeric), each owning a
+  distinct case so they don't double-fire on the same input. Coexistence matrix, including
+  `prefer-scale-token`, locked down in `tests/integration/prefer-theme-tokens-coexistence.test.ts`.
 - **`enforce-canonical` safe gate (#78, #156)**: `declsOf` in `CANONICALIZE_HANDLER` compares the
   FULL `candidatesToCss` output with only the class token that opens a selector neutralized (strings
   stepped over, at-rule preludes and declaration values untouched). Never go back to slicing
@@ -598,7 +626,8 @@ persistent, test-only PRECOMPUTE seed dir and copies **only the fixed FIXTURES' 
 at setup / out at teardown (atomic rename, content-addressed). The scope is deliberate: the
 cache-behaviour tests (`content-cache`, `precompute-worker`, `sync-loader`) drive unique-content
 fixtures and assert hit/miss/invalidation, so seeding anything but the shared read-only fixtures
-would leak state between runs and break them. Tests that write to a scratch dir under the repo
-(`.bench-tmp/*`, `fixtures/.worker-*`) suffix the path with `process.pid` for the same reason. Note:
-running **3+** full suites at once still fails, but from CPU oversubscription (worker-service 30 s
+would leak state between runs and break them. Tests that write scratch files under the repo
+(`.bench-tmp/*`, `fixtures/.worker-*`, `fixtures/.lock-coordination-*`, `e2e/tmp-*`) suffix the path
+with `process.pid` for the same reason; other writers use `mkdtempSync(tmpdir())`. Note: running
+**3+** full suites at once still fails, but from CPU oversubscription (worker-service 30 s
 timeouts), not a shared-state race — that is expected, not a bug.

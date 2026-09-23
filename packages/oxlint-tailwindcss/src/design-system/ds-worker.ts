@@ -77,13 +77,16 @@ function envRequestTimeout(): number | undefined {
 const MAX_WORKERS = 8
 
 /**
- * Build the worker script shared by `sort-service` and `canonicalize-service`.
+ * Build the worker script shared by `sort-service`, `canonicalize-service`, and
+ * `declaration-service`.
  * Owns the entire SharedArrayBuffer protocol (offsets derived from the same
  * constants the host uses, so they can't drift), the design-system load with
  * error propagation (DS-M4: the real cause is written into the buffer so the
  * host can surface it, not a generic "failed to load"), the ready signal, and
  * the request loop. `handlerExpr` is a function expression `(ds, request) =>
- * result` — the only part that differs between services.
+ * result` — the part that differs between services — and `preamble` is
+ * optional source prepended to the script (declaration-service injects the
+ * shared `DECL_EXTRACTOR_SOURCE`).
  */
 export function makeWorkerScript(handlerExpr: string, preamble = ''): string {
   return `
