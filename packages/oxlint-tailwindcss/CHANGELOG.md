@@ -122,6 +122,11 @@
   points at the docs. Every page gains a canonical URL, English/Spanish alternates, link-preview
   tags and image, and a favicon; rule pages get breadcrumbs; the 404 page is kept out of the index,
   and `<html lang>` is `en` / `es`.
+- **The docs site is easy to crawl and to feed to an AI assistant.** A `sitemap.xml` with
+  English/Spanish alternates, its own `robots.txt` (search and AI use welcome, via Content Signals),
+  and [`llms.txt`](https://oxlint-tailwindcss.pages.dev/llms.txt) /
+  [`llms-full.txt`](https://oxlint-tailwindcss.pages.dev/llms-full.txt) plus a markdown copy of
+  every page (`/setup.md`, `/rules/no-unknown-classes.md`), each linked from its HTML page.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

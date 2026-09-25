@@ -1,0 +1,17 @@
+# Cloudflare Pages response headers. https://developers.cloudflare.com/pages/configuration/headers/
+
+# Hashed build assets never change under the same name.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Markdown copies of each page (for LLMs and tools): served as markdown, kept out
+# of search results — the HTML page is the one to index.
+/*.md
+  Content-Type: text/markdown; charset=utf-8
+  X-Robots-Tag: noindex
+
+/llms.txt
+  Content-Type: text/plain; charset=utf-8
+
+/llms-full.txt
+  Content-Type: text/plain; charset=utf-8

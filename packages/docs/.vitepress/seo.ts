@@ -41,6 +41,14 @@ export function counterpart(relativePath: string): string {
   return localeOf(relativePath) === 'es' ? relativePath.slice('es/'.length) : `es/${relativePath}`
 }
 
+/**
+ * Where a page's markdown copy is published (see scripts/llms.ts): the source
+ * path itself — `setup.md` → `/setup.md`, `rules/index.md` → `/rules/index.md`.
+ */
+export function markdownPath(relativePath: string): string {
+  return `/${relativePath.replace(/\\/g, '/')}`
+}
+
 export function absoluteUrl(relativePath: string): string {
   return `${SITE_URL}${urlPath(relativePath)}`
 }
@@ -113,6 +121,10 @@ export function pageHead({ relativePath, title, description, isNotFound }: PageI
     ['link', { rel: 'alternate', hreflang: 'en', href: absoluteUrl(en) }],
     ['link', { rel: 'alternate', hreflang: 'es', href: absoluteUrl(es) }],
     ['link', { rel: 'alternate', hreflang: 'x-default', href: absoluteUrl(en) }],
+    [
+      'link',
+      { rel: 'alternate', type: 'text/markdown', href: `${SITE_URL}${markdownPath(relativePath)}` },
+    ],
     ['meta', { property: 'og:url', content: url }],
     ['meta', { property: 'og:title', content: title }],
     ['meta', { property: 'og:description', content: description }],
@@ -148,4 +160,24 @@ export function pageHead({ relativePath, title, description, isNotFound }: PageI
     head.push(breadcrumb(relativePath, relativePath.replace(/^.*\//, '').replace(/\.md$/, '')))
   }
   return head
+}
+
+export interface SitemapItem {
+  url: string
+  lastmod?: string | number
+  links?: { lang: string; url: string }[]
+}
+
+/**
+ * VitePress lists every page with its `en` / `es` alternates. Add `x-default`
+ * (the English page, as in each page's `<head>`), and never list the 404.
+ */
+export function sitemapItems(items: SitemapItem[]): SitemapItem[] {
+  return items
+    .filter((item) => !/(^|\/)404(\.html)?$/.test(item.url))
+    .map((item) => {
+      const en = item.links?.find((l) => l.lang === 'en')
+      if (!en || item.links?.some((l) => l.lang === 'x-default')) return item
+      return { ...item, links: [...item.links!, { lang: 'x-default', url: en.url }] }
+    })
 }
