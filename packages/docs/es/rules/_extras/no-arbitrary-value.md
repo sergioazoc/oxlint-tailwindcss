@@ -127,7 +127,7 @@ todos los modos.
   `@theme` y sugiere el token que coincide. Combínalas: esta regla es tu freno de mano cuando
   todavía no existe el token.
 - **`enforce-consistent-variable-syntax`**: convierte entre `bg-[var(--x)]` y `bg-(--x)`. Como las
-  dos formas se reportan acá, correrla — en cualquier dirección — no puede sacar una clase del
+  dos formas se reportan aquí, correrla — en cualquier dirección — no puede sacar una clase del
   alcance de esta regla.
 
 ## Cuándo desactivarla

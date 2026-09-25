@@ -52,7 +52,38 @@ interface CanonicalizeRequest {
 export interface CanonicalizeResult {
   canonical: string
   safe: boolean
+  /**
+   * Why an unsafe rewrite is not equivalent (R5), when both forms compile:
+   * - `'variant'` — same declarations, different selector, and stock Tailwind
+   *   says the two ARE the same: the project defines the canonical variant
+   *   differently (shadcn's `data-disabled:` is `:where([data-disabled="true"]), …`);
+   * - `'selector'` — same declarations, different selector in stock Tailwind
+   *   too (`has-[[data-slot=x]]:` vs `has-data-[slot=x]:`): a spelling
+   *   difference, nothing the project defined;
+   * - `'value'` — the declarations differ (a theme-backed token, #78).
+   * Absent when `safe`, or when either form doesn't compile.
+   */
+  reason?: NonEquivalentReason
 }
+
+export type NonEquivalentReason = 'variant' | 'selector' | 'value'
+
+const isReason = (x: unknown): x is NonEquivalentReason =>
+  x === 'variant' || x === 'selector' || x === 'value'
+
+/** A persisted `[canonical, safe, reason?]` entry, or null when it isn't one. */
+function fromPersisted(entry: unknown): CanonicalizeResult | null {
+  if (!Array.isArray(entry) || typeof entry[0] !== 'string' || typeof entry[1] !== 'boolean') {
+    return null
+  }
+  if (entry.length > 2 && !isReason(entry[2])) return null
+  return entry.length > 2
+    ? { canonical: entry[0], safe: entry[1], reason: entry[2] as NonEquivalentReason }
+    : { canonical: entry[0], safe: entry[1] }
+}
+
+const toPersisted = (r: CanonicalizeResult) =>
+  r.reason ? [r.canonical, r.safe, r.reason] : [r.canonical, r.safe]
 
 // Handler: canonicalize each class. canonicalizeCandidates deduplicates its
 // input, so we call it one class at a time to preserve order/length (see
@@ -75,20 +106,24 @@ export interface CanonicalizeResult {
 // strings are stepped over, so declaration values are compared untouched. The
 // rest of the selector is kept: a canonicalization that changes the variant's
 // selector (`[&>*]:` → `*:`) still differs, and stays unsafe.
-export const CANONICALIZE_HANDLER = `(ds, request) => {
+export const CANONICALIZE_HANDLER = `async (ds, request, env) => {
   const { classes, rem } = request;
   const options = rem ? { rem } : undefined;
   const OWN_CLASS = /("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(^|[{};])(\\s*)\\.(?:\\\\[0-9a-fA-F]{1,6}\\s?|\\\\[^0-9a-fA-F\\s]|[\\w-])+/g;
-  const declsOf = (cls) => {
+  const declsOf = (d, cls) => {
     let out;
-    try { out = ds.candidatesToCss([cls]); } catch (e) { return null; }
+    try { out = d.candidatesToCss([cls]); } catch (e) { return null; }
     if (!out || !out[0]) return null;
     return out[0]
       .replace(OWN_CLASS, (m, str, start, ws) => (str !== undefined ? str : start + ws + '.__c'))
       .replace(/\\s+/g, ' ')
       .trim();
   };
-  return classes.map((cls) => {
+  // Declarations only, selectors and at-rule preludes dropped: equal for two
+  // rules that set the same things on different selectors.
+  const declarationsOf = (css) => css.replace(/[^{};]+\\{/g, '').replace(/\\}/g, '').replace(/\\s+/g, ' ').trim();
+  const results = [];
+  for (const cls of classes) {
     // A malformed/mid-typing arbitrary value (e.g. \`px-[calc(var(--a)+)]\`) can
     // make the Tailwind parser throw on some engine versions (#130). Treat it
     // as an incanonicalizable no-op — same posture declsOf already takes for
@@ -98,14 +133,26 @@ export const CANONICALIZE_HANDLER = `(ds, request) => {
     try {
       r = ds.canonicalizeCandidates([cls], options);
     } catch (e) {
-      return { canonical: cls, safe: true };
+      results.push({ canonical: cls, safe: true });
+      continue;
     }
     const canonical = r[0] ?? cls;
-    if (canonical === cls) return { canonical: cls, safe: true };
-    const a = declsOf(cls);
-    const b = declsOf(canonical);
-    return { canonical, safe: a !== null && b !== null && a === b };
-  });
+    if (canonical === cls) { results.push({ canonical: cls, safe: true }); continue; }
+    const a = declsOf(ds, cls);
+    const b = declsOf(ds, canonical);
+    if (a !== null && b !== null && a === b) { results.push({ canonical, safe: true }); continue; }
+    if (a === null || b === null) { results.push({ canonical, safe: false }); continue; }
+    if (declarationsOf(a) !== declarationsOf(b)) { results.push({ canonical, safe: false, reason: 'value' }); continue; }
+    // Only the selector differs. Whether the PROJECT made it differ is what
+    // stock Tailwind answers: the same two classes, compiled without the
+    // project's CSS. Equal there means a project-defined variant.
+    let stock = null;
+    try { stock = await env.loadStock(); } catch (e) {}
+    const sa = stock && declsOf(stock, cls);
+    const sb = stock && declsOf(stock, canonical);
+    results.push({ canonical, safe: false, reason: sa && sb && sa === sb ? 'variant' : 'selector' });
+  }
+  return results;
 }`
 
 const WORKER_SCRIPT = makeWorkerScript(CANONICALIZE_HANDLER)
@@ -259,11 +306,10 @@ function ensurePersistLoaded(cssPath: string, rem: number | undefined, cachePref
     const data: unknown = JSON.parse(readFileSync(file, 'utf-8'))
     if (typeof data === 'object' && data !== null) {
       for (const [cls, entry] of Object.entries(data)) {
-        // Persisted shape: [canonical, safe]. Validate strictly — a
+        // Persisted shape: [canonical, safe, reason?]. Validate strictly — a
         // corrupt/old-shape entry is skipped, never trusted into an autofix.
-        if (Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'boolean') {
-          canonCache.set(cachePrefix + cls, { canonical: entry[0], safe: entry[1] })
-        }
+        const value = fromPersisted(entry)
+        if (value) canonCache.set(cachePrefix + cls, value)
       }
     }
   } catch {
@@ -298,24 +344,21 @@ function flushPersist(cachePrefix: string, state: PersistState): void {
     // for a given DS + logic hash, so overlapping keys carry identical values.
     // Null-prototype target so a `__proto__` cache key is treated as plain data,
     // never the prototype setter (which would silently swallow the entry).
-    const merged: Record<string, [string, boolean]> = Object.create(null)
+    const merged: Record<string, (string | boolean)[]> = Object.create(null)
     try {
       const existing: unknown = JSON.parse(readFileSync(state.file, 'utf-8'))
       if (typeof existing === 'object' && existing !== null) {
         for (const [cls, entry] of Object.entries(existing)) {
-          if (
-            Array.isArray(entry) &&
-            typeof entry[0] === 'string' &&
-            typeof entry[1] === 'boolean'
-          ) {
-            merged[cls] = [entry[0], entry[1]]
+          const value = fromPersisted(entry)
+          if (value) {
+            merged[cls] = toPersisted(value)
             // Adopt entries a sibling isolate persisted after our initial load
             // into our own in-memory cache, so the rest of this run serves them
             // without a worker round-trip. Values are deterministic for this
             // (DS, logic hash), so a key we already hold is identical — never
             // overwrite what we computed ourselves.
             const key = cachePrefix + cls
-            if (!canonCache.has(key)) canonCache.set(key, { canonical: entry[0], safe: entry[1] })
+            if (!canonCache.has(key)) canonCache.set(key, value)
           }
         }
       }
@@ -324,7 +367,7 @@ function flushPersist(cachePrefix: string, state: PersistState): void {
     }
     for (const [key, value] of canonCache) {
       if (key.startsWith(cachePrefix)) {
-        merged[key.slice(cachePrefix.length)] = [value.canonical, value.safe]
+        merged[key.slice(cachePrefix.length)] = toPersisted(value)
       }
     }
 
@@ -403,6 +446,7 @@ export function canonicalizeClassesSync(
     // `2.4000000000000004rem`, which must never reach the user's source. The
     // `safe` flag is decided in the worker and carried through unchanged.
     const value: CanonicalizeResult = { canonical: roundRemValue(raw.canonical), safe: raw.safe }
+    if (raw.reason) value.reason = raw.reason
     canonCache.set(cachePrefix + cls, value)
     out[missingIdx[j]] = value
   }

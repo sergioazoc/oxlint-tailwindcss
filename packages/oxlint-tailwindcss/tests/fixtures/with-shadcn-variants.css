@@ -1,0 +1,69 @@
+/*
+ * The data-* custom variants shadcn/ui ships in shadcn/dist/tailwind.css (shadcn 4.21.0),
+ * copied as they are (only reformatted). They redefine data-open:, data-disabled:… with :where(), so
+ * `data-[disabled]:` and the `data-disabled:` Tailwind canonicalizes it to do
+ * not select the same elements in a project that imports them.
+ * Copyright (c) 2023 shadcn — MIT License, https://github.com/shadcn-ui/ui/blob/main/LICENSE.md
+ */
+@import 'tailwindcss';
+
+/* Custom variants */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-open]:not([data-open='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state='closed']),
+  &:where([data-closed]:not([data-closed='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state='checked']),
+  &:where([data-checked]:not([data-checked='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-unchecked {
+  &:where([data-state='unchecked']),
+  &:where([data-unchecked]:not([data-unchecked='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-selected {
+  &:where([data-selected='true']) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled='true']),
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-active {
+  &:where([data-state='active']),
+  &:where([data-active]:not([data-active='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}

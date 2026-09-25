@@ -80,7 +80,7 @@ These rules require `settings.tailwindcss.entryPoint` to be set; they emit a fat
 
 | Rule                             | Default options                         |
 | -------------------------------- | --------------------------------------- |
-| `enforce-canonical`              | `{}`                                    |
+| `enforce-canonical`              | `{ reportNonEquivalent: false }`        |
 | `enforce-sort-order`             | `{ mode: 'default' }`                   |
 | `no-conflicting-classes`         | `{ reportRedundant: true }`             |
 | `no-unknown-classes`             | `{ allowlist: [], ignorePrefixes: [] }` |

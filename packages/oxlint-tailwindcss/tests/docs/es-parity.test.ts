@@ -59,3 +59,20 @@ describe('Spanish docs mirror the English ones', () => {
     expect(es).toEqual(en)
   })
 })
+
+/**
+ * Neutral Spanish, tuteo: the docs are written for every Spanish-speaking
+ * reader (packages/docs/CLAUDE.md). Voseo verb forms and regional adverbs slip
+ * in easily; these are the ones that did, or would.
+ */
+const REGIONAL =
+  /\b(acá|vos|tenés|podés|querés|sabés|hacé|decí|usá|mirá|fijate|poné|agregá|ahorita)\b/i
+
+describe('Spanish docs are neutral Spanish', () => {
+  it.each(ES)('es/%s', (page) => {
+    const offenders = prose(readFileSync(join(DOCS, 'es', page), 'utf8'))
+      .split('\n')
+      .filter((line) => REGIONAL.test(line))
+    expect(offenders).toEqual([])
+  })
+})

@@ -246,3 +246,99 @@ runWithFixture(
     ],
   },
 )
+
+/**
+ * `reportNonEquivalent` (R5): say so when the canonical form is NOT the same
+ * CSS because the project redefines the variant.
+ *
+ * shadcn/ui ships `data-disabled:`, `data-open:`… as custom variants built on
+ * `:where(…)`, so `data-[disabled]:opacity-50` — which stock Tailwind would
+ * rewrite to `data-disabled:opacity-50` — selects different elements here.
+ * Since #78 the rule leaves such a class alone, silently. Opting in reports it,
+ * without a fix: whether to move to the project's variant is a decision.
+ */
+const SHADCN_VARIANTS = resolve(__dirname, '../fixtures/with-shadcn-variants.css')
+
+runWithFixture(
+  ruleTester,
+  'enforce-canonical (project-defined variants)',
+  enforceCanonical,
+  SHADCN_VARIANTS,
+  {
+    valid: [
+      // Default: left as written, nothing reported (as since #78).
+      { code: '<div className="data-[disabled]:opacity-50" />', filename: 'test.tsx' },
+      {
+        code: '<div className="data-[disabled]:opacity-50" />',
+        filename: 'test.tsx',
+        options: [{ reportNonEquivalent: false }],
+      },
+      // Only project-defined VARIANTS are reported — not values (#78).
+      {
+        code: '<div className="p-[2px]" />',
+        filename: 'test.tsx',
+        options: [{ reportNonEquivalent: true }],
+      },
+      // Already canonical.
+      {
+        code: '<div className="data-disabled:opacity-50" />',
+        filename: 'test.tsx',
+        options: [{ reportNonEquivalent: true }],
+      },
+      // A different selector that stock Tailwind emits too: a spelling, not a
+      // project-defined variant (shadcn apps/v4, verbatim).
+      {
+        code: '<div className="has-[[data-slot=rtl-components]]:bg-transparent" />',
+        filename: 'test.tsx',
+        options: [{ reportNonEquivalent: true }],
+      },
+    ],
+    invalid: [
+      {
+        code: '<div className="data-[disabled]:opacity-50 data-[open]:flex" />',
+        filename: 'test.tsx',
+        options: [{ reportNonEquivalent: true }],
+        errors: [
+          {
+            messageId: 'nonEquivalentVariant',
+            data: {
+              className: 'data-[disabled]:opacity-50',
+              canonical: 'data-disabled:opacity-50',
+              written: 'data-[disabled]',
+              variant: 'data-disabled',
+            },
+          },
+          {
+            messageId: 'nonEquivalentVariant',
+            data: {
+              className: 'data-[open]:flex',
+              canonical: 'data-open:flex',
+              written: 'data-[open]',
+              variant: 'data-open',
+            },
+          },
+        ],
+      },
+    ],
+  },
+)
+
+// Stock Tailwind: the same class IS equivalent, so it's the ordinary autofix.
+runWithFixture(
+  ruleTester,
+  'enforce-canonical (stock data variants)',
+  enforceCanonical,
+  ENTRY_POINT,
+  {
+    valid: [],
+    invalid: [
+      {
+        code: '<div className="data-[disabled]:opacity-50" />',
+        filename: 'test.tsx',
+        options: [{ reportNonEquivalent: true }],
+        errors: [{ messageId: 'nonCanonical' }],
+        output: '<div className="data-disabled:opacity-50" />',
+      },
+    ],
+  },
+)

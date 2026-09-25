@@ -25,9 +25,30 @@ emits a single fatal `designSystemUnavailable` diagnostic per file instead of si
 
 ## Options
 
-This rule has no per-rule options beyond the standard `entryPoint` override (string, defaults to
-`settings.tailwindcss.entryPoint`). Configure the entry point in `settings.tailwindcss.entryPoint`
-for the whole project instead of per-rule whenever possible.
+### `reportNonEquivalent`
+
+`boolean`, default `false`.
+
+Some canonical forms are **not the same CSS in your project**, and the rule leaves those classes as
+written. With this option on, it also tells you about one kind of them, without a fix: a variant
+your CSS defines differently from stock Tailwind. shadcn/ui, for instance, ships `data-disabled:` as
+a custom variant built on `:where([data-disabled="true"]), …`, so `data-[disabled]:opacity-50` —
+which stock Tailwind rewrites to `data-disabled:opacity-50` — matches different elements here. The
+report names both variants, and switching is your call.
+
+A difference stock Tailwind has too (`has-[[data-slot=x]]:` vs `has-data-[slot=x]:` emit different
+selectors anywhere) isn't reported, and neither is a value that reads the theme (`p-[2px]` vs
+`p-0.5`, see [`prefer-scale-token`](./prefer-scale-token)). On shadcn/ui's `apps/v4` the option adds
+23 reports, all `data-[disabled]:`.
+
+```jsonc
+{ "tailwindcss/enforce-canonical": ["warn", { "reportNonEquivalent": true }] }
+```
+
+### `entryPoint`
+
+`string`, optional. Per-rule override of `settings.tailwindcss.entryPoint`. Configure the entry
+point in `settings.tailwindcss.entryPoint` for the whole project instead whenever possible.
 
 ## Examples
 

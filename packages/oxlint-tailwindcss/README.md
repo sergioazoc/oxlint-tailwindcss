@@ -600,6 +600,16 @@ not byte-identical to `15px`, so the two can diverge under a `:root` override or
 font size. Those value-changing suggestions live in [`prefer-scale-token`](#prefer-scale-token),
 report-only.
 
+With `reportNonEquivalent: true` it also reports, without a fix, a class whose canonical form your
+CSS redefines — shadcn/ui's `data-disabled:` custom variant makes `data-[disabled]:opacity-50` and
+`data-disabled:opacity-50` match different elements.
+
+**Options:**
+
+| Option                | Type      | Default | Description                                                     |
+| --------------------- | --------- | ------- | --------------------------------------------------------------- |
+| `reportNonEquivalent` | `boolean` | `false` | Report classes whose canonical form a project variant redefines |
+
 **Requires design system.** **Autofix:** Replaces with canonical form.
 
 ---
