@@ -15,6 +15,8 @@
  *
  * Skipped, by the comment above them: `// v0…` documents (old syntax, shown on
  * the migration guide on purpose) and `.prettierrc` (Prettier isn't installed).
+ * Another JS plugin in a config — `@shadcn/lint` on /shadcn — is dropped with
+ * its rules; bench/interop.mjs loads that config with it.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { execFileSync } from 'node:child_process'
@@ -194,7 +196,37 @@ function asOxlintConfig(value: unknown): Record<string, unknown> {
   if (!('jsPlugins' in value) && !('$schema' in value) && !('extends' in value)) {
     return { jsPlugins: ['oxlint-tailwindcss'], ...value }
   }
-  return value
+  return withoutOtherPlugins(value)
+}
+
+/**
+ * The config without another JS plugin and its rules: only this one is
+ * installed here. (/shadcn's combined config is loaded with @shadcn/lint by
+ * bench/interop.mjs.)
+ */
+function withoutOtherPlugins(config: Record<string, unknown>): Record<string, unknown> {
+  if (!Array.isArray(config.jsPlugins)) return config
+  const others = config.jsPlugins.filter((p) => p !== 'oxlint-tailwindcss')
+  if (others.length === 0) return config
+  const prefixes = others.map((p) => `${String(p).replace(/^@|\/.*$/g, '')}/`)
+  const rules = (r: unknown) =>
+    isObject(r)
+      ? Object.fromEntries(
+          Object.entries(r).filter(([k]) => !prefixes.some((p) => k.startsWith(p))),
+        )
+      : r
+  return {
+    ...config,
+    jsPlugins: config.jsPlugins.filter((p) => p === 'oxlint-tailwindcss'),
+    rules: rules(config.rules),
+    ...(Array.isArray(config.overrides)
+      ? {
+          overrides: config.overrides.map((o) =>
+            isObject(o) ? { ...o, rules: rules(o.rules) } : o,
+          ),
+        }
+      : {}),
+  }
 }
 
 // ── settings.tailwindcss, checked against PluginSettings ─────────────────────

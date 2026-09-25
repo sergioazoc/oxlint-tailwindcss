@@ -1,0 +1,50 @@
+name: Interop
+
+# Early warning, not a gate: checks /shadcn's "who reports what" table and its
+# combined config against @shadcn/lint — the version the page names (pinned in
+# bench/package-lock.json) and the latest release — in a minimal shadcn/ui
+# project (bench/interop.mjs). A red run means the page needs updating, or that
+# @shadcn/lint changed what it reports.
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shadcn-lint:
+    name: '@shadcn/lint ${{ matrix.shadcn-lint }}'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shadcn-lint: ['pinned', 'latest']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install the bench
+        working-directory: bench
+        run: npm ci
+
+      - name: Use the latest @shadcn/lint
+        if: matrix.shadcn-lint == 'latest'
+        working-directory: bench
+        run: npm install --no-save @shadcn/lint@latest
+
+      - name: Check /shadcn against @shadcn/lint
+        working-directory: bench
+        run: node interop.mjs

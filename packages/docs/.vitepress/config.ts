@@ -113,6 +113,7 @@ export default defineConfig({
                 { text: 'Settings', link: '/settings' },
                 { text: 'Monorepo', link: '/monorepo' },
                 { text: 'Interop (oxfmt, prettier-plugin)', link: '/interop' },
+                { text: 'shadcn/ui & @shadcn/lint', link: '/shadcn' },
               ],
             },
             {
@@ -185,6 +186,7 @@ export default defineConfig({
                 { text: 'Settings', link: '/es/settings' },
                 { text: 'Monorepo', link: '/es/monorepo' },
                 { text: 'Interop (oxfmt, prettier-plugin)', link: '/es/interop' },
+                { text: 'shadcn/ui y @shadcn/lint', link: '/es/shadcn' },
               ],
             },
             {
