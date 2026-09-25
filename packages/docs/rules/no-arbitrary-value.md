@@ -28,9 +28,19 @@ arbitrary value, written two ways — and only the bracket form used to be repor
 its default `shorthand` setting, its autofix rewrote the reported form into the unreported one and
 the violation disappeared with the code unchanged in substance.
 
-DS-optional — by default no design system is loaded and no `entryPoint` is needed: the rule is a
-pure syntactic check, cheap on large repos. Only `allowVariables: 'runtime'` consults the design
-system, to know which CSS variables your stylesheet defines. There is no autofix: replacing an
+DS-optional — no `entryPoint` is needed: whether a class is an arbitrary value is a syntactic check,
+cheap on large repos. With one configured, the report also names the fix — the closest steps and
+tokens of your theme, with their values, and the file to add a token to:
+
+```text
+"w-[203px]" uses an arbitrary value. Closest in your theme: w-50.5 (202px) or w-51 (204px).
+If none fits, add a token to src/styles.css.
+```
+
+An exact step or token is offered alone (`h-[26px]` → `h-6.5 (26px)`); otherwise the nearest one
+below and above. A value that isn't a length (a colour, a `calc()`) gets just the file. The design
+system is loaded on the first violation, never for a clean file; `allowVariables: 'runtime'` uses it
+too, to know which CSS variables your stylesheet defines. There is no autofix: replacing an
 arbitrary value with a token requires human judgement, so the rule only reports.
 
 Arbitrary _variants_ (`[&>svg]:w-4`) are not arbitrary _values_ and are left alone. The rule looks

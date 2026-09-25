@@ -2,9 +2,11 @@ import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import { utilityHasDynamicValue, extractUtility, splitImportant } from '../utils/class-parser'
-import { createLazyOptions } from '../utils/context'
-import { createLazyLoader } from '../design-system/loader'
+import { relative } from 'node:path'
+import { createLazyOptions, createLazySettings, safeCwd } from '../utils/context'
+import { createLazyLoader, rootFontSizeFromSettings } from '../design-system/loader'
 import { softGetDS } from '../utils/fatal'
+import { closestOnScale, formatOptions } from '../utils/measure'
 
 type AllowVariables = 'none' | 'runtime' | 'all'
 
@@ -54,6 +56,10 @@ export const noArbitraryValue = defineRule({
     messages: {
       noArbitrary:
         '"{{className}}" uses an arbitrary value. Use a design token or extend your theme instead.',
+      noArbitraryOptions:
+        '"{{className}}" uses an arbitrary value. Closest in your theme: {{options}}. If none fits, add a token to {{themeFile}}.',
+      noArbitraryTheme:
+        '"{{className}}" uses an arbitrary value. Use a design token, or add one to {{themeFile}}.',
     },
   },
   createOnce(context) {
@@ -68,6 +74,35 @@ export const noArbitraryValue = defineRule({
     // file without one. Without it nothing can be proven undefined, so the
     // reference is reported — the safe side for a restriction rule.
     const getDS = createLazyLoader(context)
+    const rootFontSize = createLazySettings(context, rootFontSizeFromSettings)
+
+    /**
+     * The report for a violation: with a design system, name the closest steps
+     * and tokens and the file to add one to (R7a) — the design system is asked
+     * only here, on a violation, never for a clean file.
+     */
+    function report(loc: ClassLocation, cls: string, utility: string) {
+      const ds = softGetDS(getDS)
+      if (!ds) {
+        context.report({ node: loc.node, messageId: 'noArbitrary', data: { className: cls } })
+        return
+      }
+      const themeFile = relative(safeCwd(context), ds.entryPoint).split('\\').join('/')
+      const options = closestOnScale(ds.cache, utility, rootFontSize())
+      if (options.length > 0) {
+        context.report({
+          node: loc.node,
+          messageId: 'noArbitraryOptions',
+          data: { className: cls, options: formatOptions(options), themeFile },
+        })
+      } else {
+        context.report({
+          node: loc.node,
+          messageId: 'noArbitraryTheme',
+          data: { className: cls, themeFile },
+        })
+      }
+    }
 
     function variableAllowed(variable: string, mode: AllowVariables): boolean {
       if (mode === 'all') return true
@@ -97,11 +132,7 @@ export const noArbitraryValue = defineRule({
             if (variable && variableAllowed(variable, allowVariables)) continue
           }
 
-          context.report({
-            node: loc.node,
-            messageId: 'noArbitrary',
-            data: { className: cls },
-          })
+          report(loc, cls, utility)
         }
       }
     }

@@ -946,6 +946,9 @@ strict design system adherence.
 <div className="[&>svg]:w-4" />
 ```
 
+With an entry point, the message names the fix: "Closest in your theme: w-50.5 (202px) or w-51
+(204px). If none fits, add a token to src/styles.css."
+
 **Options:**
 
 | Option           | Type                           | Default  | Description                                                                                               |

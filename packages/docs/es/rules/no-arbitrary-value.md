@@ -28,10 +28,21 @@ Eso convertía a [`enforce-consistent-variable-syntax`](./enforce-consistent-var
 lavadero: con su ajuste por defecto `shorthand`, su autofix reescribía la forma reportada en la no
 reportada y la violación desaparecía sin que el código cambiara en el fondo.
 
-DS-opcional — por defecto no se carga ningún design system y no necesitas `entryPoint`: la regla es
-un chequeo puramente sintáctico, barato en repos grandes. Solo `allowVariables: 'runtime'` consulta
-el design system, para saber qué variables CSS define tu stylesheet. No hay autofix: reemplazar un
-arbitrary value por un token requiere criterio humano, así que la regla solo reporta.
+DS-opcional — no necesitas `entryPoint`: saber si una clase es un arbitrary value es un chequeo
+sintáctico, barato en repos grandes. Con uno configurado, el reporte además nombra el arreglo — los
+pasos y tokens más cercanos de tu theme, con sus valores, y el archivo donde agregar un token:
+
+```text
+"w-[203px]" uses an arbitrary value. Closest in your theme: w-50.5 (202px) or w-51 (204px).
+If none fits, add a token to src/styles.css.
+```
+
+Un paso o token exacto se ofrece solo (`h-[26px]` → `h-6.5 (26px)`); si no, el más cercano por
+debajo y por arriba. Un valor que no es una longitud (un color, un `calc()`) recibe solo el archivo.
+El design system se carga en la primera violación, nunca para un archivo limpio;
+`allowVariables: 'runtime'` también lo usa, para saber qué variables CSS define tu stylesheet. No
+hay autofix: reemplazar un arbitrary value por un token requiere criterio humano, así que la regla
+solo reporta.
 
 Los _variants_ arbitrarios (`[&>svg]:w-4`) no son _values_ arbitrarios y la regla los deja
 tranquilos. Mira el lado del valor de la utility, no el prefijo de selector.
