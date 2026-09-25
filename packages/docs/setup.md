@@ -18,12 +18,16 @@ Requirements:
   plugin needs) and is reported with a clear diagnostic.
 - **Node.js 20** or newer for the linter process itself.
 
-::: warning Avoid oxlint 1.77.0 with the editor extension oxlint **1.77.0** shipped a regression
-that panics the **language server** on any diagnostic from a JS plugin — `disable_fix.rs:52`,
-`range end index N out of range for slice of length 0`, then SIGABRT and a restart loop. It's an
-oxlint bug, not a plugin one, and the CLI is unaffected (CI and `oxlint --fix` are fine). It's
-**fixed in oxlint 1.78.0** ([oxc#25280](https://github.com/oxc-project/oxc/pull/25280)) — upgrade to
-`oxlint@1.78.0` or newer (or stay on `1.76.0`) if you use the editor extension. :::
+::: warning Avoid oxlint 1.77.0 with the editor extension
+
+oxlint **1.77.0** shipped a regression that panics the **language server** on any diagnostic from a
+JS plugin — `disable_fix.rs:52`, `range end index N out of range for slice of length 0`, then
+SIGABRT and a restart loop. It's an oxlint bug, not a plugin one, and the CLI is unaffected (CI and
+`oxlint --fix` are fine). It's **fixed in oxlint 1.78.0**
+([oxc#25280](https://github.com/oxc-project/oxc/pull/25280)) — upgrade to `oxlint@1.78.0` or newer
+(or stay on `1.76.0`) if you use the editor extension.
+
+:::
 
 ## 2. Minimal config
 
