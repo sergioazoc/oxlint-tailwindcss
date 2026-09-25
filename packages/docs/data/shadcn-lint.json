@@ -1,0 +1,169 @@
+{
+  "$comment": "Who reports what when oxlint-tailwindcss and @shadcn/lint run together. Generates the tables and the combined config on /shadcn (scripts/blocks.ts). Each example is checked: `ours` against this plugin by tests/docs/shadcn-interop.test.ts, `shadcn` against @shadcn/lint by bench/interop.mjs (weekly, with the latest release, in .github/workflows/interop.yml).",
+  "shadcnLint": "0.2.0",
+  "concerns": [
+    {
+      "id": "restyle",
+      "label": {
+        "en": "Restyling a design-system component through `className`",
+        "es": "Reestilar un componente del design system con `className`"
+      },
+      "examples": ["<Button className=\"rounded-full p-4\">Pay</Button>"],
+      "shadcn": ["no-restyle"],
+      "ours": [],
+      "use": "shadcn"
+    },
+    {
+      "id": "inline-style",
+      "label": { "en": "Inline styles", "es": "Estilos inline" },
+      "examples": ["<div style={{ color: \"#f00\" }}>Sale</div>"],
+      "shadcn": ["no-inline-styles"],
+      "ours": [],
+      "use": "shadcn"
+    },
+    {
+      "id": "palette",
+      "label": {
+        "en": "A Tailwind palette color instead of a theme color",
+        "es": "Un color de la paleta de Tailwind en vez de un color del theme"
+      },
+      "examples": ["<div className=\"bg-red-500\">Sale</div>"],
+      "shadcn": ["no-raw-colors"],
+      "ours": [],
+      "use": "shadcn"
+    },
+    {
+      "id": "arbitrary",
+      "label": { "en": "Arbitrary values", "es": "Valores arbitrarios" },
+      "examples": [
+        "<div className=\"p-[13px]\">Card</div>",
+        "<div className=\"bg-[#1a73e8]\">Card</div>"
+      ],
+      "shadcn": ["no-arbitrary-values"],
+      "ours": ["no-arbitrary-value", "no-hardcoded-colors"],
+      "use": "shadcn"
+    },
+    {
+      "id": "var-token",
+      "label": {
+        "en": "A CSS variable where the theme has a named class",
+        "es": "Una variable CSS donde el theme tiene una clase con nombre"
+      },
+      "examples": ["<div className=\"bg-(--primary)\">Card</div>"],
+      "shadcn": [],
+      "ours": ["no-arbitrary-value", "prefer-theme-tokens"],
+      "use": "ours"
+    },
+    {
+      "id": "unknown",
+      "label": {
+        "en": "Classes Tailwind can't generate: typos in utilities, variants and theme colors",
+        "es": "Clases que Tailwind no puede generar: typos en utilities, variants y colores del theme"
+      },
+      "examples": [
+        "<div className=\"itms-center\">Card</div>",
+        "<div className=\"hoverr:flex\">Card</div>",
+        "<div className=\"bg-primray\">Card</div>",
+        "<div className=\"line\">Card</div>"
+      ],
+      "shadcn": ["no-unknown-classes", "no-raw-colors"],
+      "ours": ["no-unknown-classes"],
+      "use": "ours"
+    },
+    {
+      "id": "dynamic",
+      "label": {
+        "en": "Classes built at runtime",
+        "es": "Clases armadas en runtime"
+      },
+      "examples": [
+        "<div className={`bg-${tone}-500`}>Card</div>",
+        "<Button className={`bg-${tone}-500`}>Pay</Button>"
+      ],
+      "shadcn": ["require-static-classes"],
+      "ours": ["no-dynamic-classes"],
+      "use": "both"
+    },
+    {
+      "id": "conflicts",
+      "label": {
+        "en": "Classes that override each other",
+        "es": "Clases que se pisan entre sí"
+      },
+      "examples": ["<div className=\"line-clamp-1 flex\">Card</div>"],
+      "shadcn": [],
+      "ours": ["no-conflicting-classes"],
+      "use": "ours"
+    },
+    {
+      "id": "duplicates",
+      "label": { "en": "Duplicate classes", "es": "Clases duplicadas" },
+      "examples": ["<div className=\"flex flex\">Card</div>"],
+      "shadcn": [],
+      "ours": ["no-duplicate-classes"],
+      "use": "ours"
+    },
+    {
+      "id": "deprecated",
+      "label": {
+        "en": "Classes deprecated in Tailwind v4",
+        "es": "Clases deprecadas en Tailwind v4"
+      },
+      "examples": ["<div className=\"flex-shrink-0\">Card</div>"],
+      "shadcn": [],
+      "ours": ["no-deprecated-classes"],
+      "use": "ours"
+    },
+    {
+      "id": "canonical",
+      "label": {
+        "en": "Classes with a canonical form",
+        "es": "Clases con una forma canónica"
+      },
+      "examples": ["<div className=\"-m-0\">Card</div>"],
+      "shadcn": [],
+      "ours": ["enforce-canonical"],
+      "use": "ours"
+    },
+    {
+      "id": "dark-without-light",
+      "label": {
+        "en": "A dark-mode color with no light-mode base",
+        "es": "Un color de modo oscuro sin base para el modo claro"
+      },
+      "examples": ["<div className=\"dark:bg-accent\">Card</div>"],
+      "shadcn": [],
+      "ours": ["no-dark-without-light"],
+      "use": "ours"
+    },
+    {
+      "id": "order",
+      "label": {
+        "en": "Class and variant order",
+        "es": "Orden de clases y variants"
+      },
+      "examples": [
+        "<div className=\"p-4 flex\">Card</div>",
+        "<div className=\"hover:sm:flex\">Card</div>"
+      ],
+      "shadcn": [],
+      "ours": ["enforce-sort-order", "consistent-variant-order"],
+      "use": "ours"
+    }
+  ],
+  "combined": {
+    "$comment": "The recommended config of this plugin, adjusted for shadcn/ui, plus the @shadcn/lint rules.",
+    "ours": {
+      "off": ["no-hardcoded-colors"],
+      "on": { "prefer-theme-tokens": "warn" }
+    },
+    "shadcn": {
+      "no-restyle": ["error", { "allow": ["layout"] }],
+      "no-raw-colors": "error",
+      "no-arbitrary-values": "error",
+      "no-inline-styles": "error",
+      "require-static-classes": "error"
+    },
+    "componentsDir": "components/ui/**"
+  }
+}

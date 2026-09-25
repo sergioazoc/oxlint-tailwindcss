@@ -1,0 +1,76 @@
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
+
+import {
+  columnMismatches,
+  combinedGaps,
+  exampleFiles,
+  firedRules,
+  generatedFence,
+} from '../lib/interop.mjs'
+
+const concerns = [
+  { id: 'a', examples: ['<x />', '<y />'], shadcn: ['no-raw-colors'], ours: [], use: 'shadcn' },
+  { id: 'b', examples: ['<z />'], shadcn: [], ours: ['no-unknown-classes'], use: 'ours' },
+]
+const diag = (filename, code) => ({ filename: `src/${filename}`, code })
+
+describe('exampleFiles', () => {
+  it('names one file per example', () => {
+    assert.deepEqual(
+      exampleFiles(concerns).map((e) => e.file),
+      ['a-0.tsx', 'a-1.tsx', 'b-0.tsx'],
+    )
+  })
+})
+
+describe('firedRules', () => {
+  it('groups tool/rule by file, scoped packages included', () => {
+    const fired = firedRules({
+      diagnostics: [diag('a-0.tsx', 'shadcn(no-raw-colors)'), diag('a-0.tsx', 'tailwindcss(x)')],
+    })
+    assert.deepEqual([...fired.get('a-0.tsx')], ['shadcn/no-raw-colors', 'tailwindcss/x'])
+  })
+})
+
+describe('columnMismatches', () => {
+  it('is empty when every listed rule fires and nothing else does', () => {
+    const fired = firedRules({ diagnostics: [diag('a-1.tsx', 'shadcn(no-raw-colors)')] })
+    assert.deepEqual(columnMismatches(concerns, fired, 'shadcn', 'shadcn'), [])
+  })
+
+  it('names a rule that is not listed, and a listed rule that never fires', () => {
+    const fired = firedRules({ diagnostics: [diag('b-0.tsx', 'shadcn(no-unknown-classes)')] })
+    assert.deepEqual(columnMismatches(concerns, fired, 'shadcn', 'shadcn'), [
+      'a: shadcn/no-raw-colors is listed but reports none of its examples',
+      'b: <z /> is reported by shadcn/no-unknown-classes, not listed',
+    ])
+  })
+
+  it("ignores the other tool's rules", () => {
+    const fired = firedRules({
+      diagnostics: [diag('a-0.tsx', 'shadcn(no-raw-colors)'), diag('a-0.tsx', 'tailwindcss(y)')],
+    })
+    assert.deepEqual(columnMismatches(concerns, fired, 'shadcn', 'shadcn'), [])
+  })
+})
+
+describe('combinedGaps', () => {
+  it('names an example nobody reports and an owner that reports nothing', () => {
+    const fired = firedRules({ diagnostics: [diag('a-0.tsx', 'tailwindcss(z)')] })
+    assert.deepEqual(combinedGaps(concerns, fired), [
+      'a: nothing reports <y />',
+      'a: left to shadcn, which reports none of its examples',
+      'b: nothing reports <z />',
+      'b: left to ours, which reports none of its examples',
+    ])
+  })
+})
+
+describe('generatedFence', () => {
+  it('reads the JSON(C) between the markers', () => {
+    const md =
+      'x\n<!-- generated:c -->\n```jsonc\n{\n  // note\n  "a": 1,\n}\n```\n<!-- /generated:c -->\n'
+    assert.deepEqual(generatedFence(md, 'c'), { a: 1 })
+  })
+})

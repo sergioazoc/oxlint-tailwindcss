@@ -7,7 +7,15 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { recommendedConfig, replaceBlock, ruleList, type RuleForBlocks } from './blocks.ts'
+import {
+  recommendedConfig,
+  replaceBlock,
+  ruleList,
+  shadcnConfig,
+  shadcnTable,
+  type RuleForBlocks,
+  type ShadcnData,
+} from './blocks.ts'
 import { RULE_NAMES, oxlintPlugin } from './rules.ts'
 
 const DOCS = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -34,4 +42,13 @@ update(resolve(DOCS, 'setup.md'), {
 update(resolve(DOCS, 'es/setup.md'), {
   'recommended-config': recommendedConfig(rules, { locale: 'es', all: false, schema: true }),
 })
-console.log('[generate-blocks] wrote 4 files')
+const shadcn = JSON.parse(
+  readFileSync(resolve(DOCS, 'data/shadcn-lint.json'), 'utf-8'),
+) as ShadcnData
+for (const locale of ['en', 'es'] as const) {
+  update(resolve(DOCS, locale === 'en' ? 'shadcn.md' : 'es/shadcn.md'), {
+    'shadcn-table': shadcnTable(shadcn, locale),
+    'shadcn-config': shadcnConfig(shadcn, rules, locale),
+  })
+}
+console.log('[generate-blocks] wrote 6 files')

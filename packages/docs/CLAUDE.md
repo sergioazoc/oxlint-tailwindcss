@@ -98,6 +98,12 @@ category (root README) sit between `<!-- generated:… -->` markers and come fro
 `meta.docs` (`scripts/blocks.ts`). Edit the rule's `ruleDocs(...)`, not the block, then run
 `generate`.
 
+`/shadcn`'s table and combined config come from `data/shadcn-lint.json`: per concern, examples, the
+rules of each plugin that report them, and who reports it under the combined config. Its
+oxlint-tailwindcss column is checked by `tests/docs/shadcn-interop.test.ts` (every example, every
+rule on); its @shadcn/lint column and the combined config by `bench/interop.mjs`, weekly in
+`interop.yml`. When @shadcn/lint changes what it reports, update the data, not the page.
+
 ## Markdown is formatted by oxfmt (`generate` formats its own output)
 
 All `.md` is formatted by oxfmt (`proseWrap: always`, so prose is wrapped at the print width — don't

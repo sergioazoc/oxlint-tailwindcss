@@ -1,7 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { recommendedConfig, replaceBlock, ruleList, type RuleForBlocks } from '../scripts/blocks.ts'
+import {
+  recommendedConfig,
+  replaceBlock,
+  ruleList,
+  shadcnConfig,
+  shadcnTable,
+  type RuleForBlocks,
+  type ShadcnData,
+} from '../scripts/blocks.ts'
 import { RULE_NAMES, oxlintPlugin } from '../scripts/rules.ts'
 
 const RULES: RuleForBlocks[] = RULE_NAMES.map((name) => {
@@ -82,5 +90,66 @@ describe('the committed files hold the current blocks', () => {
     const block = between(path, id)
     const fence = block.slice(block.indexOf('```jsonc'), block.lastIndexOf('```') + 3)
     expect(parse(fence).rules).toEqual(parse(recommendedConfig(RULES, { locale: 'en', all })).rules)
+  })
+})
+
+describe('/shadcn blocks', () => {
+  const DATA = JSON.parse(
+    readFileSync(resolve(__dirname, '../data/shadcn-lint.json'), 'utf8'),
+  ) as ShadcnData
+
+  it('the table has a row per concern, in each locale', () => {
+    for (const locale of ['en', 'es'] as const) {
+      const rows = shadcnTable(DATA, locale).split('\n')
+      expect(rows).toHaveLength(DATA.concerns.length + 2)
+      expect(rows[2]).toContain(DATA.concerns[0].label[locale])
+    }
+    expect(shadcnTable(DATA, 'es')).toContain('| las dos |')
+  })
+
+  it('escapes a | inside code so it stays one cell', () => {
+    const data = { ...DATA, concerns: [{ ...DATA.concerns[0], examples: ['a || b'] }] }
+    expect(shadcnTable(data, 'en')).toContain('`a \\|\\| b`')
+  })
+
+  it('the combined config: recommended, minus off, plus on, plus @shadcn/lint', () => {
+    const fence = shadcnConfig(DATA, RULES, 'en')
+    const config = JSON.parse(
+      fence
+        .replace(/^```jsonc\n|\n```$/g, '')
+        .split('\n')
+        .filter((l) => !l.trim().startsWith('//'))
+        .join('\n'),
+    ) as { rules: Record<string, unknown>; jsPlugins: string[]; overrides: unknown[] }
+    const expected: Record<string, unknown> = {}
+    for (const r of RULES) {
+      const severity =
+        DATA.combined.ours.on[r.name] ??
+        (DATA.combined.ours.off.includes(r.name) ? false : r.recommended)
+      if (severity) expected[`tailwindcss/${r.name}`] = severity
+    }
+    for (const [name, value] of Object.entries(DATA.combined.shadcn)) {
+      expected[`shadcn/${name}`] = value
+    }
+    expect(config.rules).toEqual(expected)
+    expect(config.jsPlugins).toEqual(['oxlint-tailwindcss', '@shadcn/lint'])
+    expect(config.overrides).toEqual([
+      { files: [DATA.combined.componentsDir], rules: { 'shadcn/no-restyle': 'off' } },
+    ])
+    expect(fence).toContain('"shadcn/no-restyle": ["error", { "allow": ["layout"] }]')
+  })
+})
+
+describe('/shadcn table cells', () => {
+  it("keeps {{ away from Vue's template compiler", () => {
+    const data = JSON.parse(
+      readFileSync(resolve(__dirname, '../data/shadcn-lint.json'), 'utf8'),
+    ) as ShadcnData
+    const one = {
+      ...data,
+      concerns: [{ ...data.concerns[0], examples: ['<a style={{ a: 1 }} />'] }],
+    }
+    expect(shadcnTable(one, 'en')).toContain('<span v-pre>`<a style={{ a: 1 }} />`</span>')
+    expect(shadcnTable(data, 'en')).toContain('| `<div className="bg-red-500">Sale</div>` |')
   })
 })
