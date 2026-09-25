@@ -17,7 +17,7 @@ Reglas que atrapan problemas que generarían CSS inválido o inesperado.
   propiedad CSS.
 - [no-contradicting-variants](./no-contradicting-variants) — `flex hover:flex` es redundante (solo
   en listas de clases literales en elementos nativos, no en fragmentos de `cn`/`twMerge`).
-- [no-dark-without-light](./no-dark-without-light) — `dark:` debería usualmente tener pareja en modo
+- [no-dark-without-light](./no-dark-without-light) — un color `dark:` debería tener pareja en modo
   claro (solo en listas de clases literales en elementos nativos, no en fragmentos de
   `cn`/`twMerge`).
 - [no-duplicate-classes](./no-duplicate-classes) — la misma clase dos veces es peso muerto.
@@ -103,7 +103,7 @@ además un `entryPoint` propio que pisa el ajuste compartido.
 | `enforce-physical`                 | `{ allowlist: [], direction: 'both' }`              | Confirma que la clase sugerida exista                                                             |
 | `enforce-shorthand`                | `{}`                                                | Verifica cada fusión contra el CSS emitido                                                        |
 | `no-contradicting-variants`        | `{}`                                                | Qué hace el selector de cada variant                                                              |
-| `no-dark-without-light`            | `{ variants: ['dark'] }`                            | Agrupa la base por propiedad CSS declarada, no solo por prefijo                                   |
+| `no-dark-without-light`            | `{ variants: ['dark'] }`                            | Distingue los colores del resto y agrupa la base por propiedad CSS declarada                      |
 | `no-deprecated-classes`            | `{}`                                                | Deriva la lista de renombres en vez de usar la tabla interna                                      |
 
 ### Reglas DS-independientes

@@ -173,6 +173,13 @@ may ever emit `designSystemUnavailable`. There are 8: `consistent-variant-order`
 `no-contradicting-variants`, `enforce-consistent-line-wrapping`, `no-dark-without-light`,
 `enforce-shorthand`, `enforce-logical`, `enforce-physical` (these last two reach `softGetDS` through
 the shared directional mapper in `enforce-logical.ts`), and `no-deprecated-classes`.
+`no-dark-without-light` checks only variant classes that set a **colour** (R3): with the DS,
+`colorPropertyOf` reads the class's declarations (a `*-color` / `fill` / `stroke` /
+`--tw-gradient-*` property, a `--color-*` read, or a colour literal outside `var()` fallbacks — so
+`shadow-lg`'s fallback `rgb()` doesn't count); without it, `isNeverColorStatic` skips the families
+that never are (filters, opacity, display, visibility, position, `sr-only`, border/outline/ring
+widths) and everything else is still checked. Prefix grouping of the base is unchanged, so
+`border dark:border-gray-700` and `shadow-sm dark:shadow-white/10` stay valid.
 `consistent-variant-order`, `no-contradicting-variants`, and `enforce-consistent-line-wrapping` have
 static fallbacks (variant order; the pseudo-element/barrier name lists plus the
 `display`/`visibility` property groups; and prefix-unaware variant-run grouping respectively) that

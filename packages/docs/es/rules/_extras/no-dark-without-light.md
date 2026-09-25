@@ -1,5 +1,5 @@
 ---
-description: "Regla de oxlint que reporta una clase `dark:` de Tailwind CSS, como `dark:bg-gray-900`, sin una clase base para el modo claro de la misma propiedad."
+description: "Regla de oxlint que reporta un color `dark:` de Tailwind CSS, como `dark:bg-gray-900`, sin una clase que defina ese color para el modo claro en el elemento."
 ---
 
 ## Qué hace esta regla
@@ -8,6 +8,16 @@ Atrapa el caso donde escribiste `dark:bg-gray-900` pero te olvidaste de la base 
 light mode (`bg-white`, `bg-zinc-50`, lo que sea). En el momento en que un theme switcher está
 activo, ese elemento renderiza sin estilo en light mode — típicamente transparente o heredando del
 padre, casi nunca lo que querías.
+
+**Solo el color necesita base.** Un filtro, un display, un ancho de borde o una opacidad que solo
+aplican en modo oscuro dejan el modo claro con el render normal del elemento — ese es el punto de
+`dark:brightness-[0.2]` en una imagen, o de `dark:hidden` en una decoración. Así que solo se revisa
+una clase con variante que define un color: con un entry point configurado, "define un color" se lee
+del CSS que emite la clase (una propiedad de color como `color`, `background-color` o `fill`, una
+variable de theme `--color-*`, o un literal de color); sin él, se revisa toda clase salvo las
+familias que nunca son color — filtros y filtros de backdrop, opacidad, display, visibilidad,
+position, `sr-only`, y anchos de border / outline / ring. `dark:text-white` sola se sigue
+reportando: el color del texto es color.
 
 El chequeo es por grupo, no por valor exacto: por cada clase que usa una variante observada, ¿hay al
 menos una clase del mismo grupo que NO usa una? Si no, la clase con variante no tiene contraparte en
@@ -84,6 +94,10 @@ la regla funciona sin él.
 
 // Mostrar en light, ocultar en dark: las dos escriben `display`
 <div className="block dark:hidden" />
+
+// No es un color: el modo claro mantiene el render normal del elemento a propósito
+<img className="object-cover dark:brightness-[0.2] dark:grayscale" />
+<div className="flex-col dark:border-r" />
 
 // No hay variante observada → la regla no se mete con la cobertura de base
 <div className="hover:bg-blue-500" />

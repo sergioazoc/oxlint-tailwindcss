@@ -499,20 +499,22 @@ Normalizes whitespace in class strings.
 
 #### `no-dark-without-light`
 
-Requires a base (light) utility when using the `dark:` variant on the same element.
+Requires a base (light) utility when a `dark:` class sets a **colour** on the same element.
 
 ```tsx
 // ❌ Bad — dark variant without base
 <div className="dark:bg-gray-900" />
-// "dark:bg-gray-900" uses the dark variant, but there is no base "bg-*" class.
+// "dark:bg-gray-900" sets background-color only under the dark variant: no class on this element
+// sets background-color without it, so the other mode shows whatever it inherits.
 
 // ✅ OK — has matching base
 <div className="bg-white dark:bg-gray-900" />
 <div className="text-black dark:text-white" />
 ```
 
-Groups by utility prefix (`bg-`, `text-`, `border-`, etc.) — only checks that a base utility of the
-same type exists.
+Only colour needs a base: `dark:brightness-[0.2]`, `dark:hidden` or `dark:border-r` leave light mode
+with the element's normal rendering, so they are not reported. A base matches by utility prefix
+(`bg-`, `text-`, `border-`, …) or, with an entry point, by the CSS property it declares.
 
 **Scope (issue #117):** only inspects literal class lists on **native host elements** (`<div>`,
 `<input>`, …). Strings passed to `cn`/`twMerge`/`cva` or set on a custom component's `className` are
@@ -1059,8 +1061,8 @@ The class parser correctly handles:
   `padding` vs `padding-left`/`padding-right`), and, for classes whose value you wrote (`w-[10px]`),
   the stylesheet position is unknowable, so those diagnostics report the clash without naming a
   winner.
-- **`no-dark-without-light`**: Groups by utility prefix heuristic. May not perfectly match all
-  multi-part utility prefixes.
+- **`no-dark-without-light`**: Without an entry point, "is this a colour" is a denylist of families
+  that never are (filters, opacity, display, widths…), and bases match by prefix only.
 - **`no-unnecessary-arbitrary-value`**: Only detects equivalences for classes with a single CSS
   property. Multi-property utilities may have arbitrary forms that aren't detected.
 - **Component classes**: Only first-level `@import` relative paths are followed. Deeply nested
