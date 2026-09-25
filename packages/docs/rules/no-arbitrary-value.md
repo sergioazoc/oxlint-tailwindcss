@@ -10,9 +10,9 @@ come from your theme; an allow list covers exceptions.
 
 ## At a glance
 
-| Autofix | Editor suggestions | Design system | Options |
-| ------- | ------------------ | ------------- | ------- |
-| No      | No                 | Not used      | `allow` |
+| Autofix | Editor suggestions | Design system                            | Options                                 |
+| ------- | ------------------ | ---------------------------------------- | --------------------------------------- |
+| No      | No                 | Optional — used when `entryPoint` is set | `allow`, `allowVariables`, `entryPoint` |
 
 ## What this rule does
 
@@ -28,9 +28,10 @@ arbitrary value, written two ways — and only the bracket form used to be repor
 its default `shorthand` setting, its autofix rewrote the reported form into the unreported one and
 the violation disappeared with the code unchanged in substance.
 
-DS-independent — no design system is loaded, no `entryPoint` is needed. The rule is a pure syntactic
-check, which makes it cheap to run on large repos. There is no autofix: replacing an arbitrary value
-with a token requires human judgement, so the rule only reports.
+DS-optional — by default no design system is loaded and no `entryPoint` is needed: the rule is a
+pure syntactic check, cheap on large repos. Only `allowVariables: 'runtime'` consults the design
+system, to know which CSS variables your stylesheet defines. There is no autofix: replacing an
+arbitrary value with a token requires human judgement, so the rule only reports.
 
 Arbitrary _variants_ (`[&>svg]:w-4`) are not arbitrary _values_ and are left alone. The rule looks
 at the value side of the utility, not the selector prefix.
@@ -57,6 +58,35 @@ variants), so entries like `"grid-cols-"` permit `grid-cols-[18rem_1fr]` without
 
 Tip: start with `[]` to see where your codebase actually needs escapes, then promote the legitimate
 ones into `allow` rather than disabling the rule wholesale.
+
+### `allowVariables`
+
+`'none' | 'runtime' | 'all'`, default `'none'`.
+
+What to do with a value that is nothing but a CSS variable — `w-(--sidebar-width)`,
+`h-[var(--radix-select-trigger-height)]`, `text-(length:--size)`, with or without a fallback or an
+opacity modifier:
+
+- `'none'` reports them, like any arbitrary value.
+- `'runtime'` allows the variables **no CSS in your design system defines** — the ones JavaScript or
+  an inline `style` sets at runtime, like Radix's `--radix-*` or a sidebar's `--sidebar-width`, for
+  which no token exists. A variable your stylesheet defines (`--primary`) is still reported: a named
+  utility exists for it (see [`prefer-theme-tokens`](./prefer-theme-tokens)). This mode reads the
+  design system; without an `entryPoint` nothing can be proven undefined, so references are
+  reported.
+- `'all'` allows every pure variable reference.
+
+A value that does more than read a variable — `w-[calc(var(--x)*2)]` — is an arbitrary value in
+every mode.
+
+```jsonc
+{ "tailwindcss/no-arbitrary-value": ["warn", { "allowVariables": "runtime" }] }
+```
+
+### `entryPoint`
+
+`string`, optional. Per-rule override of `settings.tailwindcss.entryPoint`, read only by
+`allowVariables: 'runtime'`.
 
 ## Examples
 

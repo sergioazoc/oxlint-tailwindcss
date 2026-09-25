@@ -94,16 +94,17 @@ These work with nothing configured — their fallback is deterministic on its ow
 accurate when an `entryPoint` is available. None of them can emit `designSystemUnavailable`. Each
 also accepts a rule-level `entryPoint` that overrides the shared setting.
 
-| Rule                               | Default options                        | What the design system adds                                                 |
-| ---------------------------------- | -------------------------------------- | --------------------------------------------------------------------------- |
-| `consistent-variant-order`         | `{}` (DS-derived order when available) | Real variant order, and what each variant's selector does                   |
-| `enforce-consistent-line-wrapping` | `{ printWidth: 80, group: 'newLine' }` | The project prefix, so `wrapLines: 'all'` grouping treats it as transparent |
-| `enforce-logical`                  | `{ allowlist: [], direction: 'both' }` | Confirms the suggested class exists                                         |
-| `enforce-physical`                 | `{ allowlist: [], direction: 'both' }` | Confirms the suggested class exists                                         |
-| `enforce-shorthand`                | `{}`                                   | Verifies each merge against the emitted CSS                                 |
-| `no-contradicting-variants`        | `{}`                                   | What each variant's selector does                                           |
-| `no-dark-without-light`            | `{ variants: ['dark'] }`               | Tells colours from the rest, and groups the base by declared CSS property   |
-| `no-deprecated-classes`            | `{}`                                   | Derives the rename list instead of using the built-in table                 |
+| Rule                               | Default options                         | What the design system adds                                                   |
+| ---------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
+| `consistent-variant-order`         | `{}` (DS-derived order when available)  | Real variant order, and what each variant's selector does                     |
+| `enforce-consistent-line-wrapping` | `{ printWidth: 80, group: 'newLine' }`  | The project prefix, so `wrapLines: 'all'` grouping treats it as transparent   |
+| `enforce-logical`                  | `{ allowlist: [], direction: 'both' }`  | Confirms the suggested class exists                                           |
+| `enforce-physical`                 | `{ allowlist: [], direction: 'both' }`  | Confirms the suggested class exists                                           |
+| `enforce-shorthand`                | `{}`                                    | Verifies each merge against the emitted CSS                                   |
+| `no-arbitrary-value`               | `{ allow: [], allowVariables: 'none' }` | With `allowVariables: 'runtime'`, which CSS variables your stylesheet defines |
+| `no-contradicting-variants`        | `{}`                                    | What each variant's selector does                                             |
+| `no-dark-without-light`            | `{ variants: ['dark'] }`                | Tells colours from the rest, and groups the base by declared CSS property     |
+| `no-deprecated-classes`            | `{}`                                    | Derives the rename list instead of using the built-in table                   |
 
 ### DS-independent rules
 
@@ -113,7 +114,6 @@ also accepts a rule-level `entryPoint` that overrides the shared setting.
 | `enforce-consistent-variable-syntax`    | `{ syntax: 'shorthand' }`       |
 | `enforce-negative-arbitrary-values`     | (no options)                    |
 | `max-class-count`                       | `{ max: 20 }`                   |
-| `no-arbitrary-value`                    | `{ allow: [] }`                 |
 | `no-duplicate-classes`                  | (no options)                    |
 | `no-hardcoded-colors`                   | `{ allow: [] }`                 |
 | `no-restricted-classes`                 | `{ classes: [], patterns: [] }` |

@@ -10,9 +10,9 @@ para que salgan de tu theme; una allow list cubre excepciones.
 
 ## De un vistazo
 
-| Autofix | Sugerencias en el editor | Design system | Opciones |
-| ------- | ------------------------ | ------------- | -------- |
-| No      | No                       | No se usa     | `allow`  |
+| Autofix | Sugerencias en el editor | Design system                         | Opciones                                |
+| ------- | ------------------------ | ------------------------------------- | --------------------------------------- |
+| No      | No                       | Opcional — se usa si hay `entryPoint` | `allow`, `allowVariables`, `entryPoint` |
 
 ## Qué hace esta regla
 
@@ -28,9 +28,10 @@ Eso convertía a [`enforce-consistent-variable-syntax`](./enforce-consistent-var
 lavadero: con su ajuste por defecto `shorthand`, su autofix reescribía la forma reportada en la no
 reportada y la violación desaparecía sin que el código cambiara en el fondo.
 
-DS-independiente — no se carga ningún design system, no necesitas `entryPoint`. La regla es un
-chequeo puramente sintáctico, lo que la hace barata de correr en repos grandes. No hay autofix:
-reemplazar un arbitrary value por un token requiere criterio humano, así que la regla solo reporta.
+DS-opcional — por defecto no se carga ningún design system y no necesitas `entryPoint`: la regla es
+un chequeo puramente sintáctico, barato en repos grandes. Solo `allowVariables: 'runtime'` consulta
+el design system, para saber qué variables CSS define tu stylesheet. No hay autofix: reemplazar un
+arbitrary value por un token requiere criterio humano, así que la regla solo reporta.
 
 Los _variants_ arbitrarios (`[&>svg]:w-4`) no son _values_ arbitrarios y la regla los deja
 tranquilos. Mira el lado del valor de la utility, no el prefijo de selector.
@@ -57,6 +58,35 @@ variants), así que entradas como `"grid-cols-"` permiten `grid-cols-[18rem_1fr]
 
 Tip: empieza con `[]` para ver dónde tu codebase realmente necesita escapes, después promueve los
 legítimos a `allow` en vez de desactivar la regla entera.
+
+### `allowVariables`
+
+`'none' | 'runtime' | 'all'`, default `'none'`.
+
+Qué hacer con un valor que no es más que una variable CSS — `w-(--sidebar-width)`,
+`h-[var(--radix-select-trigger-height)]`, `text-(length:--size)`, con o sin fallback o modificador
+de opacidad:
+
+- `'none'` las reporta, como cualquier arbitrary value.
+- `'runtime'` permite las variables que **ningún CSS de tu design system define** — las que
+  JavaScript o un `style` inline definen en runtime, como las `--radix-*` de Radix o el
+  `--sidebar-width` de un sidebar, para las que no existe un token. Una variable que define tu
+  stylesheet (`--primary`) se sigue reportando: existe una utilidad con nombre para ella (mira
+  [`prefer-theme-tokens`](./prefer-theme-tokens)). Este modo lee el design system; sin `entryPoint`
+  no se puede probar que una variable no esté definida, así que las referencias se reportan.
+- `'all'` permite toda referencia pura a una variable.
+
+Un valor que hace algo más que leer una variable — `w-[calc(var(--x)*2)]` — es un arbitrary value en
+todos los modos.
+
+```jsonc
+{ "tailwindcss/no-arbitrary-value": ["warn", { "allowVariables": "runtime" }] }
+```
+
+### `entryPoint`
+
+`string`, opcional. Override por regla de `settings.tailwindcss.entryPoint`, que solo lee
+`allowVariables: 'runtime'`.
 
 ## Ejemplos
 

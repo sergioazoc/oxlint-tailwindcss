@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Features
+
+- **`no-arbitrary-value` can allow runtime CSS variables:
+  `allowVariables: 'none' | 'runtime' | 'all'`** (default `'none'`, so nothing changes unless you
+  opt in). A value that is nothing but a variable — `w-(--sidebar-width)`,
+  `h-[var(--radix-select-trigger-height)]` — often reads something JavaScript or an inline `style`
+  sets, with no token to use instead. `'runtime'` allows the variables no CSS in your design system
+  defines and still reports the ones it does (`--primary` has a named utility); `'all'` allows every
+  pure variable reference. `w-[calc(var(--x)*2)]` is still an arbitrary value. The rule becomes
+  DS-optional: only `'runtime'` reads the design system. On shadcn/ui `apps/v4`, 167 of the rule's
+  752 reports are pure variable references.
+
 ### Bug fixes
 
 - **`no-unknown-classes` keeps named group/peer markers valid when a custom variant names

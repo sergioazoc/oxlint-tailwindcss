@@ -915,9 +915,11 @@ strict design system adherence.
 
 **Options:**
 
-| Option  | Type       | Default | Description                                         |
-| ------- | ---------- | ------- | --------------------------------------------------- |
-| `allow` | `string[]` | `[]`    | Utility prefixes to allow (e.g. `["bg-", "text-"]`) |
+| Option           | Type                           | Default  | Description                                                                                               |
+| ---------------- | ------------------------------ | -------- | --------------------------------------------------------------------------------------------------------- |
+| `allow`          | `string[]`                     | `[]`     | Utility prefixes to allow (e.g. `["bg-", "text-"]`)                                                       |
+| `allowVariables` | `'none' \| 'runtime' \| 'all'` | `'none'` | Allow a value that is only a CSS variable (`w-(--sidebar-width)`): `'runtime'` = variables no CSS defines |
+| `entryPoint`     | `string`                       | —        | Per-rule `entryPoint`, read only by `allowVariables: 'runtime'`                                           |
 
 **No autofix.**
 

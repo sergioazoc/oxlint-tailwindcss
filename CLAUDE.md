@@ -169,10 +169,13 @@ DS-dependent rules (the 7 users of `safeGetDS`, which reports `designSystemUnava
 `no-unnecessary-arbitrary-value`, `prefer-scale-token`, `prefer-theme-tokens`. The **DS-optional**
 rules use `softGetDS` instead — they consult the DS when an entryPoint is configured but fall back
 to a deterministic static path when it isn't, so a missing entryPoint is tolerated silently and none
-may ever emit `designSystemUnavailable`. There are 8: `consistent-variant-order`,
+may ever emit `designSystemUnavailable`. There are 9: `consistent-variant-order`,
 `no-contradicting-variants`, `enforce-consistent-line-wrapping`, `no-dark-without-light`,
 `enforce-shorthand`, `enforce-logical`, `enforce-physical` (these last two reach `softGetDS` through
-the shared directional mapper in `enforce-logical.ts`), and `no-deprecated-classes`.
+the shared directional mapper in `enforce-logical.ts`), `no-deprecated-classes`, and
+`no-arbitrary-value` — which touches the DS only under `allowVariables: 'runtime'`, lazily, on the
+first pure `var()` reference (`definesVar` tells a runtime variable from one the stylesheet defines;
+without a DS the reference is reported, the safe side for a restriction rule).
 `no-dark-without-light` checks only variant classes that set a **colour** (R3): with the DS,
 `colorPropertyOf` reads the class's declarations (a `*-color` / `fill` / `stroke` /
 `--tw-gradient-*` property, a `--color-*` read, or a colour literal outside `var()` fallbacks — so
@@ -371,7 +374,7 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `tests/e2e/cache-dir.test.ts` holds what `/ci` promises about `OXLINT_TAILWINDCSS_CACHE_DIR`.
 - **Fail-loud (v1)**: If the DS can't load, DS-dependent rules emit a single
   `designSystemUnavailable` diagnostic via the shared `safeGetDS` helper in `src/utils/fatal.ts`.
-  There is no silent fallback; the exceptions are the 8 DS-optional rules listed under Architecture,
+  There is no silent fallback; the exceptions are the 9 DS-optional rules listed under Architecture,
   which go through `softGetDS`, fall back to a deterministic static path, and never emit
   `designSystemUnavailable`. The dedicated error types — `MissingEntryPointError`,
   `DeprecatedEntryPointShapeError`, `DesignSystemLoadError`, `SortServiceError`,
