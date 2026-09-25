@@ -1,0 +1,7 @@
+# oxlint-tailwindcss documentation. Search engines and AI assistants are welcome:
+# the docs exist to be found and quoted. Content-Signal: https://contentsignals.org
+User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+Allow: /
+
+Sitemap: https://oxlint-tailwindcss.pages.dev/sitemap.xml

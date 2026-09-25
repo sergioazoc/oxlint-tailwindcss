@@ -9,6 +9,7 @@ import {
   localeOf,
   pageHead,
   siteHead,
+  sitemapItems,
   urlPath,
 } from '../.vitepress/seo.ts'
 
@@ -55,7 +56,9 @@ describe('pageHead', () => {
 
   it('declares both locales and x-default, the same set from either side', () => {
     const alternates = (p: string) =>
-      find(page(p), 'link', { rel: 'alternate' }).map(([, a]) => `${a.hreflang} ${a.href}`)
+      find(page(p), 'link', { rel: 'alternate' })
+        .filter(([, a]) => a.hreflang)
+        .map(([, a]) => `${a.hreflang} ${a.href}`)
     const expected = [
       `en ${SITE_URL}/monorepo`,
       `es ${SITE_URL}/es/monorepo`,
@@ -63,6 +66,12 @@ describe('pageHead', () => {
     ]
     expect(alternates('monorepo.md')).toEqual(expected)
     expect(alternates('es/monorepo.md')).toEqual(expected)
+  })
+
+  it('points at the page as markdown (served by scripts/llms.ts)', () => {
+    expect(
+      find(page('rules/index.md'), 'link', { rel: 'alternate', type: 'text/markdown' })[0][1].href,
+    ).toBe(`${SITE_URL}/rules/index.md`)
   })
 
   it('names the site on the home page: WebSite JSON-LD (the "Cloudflare" fix)', () => {
@@ -120,5 +129,47 @@ describe('one site URL everywhere', () => {
       readFileSync(resolve(__dirname, '../../oxlint-tailwindcss/package.json'), 'utf8'),
     ) as { homepage: string }
     expect(pkg.homepage).toBe(SITE_URL)
+  })
+})
+
+describe('sitemapItems', () => {
+  it('adds x-default next to the en/es alternates VitePress lists', () => {
+    const [item] = sitemapItems([
+      {
+        url: 'es/ci',
+        links: [
+          { lang: 'es', url: `${SITE_URL}/es/ci` },
+          { lang: 'en', url: `${SITE_URL}/ci` },
+        ],
+      },
+    ])
+    expect(item.links).toContainEqual({ lang: 'x-default', url: `${SITE_URL}/ci` })
+    expect(item.links).toHaveLength(3)
+  })
+
+  it('never lists the 404 page', () => {
+    expect(sitemapItems([{ url: '404' }, { url: 'setup' }]).map((i) => i.url)).toEqual(['setup'])
+  })
+})
+
+describe('public/robots.txt and public/_headers', () => {
+  const read = (f: string) => readFileSync(resolve(__dirname, '../public', f), 'utf8')
+
+  it('robots.txt allows everyone, signals content use, and points at the sitemap', () => {
+    const robots = read('robots.txt')
+    expect(robots).toMatch(/^User-agent: \*$/m)
+    expect(robots).toMatch(/^Content-Signal: search=yes, ai-input=yes, ai-train=yes$/m)
+    expect(robots).toMatch(/^Allow: \/$/m)
+    expect(robots).toContain(`Sitemap: ${SITE_URL}/sitemap.xml`)
+  })
+
+  it('_headers makes hashed assets immutable and serves markdown copies as markdown, unindexed', () => {
+    const headers = read('_headers')
+    expect(headers).toMatch(
+      /^\/assets\/\*\n {2}Cache-Control: public, max-age=31536000, immutable$/m,
+    )
+    expect(headers).toMatch(
+      /^\/\*\.md\n {2}Content-Type: text\/markdown; charset=utf-8\n {2}X-Robots-Tag: noindex$/m,
+    )
   })
 })

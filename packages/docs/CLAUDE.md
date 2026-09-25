@@ -30,6 +30,16 @@ showing "Cloudflare" as our site name — keep it, `og:site_name` and the home t
 Images: `public/favicon.svg` and `scripts/assets/og.svg` are the sources (render commands in the
 SVG's `<desc>`).
 
+## Crawlers and LLMs
+
+- `sitemap.xml` is VitePress's, with `x-default` added and the 404 left out (`sitemapItems` in
+  `seo.ts`); its URLs are the pages' canonicals. `public/robots.txt` (Content-Signal + Sitemap) and
+  `public/_headers` (immutable assets, `text/markdown` + `noindex` for the `.md` copies) are static
+  and tested.
+- `buildEnd` writes `llms.txt`, `llms-full.txt` and a markdown copy of every page next to its HTML
+  (`/setup.md`, `/rules/index.md`) — `scripts/llms.ts`, pure and tested. Each page links its copy
+  with `<link rel="alternate" type="text/markdown">`.
+
 ## Markdown is formatted by oxfmt (`generate` formats its own output)
 
 All `.md` is formatted by oxfmt (`proseWrap: always`, so prose is wrapped at the print width — don't

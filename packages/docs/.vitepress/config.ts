@@ -5,7 +5,8 @@ import { defineConfig } from 'vitepress'
 // default) cannot resolve an extensionless relative import, and warns about
 // this one on every build.
 import { RULE_NAMES } from '../scripts/rules.ts'
-import { SITE_NAME, pageHead, siteHead } from './seo.ts'
+import { readPages, writeLlmsFiles } from '../scripts/llms.ts'
+import { SITE_NAME, SITE_URL, pageHead, siteHead, sitemapItems } from './seo.ts'
 
 // Read the published package version so the nav label never drifts from the
 // real release. Resolved relative to this file, not the build cwd.
@@ -50,6 +51,14 @@ export default defineConfig({
   // canonical, hreflang, og:* and JSON-LD come from `transformHead`; both are
   // defined (and tested) in ./seo.ts.
   head: siteHead(),
+  sitemap: { hostname: SITE_URL, transformItems: sitemapItems },
+  // llms.txt, llms-full.txt and a markdown copy of every page (scripts/llms.ts).
+  // The summary is the home page's own description.
+  buildEnd: ({ srcDir, outDir, pages }) => {
+    const docs = readPages(srcDir, pages)
+    const home = docs.find((p) => p.path === 'index.md')
+    writeLlmsFiles(outDir, docs, home?.description ?? '')
+  },
   transformHead: ({ pageData, title, description }) =>
     pageHead({
       relativePath: pageData.relativePath,
