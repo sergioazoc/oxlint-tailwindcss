@@ -122,8 +122,10 @@ hand-wrap, the formatter owns it). Two consequences here:
 
 - `_extras/`, `AGENTS.md` and `CLAUDE.md` are `srcExclude`d: they are inputs and notes, not pages. A
   new internal markdown file needs the same treatment, or it gets published.
-- A dead internal link fails the build (`ignoreDeadLinks: false`). Anchors are not checked by
-  VitePress — open the built page when you link to a heading.
+- A dead internal link fails the build (`ignoreDeadLinks: false`), and so does a link to a heading
+  that doesn't exist: VitePress doesn't check anchors, `check-dist` does.
+- The sidebar and nav are the same in both locales, link only to pages that exist, and reach every
+  hand-written page (`tests/sidebar-parity.test.ts`): a new page needs a sidebar entry in both.
 - "Edit this page" on a generated rule page points at its `_extras` file (`editLinkFor`), and
   `public/_redirects` sends the `_extras` URLs that used to be published to the rule page.
   `packages/oxlint-tailwindcss/tests/docs/site-structure.test.ts` holds both.

@@ -173,7 +173,31 @@ describe('checkDist', () => {
       /no Sitemap line/,
     ],
     ['a missing llms.txt', (f) => (f.delete('llms.txt'), f), /llms\.txt: missing/],
+    [
+      'a link to a heading that does not exist',
+      (f) =>
+        edit(f, 'index.html', '<p>Body</p>', '<p><a href="/rules/foo#options">Options</a></p>'),
+      /index\.html: link to \/rules\/foo#options: no such heading/,
+    ],
+    [
+      'a same-page link to a heading that does not exist',
+      (f) => edit(f, 'index.html', '<p>Body</p>', '<p><a href="#nope">x</a></p>'),
+      /index\.html: link to #nope: no such heading/,
+    ],
   ]
+
+  it('accepts links to headings that exist, on this page or another', () => {
+    const files = site()
+    edit(files, 'rules/foo.html', '<p>Body</p>', '<h2 id="options">Options</h2>')
+    edit(
+      files,
+      'index.html',
+      '<p>Body</p>',
+      '<h2 id="intro">x</h2><a href="#intro">x</a> <a href="/rules/foo#options">y</a> <a href="/es/#top">z</a>',
+    )
+    edit(files, 'es/index.html', '<p>Body</p>', '<p id="top">x</p>')
+    expect(checkDist(files)).toEqual([])
+  })
 
   it.each(cases)('catches %s', (_, mutate, message) => {
     const problems = checkDist(mutate(site()))

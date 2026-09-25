@@ -77,6 +77,12 @@ function urlOf(file: string): string {
   return `${SITE_URL}/${path}`
 }
 
+/** `/setup` → `setup.html`, `/rules/` → `rules/index.html`, `/` → `index.html`. */
+function fileOfPath(path: string): string {
+  const p = path.slice(1)
+  return p === '' || p.endsWith('/') ? `${p}index.html` : `${p}.html`
+}
+
 /** The source-page markdown copy a built page should have: `setup.html` → `setup.md`. */
 const markdownOf = (file: string) => file.replace(/\.html$/, '.md')
 
@@ -156,6 +162,24 @@ export function checkDist(files: DistFiles): string[] {
     if (!files.has(md)) fail(p.file, `no markdown copy (${md})`)
     if (p.markdownAlternate !== `${SITE_URL}/${md}`)
       fail(p.file, `markdown alternate is ${p.markdownAlternate}`)
+  }
+
+  // ── Links land on a heading that exists. A dead page fails the VitePress
+  // build; a dead `#anchor` doesn't, so it's checked here.
+  const idsOf = new Map(
+    htmlFiles.map((f) => [
+      f,
+      new Set([...files.get(f)!.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1])),
+    ]),
+  )
+  for (const f of htmlFiles) {
+    for (const m of files.get(f)!.matchAll(/<a\b[^>]*\bhref="(\/[^"#]*)?#([^"]+)"/g)) {
+      const target = m[1] === undefined ? f : fileOfPath(m[1])
+      const ids = idsOf.get(target)
+      if (ids && !ids.has(decodeURIComponent(m[2]))) {
+        fail(f, `link to ${m[1] ?? ''}#${m[2]}: no such heading`)
+      }
+    }
   }
 
   // ── Home page: the site name.

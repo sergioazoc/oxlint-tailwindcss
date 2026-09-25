@@ -84,6 +84,7 @@ export default defineConfig({
         nav: [
           { text: 'Setup', link: '/setup' },
           { text: 'Rules', link: '/rules/' },
+          { text: 'FAQ', link: '/faq' },
           { text: 'Migration', link: '/migration/v0-to-v1' },
           {
             text: `v${PKG_VERSION}`,
@@ -103,18 +104,22 @@ export default defineConfig({
               items: [
                 { text: 'Introduction', link: '/' },
                 { text: 'Setup', link: '/setup' },
+                { text: 'FAQ', link: '/faq' },
+              ],
+            },
+            {
+              text: 'Guides',
+              items: [
                 { text: 'Vue, Svelte & Astro', link: '/frameworks' },
+                { text: 'Monorepo', link: '/monorepo' },
                 { text: 'Running in CI', link: '/ci' },
+                { text: 'oxfmt & Prettier', link: '/interop' },
+                { text: 'shadcn/ui & @shadcn/lint', link: '/shadcn' },
               ],
             },
             {
               text: 'Reference',
-              items: [
-                { text: 'Settings', link: '/settings' },
-                { text: 'Monorepo', link: '/monorepo' },
-                { text: 'Interop (oxfmt, prettier-plugin)', link: '/interop' },
-                { text: 'shadcn/ui & @shadcn/lint', link: '/shadcn' },
-              ],
+              items: [{ text: 'Settings', link: '/settings' }],
             },
             {
               text: 'Rules',
@@ -143,6 +148,7 @@ export default defineConfig({
         nav: [
           { text: 'Setup', link: '/es/setup' },
           { text: 'Reglas', link: '/es/rules/' },
+          { text: 'Preguntas frecuentes', link: '/es/faq' },
           { text: 'Migración', link: '/es/migration/v0-to-v1' },
           {
             text: `v${PKG_VERSION}`,
@@ -179,18 +185,22 @@ export default defineConfig({
               items: [
                 { text: 'Introducción', link: '/es/' },
                 { text: 'Setup', link: '/es/setup' },
+                { text: 'Preguntas frecuentes', link: '/es/faq' },
+              ],
+            },
+            {
+              text: 'Guías',
+              items: [
                 { text: 'Vue, Svelte y Astro', link: '/es/frameworks' },
+                { text: 'Monorepo', link: '/es/monorepo' },
                 { text: 'En CI', link: '/es/ci' },
+                { text: 'oxfmt y Prettier', link: '/es/interop' },
+                { text: 'shadcn/ui y @shadcn/lint', link: '/es/shadcn' },
               ],
             },
             {
               text: 'Referencia',
-              items: [
-                { text: 'Settings', link: '/es/settings' },
-                { text: 'Monorepo', link: '/es/monorepo' },
-                { text: 'Interop (oxfmt, prettier-plugin)', link: '/es/interop' },
-                { text: 'shadcn/ui y @shadcn/lint', link: '/es/shadcn' },
-              ],
+              items: [{ text: 'Settings', link: '/es/settings' }],
             },
             {
               text: 'Reglas',
