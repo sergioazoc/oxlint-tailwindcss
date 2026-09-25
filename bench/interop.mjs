@@ -1,11 +1,16 @@
-// Check /shadcn against @shadcn/lint: the table's @shadcn/lint column, and
-// the combined config the page publishes.
+// Check the pages that name other plugins against those plugins:
 //
-// Lints every example of packages/docs/data/shadcn-lint.json in a minimal
-// shadcn/ui project (interop/project: components.json, a Button), first with
-// @shadcn/lint alone, then with the combined config read from
-// packages/docs/shadcn.md. Exits 1 on any disagreement. This plugin's column is
-// checked in the main test suite (tests/docs/shadcn-interop.test.ts).
+// - /shadcn: every example of packages/docs/data/shadcn-lint.json, in a minimal
+//   shadcn/ui project (interop/project: components.json, a Button), first with
+//   @shadcn/lint alone — its column — then with the combined config read from
+//   packages/docs/shadcn.md. This plugin's column is checked in the main test
+//   suite (tests/docs/shadcn-interop.test.ts).
+// - /migration/from-better-tailwindcss: every row of
+//   packages/docs/data/better-tailwindcss.json — its example must be reported
+//   by their rule and by ours, each with the row's options — and every rule of
+//   eslint-plugin-better-tailwindcss must have a row.
+//
+// Exits 1 on any disagreement.
 //
 // Usage: node interop.mjs [--plugin local|published]
 // Weekly with the latest @shadcn/lint: .github/workflows/interop.yml.
@@ -17,6 +22,7 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
 import {
+  mappingGaps,
   columnMismatches,
   combinedGaps,
   exampleFiles,
@@ -42,6 +48,9 @@ if (values.plugin === 'local' && !existsSync(LOCAL_DIST)) {
 }
 
 const data = JSON.parse(readFileSync(join(REPO, 'packages/docs/data/shadcn-lint.json'), 'utf8'))
+const btw = JSON.parse(
+  readFileSync(join(REPO, 'packages/docs/data/better-tailwindcss.json'), 'utf8'),
+)
 const page = readFileSync(join(REPO, 'packages/docs/shadcn.md'), 'utf8')
 const version = (pkg) =>
   JSON.parse(readFileSync(join(BENCH, 'node_modules', pkg, 'package.json'), 'utf8')).version
@@ -62,6 +71,9 @@ execFileSync('git', ['init', '-q'], { cwd: project })
 for (const { file, example } of exampleFiles(data.concerns)) {
   writeFileSync(join(project, 'src', file), exampleModule(example))
 }
+btw.rules.forEach((row, i) =>
+  writeFileSync(join(project, 'src', `btw-${i}.tsx`), exampleModule(row.example)),
+)
 
 function lint(config) {
   writeFileSync(join(project, '.oxlintrc.json'), JSON.stringify(config))
@@ -102,10 +114,40 @@ if (values.plugin === 'local') {
 delete combined.$schema
 const gaps = combinedGaps(data.concerns, lint({ categories: { correctness: 'off' }, ...combined }))
 
+// 3. better-tailwindcss: each row's two rules, with the row's options.
+const ruleWith = (options) => (options === undefined ? 'warn' : ['warn', options])
+const theirs = lint({
+  categories: { correctness: 'off' },
+  jsPlugins: ['eslint-plugin-better-tailwindcss'],
+  settings: { 'better-tailwindcss': { entryPoint: 'app/globals.css' } },
+  rules: Object.fromEntries(
+    btw.rules.map((r) => [`better-tailwindcss/${r.theirs}`, ruleWith(r.options?.theirs)]),
+  ),
+})
+const ours = lint({
+  categories: { correctness: 'off' },
+  jsPlugins: [values.plugin === 'local' ? LOCAL_DIST.replaceAll('\\', '/') : 'oxlint-tailwindcss'],
+  settings: { tailwindcss: { entryPoint: 'app/globals.css' } },
+  rules: Object.fromEntries(
+    btw.rules.map((r) => [`tailwindcss/${r.ours}`, ruleWith(r.options?.ours)]),
+  ),
+})
+const btwPlugin = await import('eslint-plugin-better-tailwindcss')
+const mapping = mappingGaps(
+  btw.rules,
+  Object.keys((btwPlugin.default ?? btwPlugin).rules),
+  theirs,
+  ours,
+)
+
 console.log(
   `@shadcn/lint ${version('@shadcn/lint')} (the page says ${data.shadcnLint}), ` +
-    `oxlint ${version('oxlint')}, oxlint-tailwindcss ${values.plugin}`,
+    `eslint-plugin-better-tailwindcss ${version('eslint-plugin-better-tailwindcss')} ` +
+    `(the page says ${btw.betterTailwindcss}), oxlint ${version('oxlint')}, ` +
+    `oxlint-tailwindcss ${values.plugin}`,
 )
-for (const line of [...column, ...gaps]) console.log(`  ✗ ${line}`)
-if (column.length + gaps.length > 0) process.exit(1)
-console.log(`  ✓ ${data.concerns.length} concerns: the table and the combined config hold`)
+const problems = [...column, ...gaps, ...mapping]
+for (const line of problems) console.log(`  ✗ ${line}`)
+if (problems.length > 0) process.exit(1)
+console.log(`  ✓ /shadcn: ${data.concerns.length} concerns, the table and the combined config hold`)
+console.log(`  ✓ /migration/from-better-tailwindcss: ${btw.rules.length} rules map`)

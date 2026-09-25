@@ -230,6 +230,12 @@
   `no-conflicting-classes` finds in shadcn/ui's own select trigger, and the setup step by step for a
   person or an agent. The table is generated from data and checked against both plugins: this
   plugin's column in the test suite, @shadcn/lint's weekly against its latest release.
+- **New
+  [migration guide from eslint-plugin-better-tailwindcss](https://oxlint-tailwindcss.pages.dev/migration/from-better-tailwindcss)
+  (EN and ES):** each of its 15 rules and its settings mapped to this plugin's, with what differs in
+  their options, the switch step by step with a before-and-after config, and the rules it doesn't
+  have. Every row's example is reported by both of its rules, checked weekly against
+  better-tailwindcss's latest release.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

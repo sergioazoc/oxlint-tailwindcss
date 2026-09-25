@@ -2,11 +2,15 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  btwExtraRules,
+  btwRulesTable,
+  btwSettingsTable,
   recommendedConfig,
   replaceBlock,
   ruleList,
   shadcnConfig,
   shadcnTable,
+  type BtwData,
   type RuleForBlocks,
   type ShadcnData,
 } from '../scripts/blocks.ts'
@@ -151,5 +155,32 @@ describe('/shadcn table cells', () => {
     }
     expect(shadcnTable(one, 'en')).toContain('<span v-pre>`<a style={{ a: 1 }} />`</span>')
     expect(shadcnTable(data, 'en')).toContain('| `<div className="bg-red-500">Sale</div>` |')
+  })
+})
+
+describe('/migration/from-better-tailwindcss blocks', () => {
+  const DATA = JSON.parse(
+    readFileSync(resolve(__dirname, '../data/better-tailwindcss.json'), 'utf8'),
+  ) as BtwData
+
+  it('a row per rule, linked to the rule page of each locale', () => {
+    const en = btwRulesTable(DATA, 'en').split('\n')
+    expect(en).toHaveLength(DATA.rules.length + 2)
+    expect(en[2]).toContain(`[\`${DATA.rules[0].ours}\`](/rules/${DATA.rules[0].ours})`)
+    expect(btwRulesTable(DATA, 'es')).toContain(`(/es/rules/${DATA.rules[0].ours})`)
+  })
+
+  it('settings: several targets as code, none as a dash', () => {
+    const table = btwSettingsTable(DATA, 'en')
+    expect(table).toContain('| `tsconfig` | — |')
+    expect(table).toContain('`attributes`, `attributePatterns`')
+  })
+
+  it('lists the rules no row maps to, and only those', () => {
+    const extra = btwExtraRules(DATA, RULE_NAMES, 'en')
+    const listed = [...extra.matchAll(/\[`([^`]+)`\]/g)].map((m) => m[1])
+    const mapped = new Set(DATA.rules.map((r) => r.ours))
+    expect(listed).toEqual(RULE_NAMES.filter((r) => !mapped.has(r)).sort())
+    expect(listed).toContain('enforce-physical')
   })
 })

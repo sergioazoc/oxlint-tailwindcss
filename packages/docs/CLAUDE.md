@@ -102,7 +102,10 @@ category (root README) sit between `<!-- generated:… -->` markers and come fro
 rules of each plugin that report them, and who reports it under the combined config. Its
 oxlint-tailwindcss column is checked by `tests/docs/shadcn-interop.test.ts` (every example, every
 rule on); its @shadcn/lint column and the combined config by `bench/interop.mjs`, weekly in
-`interop.yml`. When @shadcn/lint changes what it reports, update the data, not the page.
+`interop.yml`. When @shadcn/lint changes what it reports, update the data, not the page. The same
+goes for `/migration/from-better-tailwindcss` and `data/better-tailwindcss.json`: every row's
+example is reported by both of its rules (`bench/interop.mjs`), and the rules and settings it names
+exist here (`tests/docs/better-tailwindcss-map.test.ts`).
 
 ## Markdown is formatted by oxfmt (`generate` formats its own output)
 

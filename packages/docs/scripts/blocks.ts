@@ -231,3 +231,77 @@ export function shadcnConfig(
     '```',
   ].join('\n')
 }
+
+// ── /migration/from-better-tailwindcss: data/better-tailwindcss.json ────────
+
+export interface BtwData {
+  betterTailwindcss: string
+  rules: {
+    theirs: string
+    ours: string
+    example: string
+    options?: { theirs: unknown; ours: unknown }
+    notes?: Record<Locale, string>
+  }[]
+  settings: { theirs: string; ours: string | null; notes?: Record<Locale, string> }[]
+}
+
+const BTW_HEAD: Record<Locale, { rules: string[]; settings: string[] }> = {
+  en: {
+    rules: ['better-tailwindcss', 'oxlint-tailwindcss', 'Notes'],
+    settings: ['`settings["better-tailwindcss"]`', '`settings.tailwindcss`', 'Notes'],
+  },
+  es: {
+    rules: ['better-tailwindcss', 'oxlint-tailwindcss', 'Notas'],
+    settings: ['`settings["better-tailwindcss"]`', '`settings.tailwindcss`', 'Notas'],
+  },
+}
+
+function table(head: string[], rows: string[][]): string {
+  return [
+    `| ${head.join(' | ')} |`,
+    `| ${head.map(() => '---').join(' | ')} |`,
+    ...rows.map((r) => `| ${r.join(' | ')} |`),
+  ].join('\n')
+}
+
+/** Each of their rules, the rule it maps to (linked), and what differs. */
+export function btwRulesTable(data: BtwData, locale: Locale): string {
+  const base = locale === 'en' ? '/rules/' : '/es/rules/'
+  return table(
+    BTW_HEAD[locale].rules,
+    data.rules.map((r) => [
+      `\`${r.theirs}\``,
+      `[\`${r.ours}\`](${base}${r.ours})`,
+      r.notes?.[locale] ?? '',
+    ]),
+  )
+}
+
+/** Each of their settings, the setting(s) it maps to, and what differs. */
+export function btwSettingsTable(data: BtwData, locale: Locale): string {
+  return table(
+    BTW_HEAD[locale].settings,
+    data.settings.map((s) => [
+      `\`${s.theirs}\``,
+      s.ours === null
+        ? '—'
+        : s.ours
+            .split(', ')
+            .map((k) => `\`${k}\``)
+            .join(', '),
+      s.notes?.[locale] ?? '',
+    ]),
+  )
+}
+
+/** The rules no row maps to, linked: `[a](/rules/a) · [b](/rules/b)`. */
+export function btwExtraRules(data: BtwData, ruleNames: readonly string[], locale: Locale): string {
+  const mapped = new Set(data.rules.map((r) => r.ours))
+  const base = locale === 'en' ? '/rules/' : '/es/rules/'
+  return ruleNames
+    .filter((name) => !mapped.has(name))
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => `[\`${name}\`](${base}${name})`)
+    .join(' · ')
+}

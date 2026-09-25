@@ -95,3 +95,25 @@ export function generatedFence(markdown, id) {
   if (!fence) throw new Error(`generated:${id} holds no json fence`)
   return JSON.parse(fence[1].replace(/^\s*\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '$1'))
 }
+
+/**
+ * /migration/from-better-tailwindcss: a row whose example one of its two
+ * rules doesn't report, and a rule of theirs with no row.
+ */
+export function mappingGaps(rows, theirRules, firedTheirs, firedOurs) {
+  const out = []
+  rows.forEach((row, i) => {
+    const file = `btw-${i}.tsx`
+    if (!firedTheirs.get(file)?.has(`better-tailwindcss/${row.theirs}`)) {
+      out.push(`${row.theirs}: doesn't report ${row.example}`)
+    }
+    if (!firedOurs.get(file)?.has(`tailwindcss/${row.ours}`)) {
+      out.push(`${row.ours} (for ${row.theirs}): doesn't report ${row.example}`)
+    }
+  })
+  const mapped = new Set(rows.map((r) => r.theirs))
+  for (const rule of theirRules) {
+    if (!mapped.has(rule)) out.push(`${rule}: a rule of theirs with no row`)
+  }
+  return out
+}

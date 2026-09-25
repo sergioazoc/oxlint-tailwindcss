@@ -1,10 +1,11 @@
 name: Interop
 
-# Early warning, not a gate: checks /shadcn's "who reports what" table and its
-# combined config against @shadcn/lint — the version the page names (pinned in
-# bench/package-lock.json) and the latest release — in a minimal shadcn/ui
-# project (bench/interop.mjs). A red run means the page needs updating, or that
-# @shadcn/lint changed what it reports.
+# Early warning, not a gate: checks the pages that name other plugins against
+# them (bench/interop.mjs) — /shadcn's table and combined config against
+# @shadcn/lint, /migration/from-better-tailwindcss's rule map against
+# eslint-plugin-better-tailwindcss — with the versions the pages name (pinned in
+# bench/package-lock.json) and with their latest releases. A red run means a
+# page needs updating, or that one of them changed what it reports.
 on:
   schedule:
     - cron: '0 6 * * 1' # Mondays 06:00 UTC
@@ -14,13 +15,13 @@ permissions:
   contents: read
 
 jobs:
-  shadcn-lint:
-    name: '@shadcn/lint ${{ matrix.shadcn-lint }}'
+  plugins:
+    name: 'Other plugins, ${{ matrix.versions }}'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shadcn-lint: ['pinned', 'latest']
+        versions: ['pinned', 'latest']
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -40,11 +41,11 @@ jobs:
         working-directory: bench
         run: npm ci
 
-      - name: Use the latest @shadcn/lint
-        if: matrix.shadcn-lint == 'latest'
+      - name: Use their latest releases
+        if: matrix.versions == 'latest'
         working-directory: bench
-        run: npm install --no-save @shadcn/lint@latest
+        run: npm install --no-save @shadcn/lint@latest eslint-plugin-better-tailwindcss@latest
 
-      - name: Check /shadcn against @shadcn/lint
+      - name: Check the pages against them
         working-directory: bench
         run: node interop.mjs

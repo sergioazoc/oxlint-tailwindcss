@@ -8,11 +8,15 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  btwExtraRules,
+  btwRulesTable,
+  btwSettingsTable,
   recommendedConfig,
   replaceBlock,
   ruleList,
   shadcnConfig,
   shadcnTable,
+  type BtwData,
   type RuleForBlocks,
   type ShadcnData,
 } from './blocks.ts'
@@ -51,4 +55,15 @@ for (const locale of ['en', 'es'] as const) {
     'shadcn-config': shadcnConfig(shadcn, rules, locale),
   })
 }
-console.log('[generate-blocks] wrote 6 files')
+const btw = JSON.parse(
+  readFileSync(resolve(DOCS, 'data/better-tailwindcss.json'), 'utf-8'),
+) as BtwData
+for (const locale of ['en', 'es'] as const) {
+  const dir = locale === 'en' ? DOCS : resolve(DOCS, 'es')
+  update(resolve(dir, 'migration/from-better-tailwindcss.md'), {
+    'btw-rules': btwRulesTable(btw, locale),
+    'btw-settings': btwSettingsTable(btw, locale),
+    'btw-extra': btwExtraRules(btw, RULE_NAMES, locale),
+  })
+}
+console.log('[generate-blocks] wrote 8 files')

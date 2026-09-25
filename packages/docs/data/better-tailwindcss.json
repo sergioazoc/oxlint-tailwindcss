@@ -1,0 +1,181 @@
+{
+  "$comment": "eslint-plugin-better-tailwindcss → oxlint-tailwindcss. Generates the tables on /migration/from-better-tailwindcss (scripts/blocks.ts). Every example is reported by both rules of its row, with default options: checked by bench/interop.mjs (weekly, with the latest release, in .github/workflows/interop.yml); that every rule of the pinned version has a row, and every rule named here exists, by tests/docs/better-tailwindcss-map.test.ts.",
+  "betterTailwindcss": "4.7.0",
+  "rules": [
+    {
+      "theirs": "enforce-consistent-class-order",
+      "ours": "enforce-sort-order",
+      "example": "<div className=\"p-4 flex\">x</div>",
+      "notes": {
+        "en": "Their default `order: \"official\"` is this rule's order. Unknown classes go first, in the order written, as with their `unknownClassOrder: \"preserve\"`. `order: \"strict\"` → `mode: \"strict\"`, which also groups classes by variant chain (the order within can differ). `asc`, `desc` and the `componentClass*` / `unknownClass*` options have no equivalent.",
+        "es": "Su `order: \"official\"` por defecto es el orden de esta regla. Las clases desconocidas van primero, en el orden en que están escritas, como con su `unknownClassOrder: \"preserve\"`. `order: \"strict\"` → `mode: \"strict\"`, que también agrupa las clases por cadena de variants (el orden dentro del grupo puede variar). `asc`, `desc` y las opciones `componentClass*` / `unknownClass*` no tienen equivalente."
+      }
+    },
+    {
+      "theirs": "enforce-consistent-important-position",
+      "ours": "enforce-consistent-important-position",
+      "example": "<div className=\"!p-4\">x</div>",
+      "notes": {
+        "en": "`position: \"recommended\"` → `\"suffix\"` (the default, `p-4!`); `\"legacy\"` → `\"prefix\"` (`!p-4`).",
+        "es": "`position: \"recommended\"` → `\"suffix\"` (el default, `p-4!`); `\"legacy\"` → `\"prefix\"` (`!p-4`)."
+      }
+    },
+    {
+      "theirs": "enforce-consistent-line-wrapping",
+      "ours": "enforce-consistent-line-wrapping",
+      "example": "<div className=\"flex items-center justify-between gap-4 rounded-lg border bg-background p-6 text-sm shadow-sm\">x</div>",
+      "notes": {
+        "en": "`printWidth`, `classesPerLine` and `group` mean the same. The autofix only rewrites template literals — a string attribute is reported, not rewritten — and a line over `printWidth` is rewrapped only with `wrapLines`. `indent`, `tabWidth`, `lineBreakStyle`, `preferSingleLine`, `strictness` and `vueConvertToBinding` have no equivalent: the indentation comes from the source.",
+        "es": "`printWidth`, `classesPerLine` y `group` significan lo mismo. El autofix solo reescribe template literals — un atributo string se reporta, no se reescribe — y una línea que pasa el `printWidth` se vuelve a envolver solo con `wrapLines`. `indent`, `tabWidth`, `lineBreakStyle`, `preferSingleLine`, `strictness` y `vueConvertToBinding` no tienen equivalente: la indentación sale del código."
+      }
+    },
+    {
+      "theirs": "enforce-consistent-variant-order",
+      "ours": "consistent-variant-order",
+      "example": "<div className=\"hover:sm:flex\">x</div>",
+      "notes": {
+        "en": "Both write chains outermost first (`sm:hover:`). This rule also orders color scheme and attribute variants (`dark:hover:`, `data-[state=open]:hover:`), which theirs leaves alone; `order` sets your own.",
+        "es": "Las dos escriben las cadenas de afuera hacia adentro (`sm:hover:`). Esta regla además ordena color scheme y variants de atributos (`dark:hover:`, `data-[state=open]:hover:`), que la suya deja como están; `order` fija el tuyo."
+      }
+    },
+    {
+      "theirs": "enforce-consistent-variable-syntax",
+      "ours": "enforce-consistent-variable-syntax",
+      "example": "<div className=\"bg-[var(--brand)]\">x</div>",
+      "notes": {
+        "en": "`syntax: \"shorthand\"` is the default in both; `\"variable\"` → `\"explicit\"`.",
+        "es": "`syntax: \"shorthand\"` es el default en las dos; `\"variable\"` → `\"explicit\"`."
+      }
+    },
+    {
+      "theirs": "enforce-shorthand-classes",
+      "ours": "enforce-shorthand",
+      "example": "<div className=\"w-4 h-4\">x</div>"
+    },
+    {
+      "theirs": "enforce-logical-properties",
+      "ours": "enforce-logical",
+      "example": "<div className=\"ml-4\">x</div>",
+      "notes": {
+        "en": "`ignore` → `allowlist` (regular expressions, too). `direction` limits it to inline or block utilities; `enforce-physical` is the reverse rule.",
+        "es": "`ignore` → `allowlist` (también expresiones regulares). `direction` la limita a las utilities inline o block; `enforce-physical` es la regla inversa."
+      }
+    },
+    {
+      "theirs": "enforce-canonical-classes",
+      "ours": "enforce-canonical",
+      "example": "<div className=\"-m-0\">x</div>",
+      "notes": {
+        "en": "Their `collapse` (merging `mt-2 mb-2` into `my-2`) is `enforce-shorthand` here. `ignore` and `logical` have no equivalent.",
+        "es": "Su `collapse` (juntar `mt-2 mb-2` en `my-2`) aquí es `enforce-shorthand`. `ignore` y `logical` no tienen equivalente."
+      }
+    },
+    {
+      "theirs": "no-duplicate-classes",
+      "ours": "no-duplicate-classes",
+      "example": "<div className=\"flex flex\">x</div>"
+    },
+    {
+      "theirs": "no-deprecated-classes",
+      "ours": "no-deprecated-classes",
+      "example": "<div className=\"flex-shrink-0\">x</div>"
+    },
+    {
+      "theirs": "no-unnecessary-whitespace",
+      "ours": "no-unnecessary-whitespace",
+      "example": "<div className=\"flex  p-4\">x</div>",
+      "notes": {
+        "en": "Line breaks are always kept, as with their `allowMultiline: true`.",
+        "es": "Los saltos de línea siempre se conservan, como con su `allowMultiline: true`."
+      }
+    },
+    {
+      "theirs": "no-concatenated-classes",
+      "ours": "no-dynamic-classes",
+      "example": "<div className={\"bg-\" + tone}>x</div>",
+      "notes": {
+        "en": "Both report a class built with `${}` or `+`. This one reports it when the built class starts with a Tailwind utility or variant, so `\"p-4 \" + extra` and `` `icon-${name}` `` are fine.",
+        "es": "Las dos reportan una clase armada con `${}` o `+`. Esta la reporta cuando la clase armada empieza con una utility o una variant de Tailwind, así que `\"p-4 \" + extra` y `` `icon-${name}` `` están bien."
+      }
+    },
+    {
+      "theirs": "no-unknown-classes",
+      "ours": "no-unknown-classes",
+      "example": "<div className=\"itms-center\">x</div>",
+      "notes": {
+        "en": "`ignore` (regular expressions) → `allowlist` (exact names) and `ignorePrefixes`. The classes your CSS defines (`@layer components`, `@utility`) are always known, so their `detectComponentClasses` setting has no counterpart.",
+        "es": "`ignore` (expresiones regulares) → `allowlist` (nombres exactos) e `ignorePrefixes`. Las clases que define tu CSS (`@layer components`, `@utility`) siempre se conocen, así que su setting `detectComponentClasses` no tiene equivalente."
+      }
+    },
+    {
+      "theirs": "no-conflicting-classes",
+      "ours": "no-conflicting-classes",
+      "example": "<div className=\"p-4 p-6\">x</div>",
+      "notes": {
+        "en": "It also reports a class another one makes redundant (`reportRedundant`), and `allow` exempts pairs.",
+        "es": "También reporta una clase que otra vuelve redundante (`reportRedundant`), y `allow` exime pares."
+      }
+    },
+    {
+      "theirs": "no-restricted-classes",
+      "ours": "no-restricted-classes",
+      "example": "<div className=\"float-left\">x</div>",
+      "options": {
+        "theirs": { "restrict": ["^float-"] },
+        "ours": { "patterns": [{ "pattern": "^float-" }] }
+      },
+      "notes": {
+        "en": "`restrict: [{ pattern, message }]` → `patterns: [{ pattern, message }]`, and `classes` for exact names. There is no `fix`.",
+        "es": "`restrict: [{ pattern, message }]` → `patterns: [{ pattern, message }]`, y `classes` para nombres exactos. No hay `fix`."
+      }
+    }
+  ],
+  "settings": [
+    {
+      "theirs": "entryPoint",
+      "ours": "entryPoint",
+      "notes": {
+        "en": "Required here. A string, or a glob → CSS mapping for a monorepo.",
+        "es": "Aquí es obligatorio. Un string, o un mapping glob → CSS para un monorepo."
+      }
+    },
+    {
+      "theirs": "cwd",
+      "ours": "entryPoint",
+      "notes": {
+        "en": "Map each package's files to its CSS with `entryPoint: [{ files, use }]`, or give the package its own `.oxlintrc.json`.",
+        "es": "Mapea los archivos de cada package a su CSS con `entryPoint: [{ files, use }]`, o dale al package su propio `.oxlintrc.json`."
+      }
+    },
+    {
+      "theirs": "rootFontSize",
+      "ours": "rootFontSize"
+    },
+    {
+      "theirs": "selectors",
+      "ours": "attributes, attributePatterns, callees, calleeExtractors, tags, variablePatterns",
+      "notes": {
+        "en": "Both read `class` / `className`, the same variable names and most helpers by default. Add what yours lists that this one doesn't: the `dcnb` helper to `callees`, the `twc` / `twx` tags to `tags`.",
+        "es": "Los dos leen `class` / `className`, los mismos nombres de variables y la mayoría de los helpers por defecto. Agrega lo que liste el tuyo y este no: el helper `dcnb` a `callees`, los tags `twc` / `twx` a `tags`."
+      }
+    },
+    {
+      "theirs": "detectComponentClasses",
+      "ours": null,
+      "notes": {
+        "en": "Always on: the classes your CSS defines are known.",
+        "es": "Siempre encendido: las clases que define tu CSS se conocen."
+      }
+    },
+    {
+      "theirs": "tailwindConfig",
+      "ours": null,
+      "notes": {
+        "en": "A Tailwind v3 JavaScript config; this plugin reads Tailwind v4 CSS.",
+        "es": "Una config JavaScript de Tailwind v3; este plugin lee el CSS de Tailwind v4."
+      }
+    },
+    { "theirs": "tsconfig", "ours": null },
+    { "theirs": "messageStyle", "ours": null }
+  ]
+}
