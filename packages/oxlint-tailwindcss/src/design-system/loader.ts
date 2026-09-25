@@ -341,7 +341,6 @@ export function createLazyLoader(context: {
   filename?: string
   cwd?: string
 }): () => LoadResult {
-  let debugInitialized = false
   let lastFilePath: string | undefined
   let lastResult: LoadResult | undefined
   let lastError: Error | undefined
@@ -362,10 +361,9 @@ export function createLazyLoader(context: {
     const ruleOptionEntry = safeOptions<{ entryPoint?: string }>(context)?.entryPoint
     const settings = safeSettings(context)
 
-    if (!debugInitialized && settings) {
-      debugInitialized = true
-      setDebugEnabled(isDebugEnabled(settings))
-    }
+    // Per file, like everything else here: a nested .oxlintrc.json can turn
+    // `debug` on for its own package only.
+    if (settings) setDebugEnabled(isDebugEnabled(settings))
 
     lastFilePath = filePath
     lastResult = undefined

@@ -91,29 +91,110 @@ export function safeCwd(context: ContextLike): string {
 }
 
 /**
- * Lazily memoize a compiled options object across visitor calls.
+ * Lazily memoize a compiled options object — per CONFIG, not per run.
  *
- * Every rule with options reinvents:
+ * Every rule with options reinvents "compile `context.options[0]` once": pass
+ * the context and a `compile` function (which receives the raw options object —
+ * possibly undefined) and get a memoized thunk back.
  *
- *     let _x: CompiledOptions | null = null
- *     function getX() {
- *       if (_x === null) _x = compile(safeOptions<RawOptions>(context))
- *       return _x
- *     }
- *
- * This wraps the pattern: pass the context and a `compile` function (which
- * receives the raw options object — possibly undefined) and get a memoized
- * thunk back. Inside `createOnce`, options aren't available yet, so the first
- * visitor call triggers compilation; every subsequent call is O(1).
+ * `createOnce` runs once per worker and its context then serves every file the
+ * worker lints, and those files don't all share options: an `overrides` block
+ * or a nested `.oxlintrc.json` gives some of them their own. oxlint hands every
+ * file of one effective config the SAME options array, so the memo is keyed by
+ * that array's identity: one compile per distinct config, and the steady state
+ * is a single reference comparison. Options read while unavailable (inside
+ * `createOnce`) are compiled but not remembered.
  */
 export function createLazyOptions<Raw, Compiled>(
   context: ContextLike,
   compile: (raw: Raw | undefined) => Compiled,
 ): () => Compiled {
-  let cached: { value: Compiled } | null = null
+  const byOptions = new WeakMap<object, Compiled>()
+  // "No options configured" arrives as `undefined` or as an empty array (a new
+  // one per file, possibly): one config of its own, compiled once.
+  let none: { value: Compiled } | null = null
+  let lastKey: unknown = UNSET
+  let last: Compiled | undefined
+
   return () => {
-    if (cached) return cached.value
-    cached = { value: compile(safeOptions<Raw>(context)) }
-    return cached.value
+    let key: readonly unknown[] | undefined
+    try {
+      key = context.options ?? undefined
+    } catch {
+      return compile(undefined)
+    }
+    if (key === lastKey) return last as Compiled
+
+    let value: Compiled
+    if (key === undefined || key.length === 0 || key[0] === undefined) {
+      none ??= { value: compile(undefined) }
+      value = none.value
+    } else if (byOptions.has(key)) {
+      value = byOptions.get(key) as Compiled
+    } else {
+      value = compile(key[0] as Raw)
+      byOptions.set(key, value)
+    }
+    lastKey = key
+    last = value
+    return value
   }
+}
+
+const UNSET = Symbol('unset')
+
+/** Distinct settings contents remembered per thunk before the oldest is dropped. */
+const SETTINGS_MEMO_SIZE = 32
+
+/**
+ * Lazily memoize a value derived from `context.settings` — per FILE.
+ *
+ * Settings vary between the files one context serves (a nested
+ * `.oxlintrc.json` has its own), and oxlint builds a fresh settings object for
+ * every file, even under one config. So: the same object as last call (the same
+ * file) returns at once; otherwise the `tailwindcss` block's JSON is the key
+ * into a small memo, so equal settings compile once however many files carry
+ * them. Settings read while unavailable (inside `createOnce`) are compiled but
+ * not remembered.
+ */
+export function createLazySettings<Compiled>(
+  context: ContextLike,
+  compile: (settings: Readonly<Record<string, unknown>> | undefined) => Compiled,
+): () => Compiled {
+  const byContent = new Map<string, Compiled>()
+  let lastSettings: unknown = UNSET
+  let last: Compiled | undefined
+
+  return () => {
+    let settings: Readonly<Record<string, unknown>> | undefined
+    try {
+      settings = context.settings ?? undefined
+    } catch {
+      return compile(undefined)
+    }
+    if (settings === lastSettings) return last as Compiled
+
+    const key = settingsKey(settings)
+    let value: Compiled
+    if (byContent.has(key)) {
+      value = byContent.get(key) as Compiled
+    } else {
+      value = compile(settings)
+      if (byContent.size >= SETTINGS_MEMO_SIZE) {
+        byContent.delete(byContent.keys().next().value as string)
+      }
+      byContent.set(key, value)
+    }
+    lastSettings = settings
+    last = value
+    return value
+  }
+}
+
+/**
+ * The memo key for a settings object: its `tailwindcss` block, the only part
+ * this plugin reads. Settings come from JSON config files, so JSON is exact.
+ */
+export function settingsKey(settings: Readonly<Record<string, unknown>> | undefined): string {
+  return JSON.stringify(settings?.tailwindcss) ?? ''
 }

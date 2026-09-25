@@ -280,6 +280,27 @@ describe('calleeExtractors — structured routing for custom callees (#155)', ()
   })
 
   describe('config resolution (getExtractorConfig)', () => {
+    // One rule context serves every file of a worker, and a nested
+    // .oxlintrc.json gives some files their own settings — a fresh settings
+    // object per file (oxlint 1.85). The config must follow the file.
+    it('follows the settings of the file being linted, not the first one', () => {
+      const ctx: { settings?: Record<string, unknown> } = {
+        settings: { tailwindcss: { attributes: ['tw'] } },
+      }
+      expect(getExtractorConfig(ctx).attributes).toContain('tw')
+      ctx.settings = { tailwindcss: { callees: ['styled'] } }
+      expect(getExtractorConfig(ctx).attributes).not.toContain('tw')
+      expect(getExtractorConfig(ctx).callees).toContain('styled')
+      ctx.settings = undefined
+      expect(getExtractorConfig(ctx)).toBe(DEFAULT_EXTRACTOR_CONFIG)
+    })
+
+    it('reuses the compiled config for equal settings across files', () => {
+      const a = getExtractorConfig({ settings: { tailwindcss: { attributes: ['xx'] } } })
+      const b = getExtractorConfig({ settings: { tailwindcss: { attributes: ['xx'] } } })
+      expect(b).toBe(a)
+    })
+
     it('auto-registers mapped names as callees and keeps the routes', () => {
       const cfg = getExtractorConfig({
         settings: { tailwindcss: { calleeExtractors: { defineStyles: 'tv', mk: 'cva' } } },

@@ -239,10 +239,11 @@ oxc#24597/#23207/#20501; multi-line `<script`, oxc#26289); update `packages/docs
 - `exclude: { attributes?, callees?, tags?, variablePatterns? }` — remove specific items from
   defaults. For `variablePatterns`, exclusions match against `RegExp.source`.
 
-Config is resolved lazily by `getExtractorConfig(context)` on first visitor call and cached in a
-per-context `WeakMap` — no module-level state, so two parallel rule contexts can't race on a global.
-`resetExtractorConfig(context?)` exists for test isolation and is mostly a no-op (the WeakMap drops
-entries automatically when the context goes out of scope).
+Config is resolved by `getExtractorConfig(context)` **per file**: a `WeakMap` keyed by the file's
+settings object (oxlint builds one per file) is the fast path for every visitor call in that file,
+and a bounded (32) memo keyed by the `tailwindcss` block's JSON shares one compiled config across
+all files with equal settings. Never key it by the context — one context serves every file of a
+worker (see "Per-file options and settings"). `resetExtractorConfig()` drops both caches (tests).
 
 **Deep extraction**: `cva()` understands `variants`, `compoundVariants`, ignores `defaultVariants`.
 `tv()` understands `base`, `slots`, `variants` (with slot sub-objects), `compoundVariants`,
@@ -275,11 +276,13 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
 
 - **`utils/context.ts`** — `safeOptions(context)`, `safeSettings(context)`, `safeFilename(context)`
   absorb the "context field throws inside `createOnce`" oxlint quirk. Plus
-  `createLazyOptions(context, compile)` for the lazy-init memoized-options pattern that every rule
-  with rule-specific options consumes (rules whose only option is `entryPoint` read it through
+  `createLazyOptions(context, compile)` for the memoized-options pattern that every rule with
+  rule-specific options consumes (rules whose only option is `entryPoint` read it through
   `createLazyLoader` → `safeOptions` instead) —
-  `const getX = createLazyOptions<Options, T>(context, (o) => compile(o))`. Lives in `utils/`, not
-  `types.ts` (which is import-type-only).
+  `const getX = createLazyOptions<Options, T>(context, (o) => compile(o))` — and
+  `createLazySettings(context, compile)` for anything derived from settings (`rootFontSize` in
+  `enforce-canonical` / `prefer-scale-token`). Both are per file; see "Per-file options and
+  settings". Lives in `utils/`, not `types.ts` (which is import-type-only).
 - **`utils/class-parser.ts`** — `splitImportant(utility) → { bare, position }` +
   `reattachImportant(bare, position) → string` are the canonical homes for the `!`
   strip-and-reattach invariant. Every rule that does class lookups MUST round-trip through them; the
@@ -307,8 +310,20 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   When the resolved entry-point changes between files (monorepo with mapping array), the loader
   picks up the new entry. There is no `lastLoadedPath` fallback — the loader always re-resolves from
   settings.
-- **Options timing**: ALL options must be read lazily inside `check()` via `safeOptions()` (or
-  `createLazyOptions` for memoized compiled options) — they're null in `createOnce()`.
+- **Options timing**: ALL options must be read lazily inside `check()` via `createLazyOptions` —
+  they're null in `createOnce()`.
+- **Per-file options and settings.** `createOnce` runs once per worker and its context then serves
+  every file that worker lints, but options and settings belong to each file: `overrides` and nested
+  `.oxlintrc.json` change options, nested configs change settings (`overrides` reject `settings`).
+  Measured on oxlint 1.85: every file of one effective config gets the SAME `context.options` array
+  object; `context.settings` is a FRESH object per file. So `createLazyOptions` memoizes by options
+  identity (a `WeakMap`, steady state = one `===`), and `createLazySettings` / `getExtractorConfig`
+  take the settings object as a per-file fast path plus a bounded memo by JSON content. **Never read
+  `safeOptions` / `safeSettings` / `context.options` / `context.settings` into a closure variable in
+  a rule** — the first file would win for the whole run (the old `_rem`). RuleTester can't catch it
+  (it re-runs `createOnce` per case); `tests/integration/per-file-config.test.ts` bans direct reads
+  in `src/rules/`, and `tests/e2e/per-file-config.test.ts` drives the real binary with `overrides`,
+  nested configs and `extends` under `--threads=1`. The debug flag is re-evaluated per file too.
 - **Entry point resolution** (v1, deterministic): rule option `entryPoint` (a string) >
   `settings.tailwindcss.entryPoint`. The settings value is either:
   - `string` — a single CSS path for the whole project, or

@@ -1,6 +1,7 @@
 import type { ESTree } from '@oxlint/plugins'
 import type { CalleeExtractorKind, PluginSettings } from '../types'
 import { compileRegexList } from './allowlist'
+import { settingsKey } from './context'
 
 /**
  * Where a class string was extracted from. This is the single fact a
@@ -137,8 +138,12 @@ export const DEFAULT_EXTRACTOR_CONFIG: ExtractorConfig = {
  * WeakMap also lets us drop entries automatically when a context goes out of
  * scope — no manual cache eviction needed.
  */
-type ContextKey = object
-const configCache = new WeakMap<ContextKey, ExtractorConfig>()
+// Per-file fast path (oxlint builds one settings object per file, read by
+// every visitor call in it), then a bounded memo by content so every file of
+// one config shares one compiled config.
+let configBySettings = new WeakMap<object, ExtractorConfig>()
+const configByContent = new Map<string, ExtractorConfig>()
+const CONFIG_MEMO_SIZE = 32
 
 function mergeUnique(defaults: string[], extras?: string[], exclusions?: string[]): string[] {
   let base = defaults
@@ -176,9 +181,13 @@ function compileCalleeExtractors(
 }
 
 /**
- * Returns the extractor config for this rule context, merging defaults with
- * user settings from `settings.tailwindcss`. The result is cached per
- * context (WeakMap-keyed) so settings are read once per rule lifetime.
+ * Returns the extractor config for the file being linted, merging defaults with
+ * user settings from `settings.tailwindcss`.
+ *
+ * Resolved per FILE: one rule context serves every file of a worker, and a
+ * nested `.oxlintrc.json` gives some files their own settings. Equal settings
+ * (every file of one config) share one compiled config, so the regexes and
+ * merged lists are built once per distinct settings, not once per file.
  *
  * In `createOnce` the settings getter throws — we fall back to the defaults
  * without caching so the next visitor call (where settings ARE available)
@@ -187,27 +196,38 @@ function compileCalleeExtractors(
 export function getExtractorConfig(context: {
   settings?: Readonly<Record<string, unknown>>
 }): ExtractorConfig {
-  const cached = configCache.get(context as ContextKey)
-  if (cached) return cached
-
-  let tw: PluginSettings | undefined
+  let settings: Readonly<Record<string, unknown>> | undefined
   try {
-    const raw = context.settings?.tailwindcss
-    if (raw && typeof raw === 'object') {
-      tw = raw as PluginSettings
-    }
+    settings = context.settings ?? undefined
   } catch {
     // createOnce — settings not available yet. Return defaults without
     // caching so a later call from a visitor still gets a chance to read
     // the real settings.
     return DEFAULT_EXTRACTOR_CONFIG
   }
+  if (!settings) return DEFAULT_EXTRACTOR_CONFIG
 
-  if (!tw) {
-    configCache.set(context as ContextKey, DEFAULT_EXTRACTOR_CONFIG)
-    return DEFAULT_EXTRACTOR_CONFIG
+  const cached = configBySettings.get(settings)
+  if (cached) return cached
+
+  const key = settingsKey(settings)
+  let resolved = configByContent.get(key)
+  if (!resolved) {
+    const raw = settings.tailwindcss
+    resolved =
+      raw && typeof raw === 'object'
+        ? compileExtractorConfig(raw as PluginSettings)
+        : DEFAULT_EXTRACTOR_CONFIG
+    if (configByContent.size >= CONFIG_MEMO_SIZE) {
+      configByContent.delete(configByContent.keys().next().value as string)
+    }
+    configByContent.set(key, resolved)
   }
+  configBySettings.set(settings, resolved)
+  return resolved
+}
 
+function compileExtractorConfig(tw: PluginSettings): ExtractorConfig {
   const exclude = tw.exclude
 
   // Variable patterns: exclude by regex source, then add new patterns
@@ -226,7 +246,7 @@ export function getExtractorConfig(context: {
   const excludedCallees = new Set(exclude?.callees ?? [])
   const calleeExtractors = compileCalleeExtractors(tw.calleeExtractors, excludedCallees)
 
-  const resolved: ExtractorConfig = {
+  return {
     attributes: mergeUnique(
       DEFAULT_EXTRACTOR_CONFIG.attributes,
       tw.attributes,
@@ -252,24 +272,12 @@ export function getExtractorConfig(context: {
     ],
     calleeExtractors,
   }
-  configCache.set(context as ContextKey, resolved)
-  return resolved
 }
 
-/**
- * Reset cached config for a specific context, or globally for tests that
- * don't track contexts.
- *
- * Kept for backward compat with existing tests that call it from `beforeEach`.
- * With WeakMap-keyed caching, fresh contexts get fresh caches automatically;
- * this helper now only needs to drop a specific entry when callers pass one.
- */
-export function resetExtractorConfig(context?: { settings?: unknown }): void {
-  if (context) {
-    configCache.delete(context as ContextKey)
-  }
-  // No-op when called without a context: the WeakMap already handles
-  // lifecycle. Module-level global state was removed in v1.
+/** Drop every cached extractor config (tests). */
+export function resetExtractorConfig(): void {
+  configBySettings = new WeakMap()
+  configByContent.clear()
 }
 
 const WHITESPACE = /\s/

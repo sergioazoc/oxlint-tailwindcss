@@ -63,7 +63,7 @@ my-monorepo/
 ```jsonc
 // packages/ui/.oxlintrc.json
 {
-  "extends": "../../.oxlintrc.json",
+  "extends": ["../../.oxlintrc.json"],
   "settings": {
     "tailwindcss": { "entryPoint": "./src/styles.css" }
   }
@@ -95,6 +95,36 @@ Cuándo conviene:
 - Los packages divergen mucho en reglas, plugins o globals.
 - Distintos equipos son dueños de distintos packages y quieren config autocontenido.
 - Tienes packages sin Tailwind que NO deberían ejecutar el plugin.
+
+## Opciones y settings distintos por package
+
+Las opciones de las reglas y `settings.tailwindcss` se resuelven para cada archivo, así que los
+packages pueden diferir en ambos — dentro de una misma corrida, en la terminal y en el editor. Dónde
+puedes definirlos:
+
+| Definido en                                | Opciones de reglas | `settings.tailwindcss` |
+| ------------------------------------------ | ------------------ | ---------------------- |
+| Un bloque `overrides` del config raíz      | ✓                  | ✗                      |
+| Un `.oxlintrc.json` anidado (Patrón B)     | ✓                  | ✓                      |
+| El mapping de `entryPoint` raíz (Patrón A) | —                  | solo `entryPoint`      |
+
+oxlint rechaza `settings` dentro de `overrides` (``unknown field `settings` ``), así que un package
+que necesita sus propios `attributes`, `callees`, `rootFontSize` o `debug` lleva un config anidado.
+Un config anidado es independiente salvo que liste el raíz en `extends` — entonces hereda
+`jsPlugins` y `rules` y solo agrega lo que cambia, como en el ejemplo del Patrón B.
+
+::: warning Vite+ y editores
+
+- **Vite+** (`vp lint`) no descubre los `.oxlintrc.json` anidados (oxlint 1.85+,
+  [oxc#26763](https://github.com/oxc-project/oxc/pull/26763)): solo aplica el config raíz. Usa el
+  mapping de `entryPoint` del Patrón A para el CSS por package; los demás settings no pueden variar
+  por package ahí.
+- **Editores** (la extensión de oxc para VS Code y otros clientes LSP) descubren los configs
+  anidados cuando `oxc.configPath` no está definido. Desde oxlint 1.84 un `""` vacío también cuenta
+  como no definido ([oxc#26762](https://github.com/oxc-project/oxc/pull/26762)); apuntarlo a un
+  archivo desactiva los configs anidados, como `oxlint -c`.
+
+:::
 
 ## Lo que **NO** funciona en v1
 
