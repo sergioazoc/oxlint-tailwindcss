@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+
+/*
+ * Custom variants whose selectors name the `group` and `peer` markers
+ * themselves (#165). The selector scan puts both into the component set, and
+ * named markers (`group/row`, `peer/field`) must stay valid regardless.
+ */
+@custom-variant group-popup-open (&:is(:where(.group):has([data-state="open"]) *));
+@custom-variant peer-open (&:is(:where(.peer)[data-state="open"] ~ *));

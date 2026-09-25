@@ -440,12 +440,14 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   compile?" is the wrong question. `no-unknown-classes` calls the predicate in its pre-pass and
   again **after** the `missing-prefix` branch (under a prefix the marker Tailwind wants IS
   `tw:group/menu-item`, so an unprefixed one is genuinely dead CSS and must stay reported). The
-  predicate is derived — a precomputed, non-component class with ZERO declarations, which resolves
-  to exactly `group` and `peer` on every fixture — so it self-prunes, self-extends, and excludes
-  `@container/main` for free. Splits at the FIRST slash (`peer//x`, `group/a/b` are legal names);
-  only the EMPTY name is rejected. **Do not seed named markers into `validClasses`**: the `/name` is
-  user-chosen and unbounded, `ds.parseCandidate('peer/menu-button')` returns `[]`, and it would feed
-  unbounded strings to the Levenshtein scan. Under a prefix an unprefixed marker reports
+  predicate is derived — a precomputed class that is not a component-ONLY class and has ZERO
+  declarations, which resolves to exactly `group` and `peer` on every fixture — so it self-prunes,
+  self-extends, and excludes `@container/main` for free. Component-only, not `componentSet`: a
+  `@custom-variant` whose selector names `.group` puts `group` in `componentSet` as well, and that
+  must not unmake the marker (#165). Splits at the FIRST slash (`peer//x`, `group/a/b` are legal
+  names); only the EMPTY name is rejected. **Do not seed named markers into `validClasses`**: the
+  `/name` is user-chosen and unbounded, `ds.parseCandidate('peer/menu-button')` returns `[]`, and it
+  would feed unbounded strings to the Levenshtein scan. Under a prefix an unprefixed marker reports
   `missingPrefix`, never a Levenshtein neighbour — for `peer//x` that neighbour is the bare `peer`,
   and the quick-fix would delete the name every consumer binds to.
 - **The DS verdict ACCEPTS as well as refutes** (`no-unknown-classes`, issue #104). The rule asks

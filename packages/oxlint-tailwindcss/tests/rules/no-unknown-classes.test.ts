@@ -661,6 +661,47 @@ describe('named group/peer markers', () => {
       },
     ],
   })
+
+  /**
+   * A custom variant whose selector names `.group` / `.peer` (#165). The
+   * selector scan adds both bases to the component set, and a component base is
+   * what the predicate refuses — yet `group` and `peer` are still Tailwind's own
+   * zero-declaration markers, so their named forms must keep resolving.
+   */
+  const MARKER_VARIANT = resolve(__dirname, '../fixtures/with-marker-variant.css')
+
+  runWithFixture(
+    new RuleTester(),
+    'markers named by a custom variant',
+    noUnknownClasses,
+    MARKER_VARIANT,
+    {
+      valid: [
+        { code: '<div className="group peer" />', filename: 'test.tsx' },
+        { code: '<div className="group/row group-hover/row:underline" />', filename: 'test.tsx' },
+        {
+          code: '<div className="peer/field peer-invalid/field:text-red-500" />',
+          filename: 'test.tsx',
+        },
+        {
+          code: '<div className="group-popup-open:bg-red-500 peer-open:hidden" />',
+          filename: 'test.tsx',
+        },
+      ],
+      invalid: [
+        {
+          code: '<div className="group/" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'unknownWithSuggestion' }],
+        },
+        {
+          code: '<div className="peerr/field" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'unknown' }],
+        },
+      ],
+    },
+  )
 })
 
 /**

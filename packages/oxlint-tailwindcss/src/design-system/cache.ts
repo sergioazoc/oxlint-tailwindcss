@@ -57,6 +57,10 @@ export class DesignSystemCache {
   // the prefix. Kept separate from validitySet so `classValidity` can tell a
   // Tailwind utility (prefix-required) apart from a user component class.
   private componentSet = new Set<string>()
+  // Component classes Tailwind itself does not generate. A stylesheet selector
+  // can also name a real Tailwind class (`@custom-variant x (.group …)`), which
+  // puts it in `componentSet` without making it any less Tailwind's.
+  private componentOnlySet = new Set<string>()
   private themeRefs = new Map<string, string[]>()
   private definedVarSet = new Set<string>()
   // Utility prefix → [literal value, class]. Read by prefer-scale-token; see
@@ -116,6 +120,7 @@ export class DesignSystemCache {
 
     if (data.componentClasses) {
       for (const cls of data.componentClasses) {
+        if (!cache.validitySet.has(cls)) cache.componentOnlySet.add(cls)
         cache.validitySet.add(cls)
         cache.componentSet.add(cls)
       }
@@ -381,9 +386,12 @@ export class DesignSystemCache {
    * declarations, which across every fixture resolves to exactly `group` and
    * `peer` (2 of ~23.6k). It self-prunes if Tailwind drops the variants,
    * self-extends if a new CSS-less marker appears, and excludes `@container/main`
-   * for free — that one HAS declarations. The component set is subtracted
+   * for free — that one HAS declarations. Component-only classes are subtracted
    * because a class referenced only through `[class~="…"]` (`not-prose`) also has
-   * no declarations of its own, and `not-prose/x` is not Tailwind syntax.
+   * no declarations of its own, and `not-prose/x` is not Tailwind syntax. It is
+   * the component-ONLY set, not `componentSet`: a custom variant whose selector
+   * names `.group` puts `group` in `componentSet` too, and must not unmake the
+   * marker (#165).
    *
    * The name is user-chosen and Tailwind never checks that it exists, so any
    * NON-EMPTY name is accepted — including the shapes only an arbitrary modifier
@@ -398,7 +406,7 @@ export class DesignSystemCache {
     const base = bare.slice(0, slash)
     return (
       this.validitySet.has(base) &&
-      !this.componentSet.has(base) &&
+      !this.componentOnlySet.has(base) &&
       this.getCssDeclarations(base).length === 0
     )
   }

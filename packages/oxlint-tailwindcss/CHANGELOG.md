@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `no-unknown-classes`: named group/peer markers (`group/row`, `peer/field`) are no longer reported
+  when the entry point has a `@custom-variant` whose selector names `.group` or `.peer`. The
+  selector scan put `group`/`peer` into the component set, and the marker check refused any
+  component base; it now refuses only component classes Tailwind does not generate itself
+  ([#165](https://github.com/sergioazoc/oxlint-tailwindcss/issues/165)).
+
 ## 1.13.0
 
 Wrapping `cva`/`tv`/`classed` behind a shared design-system package — re-exporting them under your

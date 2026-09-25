@@ -45,6 +45,7 @@ const FIXTURES = [
   'with-tw-animate-css.css',
   'unrelated-theme-vars.css',
   'with-custom-variants.css',
+  'with-marker-variant.css',
   'with-foreign-vars.css',
   'axis-namespaces.css',
   'custom-utility.css',
