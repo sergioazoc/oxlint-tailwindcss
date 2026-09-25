@@ -20,10 +20,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        # Node 20 is intentionally not in the CI matrix: pnpm itself declares
-        # `engines.node >=22.13` (unchanged from 11.4 through 11.20), so the dev
-        # toolchain cannot even start there. The published plugin's runtime only
-        # uses worker_threads/Atomics/fs and still supports Node >=20 (per package
+        # Node 20 is intentionally not in the CI matrix: the dev toolchain can't
+        # run there (tsdown needs ^22.18 || ^24.11 || >=26, vitest ^22.12 ||
+        # ^24 || >=26). The published plugin's runtime only uses
+        # worker_threads/Atomics/fs and still supports Node 20 (per package
         # `engines`); this matrix verifies the toolchain-supported versions.
         node-version: [22, 24, 26]
         # The sync-loader relies on Atomics, file-locks (openSync 'wx'),
