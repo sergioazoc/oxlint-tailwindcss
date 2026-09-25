@@ -60,8 +60,11 @@ Crea o extiende tu `.oxlintrc.json` en la raíz del proyecto:
 haces `@import "tailwindcss";` y (opcionalmente) declaras tus tokens `@theme { ... }`. El plugin lee
 ese archivo para construir el design system que todas las reglas consultan.
 
-Eso es todo. Ejecuta `oxlint` y el plugin va a lintear cada archivo JS / TS / JSX / TSX / Vue /
-Svelte del proyecto contra el design system cargado desde `src/styles.css`.
+Eso es todo. Ejecuta `oxlint` y el plugin revisa cada archivo que oxlint lintea — `.js`, `.jsx`,
+`.ts`, `.tsx` (y `.mjs`, `.cjs`, `.mts`, `.cts`) — contra el design system cargado desde
+`src/styles.css`. En los archivos `.vue`, `.svelte` y `.astro`, oxlint solo le pasa a los plugins
+los bloques `<script>` (y el frontmatter de Astro), así que las clases escritas en el template o en
+el markup **todavía no** se revisan. Ver [Vue, Svelte y Astro](/es/frameworks).
 
 ## 3. Conjunto de reglas recomendado
 

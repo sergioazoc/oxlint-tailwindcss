@@ -28,6 +28,11 @@
   `proseWrap` had merged each container's opener, body and closer into one paragraph, so the page
   printed a literal `:::` and the unclosed box wrapped everything below it. A new test keeps every
   container in the docs and READMEs well-formed.
+- **Vue, Svelte and Astro coverage is stated as it is.** The setup page said the plugin lints "every
+  … Vue / Svelte file"; oxlint only passes plugins the `<script>` blocks (and Astro's frontmatter),
+  so template and markup classes are not checked. A new
+  [Vue, Svelte & Astro](https://oxlint-tailwindcss.pages.dev/frameworks) page shows what is and
+  isn't linted, and an end-to-end test with canaries keeps the docs honest when oxlint changes it.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

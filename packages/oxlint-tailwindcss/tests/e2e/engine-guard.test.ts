@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { join, resolve } from 'node:path'
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { assertFreshDist, DIST_CJS } from './helpers/dist'
 
 // End-to-end for the version guard + consumer-engine resolution (issue #114).
 //
@@ -14,7 +15,6 @@ import { tmpdir } from 'node:os'
 // downgrade it to a warn+run.
 
 const ROOT = resolve(__dirname, '../..')
-const DIST_CJS = resolve(ROOT, 'dist/index.cjs')
 const IS_WINDOWS = process.platform === 'win32'
 const OXLINT = resolve(ROOT, 'node_modules/.bin', IS_WINDOWS ? 'oxlint.cmd' : 'oxlint')
 
@@ -73,7 +73,7 @@ describe('E2E #114: build/engine major drift fails loud', () => {
   let ROOT_ALLOW: string
 
   beforeAll(() => {
-    if (!existsSync(DIST_CJS)) throw new Error('dist/index.cjs not found. Run `pnpm build` first.')
+    assertFreshDist()
     ROOT_FATAL = scaffold(false)
     ROOT_ALLOW = scaffold(true)
   })

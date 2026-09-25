@@ -1036,6 +1036,10 @@ The class parser correctly handles:
 
 ## Known limitations
 
+- **Vue, Svelte and Astro templates are not linted.** oxlint only passes plugins the `<script>`
+  blocks of `.vue`, `.svelte` and `.astro` files (and Astro's frontmatter); classes in the template
+  or markup are never visible to a JS plugin yet. See
+  [Vue, Svelte & Astro](https://oxlint-tailwindcss.pages.dev/frameworks).
 - **`enforce-canonical`**: Named classes are canonicalized via the precomputed map (covers
   everything in `getClassList()` plus a curated list of legacy v3 spellings like `break-words`,
   `flex-grow`, `start-N`, `bg-gradient-to-*`, `bg-left-top` → `bg-top-left`). Arbitrary/CSS-var

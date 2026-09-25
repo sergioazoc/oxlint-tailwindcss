@@ -104,6 +104,11 @@ Classes are detected in `className`/`class` attributes, 14 utility helpers (`cn`
 `/^styles?$/` (e.g. `className`, `classNames`, `classes`, `styles`) — all extendable via
 `settings.tailwindcss`.
 
+**Files:** everything oxlint lints — `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.cjs`, `.mts`, `.cts`.
+In `.vue`, `.svelte` and `.astro` files oxlint only passes plugins the `<script>` blocks (and
+Astro's frontmatter), so template and markup classes are not checked yet — see
+[Vue, Svelte & Astro](https://oxlint-tailwindcss.pages.dev/frameworks).
+
 ## Requirements
 
 - Node.js `^20.19.0 || >=22.12.0` (the same range oxlint itself requires)
