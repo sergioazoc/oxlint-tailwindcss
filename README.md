@@ -106,7 +106,7 @@ Classes are detected in `className`/`class` attributes, 14 utility helpers (`cn`
 
 ## Requirements
 
-- Node.js ≥ 20
+- Node.js `^20.19.0 || >=22.12.0` (the same range oxlint itself requires)
 - Tailwind CSS v4.1.15+ (older releases lack a design-system API the plugin needs)
 - oxlint ≥ 1.43.0
 

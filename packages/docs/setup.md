@@ -17,7 +17,8 @@ Requirements:
   project's Tailwind per entry point; releases before 4.1.15 are not supported (they predate a
   design-system API the plugin needs) and are reported with a clear diagnostic. Insiders builds
   (`tailwindcss@insiders`) run with a one-time "untested engine" notice.
-- **Node.js 20** or newer for the linter process itself.
+- **Node.js `^20.19.0 || >=22.12.0`** for the linter process — the same range oxlint itself
+  requires.
 
 ::: warning Avoid oxlint 1.77.0 with the editor extension
 

@@ -19,7 +19,8 @@ Requisitos:
   anteriores a una API del design system que el plugin necesita) y se reportan con un diagnóstico
   claro. Los builds insiders (`tailwindcss@insiders`) corren con un aviso único de "motor no
   probado".
-- **Node.js 20** o posterior para el proceso del linter.
+- **Node.js `^20.19.0 || >=22.12.0`** para el proceso del linter — el mismo rango que exige el
+  propio oxlint.
 
 ::: warning Evita oxlint 1.77.0 con la extensión del editor
 

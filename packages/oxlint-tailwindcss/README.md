@@ -1089,7 +1089,7 @@ the box. If you find one that doesn't, open an issue.
 
 ## Requirements
 
-- Node.js >= 20
+- Node.js `^20.19.0 || >=22.12.0` (the same range oxlint itself requires)
 - Tailwind CSS v4.1.15 or newer (older releases lack a design-system API the plugin needs, and are
   reported with a clear diagnostic)
 - oxlint >= 1.43.0
