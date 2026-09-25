@@ -163,7 +163,8 @@ Add more without losing the defaults:
 }
 ```
 
-Or remove from the defaults:
+Or remove from the defaults with `exclude`, which takes `attributes`, `callees`, `tags` and
+`variablePatterns`:
 
 ```jsonc
 {

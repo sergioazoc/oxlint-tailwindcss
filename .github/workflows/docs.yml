@@ -41,5 +41,10 @@ jobs:
       - name: Generate rule pages
         run: pnpm -C packages/docs generate
 
+      # Rule pages are generated from the rule registry + rules/_extras. A PR
+      # that edits either without regenerating would ship stale pages.
+      - name: Generated pages are committed
+        run: git diff --exit-code -- packages/docs
+
       - name: Build docs site
         run: pnpm -C packages/docs build

@@ -157,6 +157,13 @@ CSS modules (`s-`), un UI kit de terceros (`ant-`, `chakra-`), o clases inyectad
 Prefiere `ignorePrefixes` sobre `allowlist` cuando hay muchas clases con el mismo stem — más fácil
 de mantener.
 
+### `entryPoint`
+
+`string`, opcional.
+
+Override por regla de `settings.tailwindcss.entryPoint`. Casi nadie lo necesita — define el entry
+point una vez en `settings`.
+
 ## Ejemplos
 
 ### ✗ Incorrecto
