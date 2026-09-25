@@ -38,6 +38,14 @@
   characters, from 1 to 3) for utilities and variants alike, and swapping two adjacent letters
   counts as one edit, so `flxe` → `flex` and `opne:` → `open:` are still suggested. Such classes are
   still reported; only the suggestion goes away.
+- **`max-class-count` counts a template literal as one class string.** Each part between `${}` was
+  counted on its own, so `` `a b c ${x} d e f` `` read as two strings of 3 and never reached a `max`
+  of 4. The parts are now added up and reported once, a class glued to an expression
+  (`bg-${tone}-500`) counts once, and a bare `${expr}` counts as none. **This can add reports** on
+  long templates. Separate `cn()` arguments and `cva()`/`tv()` values are still counted one by one,
+  since they are often conditional or alternatives; the docs used to say the count was per element
+  or per call, which was never the case, and now describe it as it is. The README example printed 20
+  classes under a "(21)" diagnostic; it now has 21.
 - **Tailwind insiders builds are no longer rejected as "too old".** `0.0.0-insiders.<sha>` was read
   as version 0; it is now treated as an untested newer engine — a one-time notice, then linting as
   usual.

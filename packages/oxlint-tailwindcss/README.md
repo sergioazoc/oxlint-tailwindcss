@@ -819,24 +819,24 @@ Tailwind v4.
 
 #### `max-class-count`
 
-Warns when an element has too many Tailwind classes, suggesting extraction into a component or
-utility.
+Warns when a class string has too many Tailwind classes, suggesting extraction into a component or
+utility. A template literal counts as one string; separate `cn()` arguments are counted one by one.
 
 ```tsx
 // ❌ Bad (with default max: 20)
 <div
   className="flex items-center justify-between p-4 m-2 bg-white text-black
   rounded shadow border w-full h-10 gap-2 font-bold text-sm overflow-hidden
-  cursor-pointer transition duration-200 opacity-50"
+  cursor-pointer transition duration-200 opacity-50 z-10"
 />
 // Too many Tailwind classes (21). Maximum allowed is 20.
 ```
 
 **Options:**
 
-| Option | Type     | Default | Description                 |
-| ------ | -------- | ------- | --------------------------- |
-| `max`  | `number` | `20`    | Maximum classes per element |
+| Option | Type     | Default | Description                      |
+| ------ | -------- | ------- | -------------------------------- |
+| `max`  | `number` | `20`    | Maximum classes per class string |
 
 **No autofix** — requires developer judgment on how to split.
 
