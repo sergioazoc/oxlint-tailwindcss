@@ -35,13 +35,13 @@ export interface Semver {
 }
 
 /**
- * `4.1.0`, the minimum engine version. The precompute calls
+ * `4.1.15`, the minimum engine version. The precompute calls
  * `ds.canonicalizeCandidates`, which the design system only exposes from
- * Tailwind 4.1 onward — on 4.0.x it throws `is not a function`, so we fail loud
- * with a clear message before spawning the worker. A `4.1.0-*` prerelease sorts
- * below it.
+ * Tailwind 4.1.15 onward (checked against the published 4.1.0 … 4.1.18 builds) —
+ * on 4.0.x and 4.1.0–4.1.14 it throws `is not a function`, so we fail loud with a
+ * clear message before spawning the worker. A `4.1.15-*` prerelease sorts below it.
  */
-const MIN_ENGINE: Semver = { major: 4, minor: 1, patch: 0, prerelease: null }
+const MIN_ENGINE: Semver = { major: 4, minor: 1, patch: 15, prerelease: null }
 
 /**
  * Parse a version string into `{ major, minor, patch, prerelease }`, or `null`
@@ -74,6 +74,15 @@ export function parseVersion(v: string | null | undefined): Semver | null {
   }
 }
 
+/**
+ * Tailwind publishes its insiders builds as `0.0.0-insiders.<sha>`. Those are
+ * AHEAD of the latest v4 release, so reading them as v0 — "too old" — would
+ * reject every insiders user. The guard treats them as an untested newer engine.
+ */
+export function isInsidersVersion(v: string | null | undefined): boolean {
+  return typeof v === 'string' && /^v?0\.0\.0-insiders\./.test(v.trim())
+}
+
 /** Compare by major, minor, patch; at equal core, a release outranks a prerelease. */
 export function compareVersions(a: Semver, b: Semver): -1 | 0 | 1 {
   if (a.major !== b.major) return a.major < b.major ? -1 : 1
@@ -100,6 +109,7 @@ export type EngineVerdictKind =
   | 'engine-future-major'
   | 'engine-future-major-allowed'
   | 'engine-newer-minor'
+  | 'engine-insiders'
   | 'engine-build-drift-minor'
   | 'engine-build-drift-major'
   | 'engine-build-drift-major-allowed'
@@ -123,8 +133,19 @@ export interface AssessOptions {
  */
 export function assessEngine(E: string, B: string, opts: AssessOptions): EngineVerdict {
   const pe = parseVersion(E)
-  const pb = parseVersion(B)
+  // An insiders build is a v4 of unknown minor: skip the drift checks against it.
+  const pb = isInsidersVersion(B) ? null : parseVersion(B)
   const bundled = opts.bundledVersion
+
+  // Insiders engine → untested newer engine: warn once, run.
+  if (isInsidersVersion(E)) {
+    return {
+      verdict: 'warn',
+      kind: 'engine-insiders',
+      message: `The resolved Tailwind engine is the insiders build ${E}: unreleased behavior this plugin was not tested against; newly added utilities may be reported as unknown.`,
+      hint: 'Usually safe for trying upcoming Tailwind features; pin a released tailwindcss for CI.',
+    }
+  }
 
   // 1. E unknown → cannot assess; proceed (don't regress unconventional installs).
   if (pe === null) {
@@ -136,14 +157,14 @@ export function assessEngine(E: string, B: string, opts: AssessOptions): EngineV
     }
   }
 
-  // 2 & 3. Older than v4.1 (v3, or a 4.0.x that lacks canonicalizeCandidates) →
+  // 2 & 3. Older than v4.1.15 (v3, or a 4.0.x/4.1.x that lacks canonicalizeCandidates) →
   // fatal, always (allow is for the future, not for ancient engines).
   if (pe.major < SUPPORTED_MAJOR || compareVersions(pe, MIN_ENGINE) < 0) {
     return {
       verdict: 'fatal',
       kind: 'engine-too-old',
-      message: `oxlint-tailwindcss requires Tailwind CSS v4.1 or newer, but the resolved engine is ${E}.`,
-      hint: 'Upgrade tailwindcss / @tailwindcss/node to v4.1+, or pin an older oxlint-tailwindcss.',
+      message: `oxlint-tailwindcss requires Tailwind CSS v4.1.15 or newer, but the resolved engine is ${E}.`,
+      hint: 'Upgrade tailwindcss / @tailwindcss/node to v4.1.15+, or pin an older oxlint-tailwindcss.',
     }
   }
 
@@ -164,7 +185,7 @@ export function assessEngine(E: string, B: string, opts: AssessOptions): EngineV
     }
   }
 
-  // From here E is a supported v4 (4.0.0 ≤ E, major 4).
+  // From here E is a supported v4 (4.1.15 ≤ E, major 4).
 
   // 5. Drift across majors — B is non-v4 (legacy v3 build, or a v5 build with a v4 engine resolved/fallen back).
   if (pb !== null && !sameMajor(pe, pb)) {

@@ -2,11 +2,35 @@
 
 ## Unreleased
 
-- `no-unknown-classes`: named group/peer markers (`group/row`, `peer/field`) are no longer reported
-  when the entry point has a `@custom-variant` whose selector names `.group` or `.peer`. The
-  selector scan put `group`/`peer` into the component set, and the marker check refused any
-  component base; it now refuses only component classes Tailwind does not generate itself
-  ([#165](https://github.com/sergioazoc/oxlint-tailwindcss/issues/165)).
+### Bug fixes
+
+- **`no-unknown-classes` keeps named group/peer markers valid when a custom variant names
+  `.group`.** With a `@custom-variant` whose selector names `.group` or `.peer` in the entry point
+  (e.g. `next-group-hover (&:is(:where(.group):has(~ .group:hover) *))`), `group/row` and
+  `peer/field` were reported as unknown. The selector scan put `group`/`peer` into the component
+  set, and the marker check refused any component base; it now refuses only component classes
+  Tailwind does not generate itself
+  ([#165](https://github.com/sergioazoc/oxlint-tailwindcss/issues/165), reported and fixed by
+  @followdarko).
+- **Tailwind 4.1.0–4.1.14 are rejected with a clear message instead of a raw engine error.** The
+  precompute calls `ds.canonicalizeCandidates`, which Tailwind only ships from 4.1.15, but the
+  version guard's floor was 4.1.0 — so those releases crashed with
+  `ds.canonicalizeCandidates is not a function` behind a hint to check the CSS for syntax errors.
+  The guard now names the real floor, v4.1.15. Those versions never worked; only the message
+  changes. CI pins the floor exactly and asserts that 4.1.14 is rejected by the guard.
+- **Tailwind insiders builds are no longer rejected as "too old".** `0.0.0-insiders.<sha>` was read
+  as version 0; it is now treated as an untested newer engine — a one-time notice, then linting as
+  usual.
+
+### Documentation
+
+- **The warning and tip boxes on `/setup` and `/monorepo` render again (EN and ES).** oxfmt's
+  `proseWrap` had merged each container's opener, body and closer into one paragraph, so the page
+  printed a literal `:::` and the unclosed box wrapped everything below it. A new test keeps every
+  container in the docs and READMEs well-formed.
+- Every "Tailwind v4.1+" requirement now reads v4.1.15+.
+
+Dependencies updated: oxlint / @oxlint/plugins 1.85, oxfmt 0.70, vitest 5.0.1, pnpm 12.6.
 
 ## 1.13.0
 

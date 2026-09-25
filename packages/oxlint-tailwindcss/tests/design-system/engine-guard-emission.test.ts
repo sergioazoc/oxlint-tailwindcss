@@ -65,6 +65,24 @@ describe('getLoadedDesignSystem — version guard integration', () => {
     expect(arg.data.message).toContain('5.0.0')
   })
 
+  it('a pre-4.1.15 engine surfaces the floor, not a raw canonicalizeCandidates TypeError', () => {
+    // 4.1.0–4.1.14 have no ds.canonicalizeCandidates. Without the guard the
+    // precompute died with "ds.canonicalizeCandidates is not a function" behind a
+    // "check your CSS for syntax errors" hint (reproduced with a real 4.1.14 install).
+    const report = vi.fn()
+    const result = safeGetDS(
+      () => getLoadedDesignSystem(DEFAULT, {}, { E: '4.1.14', B: '4.1.14' }),
+      { report },
+    )
+    expect(result).toBeNull()
+    expect(report).toHaveBeenCalledOnce()
+    const arg = report.mock.calls[0][0]
+    expect(arg.messageId).toBe('designSystemUnavailable')
+    expect(arg.data.message).toContain('4.1.14')
+    expect(arg.data.message).toContain('v4.1.15')
+    expect(arg.data.message).not.toContain('canonicalizeCandidates')
+  })
+
   it('memoizes the fatal verdict by (path, mtime): a later ok override still throws', () => {
     expect(() => getLoadedDesignSystem(DEFAULT, {}, { E: '5.0.0', B: '5.0.0' })).toThrow(
       UnsupportedEngineError,

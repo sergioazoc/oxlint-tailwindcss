@@ -118,6 +118,6 @@ wrong mapping.
 For each resolved CSS entry point the plugin loads the Tailwind engine (`@tailwindcss/node`) from
 that package's own `node_modules`, so packages pinned to different Tailwind versions are each linted
 with the engine they actually build with. The version guard runs per package too — an engine older
-than v4.1, a future major, or a major-version drift from that package's build fails loud (see
+than v4.1.15, a future major, or a major-version drift from that package's build fails loud (see
 [`allowUntestedEngine`](/settings#allowuntestedengine)). You don't need to do anything for this; it
 follows the same per-file entry-point resolution above.

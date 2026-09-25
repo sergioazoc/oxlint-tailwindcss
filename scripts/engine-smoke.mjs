@@ -3,22 +3,31 @@
 // versions via injection + fake trees; this exercises an actual install to catch
 // engine-API drift within the supported range that only a real load would hit.
 //
-// Usage: node scripts/engine-smoke.mjs <tailwind-version-range>   (e.g. 4.1, 4.0)
+// Usage: node scripts/engine-smoke.mjs <tailwind-version> [--expect-fatal]
+//        (e.g. 4.1.15, 4.2, latest, insiders)
 //
-// Passes when: the plugin loads the older engine WITHOUT a fatal
-// `designSystemUnavailable`, flags an obviously-bogus class, and leaves a stable
-// valid class (`flex`) alone. Assertions are coarse on purpose — class lists,
-// sort order, and canonical forms shift across versions, so we don't snapshot them.
+// Default mode passes when: every rule of the plugin runs against that engine
+// without a fatal diagnostic (the version guard, a failed precompute, a worker
+// service error), the obviously-bogus class is flagged, and the stable valid
+// class (`flex`) is left alone. Assertions are coarse on purpose — class lists,
+// sort order, and canonical forms shift across versions, so nothing is snapshotted.
+//
+// --expect-fatal passes when the version guard rejects the engine with its own
+// message naming the resolved version — never a raw engine error such as
+// `ds.canonicalizeCandidates is not a function` (4.1.0–4.1.14 lack that API).
 
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { resolve, join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const version = process.argv[2]
+const args = process.argv.slice(2)
+const expectFatal = args.includes('--expect-fatal')
+const version = args.find((a) => !a.startsWith('--'))
 if (!version) {
-  console.error('usage: node scripts/engine-smoke.mjs <tailwind-version>')
+  console.error('usage: node scripts/engine-smoke.mjs <tailwind-version> [--expect-fatal]')
   process.exit(2)
 }
 
@@ -37,6 +46,20 @@ if (!OXLINT) {
   process.exit(2)
 }
 
+// Every rule the built plugin registers, so the whole engine surface the rules
+// touch (precompute, sort / canonicalize / declaration services) runs on this version.
+const plugin = createRequire(import.meta.url)(DIST)
+const RULES = Object.keys((plugin.default ?? plugin).rules)
+
+// Diagnostics that mean the engine did not work, as opposed to a rule finding.
+const FATAL_MARKERS = [
+  'requires Tailwind CSS',
+  'Failed to precompute',
+  'Failed to load',
+  'is not a function',
+  'design system',
+]
+
 const dir = mkdtempSync(join(tmpdir(), 'oxtw-smoke-'))
 let failed = false
 try {
@@ -50,8 +73,9 @@ try {
     join(dir, '.oxlintrc.json'),
     JSON.stringify(
       {
+        categories: { correctness: 'off' },
         jsPlugins: [DIST.split('\\').join('/')],
-        rules: { 'tailwindcss/no-unknown-classes': 'error' },
+        rules: Object.fromEntries(RULES.map((rule) => [`tailwindcss/${rule}`, 'error'])),
         settings: { tailwindcss: { entryPoint: './styles/app.css' } },
       },
       null,
@@ -61,31 +85,38 @@ try {
   writeFileSync(join(dir, 'styles/app.css'), '@import "tailwindcss";\n')
   writeFileSync(
     join(dir, 'src/app.tsx'),
-    'const c = <div className="flex bg-notacolor-99999" />;\n',
+    'export const c = <div className="flex bg-notacolor-99999 p-4 px-2 hover:underline" />\n',
   )
 
-  console.log(`[smoke] installing tailwindcss@${version} + @tailwindcss/node@${version} …`)
-  execFileSync(
-    'npm',
-    [
-      'install',
-      '--no-audit',
-      '--no-fund',
-      '--loglevel=error',
-      `tailwindcss@${version}`,
-      `@tailwindcss/node@${version}`,
-    ],
-    { cwd: dir, stdio: 'inherit', timeout: 180_000 },
+  const pkgs = ['tailwindcss', '@tailwindcss/node'].map((p) => `${p}@${version}`)
+  console.log(`[smoke] installing ${pkgs.join(' + ')} …`)
+  execFileSync('npm', ['install', '--no-audit', '--no-fund', '--loglevel=error', ...pkgs], {
+    cwd: dir,
+    stdio: 'inherit',
+    timeout: 180_000,
+    shell: process.platform === 'win32',
+  })
+  const installed = createRequire(join(dir, 'package.json'))('tailwindcss/package.json').version
+  console.log(
+    `[smoke] resolved tailwindcss ${installed}; running oxlint with ${RULES.length} rules …`,
   )
 
-  console.log('[smoke] running oxlint with the built plugin …')
-  let out = ''
+  let stdout = ''
   try {
-    out = execFileSync(OXLINT, ['src/app.tsx'], { cwd: dir, encoding: 'utf-8', timeout: 120_000 })
+    stdout = execFileSync(OXLINT, ['-f', 'json', 'src/app.tsx'], {
+      cwd: dir,
+      encoding: 'utf-8',
+      timeout: 120_000,
+    })
   } catch (e) {
-    out = (e.stdout ?? '') + (e.stderr ?? '')
+    stdout = e.stdout ?? ''
+    if (!stdout.trim().startsWith('{')) {
+      console.error(e.stderr ?? e)
+      throw new Error('oxlint produced no JSON report')
+    }
   }
-  console.log(out)
+  const diagnostics = JSON.parse(stdout).diagnostics ?? []
+  for (const d of diagnostics) console.log(`  ${d.code}: ${d.message}`)
 
   const check = (cond, msg) => {
     if (!cond) {
@@ -95,10 +126,30 @@ try {
       console.log(`[smoke] ok: ${msg}`)
     }
   }
-  check(!out.includes('designSystemUnavailable'), 'engine loaded without a fatal version guard')
-  check(out.includes('no-unknown-classes'), 'the bogus class was flagged (engine + rule ran)')
-  check(out.includes('bg-notacolor-99999'), 'the flagged class is the bogus one')
-  check(!out.includes('`flex`') && !out.includes("'flex'"), 'the valid class flex was not flagged')
+  const fatal = diagnostics.filter((d) => FATAL_MARKERS.some((m) => d.message.includes(m)))
+
+  if (expectFatal) {
+    check(fatal.length > 0, 'the engine was rejected')
+    check(
+      fatal.every((d) => d.message.includes('requires Tailwind CSS v')),
+      'every rejection is the version guard, not a raw engine error',
+    )
+    check(
+      fatal.some((d) => d.message.includes(installed)),
+      `the message names the resolved version (${installed})`,
+    )
+  } else {
+    check(fatal.length === 0, 'every rule ran against the engine without a fatal diagnostic')
+    const unknown = diagnostics.filter((d) => d.code === 'tailwindcss(no-unknown-classes)')
+    check(
+      unknown.some((d) => d.message.includes('bg-notacolor-99999')),
+      'the bogus class was flagged (engine + rule ran)',
+    )
+    check(
+      !unknown.some((d) => d.message.includes('"flex"')),
+      'the valid class flex was not flagged',
+    )
+  }
 } finally {
   try {
     rmSync(dir, { recursive: true, force: true })

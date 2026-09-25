@@ -338,17 +338,20 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `getLoadedDesignSystem`, INSIDE the `dsFailureCache` try so a fatal verdict is memoized by
   `(path, mtime)` like a load failure — grades
   `(E = resolved @tailwindcss/node version, B = consumer's tailwindcss version)` against the tested
-  ceiling `TAILWIND_NODE_VERSION` and the supported floor `MIN_ENGINE = 4.1.0` (**4.0.x lacks
-  `ds.canonicalizeCandidates`**, so v4.1 is the hard floor). Verdicts: older than v4.1 → fatal
-  always (the flag never rescues it); a future major (v5+) or a major-level build drift → fatal
-  unless `settings.tailwindcss.allowUntestedEngine: true` downgrades it to a warn; any v4 engine
-  newer than the tested ceiling (a patch bump counts; the verdict kind is still named
-  `engine-newer-minor`) or a minor-level build drift → one-time stderr warning (patch-only build
-  drift stays silent; deduped in `warnedEngineKeys`, reset via `resetEngineGuard`); in-range +
-  aligned → silent. A fatal throws `UnsupportedEngineError`. The comparator is a hand-rolled semver
-  subset (`parseVersion`/`compareVersions`) — no `semver` dep; `allowUntestedEngineFromSettings`
-  reads the flag. `getLoadedDesignSystem` accepts an `engineInfo?` test seam to inject `(E, B)`
-  without a second Tailwind install.
+  ceiling `TAILWIND_NODE_VERSION` and the supported floor `MIN_ENGINE = 4.1.15` (**4.0.x and
+  4.1.0–4.1.14 lack `ds.canonicalizeCandidates`**, so v4.1.15 is the hard floor;
+  `engine-smoke.mjs 4.1.14 --expect-fatal` in CI proves the guard, not a raw TypeError, rejects
+  them). Insiders builds (`0.0.0-insiders.*`, `isInsidersVersion`) are ahead of the latest release,
+  not v0: they warn (`engine-insiders`) and run, and an insiders `B` skips the drift checks.
+  Verdicts: older than v4.1.15 → fatal always (the flag never rescues it); a future major (v5+) or a
+  major-level build drift → fatal unless `settings.tailwindcss.allowUntestedEngine: true` downgrades
+  it to a warn; any v4 engine newer than the tested ceiling (a patch bump counts; the verdict kind
+  is still named `engine-newer-minor`) or a minor-level build drift → one-time stderr warning
+  (patch-only build drift stays silent; deduped in `warnedEngineKeys`, reset via
+  `resetEngineGuard`); in-range + aligned → silent. A fatal throws `UnsupportedEngineError`. The
+  comparator is a hand-rolled semver subset (`parseVersion`/`compareVersions`) — no `semver` dep;
+  `allowUntestedEngineFromSettings` reads the flag. `getLoadedDesignSystem` accepts an `engineInfo?`
+  test seam to inject `(E, B)` without a second Tailwind install.
 - **`!` (important) modifier**: Tailwind supports prefix (`!flex`) and suffix (`flex!`). ALL rules
   that do class lookups or transformations MUST round-trip through `splitImportant` +
   `reattachImportant` from `utils/class-parser.ts`. Cache methods (`getOrder`, `canonicalize`,

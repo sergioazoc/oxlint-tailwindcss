@@ -18,10 +18,10 @@ Read the story behind this plugin:
   per package. Both fully deterministic.
 - **Coexists with oxfmt and Prettier** — Point all tools at the same CSS and they agree
   byte-for-byte. See the [interop guide](https://oxlint-tailwindcss.pages.dev/interop).
-- **Tailwind CSS v4.1+** — Designed for v4 from day one. Reads your `@theme { ... }` custom tokens,
-  your shadcn variables, your typography plugin. It loads _your_ project's Tailwind engine, resolved
-  per entry point, so the linter and your build agree; an engine older than v4.1, a future major, or
-  a major-version drift from your build fails loud (opt back in with
+- **Tailwind CSS v4.1.15+** — Designed for v4 from day one. Reads your `@theme { ... }` custom
+  tokens, your shadcn variables, your typography plugin. It loads _your_ project's Tailwind engine,
+  resolved per entry point, so the linter and your build agree; an engine older than v4.1.15, a
+  future major, or a major-version drift from your build fails loud (opt back in with
   `settings.tailwindcss.allowUntestedEngine`).
 - **Fail loud** — Misconfiguration surfaces as a single `designSystemUnavailable` diagnostic with an
   actionable hint. Never silently skipped rules.
@@ -1090,8 +1090,8 @@ the box. If you find one that doesn't, open an issue.
 ## Requirements
 
 - Node.js >= 20
-- Tailwind CSS v4.1 or newer (4.0.x is not supported — it predates a design-system API the plugin
-  needs, and is reported with a clear diagnostic)
+- Tailwind CSS v4.1.15 or newer (older releases lack a design-system API the plugin needs, and are
+  reported with a clear diagnostic)
 - oxlint >= 1.43.0
 
 > **Avoid oxlint 1.77.0 with the editor extension.** 1.77.0 panics the oxlint **language server** on
