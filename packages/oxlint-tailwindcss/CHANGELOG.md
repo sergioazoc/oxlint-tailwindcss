@@ -19,6 +19,12 @@
   fix. The check compares against stock Tailwind on the same engine, so a selector difference stock
   Tailwind has too (`has-[[data-slot=x]]:` vs `has-data-[slot=x]:`) is not reported. On shadcn/ui
   `apps/v4`: 23 reports, all `data-[disabled]:`.
+- **`no-arbitrary-value` names the fix.** With an entry point, the report lists the closest steps
+  and tokens of your theme with their values, and the file to add a token to: "Closest in your
+  theme: w-50.5 (202px) or w-51 (204px). If none fits, add a token to src/styles.css." An exact
+  match is offered alone (`h-[26px]` → `h-6.5`); a value that isn't a length gets the file. New
+  messageIds `noArbitraryOptions` / `noArbitraryTheme`; without an entry point the message is
+  unchanged. On shadcn/ui `apps/v4`, 292 of the 752 reports now name exact options.
 - **`no-arbitrary-value` can allow runtime CSS variables:
   `allowVariables: 'none' | 'runtime' | 'all'`** (default `'none'`, so nothing changes unless you
   opt in). A value that is nothing but a variable — `w-(--sidebar-width)`,

@@ -99,7 +99,7 @@ export async function checkLive(base: string, fetch: Fetch): Promise<LiveResult[
   const location = redirect.headers.get('location') ?? ''
   record(
     'old _extras URLs redirect to the rule page',
-    redirect.status === 301 && /\/rules\/no-unknown-classes$/.test(location),
+    redirect.status === 301 && location.endsWith('/rules/no-unknown-classes'),
     `HTTP ${redirect.status} → ${location}`,
   )
 

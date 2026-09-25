@@ -196,19 +196,69 @@ describe('no-arbitrary-value (allowVariables: runtime)', () => {
         code: '<div className="bg-(--primary)" />',
         filename: 'test.tsx',
         options: [{ allowVariables: 'runtime' }],
-        errors: [{ messageId: 'noArbitrary', data: { className: 'bg-(--primary)' } }],
+        errors: [{ messageId: 'noArbitraryTheme' }],
       },
       {
         code: '<div className="border-[var(--border)]" />',
         filename: 'test.tsx',
         options: [{ allowVariables: 'runtime' }],
-        errors: [{ messageId: 'noArbitrary' }],
+        errors: [{ messageId: 'noArbitraryTheme' }],
       },
       {
         code: '<div className="w-[calc(var(--sidebar-width)+1rem)]" />',
         filename: 'test.tsx',
         options: [{ allowVariables: 'runtime' }],
-        errors: [{ messageId: 'noArbitrary' }],
+        errors: [{ messageId: 'noArbitraryTheme' }],
+      },
+    ],
+  })
+})
+
+/**
+ * With a design system, the message names the fix (R7a): the closest steps and
+ * tokens with their values, and the file to add a token to. The design system
+ * is loaded on the first violation, never for a clean file.
+ */
+describe('no-arbitrary-value (messages with the fix)', () => {
+  const run = makeFixtureRunner(resolve(__dirname, '../fixtures/default.css'))
+  // RuleTester's default cwd is oxlint's own package; a real run's is the project's.
+  const PKG = resolve(__dirname, '../..')
+  const themeFile = 'tests/fixtures/default.css'
+  run('closest options', noArbitraryValue, {
+    valid: [],
+    invalid: [
+      {
+        code: '<div className="w-[203px]" />',
+        filename: 'test.tsx',
+        cwd: PKG,
+        errors: [
+          {
+            messageId: 'noArbitraryOptions',
+            data: { className: 'w-[203px]', options: 'w-50.5 (202px) or w-51 (204px)', themeFile },
+          },
+        ],
+      },
+      {
+        code: '<div className="md:max-w-[40rem]" />',
+        filename: 'test.tsx',
+        cwd: PKG,
+        errors: [
+          {
+            messageId: 'noArbitraryOptions',
+            data: {
+              className: 'md:max-w-[40rem]',
+              options: 'max-w-160 (40rem)',
+              themeFile,
+            },
+          },
+        ],
+      },
+      {
+        // Not a length: no steps to offer, but still where to add a token.
+        code: '<div className="bg-[#ff0000]" />',
+        filename: 'test.tsx',
+        cwd: PKG,
+        errors: [{ messageId: 'noArbitraryTheme', data: { className: 'bg-[#ff0000]', themeFile } }],
       },
     ],
   })

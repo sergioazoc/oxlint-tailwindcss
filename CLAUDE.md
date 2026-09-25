@@ -295,6 +295,10 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `createLazySettings(context, compile)` for anything derived from settings (`rootFontSize` in
   `enforce-canonical` / `prefer-scale-token`). Both are per file; see "Per-file options and
   settings". Lives in `utils/`, not `types.ts` (which is import-type-only).
+- **`utils/measure.ts`** — lengths against the scale: `measure` / `sameMeasure` / `isOnStep` /
+  `formatStep` (`prefer-scale-token`: is this value EQUAL to a step or token?) and `closestOnScale`
+  (`no-arbitrary-value`'s message: the exact match alone, else the nearest candidate below and above
+  among the prefix's tokens and the two surrounding scale steps).
 - **`utils/class-parser.ts`** — `splitImportant(utility) → { bare, position }` +
   `reattachImportant(bare, position) → string` are the canonical homes for the `!`
   strip-and-reattach invariant. Every rule that does class lookups MUST round-trip through them; the

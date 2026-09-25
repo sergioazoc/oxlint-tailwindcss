@@ -12,72 +12,12 @@ import { createLazyLoader, rootFontSizeFromSettings } from '../design-system/loa
 import type { DesignSystemCache } from '../design-system/cache'
 import { createLazyOptions, createLazySettings } from '../utils/context'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
+import { arbitraryPrefix, formatStep, isOnStep, measure, sameMeasure } from '../utils/measure'
 
 interface Options {
   entryPoint?: string
   step?: number
   allow?: string[]
-}
-
-/** A length or plain number. Anything else can't be compared arithmetically. */
-const LENGTH_RE = /^(-?\d*\.?\d+)(rem|px|em)?$/
-
-/**
- * A comparable value: a magnitude, plus whether it carried a unit at all.
- *
- * The flag is not bookkeeping. `p-[10]` compiles to `padding: 10` — no unit,
- * which is not a length — while `p-2.5` is `padding: 10px`. Treating the bare
- * number as px would have this rule "helpfully" suggest a class that means
- * something else.
- */
-interface Measure {
-  px: number
-  unitless: boolean
-}
-
-/**
- * Parse a CSS length. `em` is treated as `rem`, which is what it is at the root
- * and the only interpretation available without a layout.
- */
-function measure(value: string, rootFontSize: number): Measure | null {
-  const match = LENGTH_RE.exec(value.trim())
-  if (!match) return null
-  const n = Number.parseFloat(match[1])
-  if (!Number.isFinite(n)) return null
-  switch (match[2]) {
-    case 'rem':
-    case 'em':
-      return { px: n * rootFontSize, unitless: false }
-    case 'px':
-      return { px: n, unitless: false }
-    case undefined:
-      return { px: n, unitless: true }
-    default:
-      return null
-  }
-}
-
-/**
- * Same value, allowing for float noise (`0.875rem` × 16 = 13.999999999999998).
- * A unitless number and a length are never the same value, whatever the digits.
- */
-function sameMeasure(a: Measure, b: Measure): boolean {
-  return a.unitless === b.unitless && Math.abs(a.px - b.px) < 0.0001
-}
-
-/**
- * Is `n` a whole number of `step`s? `10 / 0.5` is exact in binary, `0.3 / 0.1`
- * is not, so the remainder is compared with a tolerance rather than to zero.
- */
-function isOnStep(n: number, step: number): boolean {
-  if (step <= 0) return false
-  const steps = n / step
-  return Math.abs(steps - Math.round(steps)) < 0.0001
-}
-
-/** Trailing zeros make `p-2.50`, which is not what Tailwind calls the class. */
-function formatStep(n: number): string {
-  return String(Number.parseFloat(n.toFixed(4)))
 }
 
 export const preferScaleToken = defineRule({
@@ -142,11 +82,7 @@ export const preferScaleToken = defineRule({
       const written = measure(value, rootFontSize())
       if (written === null) return null
 
-      const open = bare.indexOf('[')
-      // The utility and its value are joined by a dash: `p-[10px]`. Anything else
-      // is not this shape — an arbitrary property (`[color:red]`) starts at 0.
-      if (open <= 0 || bare[open - 1] !== '-') return null
-      const prefix = bare.slice(0, open - 1)
+      const prefix = arbitraryPrefix(bare)
       if (!prefix) return null
 
       for (const [literal, className] of cache.tokenValuesFor(prefix)) {
