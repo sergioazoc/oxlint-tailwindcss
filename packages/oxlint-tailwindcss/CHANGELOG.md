@@ -99,6 +99,11 @@
 - **The v0 → v1 migration guide is accurate for today's versions.** It pointed at the v0.x cache
   directory without saying the cache moved to a per-user directory in v1.3, and said every timeout
   was set by `settings.tailwindcss.timeout`; that setting only moves the precompute timeout.
+- **The docs site stops publishing its internal files.** Every `rules/_extras/*` fragment (48 pages,
+  EN and ES) and the agent notes were served as pages of their own; they are excluded now, and their
+  old URLs redirect to the rule page. A dead internal link fails the docs build, "Edit this page" on
+  a rule page opens the file the page is generated from, and the Spanish site's theme labels
+  (search, outline, pager, 404…) are in Spanish.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

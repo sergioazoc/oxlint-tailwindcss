@@ -20,6 +20,23 @@ const PKG_VERSION = JSON.parse(
 // hand-editing here.
 const RULES_NAV = RULE_NAMES.map((name) => ({ text: name, link: `/rules/${name}` }))
 
+/**
+ * "Edit this page" target. A rule page (`rules/<name>.md`, `es/rules/<name>.md`)
+ * is GENERATED from the rule's metadata plus the hand-written
+ * `rules/_extras/<name>.md`, so that is the file to edit — an edit to the page
+ * itself is overwritten by the next `pnpm generate`. Everything under `rules/`
+ * except `index.md` is generated (`tests/docs` holds that).
+ *
+ * VitePress serializes this function into the client bundle: it must not close
+ * over anything in this module.
+ */
+function editLinkFor({ filePath }: { filePath: string }): string {
+  const base = 'https://github.com/sergioazoc/oxlint-tailwindcss/edit/main/packages/docs'
+  const m = /^((?:es\/)?rules)\/([^/]+)\.md$/.exec(filePath)
+  if (m && m[2] !== 'index') return `${base}/${m[1]}/_extras/${m[2]}.md`
+  return `${base}/${filePath}`
+}
+
 // Multi-locale VitePress v2 config. English is the default at `/`,
 // Spanish lives at `/es`. The sidebar and nav structures mirror each
 // other so users can switch locale at any depth without losing context.
@@ -31,7 +48,11 @@ export default defineConfig({
   // Same sitemap regardless of locale prefix.
   cleanUrls: true,
   lastUpdated: true,
-  ignoreDeadLinks: true,
+  // A dead internal link fails the build.
+  ignoreDeadLinks: false,
+  // Inputs to the generator and notes for agents working on the docs — not
+  // pages. Without this VitePress published every `_extras` fragment as a page.
+  srcExclude: ['**/_extras/**', 'AGENTS.md', 'CLAUDE.md'],
 
   locales: {
     root: {
@@ -94,7 +115,34 @@ export default defineConfig({
           { text: 'Setup', link: '/es/setup' },
           { text: 'Reglas', link: '/es/rules/' },
           { text: 'Migración', link: '/es/migration/v0-to-v1' },
+          {
+            text: `v${PKG_VERSION}`,
+            items: [
+              {
+                text: 'Changelog',
+                link: 'https://github.com/sergioazoc/oxlint-tailwindcss/blob/main/packages/oxlint-tailwindcss/CHANGELOG.md',
+              },
+              { text: 'npm', link: 'https://www.npmjs.com/package/oxlint-tailwindcss' },
+            ],
+          },
         ],
+        editLink: { pattern: editLinkFor, text: 'Editar esta página en GitHub' },
+        lastUpdated: { text: 'Última actualización' },
+        docFooter: { prev: 'Página anterior', next: 'Página siguiente' },
+        outline: { label: 'En esta página' },
+        returnToTopLabel: 'Volver arriba',
+        sidebarMenuLabel: 'Menú',
+        darkModeSwitchLabel: 'Apariencia',
+        lightModeSwitchTitle: 'Cambiar a tema claro',
+        darkModeSwitchTitle: 'Cambiar a tema oscuro',
+        langMenuLabel: 'Cambiar idioma',
+        skipToContentLabel: 'Saltar al contenido',
+        notFound: {
+          title: 'PÁGINA NO ENCONTRADA',
+          quote: 'Esta página no existe o se movió.',
+          linkLabel: 'ir al inicio',
+          linkText: 'Volver al inicio',
+        },
         sidebar: {
           '/es/': [
             {
@@ -135,10 +183,34 @@ export default defineConfig({
       { icon: 'github', link: 'https://github.com/sergioazoc/oxlint-tailwindcss' },
       { icon: 'npm', link: 'https://www.npmjs.com/package/oxlint-tailwindcss' },
     ],
-    search: { provider: 'local' },
-    editLink: {
-      pattern: 'https://github.com/sergioazoc/oxlint-tailwindcss/edit/main/packages/docs/:path',
+    search: {
+      provider: 'local',
+      options: {
+        locales: {
+          es: {
+            translations: {
+              button: { buttonText: 'Buscar', buttonAriaLabel: 'Buscar' },
+              modal: {
+                displayDetails: 'Mostrar detalles',
+                resetButtonTitle: 'Borrar búsqueda',
+                backButtonTitle: 'Cerrar búsqueda',
+                noResultsText: 'Sin resultados para',
+                footer: {
+                  selectText: 'para elegir',
+                  selectKeyAriaLabel: 'Enter',
+                  navigateText: 'para moverte',
+                  navigateUpKeyAriaLabel: 'flecha arriba',
+                  navigateDownKeyAriaLabel: 'flecha abajo',
+                  closeText: 'para cerrar',
+                  closeKeyAriaLabel: 'Escape',
+                },
+              },
+            },
+          },
+        },
+      },
     },
+    editLink: { pattern: editLinkFor },
     footer: {
       message: 'Released under the MIT License.',
       copyright:
