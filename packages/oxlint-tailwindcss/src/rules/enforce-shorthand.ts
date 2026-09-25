@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
 import {
@@ -216,9 +217,12 @@ interface CandidateGroup {
 export const enforceShorthand = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('enforce-shorthand', {
       description: 'Enforce shorthand Tailwind CSS classes when all axes have the same value',
-    },
+      category: 'consistency',
+      recommended: 'warn',
+      designSystem: 'optional',
+    }),
     fixable: 'code',
     schema: [
       {

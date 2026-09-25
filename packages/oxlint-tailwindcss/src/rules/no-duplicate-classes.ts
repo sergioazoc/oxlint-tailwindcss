@@ -1,13 +1,18 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
 
 export const noDuplicateClasses = defineRule({
   meta: {
     type: 'problem',
-    docs: {
+    docs: ruleDocs('no-duplicate-classes', {
       description: 'Disallow duplicate Tailwind CSS classes',
-    },
+      category: 'correctness',
+      recommended: 'warn',
+      designSystem: 'none',
+      formatterOverlap: 'oxfmt',
+    }),
     fixable: 'code',
     schema: [],
     messages: {

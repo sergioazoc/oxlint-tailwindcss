@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors } from '../utils/extractors'
 import {
   LOGICAL_INSET_ALIASES,
@@ -11,10 +12,13 @@ import {
 export const enforcePhysical = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('enforce-physical', {
       description:
         'Enforce physical Tailwind CSS properties instead of logical ones for consistency in LTR-only projects',
-    },
+      category: 'consistency',
+      recommended: false,
+      designSystem: 'optional',
+    }),
     fixable: 'code',
     schema: [LOGICAL_PHYSICAL_SCHEMA],
     hasSuggestions: true,

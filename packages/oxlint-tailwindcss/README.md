@@ -50,45 +50,54 @@ pnpm add -D oxlint-tailwindcss
 
 ## Setup
 
-Add the plugin to your `.oxlintrc.json`:
+Add the plugin to your `.oxlintrc.json`. This is every rule, with its recommended severity (`"off"`
+for the opt-in ones):
+
+<!-- generated:full-config -->
 
 ```jsonc
 {
   "jsPlugins": ["oxlint-tailwindcss"],
+  "settings": {
+    "tailwindcss": {
+      "entryPoint": "src/styles.css"
+    }
+  },
   "rules": {
     // Correctness
-    "tailwindcss/no-unknown-classes": "error",
-    "tailwindcss/no-duplicate-classes": "error",
     "tailwindcss/no-conflicting-classes": "error",
-    "tailwindcss/no-deprecated-classes": "error",
-    "tailwindcss/no-unnecessary-whitespace": "error",
-    "tailwindcss/no-dynamic-classes": "error",
-    // These two only inspect literal class lists on native elements; cn()/twMerge() fragments and custom-component classNames are skipped (issue #117).
-    "tailwindcss/no-dark-without-light": "warn",
     "tailwindcss/no-contradicting-variants": "warn",
-    // Style
+    "tailwindcss/no-dark-without-light": "warn",
+    "tailwindcss/no-duplicate-classes": "warn",
+    "tailwindcss/no-dynamic-classes": "error",
+    "tailwindcss/no-unknown-classes": "error",
+    // Modernization
     "tailwindcss/enforce-canonical": "warn",
-    "tailwindcss/enforce-sort-order": "warn",
-    "tailwindcss/enforce-shorthand": "warn",
+    "tailwindcss/enforce-negative-arbitrary-values": "warn",
+    "tailwindcss/no-deprecated-classes": "error",
+    "tailwindcss/no-unnecessary-arbitrary-value": "warn",
+    "tailwindcss/prefer-scale-token": "off",
+    "tailwindcss/prefer-theme-tokens": "off",
+    // Consistency
+    "tailwindcss/consistent-variant-order": "warn",
+    "tailwindcss/enforce-consistent-important-position": "warn",
+    "tailwindcss/enforce-consistent-line-wrapping": "off",
+    "tailwindcss/enforce-consistent-variable-syntax": "warn",
     "tailwindcss/enforce-logical": "off",
     "tailwindcss/enforce-physical": "off",
-    "tailwindcss/enforce-consistent-important-position": "warn",
-    "tailwindcss/enforce-negative-arbitrary-values": "warn",
-    "tailwindcss/enforce-consistent-variable-syntax": "warn",
-    "tailwindcss/consistent-variant-order": "warn",
-    // Complexity
+    "tailwindcss/enforce-shorthand": "warn",
+    "tailwindcss/enforce-sort-order": "warn",
+    "tailwindcss/no-unnecessary-whitespace": "warn",
+    // Design-system guardrails
     "tailwindcss/max-class-count": "off",
-    "tailwindcss/enforce-consistent-line-wrapping": "off",
-    // Restrictions
-    "tailwindcss/no-restricted-classes": "off",
     "tailwindcss/no-arbitrary-value": "off",
     "tailwindcss/no-hardcoded-colors": "warn",
-    "tailwindcss/no-unnecessary-arbitrary-value": "warn",
-    "tailwindcss/prefer-theme-tokens": "off",
-    "tailwindcss/prefer-scale-token": "off",
-  },
+    "tailwindcss/no-restricted-classes": "off"
+  }
 }
 ```
+
+<!-- /generated:full-config -->
 
 Declare your Tailwind CSS entry point in `settings.tailwindcss.entryPoint`:
 

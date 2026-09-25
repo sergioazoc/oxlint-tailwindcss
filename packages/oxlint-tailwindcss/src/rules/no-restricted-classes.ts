@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import { createLazyOptions } from '../utils/context'
@@ -16,9 +17,12 @@ interface Options {
 export const noRestrictedClasses = defineRule({
   meta: {
     type: 'problem',
-    docs: {
+    docs: ruleDocs('no-restricted-classes', {
       description: 'Disallow specific Tailwind CSS classes',
-    },
+      category: 'design-system',
+      recommended: false,
+      designSystem: 'none',
+    }),
     schema: [
       {
         type: 'object',

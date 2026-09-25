@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
@@ -31,10 +32,13 @@ function detectRawVariable(
 export const preferThemeTokens = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('prefer-theme-tokens', {
       description:
         'Prefer named theme-token utilities over raw CSS variable references when a matching utility exists',
-    },
+      category: 'modernization',
+      recommended: false,
+      designSystem: 'required',
+    }),
     fixable: 'code',
     schema: [
       {

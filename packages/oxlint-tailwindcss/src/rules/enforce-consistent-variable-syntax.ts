@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
@@ -12,9 +13,12 @@ interface Options {
 export const enforceConsistentVariableSyntax = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('enforce-consistent-variable-syntax', {
       description: 'Enforce consistent CSS variable syntax: bg-[var(--color)] ↔ bg-(--color)',
-    },
+      category: 'consistency',
+      recommended: 'warn',
+      designSystem: 'none',
+    }),
     fixable: 'code',
     schema: [
       {

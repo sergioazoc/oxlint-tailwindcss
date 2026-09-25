@@ -86,18 +86,22 @@ recommended full rule set, monorepo patterns, and all `settings.tailwindcss` opt
 [dedicated docs page](https://oxlint-tailwindcss.pages.dev/rules/) (EN/ES) with examples and
 options.
 
-**Correctness** — `no-unknown-classes` · `no-duplicate-classes` · `no-conflicting-classes` ·
-`no-deprecated-classes` · `no-unnecessary-whitespace` · `no-dark-without-light` ·
-`no-contradicting-variants` · `no-dynamic-classes`
+<!-- generated:rule-list -->
 
-**Style** — `enforce-canonical` · `enforce-sort-order` · `enforce-shorthand` · `enforce-logical` ·
-`enforce-physical` · `enforce-consistent-important-position` · `enforce-negative-arbitrary-values` ·
-`enforce-consistent-variable-syntax` · `consistent-variant-order`
+**Correctness** — `no-conflicting-classes` · `no-contradicting-variants` · `no-dark-without-light` ·
+`no-duplicate-classes` · `no-dynamic-classes` · `no-unknown-classes`
 
-**Complexity** — `max-class-count` · `enforce-consistent-line-wrapping`
+**Modernization** — `enforce-canonical` · `enforce-negative-arbitrary-values` ·
+`no-deprecated-classes` · `no-unnecessary-arbitrary-value` · `prefer-scale-token` ·
+`prefer-theme-tokens`
 
-**Restrictions** — `no-restricted-classes` · `no-arbitrary-value` · `no-hardcoded-colors` ·
-`no-unnecessary-arbitrary-value` · `prefer-theme-tokens` · `prefer-scale-token`
+**Consistency** — `consistent-variant-order` · `enforce-consistent-important-position` ·
+`enforce-consistent-line-wrapping` · `enforce-consistent-variable-syntax` · `enforce-logical` ·
+`enforce-physical` · `enforce-shorthand` · `enforce-sort-order` · `no-unnecessary-whitespace`
+
+**Design-system guardrails** — `max-class-count` · `no-arbitrary-value` · `no-hardcoded-colors` ·
+`no-restricted-classes`
+<!-- /generated:rule-list -->
 
 Classes are detected in `className`/`class` attributes, 14 utility helpers (`cn`, `clsx`, `cva`,
 `tv`, `twMerge`, …), `tw` tagged templates, and variables matching `/^classNames?$/`, `/^classes$/`,

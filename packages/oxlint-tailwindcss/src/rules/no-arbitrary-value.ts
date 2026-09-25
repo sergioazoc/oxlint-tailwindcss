@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import { utilityHasDynamicValue, extractUtility, splitImportant } from '../utils/class-parser'
@@ -38,9 +39,12 @@ export function pureVariableOf(bareUtility: string): string | null {
 export const noArbitraryValue = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('no-arbitrary-value', {
       description: 'Disallow arbitrary values in Tailwind CSS classes',
-    },
+      category: 'design-system',
+      recommended: false,
+      designSystem: 'optional',
+    }),
     schema: [
       {
         type: 'object',

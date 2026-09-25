@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, isFinalClassList, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import {
@@ -48,10 +49,13 @@ const STATIC_PROP_GROUPS = new Map<string, string>([
 export const noContradictingVariants = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('no-contradicting-variants', {
       description:
         'Disallow variant-prefixed classes that are redundant because the base class already applies unconditionally',
-    },
+      category: 'correctness',
+      recommended: 'warn',
+      designSystem: 'optional',
+    }),
     schema: [
       {
         type: 'object',

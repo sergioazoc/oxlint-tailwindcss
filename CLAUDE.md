@@ -295,6 +295,14 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `createLazySettings(context, compile)` for anything derived from settings (`rootFontSize` in
   `enforce-canonical` / `prefer-scale-token`). Both are per file; see "Per-file options and
   settings". Lives in `utils/`, not `types.ts` (which is import-type-only).
+- **`utils/rule-docs.ts`** —
+  `ruleDocs(name, { description, category, recommended, designSystem, formatterOverlap? })` is every
+  rule's `meta.docs` (it adds the docs `url`). It is the single source of the rule list by category
+  (root README), both recommended configs (package README: every rule, `"off"` when not recommended;
+  `/setup`: only the recommended ones) — written between `<!-- generated:… -->` markers by
+  `pnpm -C packages/docs generate` — and of the groups on `rules/index.md`.
+  `tests/docs/docs-sync.test.ts` checks `designSystem` against what the rule does (declares
+  `designSystemUnavailable` → `required`; reaches `createLazyLoader` → `optional`).
 - **`utils/measure.ts`** — lengths against the scale: `measure` / `sameMeasure` / `isOnStep` /
   `formatStep` (`prefer-scale-token`: is this value EQUAL to a step or token?) and `closestOnScale`
   (`no-arbitrary-value`'s message: the exact match alone, else the nearest candidate below and above

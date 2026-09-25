@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
@@ -52,9 +53,12 @@ function differingVariant(cls: string, canonical: string): { written: string; va
 export const enforceCanonical = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('enforce-canonical', {
       description: 'Enforce canonical Tailwind CSS class names using canonicalizeCandidates()',
-    },
+      category: 'modernization',
+      recommended: 'warn',
+      designSystem: 'required',
+    }),
     fixable: 'code',
     schema: [
       {

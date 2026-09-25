@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
 import { splitUtilityAndVariant, stripProjectPrefix } from '../utils/class-parser'
@@ -15,10 +16,14 @@ interface Options {
 export const enforceSortOrder = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('enforce-sort-order', {
       description:
         'Enforce consistent sort order of Tailwind CSS classes using the official class order',
-    },
+      category: 'consistency',
+      recommended: 'warn',
+      designSystem: 'required',
+      formatterOverlap: 'oxfmt',
+    }),
     fixable: 'code',
     schema: [
       {

@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
@@ -14,9 +15,12 @@ import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 export const noUnnecessaryArbitraryValue = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('no-unnecessary-arbitrary-value', {
       description: 'Disallow arbitrary values when a named Tailwind class produces the same CSS',
-    },
+      category: 'modernization',
+      recommended: 'warn',
+      designSystem: 'required',
+    }),
     fixable: 'code',
     schema: [
       {

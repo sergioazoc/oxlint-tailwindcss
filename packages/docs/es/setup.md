@@ -73,44 +73,55 @@ el markup **todavía no** se revisan. Ver [Vue, Svelte y Astro](/es/frameworks).
 
 ## 3. Conjunto de reglas recomendado
 
-Si quieres un set "bendecido" que detecte problemas reales sin ser ruidoso, activa estas:
+Si quieres un set "bendecido" que detecte problemas reales sin ser ruidoso, activa estas. Se genera
+a partir de la severidad `recommended` de cada regla, así que siempre coincide con las reglas:
+
+<!-- generated:recommended-config -->
 
 ```jsonc
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "jsPlugins": ["oxlint-tailwindcss"],
-  "rules": {
-    // Correctness — atrapan bugs reales
-    "tailwindcss/no-conflicting-classes": "error",
-    "tailwindcss/no-deprecated-classes": "error",
-    "tailwindcss/no-duplicate-classes": "warn",
-    "tailwindcss/no-dynamic-classes": "error",
-    "tailwindcss/no-unknown-classes": "error",
-
-    // Modernización — mantiene las clases en su forma canónica actual
-    "tailwindcss/enforce-canonical": "warn",
-    "tailwindcss/no-unnecessary-arbitrary-value": "warn",
-
-    // Estilo y consistencia
-    "tailwindcss/enforce-sort-order": "warn",
-    "tailwindcss/consistent-variant-order": "warn",
-    "tailwindcss/enforce-consistent-important-position": "warn",
-    "tailwindcss/no-unnecessary-whitespace": "warn"
-  },
   "settings": {
     "tailwindcss": {
       "entryPoint": "src/styles.css"
     }
+  },
+  "rules": {
+    // Corrección
+    "tailwindcss/no-conflicting-classes": "error",
+    "tailwindcss/no-contradicting-variants": "warn",
+    "tailwindcss/no-dark-without-light": "warn",
+    "tailwindcss/no-duplicate-classes": "warn",
+    "tailwindcss/no-dynamic-classes": "error",
+    "tailwindcss/no-unknown-classes": "error",
+    // Modernización
+    "tailwindcss/enforce-canonical": "warn",
+    "tailwindcss/enforce-negative-arbitrary-values": "warn",
+    "tailwindcss/no-deprecated-classes": "error",
+    "tailwindcss/no-unnecessary-arbitrary-value": "warn",
+    // Consistencia
+    "tailwindcss/consistent-variant-order": "warn",
+    "tailwindcss/enforce-consistent-important-position": "warn",
+    "tailwindcss/enforce-consistent-variable-syntax": "warn",
+    "tailwindcss/enforce-shorthand": "warn",
+    "tailwindcss/enforce-sort-order": "warn",
+    "tailwindcss/no-unnecessary-whitespace": "warn",
+    // Protección del design system
+    "tailwindcss/no-hardcoded-colors": "warn"
   }
 }
 ```
 
+<!-- /generated:recommended-config -->
+
 Agrega reglas extra a medida que las necesites:
 
 - `enforce-logical` / `enforce-physical` si tienes una preferencia de dirección.
-- `no-arbitrary-value`, `no-hardcoded-colors`, `no-restricted-classes` si quieres imponer la
-  disciplina del design system.
-- `prefer-theme-tokens` para preferir utilidades nombradas sobre referencias `var()`.
+- `no-arbitrary-value`, `no-restricted-classes` y `max-class-count` si quieres una protección más
+  estricta del design system.
+- `prefer-theme-tokens` y `prefer-scale-token` para preferir utilidades nombradas sobre referencias
+  `var()` y valores fijos.
 
 El catálogo completo está en [Reglas](/es/rules/). Cada página documenta el comportamiento exacto,
 las opciones disponibles, y ejemplos ✓ / ✗.

@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import {
@@ -160,9 +161,12 @@ function formatProperties(keys: readonly DeclKey[]): string {
 export const noConflictingClasses = defineRule({
   meta: {
     type: 'problem',
-    docs: {
+    docs: ruleDocs('no-conflicting-classes', {
       description: 'Disallow Tailwind CSS classes that generate conflicting CSS properties',
-    },
+      category: 'correctness',
+      recommended: 'error',
+      designSystem: 'required',
+    }),
     schema: [
       {
         type: 'object',
