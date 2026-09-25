@@ -97,18 +97,18 @@ Funcionan sin nada configurado — su fallback es determinístico por sí solo �
 cuando hay un `entryPoint` disponible. Ninguna puede emitir `designSystemUnavailable`. Todas aceptan
 además un `entryPoint` propio que pisa el ajuste compartido.
 
-| Regla                              | Opciones por defecto                                | Qué aporta el design system                                                                       |
-| ---------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `consistent-variant-order`         | `{}` (orden derivado del DS cuando está disponible) | El orden real de variants, y qué hace el selector de cada una                                     |
-| `enforce-consistent-line-wrapping` | `{ printWidth: 80, group: 'newLine' }`              | El prefix del proyecto, para que el agrupamiento de `wrapLines: 'all'` lo trate como transparente |
-| `enforce-logical`                  | `{ allowlist: [], direction: 'both' }`              | Confirma que la clase sugerida exista                                                             |
-| `enforce-physical`                 | `{ allowlist: [], direction: 'both' }`              | Confirma que la clase sugerida exista                                                             |
-| `enforce-shorthand`                | `{}`                                                | Verifica cada fusión contra el CSS emitido                                                        |
-| `no-arbitrary-value`               | `{ allow: [], allowVariables: 'none' }`             | Con `allowVariables: 'runtime'`, qué variables CSS define tu stylesheet                           |
-| `no-contradicting-variants`        | `{}`                                                | Qué hace el selector de cada variant                                                              |
-| `no-dark-without-light`            | `{ variants: ['dark'] }`                            | Distingue los colores del resto y agrupa la base por propiedad CSS declarada                      |
-| `no-deprecated-classes`            | `{}`                                                | Deriva la lista de renombres en vez de usar la tabla interna                                      |
-| `no-dynamic-classes`               | `{}`                                                | Las utilidades y variantes propias de tu proyecto cuentan como de Tailwind                        |
+| Regla                              | Opciones por defecto                    | Qué aporta el design system                                                                       |
+| ---------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `consistent-variant-order`         | `{}` (el mismo orden con o sin DS)      | Qué son las variants propias del proyecto: pseudo-element, barrera o breakpoint                   |
+| `enforce-consistent-line-wrapping` | `{ printWidth: 80, group: 'newLine' }`  | El prefix del proyecto, para que el agrupamiento de `wrapLines: 'all'` lo trate como transparente |
+| `enforce-logical`                  | `{ allowlist: [], direction: 'both' }`  | Confirma que la clase sugerida exista                                                             |
+| `enforce-physical`                 | `{ allowlist: [], direction: 'both' }`  | Confirma que la clase sugerida exista                                                             |
+| `enforce-shorthand`                | `{}`                                    | Verifica cada fusión contra el CSS emitido                                                        |
+| `no-arbitrary-value`               | `{ allow: [], allowVariables: 'none' }` | Con `allowVariables: 'runtime'`, qué variables CSS define tu stylesheet                           |
+| `no-contradicting-variants`        | `{}`                                    | Qué hace el selector de cada variant                                                              |
+| `no-dark-without-light`            | `{ variants: ['dark'] }`                | Distingue los colores del resto y agrupa la base por propiedad CSS declarada                      |
+| `no-deprecated-classes`            | `{}`                                    | Deriva la lista de renombres en vez de usar la tabla interna                                      |
+| `no-dynamic-classes`               | `{}`                                    | Las utilidades y variantes propias de tu proyecto cuentan como de Tailwind                        |
 
 ### Reglas DS-independientes
 

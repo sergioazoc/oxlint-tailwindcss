@@ -211,20 +211,20 @@ run('consistent-variant-order (prefix)', consistentVariantOrder, {
   valid: [
     // Single real variant after the prefix — nothing to reorder.
     { code: '<div className="tw:hover:flex" />', filename: 'test.tsx' },
-    // Already correctly ordered per the DS (hover before sm), prefix first.
-    { code: '<div className="tw:hover:sm:flex" />', filename: 'test.tsx' },
+    // Already in order (sm before hover), prefix first.
+    { code: '<div className="tw:sm:hover:flex" />', filename: 'test.tsx' },
   ],
   invalid: [
-    // Must reorder to tw:hover:sm:flex — the prefix stays FIRST, never
-    // hover:tw:sm:flex (which would produce no CSS).
+    // Must reorder to tw:sm:hover:flex — the prefix stays FIRST, never
+    // sm:tw:hover:flex (which would produce no CSS).
     {
-      code: '<div className="tw:sm:hover:flex" />',
+      code: '<div className="tw:hover:sm:flex" />',
       filename: 'test.tsx',
-      output: '<div className="tw:hover:sm:flex" />',
+      output: '<div className="tw:sm:hover:flex" />',
       errors: [
         {
           messageId: 'wrongOrder',
-          data: { className: 'tw:sm:hover:flex', replacement: 'tw:hover:sm:flex' },
+          data: { className: 'tw:hover:sm:flex', replacement: 'tw:sm:hover:flex' },
         },
       ],
     },

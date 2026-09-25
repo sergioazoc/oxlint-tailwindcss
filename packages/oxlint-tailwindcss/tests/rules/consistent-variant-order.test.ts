@@ -49,8 +49,91 @@ describe('consistent-variant-order (static fallback)', () => {
       { code: '<div className="hover:*:flex" />', filename: 'test.tsx' },
       { code: '<div className="*:hover:flex" />', filename: 'test.tsx' },
       { code: '<div className="focus:**:underline" />', filename: 'test.tsx' },
+      // What the element is (aria-*, data-*, has-*, not-*) before how it's being
+      // used and where it sits — shadcn/ui writes it this way (data-*:focus 17–0,
+      // data-*:first 21–0, has-*:hover 4–0 at 98a1fe67).
+      {
+        code: '<div className="data-[state=open]:hover:bg-accent" />',
+        filename: 'test.tsx',
+      },
+      { code: '<div className="data-[spacing=0]:first:rounded-l-md" />', filename: 'test.tsx' },
+      { code: '<div className="has-[>a,>button]:hover:bg-muted" />', filename: 'test.tsx' },
+      { code: '<div className="dark:aria-invalid:ring-destructive/40" />', filename: 'test.tsx' },
+      { code: '<div className="md:peer-data-[variant=inset]:m-2" />', filename: 'test.tsx' },
+      {
+        code: '<div className="group-data-[collapsible=icon]:hover:bg-sidebar" />',
+        filename: 'test.tsx',
+      },
+      { code: '<div className="rtl:group-data-open:rotate-180" />', filename: 'test.tsx' },
+      { code: '<div className="starting:open:opacity-0" />', filename: 'test.tsx' },
+      // `not-X` ranks as X.
+      { code: '<div className="not-sm:hover:flex" />', filename: 'test.tsx' },
+      { code: '<div className="hover:not-first:mt-2" />', filename: 'test.tsx' },
+      // Variants that share a rank keep the order they were written in.
+      { code: '<div className="data-[a]:data-[b]:flex" />', filename: 'test.tsx' },
+      { code: '<div className="data-[b]:data-[a]:flex" />', filename: 'test.tsx' },
+      { code: '<div className="aria-invalid:data-[a]:flex" />', filename: 'test.tsx' },
+      { code: '<div className="sm:max-lg:flex" />', filename: 'test.tsx' },
+      { code: '<div className="max-lg:sm:flex" />', filename: 'test.tsx' },
+      // A variant the rule has no rank for (a project's own) is never moved and
+      // nothing moves across it.
+      { code: '<div className="style-x:md:flex" />', filename: 'test.tsx' },
+      { code: '<div className="md:style-x:flex" />', filename: 'test.tsx' },
+      { code: '<div className="hover:style-x:sm:flex" />', filename: 'test.tsx' },
+      // Without a design system a project's breakpoint is just an unknown name.
+      { code: '<div className="hover:3xl:flex" />', filename: 'test.tsx' },
     ],
     invalid: [
+      {
+        code: '<div className="hover:data-[state=open]:bg-accent" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'wrongOrder' }],
+        output: '<div className="data-[state=open]:hover:bg-accent" />',
+      },
+      {
+        code: '<div className="first:data-[spacing=0]:rounded-l-md" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'wrongOrder' }],
+        output: '<div className="data-[spacing=0]:first:rounded-l-md" />',
+      },
+      {
+        code: '<div className="aria-invalid:dark:ring-destructive/40" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'wrongOrder' }],
+        output: '<div className="dark:aria-invalid:ring-destructive/40" />',
+      },
+      {
+        // shadcn/ui's drawer writes this one attribute-first (7 of 8 times).
+        code: '<div className="data-[vaul-drawer-direction=right]:sm:max-w-sm" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'wrongOrder' }],
+        output: '<div className="sm:data-[vaul-drawer-direction=right]:max-w-sm" />',
+      },
+      {
+        code: '<div className="hover:group-data-[collapsible=offcanvas]:bg-sidebar" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'wrongOrder' }],
+        output: '<div className="group-data-[collapsible=offcanvas]:hover:bg-sidebar" />',
+      },
+      {
+        code: '<div className="open:starting:opacity-0" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'wrongOrder' }],
+        output: '<div className="starting:open:opacity-0" />',
+      },
+      {
+        code: '<div className="hover:not-sm:flex" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'wrongOrder' }],
+        output: '<div className="not-sm:hover:flex" />',
+      },
+      {
+        // Ranked variants still sort on each side of an unranked one.
+        code: '<div className="hover:sm:style-x:focus:md:flex" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'wrongOrder' }],
+        output: '<div className="sm:hover:style-x:md:focus:flex" />',
+      },
       {
         code: '<div className="hover:sm:flex" />',
         filename: 'test.tsx',
@@ -169,18 +252,21 @@ describe('consistent-variant-order (design system)', () => {
 
   const dsRuleTester = new RuleTester()
 
-  // DS order: hover(39) < sm(50), focus(40) < md(51), hover(39) < dark(59)
+  // The same order as without a design system: the DS only says which variants
+  // are pseudo-elements, which change the target, and which are breakpoints.
   runWithFixture(
     dsRuleTester,
-    'consistent-variant-order (DS order)',
+    'consistent-variant-order (design system)',
     consistentVariantOrder,
     ENTRY_POINT,
     {
       valid: [
-        { code: '<div className="hover:sm:flex" />', filename: 'test.tsx' },
-        { code: '<div className="hover:dark:text-white" />', filename: 'test.tsx' },
-        { code: '<div className="focus:md:bg-blue-500" />', filename: 'test.tsx' },
+        { code: '<div className="sm:hover:flex" />', filename: 'test.tsx' },
+        { code: '<div className="dark:hover:text-white" />', filename: 'test.tsx' },
+        { code: '<div className="md:focus:bg-blue-500" />', filename: 'test.tsx' },
         { code: '<div className="hover:flex" />', filename: 'test.tsx' },
+        { code: '<div className="data-[state=open]:hover:bg-accent" />', filename: 'test.tsx' },
+        { code: '<div className="dark:aria-invalid:ring-destructive/40" />', filename: 'test.tsx' },
         // Child/descendant selectors with arbitrary variants must preserve order (DS)
         { code: '<div className="*:[a]:underline" />', filename: 'test.tsx' },
         { code: '<div className="**:[[cmdk-group-heading]]:px-2" />', filename: 'test.tsx' },
@@ -195,22 +281,28 @@ describe('consistent-variant-order (design system)', () => {
       ],
       invalid: [
         {
-          code: '<div className="sm:hover:flex" />',
+          code: '<div className="hover:sm:flex" />',
           filename: 'test.tsx',
           errors: [{ messageId: 'wrongOrder' }],
-          output: '<div className="hover:sm:flex" />',
+          output: '<div className="sm:hover:flex" />',
         },
         {
-          code: '<div className="md:focus:bg-blue-500" />',
+          code: '<div className="focus:md:bg-blue-500" />',
           filename: 'test.tsx',
           errors: [{ messageId: 'wrongOrder' }],
-          output: '<div className="focus:md:bg-blue-500" />',
+          output: '<div className="md:focus:bg-blue-500" />',
         },
         {
-          code: '<div className="dark:hover:text-white" />',
+          code: '<div className="hover:dark:text-white" />',
           filename: 'test.tsx',
           errors: [{ messageId: 'wrongOrder' }],
-          output: '<div className="hover:dark:text-white" />',
+          output: '<div className="dark:hover:text-white" />',
+        },
+        {
+          code: '<div className="focus:data-[variant=destructive]:ring-destructive/20" />',
+          filename: 'test.tsx',
+          errors: [{ messageId: 'wrongOrder' }],
+          output: '<div className="data-[variant=destructive]:focus:ring-destructive/20" />',
         },
         // Pseudo-element incorrectly before element-selecting variant (DS mode)
         {
@@ -235,22 +327,22 @@ describe('consistent-variant-order (design system)', () => {
     },
   )
 
-  // User-specified order should override DS order
+  // User-specified order overrides the built-in one, with a DS too
   dsRuleTester.run('consistent-variant-order (user order overrides DS)', consistentVariantOrder, {
     valid: [
       {
-        code: '<div className="sm:hover:flex" />',
+        code: '<div className="hover:sm:flex" />',
         filename: 'test.tsx',
-        options: [{ order: ['sm', 'md', 'hover', 'focus', 'dark'] }],
+        options: [{ order: ['hover', 'focus', 'sm', 'md'] }],
       },
     ],
     invalid: [
       {
-        code: '<div className="hover:sm:flex" />',
+        code: '<div className="sm:hover:flex" />',
         filename: 'test.tsx',
-        options: [{ order: ['sm', 'md', 'hover', 'focus', 'dark'] }],
+        options: [{ order: ['hover', 'focus', 'sm', 'md'] }],
         errors: [{ messageId: 'wrongOrder' }],
-        output: '<div className="sm:hover:flex" />',
+        output: '<div className="hover:sm:flex" />',
       },
     ],
   })

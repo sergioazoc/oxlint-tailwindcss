@@ -1,12 +1,12 @@
 ---
 title: "consistent-variant-order — Tailwind CSS lint rule"
-description: "oxlint rule that writes Tailwind CSS variant chains in one order — hover:dark: or dark:hover: — and rewrites the rest to match, with an autofix."
+description: "oxlint rule that writes Tailwind CSS variant chains outermost first — dark:hover:, not hover:dark: — and rewrites the rest to match, with an autofix."
 ---
 
 # consistent-variant-order
 
-oxlint rule that writes Tailwind CSS variant chains in one order — `hover:dark:` or `dark:hover:` —
-and rewrites the rest to match, with an autofix.
+oxlint rule that writes Tailwind CSS variant chains outermost first — `dark:hover:`, not
+`hover:dark:` — and rewrites the rest to match, with an autofix.
 
 ## At a glance
 
@@ -22,21 +22,37 @@ inconsistent variant order makes grep, code review, and diffs noisy. This rule p
 order and rewrites everything to match, with autofix on the first offender and editor suggestions on
 the rest.
 
+The order goes from the outside in — the way Tailwind's docs and shadcn/ui write chains:
+
+1. **Where the page is**: breakpoints (`sm` … `2xl`, `min-*`, `max-*`), `supports-*`, `motion-*`,
+   `contrast-*`, `forced-colors`, `pointer-*`, `portrait` / `landscape`, `dark`, container queries
+   (`@md`, `@min-*`), `print`, `starting`, `ltr` / `rtl`.
+2. **Which ancestor or sibling the element sits in**: `group-*`, `peer-*`, `in-*`.
+3. **What the element is**: `aria-*`, `data-*`, `has-*`, `not-*`.
+4. **How it's being used**: `visited`, `target`, `hover`, `focus`, `focus-within`, `focus-visible`,
+   `active`.
+5. **Its form state**: `enabled`, `disabled`, `checked`, … `read-only`, `open`, `inert`.
+6. **Where it sits among its siblings**: `first`, `last`, `only`, `odd`, `even`, `*-of-type`,
+   `nth-*`, `empty`.
+
+Breakpoints among themselves, container queries among themselves, and the variants within step 2 or
+within step 3 keep the order you wrote them in, so `data-[a]:data-[b]:` and `data-[b]:data-[a]:` are
+both left alone. `not-X` sorts as X (`not-sm:hover:`). A variant the rule has no place for — one
+your project defines with `@custom-variant` — is never moved, and nothing is moved across it.
+
 Pseudo-elements (`before`, `after`, `file`, `placeholder`, `selection`, `marker`, `backdrop`,
 `first-line`, `first-letter`, `details-content`) are always pinned innermost — closest to the
 utility — because in Tailwind v4 a pseudo-element placed before an element-selecting variant
-produces broken CSS like `&::before { &>svg { … } }`.
+produces broken CSS like `&::before { &>svg { … } }`. Variants that point the selector at another
+element (`*`, `**`, `[&>svg]`) are barriers: nothing is reordered across them, because
+`hover:[&>svg]:` (`&:hover > svg`) and `[&>svg]:hover:` (`& > svg:hover`) style different elements.
 
-With an entry point configured, which variants those are comes from the selectors the design system
-generates rather than from that fixed list, so a variant your project defines is handled too:
-`@custom-variant thumb (&::-webkit-slider-thumb)` is pinned innermost like `before:`, and
-`@custom-variant child (& > *)` becomes a reordering barrier because moving a state variant across a
-combinator changes which element is matched.
-
-DS-optional — when `settings.tailwindcss.entryPoint` is configured, the rule uses the design
-system's variant priority table and the derived variant behaviour above. When it isn't, it falls
-back to a built-in static order and the fixed list. Both paths are deterministic, and a missing
-entry point is tolerated silently (`no-contradicting-variants` is the other rule that does this).
+DS-optional — the order is the same with or without `settings.tailwindcss.entryPoint`. What the
+design system adds is what your project's own variants are, from the selectors it generates:
+`@custom-variant thumb (&::-webkit-slider-thumb)` is pinned innermost like `before:`,
+`@custom-variant child (& > *)` becomes a barrier, and a breakpoint you add with `--breakpoint-3xl`
+sorts with the others. Without one, the rule uses the fixed lists above, and a missing entry point
+is tolerated silently (`no-contradicting-variants` is the other rule that does this).
 
 ## Options
 
@@ -44,17 +60,14 @@ entry point is tolerated silently (`no-contradicting-variants` is the other rule
 
 `string[]`, optional.
 
-Custom priority list. Variants appear in the order you list them; anything not listed sorts after,
-in its original position. Use this when your team has a house style that differs from Tailwind's
-default (e.g. you prefer `dark:` outermost in every chain). The pseudo-element pin still applies
-regardless of where they appear in your list.
+Custom priority list, replacing the built-in order. Variants appear in the order you list them;
+anything not listed sorts after, in its original position. Use this when your team has a house style
+that differs from the default (e.g. you want states before breakpoints). The pseudo-element pin and
+the barriers still apply regardless of your list.
 
 ```jsonc
 {
-  "tailwindcss/consistent-variant-order": [
-    "error",
-    { "order": ["dark", "sm", "md", "lg", "xl", "hover", "focus"] }
-  ]
+  "tailwindcss/consistent-variant-order": ["error", { "order": ["hover", "focus", "sm", "md"] }]
 }
 ```
 
@@ -70,37 +83,46 @@ almost never needed.
 ### ✗ Incorrect
 
 ```tsx
-// hover before responsive
+// state before breakpoint
 <div className="hover:sm:flex" />
-//              ~~~~~~~~~~~~~  → sm:hover:flex
+// → <div className="sm:hover:flex" />
 
-// hover before dark
+// state before color scheme
 <div className="hover:dark:text-white" />
-//              ~~~~~~~~~~~~~~~~~~~~~  → dark:hover:text-white
+// → <div className="dark:hover:text-white" />
 
-// pseudo-element before element-selecting variant — broken in Tailwind v4
+// how it's used before what it is
+<div className="focus:data-[state=open]:bg-accent" />
+// → <div className="data-[state=open]:focus:bg-accent" />
+
+// pseudo-element before an element-selecting variant — broken in Tailwind v4
 <div className="before:[&>svg]:text-red-500" />
-//              ~~~~~~~~~~~~~~~~~~~~~~~~~~~  → [&>svg]:before:text-red-500
+// → <div className="[&>svg]:before:text-red-500" />
 ```
 
 ### ✓ Correct
 
 ```tsx
-// Responsive → state
 <div className="sm:hover:flex" />
-
-// Color scheme → state
 <div className="dark:hover:text-white" />
+<div className="md:peer-data-[variant=inset]:m-2" />
+<div className="data-[state=open]:focus:bg-accent" />
 
 // Pseudo-element innermost
 <div className="[&>svg]:before:text-red-500" />
 <div className="dark:has-[.active]:before:text-red-500" />
+
+// Barriers: both orders target different elements, so both stay
+<div className="hover:[&>svg]:w-4" />
+<div className="[&>svg]:hover:w-4" />
 ```
 
 ## Interactions with other rules
 
 - **`enforce-sort-order`**: complementary. `enforce-sort-order` sorts whole classes against each
   other; `consistent-variant-order` sorts the prefixes inside one class. Run both.
+- **oxfmt's `sortTailwindcss`**: it sorts whole classes and leaves the variant chain inside each
+  class as written, so it doesn't replace this rule.
 - **`enforce-canonical`**: orthogonal. Canonical normalizes the utility shape (`m-0`,
   `bg-red-500/50`), not the variant chain.
 - **`no-unknown-classes`**: when a variant is reordered the resulting class is still semantically
@@ -108,8 +130,6 @@ almost never needed.
 
 ## When to disable it
 
-- **You rely on `prettier-plugin-tailwindcss` for variant ordering too**: the formatter handles it,
-  the rule is redundant. Leaving both on is safe but extra work.
 - **Custom variant order that's hard to express as a flat list** (e.g. order depends on the
   utility): disable and rely on review.
 - **Generated code** where variant order encodes meaning you don't want rewritten.

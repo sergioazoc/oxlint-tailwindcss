@@ -122,8 +122,20 @@ describe('consistent-variant-order with derived facts', () => {
         // `hover:child:*` (`&:hover > *`) is not `child:hover:*` (`& > *:hover`).
         { code: '<div className="hover:child:underline" />', filename: 'test.tsx' },
         { code: '<div className="child:hover:underline" />', filename: 'test.tsx' },
+        // `sidebar-open` has no rank (the rule can't know where a project wants
+        // it), so it stays put and nothing crosses it.
+        { code: '<div className="hover:sidebar-open:underline" />', filename: 'test.tsx' },
+        { code: '<div className="sidebar-open:hover:underline" />', filename: 'test.tsx' },
+        { code: '<div className="3xl:hover:flex" />', filename: 'test.tsx' },
       ],
       invalid: [
+        {
+          // The design system registers `3xl` among the breakpoints.
+          code: '<div className="hover:3xl:flex" />',
+          filename: 'test.tsx',
+          output: '<div className="3xl:hover:flex" />',
+          errors: [{ messageId: 'wrongOrder' }],
+        },
         {
           // `thumb` targets a generated box, so it belongs innermost — exactly
           // like Tailwind's own `before`, which the static list knows and this

@@ -80,15 +80,14 @@ describe('multiline preservation under default theme', () => {
   })
 
   // 1-to-1 variant reordering inside one class — separators between classes untouched.
-  // Default fixture loads the DS, so DS-mode order applies (state→breakpoint).
   run('consistent-variant-order keeps multiline', consistentVariantOrder, {
     valid: [],
     invalid: [
       {
-        code: `const className = \`flex dark:hover:text-white${NL}p-4\``,
+        code: `const className = \`flex hover:dark:text-white${NL}p-4\``,
         filename: 'a.tsx',
         errors: [{ messageId: 'wrongOrder' }],
-        output: `const className = \`flex hover:dark:text-white${NL}p-4\``,
+        output: `const className = \`flex dark:hover:text-white${NL}p-4\``,
       },
     ],
   })

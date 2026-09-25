@@ -98,7 +98,7 @@ also accepts a rule-level `entryPoint` that overrides the shared setting.
 
 | Rule                               | Default options                         | What the design system adds                                                   |
 | ---------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
-| `consistent-variant-order`         | `{}` (DS-derived order when available)  | Real variant order, and what each variant's selector does                     |
+| `consistent-variant-order`         | `{}` (same order with or without a DS)  | What the project's own variants are: pseudo-element, barrier or breakpoint    |
 | `enforce-consistent-line-wrapping` | `{ printWidth: 80, group: 'newLine' }`  | The project prefix, so `wrapLines: 'all'` grouping treats it as transparent   |
 | `enforce-logical`                  | `{ allowlist: [], direction: 'both' }`  | Confirms the suggested class exists                                           |
 | `enforce-physical`                 | `{ allowlist: [], direction: 'both' }`  | Confirms the suggested class exists                                           |
