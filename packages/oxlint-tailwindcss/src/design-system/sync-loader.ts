@@ -129,7 +129,33 @@ export interface PrecomputedData {
    * names WITHOUT the prefix; this is the single source of truth for it.
    */
   prefix: string
+  /** Milliseconds per phase of the precompute that produced this data, for `debug`. */
+  timings?: Record<string, number>
 }
+
+/** How one `loadDesignSystemSync` call went, for `debug` (see `takeLoadReport`). */
+export interface LoadReport {
+  source: 'cache' | 'precompute'
+  /** Reading the entry point and what it imports, and hashing them. */
+  hashMs: number
+  /** Looking the hash up in the disk cache: reading, parsing and checking the file. */
+  readMs: number
+  /** Precomputing — or waiting for the thread that is. Precompute only. */
+  computeMs?: number
+  /** The precompute script's own phases, in ms. Precompute only. */
+  phases?: Record<string, number>
+}
+
+let lastLoadReport: LoadReport | null = null
+
+/** The report of this thread's last load, once: a second call returns `null`. */
+export function takeLoadReport(): LoadReport | null {
+  const report = lastLoadReport
+  lastLoadReport = null
+  return report
+}
+
+const since = (start: number) => Math.round(performance.now() - start)
 
 /**
  * Declaration extractor, as source text, interpolated into PRECOMPUTE_SCRIPT.
@@ -466,10 +492,22 @@ function extractComponentClasses(cssPath, baseDir) {
 ${DECL_EXTRACTOR_SOURCE}
 
 async function main() {
+  // Milliseconds per phase, stored with the result for \`debug\` to print: a
+  // cold start is dominated by a few of these, and which ones decides what's
+  // worth making lazy.
+  const timings = {};
+  let phaseStart = performance.now();
+  const phase = (name) => {
+    const now = performance.now();
+    timings[name] = Math.round(now - phaseStart);
+    phaseStart = now;
+  };
+
   const cssPath = WD_CSS_PATH;
   const css = readFileSync(cssPath, 'utf-8');
   const base = dirname(cssPath);
   const ds = await __unstable__loadDesignSystem(css, { base });
+  phase('load');
 
   // Tailwind v4 project prefix (\`@import "tailwindcss" prefix(tw)\`). getClassList()
   // returns names WITHOUT the prefix, but candidatesToCss/getClassOrder/
@@ -504,6 +542,8 @@ async function main() {
   for (let i = 0; i < classNames.length; i++) {
     if (cssResults[i] != null) declCss[classNames[i]] = cssResults[i];
   }
+
+  phase('validate');
 
   // Expand: validate extra candidates not in getClassList() but valid in v4
   const validSet = new Set(validClasses);
@@ -588,6 +628,8 @@ async function main() {
     }
   }
 
+  phase('expand');
+
   // Marker classes: group/peer don't produce CSS but enable group-hover:/peer-checked: variants
   const allVariants = ds.getVariants();
   for (const v of allVariants) {
@@ -604,6 +646,8 @@ async function main() {
   // Named groups/peers: group/name, peer/name — the /name part is user-defined
   // These are validated by the variant system, not by candidatesToCss
 
+  phase('markers');
+
   // Canonical forms (only store diffs)
   // NOTE: canonicalizeCandidates deduplicates, so we must call it one class at a time
   const canonical = {};
@@ -615,6 +659,8 @@ async function main() {
       canonical[cls] = canon;
     }
   }
+
+  phase('canonical');
 
   // Legacy v3 classes that produce valid CSS in v4 but are not enumerated by
   // getClassList(). Tailwind's canonicalizeCandidates() still rewrites them to
@@ -677,6 +723,8 @@ async function main() {
     }
   }
 
+  phase('deprecated');
+
   // Sort order — include extra candidates so bare utilities (rounded, blur, etc.) get order
   const allForOrder = [...classNames];
   for (const cls of validClasses) {
@@ -687,6 +735,8 @@ async function main() {
   for (const [name, val] of orderResults) {
     if (val !== null) order[unpfx(name)] = val.toString();
   }
+
+  phase('order');
 
   // CSS declarations per class, interned. The walker, the scope grammar and the
   // var-read scanner live in DECL_EXTRACTOR_SOURCE above (shared with the
@@ -807,6 +857,8 @@ async function main() {
     byClass,
   };
 
+  phase('declarations');
+
   // Variant ordering from the design system.
   const variantOrder = {};
   const variants = ds.getVariants();
@@ -864,6 +916,8 @@ async function main() {
     }
   }
 
+  phase('variants');
+
   // Component classes from @layer components
   const componentSet = new Set(extractComponentClasses(cssPath, base));
 
@@ -884,6 +938,8 @@ async function main() {
     }
   }
   const componentClasses = [...componentSet];
+
+  phase('components');
 
   // Arbitrary equivalents: map arbitrary forms to named equivalents.
   // Enumerate every dash split point so multi-segment utilities (e.g.
@@ -926,6 +982,8 @@ async function main() {
       }
     }
   }
+
+  phase('arbitrary');
 
   // Custom properties the project defines, across the entry AND its resolved
   // @imports — splitting the theme across files is the normal shadcn/ui layout,
@@ -1019,7 +1077,9 @@ async function main() {
     ? { unit: scaleUnit, step: scaleStep || 1, prefixes: scalePrefixes.sort() }
     : undefined;
 
-  const json = JSON.stringify({ validClasses, canonical, deprecated, order, cssDeclarations, variantOrder, variantFacts, componentClasses, arbitraryEquivalents, themeRefs, definedVars, tokenValues, scale, prefix });
+  phase('tokens');
+
+  const json = JSON.stringify({ validClasses, canonical, deprecated, order, cssDeclarations, variantOrder, variantFacts, componentClasses, arbitraryEquivalents, themeRefs, definedVars, tokenValues, scale, prefix, timings });
   // Atomic write: write to a unique temp path then rename, so a peer isolate
   // busy-waiting on the cache file never observes a half-written JSON.
   writeFileSync(WD_TMP_PATH, json);
@@ -1602,6 +1662,7 @@ function computeWithLock(
  */
 export function loadDesignSystemSync(cssPath: string, timeout?: number): PrecomputedData {
   const resolvedPath = resolve(cssPath)
+  const hashStart = performance.now()
 
   let content: string
   try {
@@ -1623,9 +1684,15 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
     engineCacheKey(engine),
   )
   const contentCachePath = getContentCachePath(contentHash)
+  const hashMs = since(hashStart)
 
+  const readStart = performance.now()
   const cached = tryReadCache(contentCachePath)
-  if (cached) return cached
+  const readMs = since(readStart)
+  if (cached) {
+    lastLoadReport = { source: 'cache', hashMs, readMs }
+    return cached
+  }
 
   // The worker receives @tailwindcss/node's absolute path via workerData.
   // Bare-specifier resolution from the worker's cwd would fail under pnpm
@@ -1643,13 +1710,22 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
   // runs in-thread (no fork), so it can't trigger the cold-cache `spawnSync …
   // ENOMEM` that the fork-based precompute hit on constrained CI runners (#24).
   // Returns validated `PrecomputedData` — malformed payloads are caught inside.
-  return computeWithLock(
+  const computeStart = performance.now()
+  const data = computeWithLock(
     resolvedPath,
     engine.nodePath,
     contentHash,
     contentCachePath,
     timeout ?? DEFAULT_LOAD_TIMEOUT_MS,
   )
+  lastLoadReport = {
+    source: 'precompute',
+    hashMs,
+    readMs,
+    computeMs: since(computeStart),
+    phases: data.timings,
+  }
+  return data
 }
 
 // validateCandidatesSync removed — runtime child process calls were too slow.

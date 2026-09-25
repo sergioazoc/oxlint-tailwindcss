@@ -1,5 +1,5 @@
 import { DesignSystemCache } from './cache'
-import { loadDesignSystemSync } from './sync-loader'
+import { loadDesignSystemSync, takeLoadReport, type LoadReport } from './sync-loader'
 import { debugLog, isDebugEnabled, setDebugEnabled, resetDebug } from './debug'
 import {
   allowUntestedEngineFromSettings,
@@ -307,10 +307,31 @@ export function getLoadedDesignSystem(
     if (isFatalError(err)) dsFailureCache.set(resolvedPath, { error: err, mtime })
     throw err
   }
+  const buildStart = performance.now()
   const cache = DesignSystemCache.fromPrecomputed(data)
+  const buildMs = Math.round(performance.now() - buildStart)
   dsCache.set(resolvedPath, { cache, mtime })
-  debugLog(`Loaded design system from "${resolvedPath}"`)
+  debugLog(
+    `Loaded design system from "${resolvedPath}" — ${describeLoad(takeLoadReport(), buildMs)}`,
+  )
   return { cache, entryPoint: resolvedPath }
+}
+
+/**
+ * `cache hit; hash 2 ms, read 38 ms, build 51 ms`, or for a precompute
+ * `precomputed in 5410 ms (load 820 ms, validate 1210 ms, …); hash …`.
+ */
+function describeLoad(report: LoadReport | null, buildMs: number): string {
+  const build = `build ${buildMs} ms`
+  if (!report) return build
+  const phases = Object.entries(report.phases ?? {})
+    .map(([name, ms]) => `${name} ${ms} ms`)
+    .join(', ')
+  const head =
+    report.source === 'cache'
+      ? 'cache hit'
+      : `precomputed in ${report.computeMs} ms${phases ? ` (${phases})` : ''}`
+  return `${head}; hash ${report.hashMs} ms, read ${report.readMs} ms, ${build}`
 }
 
 /**
