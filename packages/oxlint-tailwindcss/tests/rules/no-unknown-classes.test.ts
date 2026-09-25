@@ -458,13 +458,99 @@ describe('exact validation against the design system', () => {
         filename: 'test.tsx',
         errors: [{ messageId: 'unknown' }],
       },
+      // Too short to guess: a 2-edit neighbour of a 4-char class (`w-0`) is a
+      // coin flip, so no quick-fix is offered (the proportional gate).
       {
         code: '<div className="w-[]" />',
         filename: 'test.tsx',
-        errors: [{ messageId: 'unknownWithSuggestion' }],
+        errors: [{ messageId: 'unknown' }],
       },
     ],
   })
+
+  /**
+   * Suggestions are gated by distance proportional to the class length:
+   * `d <= max(1, floor(len / 3))`, capped at 3, with a swap of two adjacent
+   * letters counted as one edit. A short unknown class is far more likely a
+   * project marker than a typo — shadcn's docs put a CSS-less `line` marker on
+   * 40 spans, and the old flat cap of 3 offered `inline` (a display change) as
+   * the quick-fix on every one of them. Variant segments get the same budget.
+   */
+  runWithFixture(new RuleTester(), 'suggestion gate', noUnknownClasses, ENTRY_POINT, {
+    valid: [],
+    invalid: [
+      {
+        // shadcn apps/v4 components/theme-customizer.tsx, verbatim.
+        code: '<span data-line className="line" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknown' }],
+      },
+      {
+        code: '<div className="md:grids-col-2 grid" />',
+        filename: 'test.tsx',
+        errors: [
+          {
+            messageId: 'unknownWithSuggestion',
+            suggestions: [
+              {
+                messageId: 'suggestReplace',
+                data: { className: 'md:grids-col-2', replacement: 'md:grid-cols-2' },
+                output: '<div className="md:grid-cols-2 grid" />',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        code: '<div className="itms-center" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+      // A transposition is one edit, so a 4-letter swap keeps its suggestion.
+      {
+        code: '<div className="flxe" />',
+        filename: 'test.tsx',
+        errors: [
+          {
+            messageId: 'unknownWithSuggestion',
+            data: { className: 'flxe', suggestion: 'flex' },
+          },
+        ],
+      },
+      {
+        code: '<div className="opne:flex" />',
+        filename: 'test.tsx',
+        errors: [
+          {
+            messageId: 'unknownVariantWithSuggestion',
+            data: { className: 'opne:flex', variant: 'opne', suggestion: 'open' },
+          },
+        ],
+      },
+    ],
+  })
+
+  runWithFixture(
+    new RuleTester(),
+    'suggestion gate, project tokens',
+    noUnknownClasses,
+    resolve(__dirname, '../fixtures/shadcn.css'),
+    {
+      valid: [],
+      invalid: [
+        {
+          code: '<div className="bg-primray" />',
+          filename: 'test.tsx',
+          errors: [
+            {
+              messageId: 'unknownWithSuggestion',
+              data: { className: 'bg-primray', suggestion: 'bg-primary' },
+            },
+          ],
+        },
+      ],
+    },
+  )
 })
 
 /** Project-defined variants: only the design system knows they exist. */
@@ -543,11 +629,13 @@ describe('custom utilities with an open value type', () => {
         filename: 'test.tsx',
         errors: [{ messageId: 'unknown' }],
       },
-      // A typo in the ROOT is not rescued by any of this.
+      // A typo in the ROOT is not rescued by any of this. (It is reported with
+      // no suggestion: the nearest enumerable class, `top-1`, is 3 edits away —
+      // over the 2-edit budget of a 6-character class.)
       {
         code: '<div className="fooo-1" />',
         filename: 'test.tsx',
-        errors: [{ messageId: 'unknownWithSuggestion' }],
+        errors: [{ messageId: 'unknown' }],
       },
       {
         code: '<div className="hoverr:foo-1" />',

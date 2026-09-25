@@ -9,6 +9,8 @@ import {
   extractFromTaggedTemplate,
   extractFromVariableDeclarator,
   getExtractorConfig,
+  narrowGluedFragments,
+  type ClassLocation,
 } from '../../src/utils/extractors'
 
 /**
@@ -315,6 +317,92 @@ describe('calleeExtractors — structured routing for custom callees (#155)', ()
       })
       expect(cfg.calleeExtractors.has('defineStyles')).toBe(false)
       expect(cfg.callees).not.toContain('defineStyles')
+    })
+  })
+})
+
+/**
+ * `narrowGluedFragments` works on the quasi locations the template extractor
+ * emits: `preserveLeadingSpace` = preceded by `${}`, `preserveTrailingSpace` =
+ * followed by `${}`. `source` is the template body, so `quasi(…)` can compute
+ * each quasi's real range the way the extractor does.
+ */
+describe('narrowGluedFragments — template fragments glued to ${}', () => {
+  const NODE = { type: 'TemplateElement' } as unknown as ESTree.Node
+  function quasi(
+    text: string,
+    start: number,
+    flags: { lead?: boolean; trail?: boolean } = {},
+  ): ClassLocation {
+    return {
+      value: text,
+      node: NODE,
+      range: [start, start + text.length],
+      preserveLeadingSpace: flags.lead ?? false,
+      preserveTrailingSpace: flags.trail ?? false,
+    }
+  }
+  const view = (locs: ClassLocation[]) => locs.map((l) => [l.value, l.range])
+
+  it('cuts the trailing fragment glued to the next expression', () => {
+    // `ml-2 text-${c}` — quasi 0 is `ml-2 text-` at [1, 11]
+    expect(view(narrowGluedFragments([quasi('ml-2 text-', 1, { trail: true })]))).toEqual([
+      ['ml-2 ', [1, 6]],
+    ])
+  })
+
+  it('cuts the leading fragment glued to the previous expression', () => {
+    // `bg-${c}-500 p-4` — quasi 1 is `-500 p-4`
+    expect(view(narrowGluedFragments([quasi('-500 p-4', 10, { lead: true })]))).toEqual([
+      [' p-4', [14, 18]],
+    ])
+  })
+
+  it('cuts both ends of a quasi between two expressions', () => {
+    // `${a}-500 p-4 bg-${b}` — middle quasi `-500 p-4 bg-`
+    expect(
+      view(narrowGluedFragments([quasi('-500 p-4 bg-', 5, { lead: true, trail: true })])),
+    ).toEqual([[' p-4 ', [9, 14]]])
+  })
+
+  it('drops a quasi that is only a fragment', () => {
+    expect(narrowGluedFragments([quasi('bg-', 1, { trail: true })])).toEqual([])
+    expect(narrowGluedFragments([quasi('-', 5, { lead: true, trail: true })])).toEqual([])
+    expect(narrowGluedFragments([quasi('-500 ', 5, { lead: true })])).toEqual([])
+  })
+
+  it('leaves quasis with whitespace at the expression boundary untouched (same object)', () => {
+    const locs = [
+      quasi('flex p-4 ', 1, { trail: true }),
+      quasi(' flex ', 12, { lead: true, trail: true }),
+    ]
+    const out = narrowGluedFragments(locs)
+    expect(out).toBe(locs)
+  })
+
+  it('treats newlines and tabs as boundary whitespace', () => {
+    expect(view(narrowGluedFragments([quasi('flex\n  text-', 1, { trail: true })]))).toEqual([
+      ['flex\n  ', [1, 8]],
+    ])
+  })
+
+  it('never touches a plain string (no expression neighbours)', () => {
+    const locs = [quasi('text- -500 bg-', 0)]
+    expect(narrowGluedFragments(locs)).toBe(locs)
+  })
+
+  it('keeps every other location field', () => {
+    const loc = {
+      ...quasi('ml-2 text-', 1, { trail: true }),
+      origin: 'callee' as const,
+      templateLine: 3,
+    }
+    const [out] = narrowGluedFragments([loc])
+    expect(out).toMatchObject({
+      origin: 'callee',
+      templateLine: 3,
+      node: NODE,
+      preserveTrailingSpace: true,
     })
   })
 })

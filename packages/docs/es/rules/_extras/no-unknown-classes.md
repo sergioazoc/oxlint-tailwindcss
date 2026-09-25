@@ -2,8 +2,11 @@
 
 Recorre cada clase de Tailwind extraída de tu código y le pregunta al design system — construido a
 partir del CSS que apuntas con `entryPoint` — si esa clase existe. Si no existe, la regla la
-reporta. Cuando la clase parece un typo de una conocida (distancia Levenshtein ≤ 2), el diagnóstico
-incluye una sugerencia y un quick-fix de editor para reemplazarla.
+reporta. Cuando la clase parece un typo de una conocida, el diagnóstico incluye una sugerencia y un
+quick-fix de editor para reemplazarla. "Parece un typo" depende del largo: una edición por cada tres
+caracteres, mínimo 1 y máximo 3, y cambiar de lugar dos letras vecinas cuenta como una sola edición.
+Así, `fex` → `flex`, `opne:` → `open:` y `bg-primray` → `bg-primary` reciben sugerencia, pero un
+marcador corto del proyecto como `line` se reporta sin ofrecer `inline`, que cambiaría el layout.
 
 El design system aquí significa **todo lo que Tailwind generaría para tu stylesheet**: las utilities
 core (`flex`, `bg-red-500`, `hover:underline`), cualquier token `@theme` que definiste (`bg-card`,

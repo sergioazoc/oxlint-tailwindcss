@@ -257,6 +257,17 @@ strings and cva-like config from remaining args.
   (`cn({ "bg-red-500": cond })`), arrays (`cn(['a', 'b'])`, `tv({ base: ['a', 'b'] })` — the
   idiomatic multi-line form; `extractFromExpression` recurses into elements, skipping holes and
   spreads), template literals with leading/trailing space preservation across expressions.
+- **Glued template fragments are cut before rules see them.** In `` `bg-${c}-500 p-4` `` the text
+  touching a `${}` (`bg-`, `-500`) is a fragment of one runtime class. `createExtractorVisitors`
+  runs `narrowGluedFragments` on every batch: a quasi whose `preserveLeadingSpace` /
+  `preserveTrailingSpace` edge is not whitespace loses that glued token from `value` and `range`,
+  and a quasi that is nothing but fragments is dropped. So fixers only rewrite self-contained
+  classes and the `${}` boundary is never re-spaced (it used to split the class: `bg-${c} -500`).
+  Rules that reason about the raw text — `no-unnecessary-whitespace`,
+  `enforce-consistent-line-wrapping`, `max-class-count` — pass `{ raw: true }` as the third
+  argument. A new rule gets the narrowed view by default;
+  `tests/integration/template-fragments.test.ts` runs every fixer and suggester over glued
+  templates, so add a new one there.
 
 AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `VariableDeclarator`.
 
@@ -463,6 +474,11 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   would feed unbounded strings to the Levenshtein scan. Under a prefix an unprefixed marker reports
   `missingPrefix`, never a Levenshtein neighbour — for `peer//x` that neighbour is the bare `peer`,
   and the quick-fix would delete the name every consumer binds to.
+- **Typo suggestions have a length-proportional budget** (`suggestionDistance` in
+  `utils/levenshtein.ts`: `max(1, floor(len / 3))`, capped at 3), used for utilities and for both
+  variant corrections (whole segment and dash tail). The distance is OSA — an adjacent swap costs 1
+  — so `opne` → `open` survives a 1-edit budget. A flat cap of 3 offered `inline` for shadcn's
+  CSS-less `line` marker and `w-0` for `w-[]`; don't widen the budget without re-running the bench.
 - **The DS verdict ACCEPTS as well as refutes** (`no-unknown-classes`, issue #104). The rule asks
   `validateClassesSync` about every class the precompute doesn't know verbatim; that answer used to
   be read only as `compiles === false`, so `validity === 'unknown'` won even when Tailwind had just

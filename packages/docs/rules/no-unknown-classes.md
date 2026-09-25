@@ -6,8 +6,11 @@
 
 Walks every Tailwind class extracted from your code and asks the design system — built from your
 `entryPoint` CSS — whether the class is real. If it isn't, the rule reports it. When the class looks
-like a typo of a known class (Levenshtein distance ≤ 2), the diagnostic includes a suggestion and an
-editor quick-fix to replace it.
+like a typo of a known class, the diagnostic includes a suggestion and an editor quick-fix to
+replace it. "Looks like a typo" scales with length: one edit per three characters, at least 1 and at
+most 3, where swapping two adjacent letters counts as one edit. So `fex` → `flex`, `opne:` → `open:`
+and `bg-primray` → `bg-primary` get a suggestion, but a short project marker such as `line` is
+reported without offering `inline`, which would change the layout.
 
 The design system here means **everything Tailwind would generate for your stylesheet**: the core
 utilities (`flex`, `bg-red-500`, `hover:underline`), any `@theme` tokens you defined (`bg-card`,

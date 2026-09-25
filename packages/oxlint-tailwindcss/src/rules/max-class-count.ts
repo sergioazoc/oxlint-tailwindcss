@@ -47,6 +47,6 @@ export const maxClassCount = defineRule({
       }
     }
 
-    return createExtractorVisitors(context, check)
+    return createExtractorVisitors(context, check, { raw: true })
   },
 })

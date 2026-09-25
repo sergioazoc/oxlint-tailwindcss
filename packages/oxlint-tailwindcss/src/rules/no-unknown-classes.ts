@@ -1,7 +1,7 @@
 import { defineRule } from '@oxlint/plugins'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
-import { findBestSuggestion } from '../utils/levenshtein'
+import { findBestSuggestion, suggestionDistance } from '../utils/levenshtein'
 import {
   extractVariants,
   splitImportant,
@@ -297,7 +297,11 @@ export const noUnknownClasses = defineRule({
           const utilityIsUnknown = effectiveValidity === 'unknown' || compiles === false
 
           if (utilityIsUnknown) {
-            const suggestionBare = findBestSuggestion(bare, cache.validClasses)
+            const suggestionBare = findBestSuggestion(
+              bare,
+              cache.validClasses,
+              suggestionDistance(bare),
+            )
             const suggestion = suggestionBare
               ? variant + reattachImportant(suggestionBare, position)
               : null
@@ -399,14 +403,15 @@ export const noUnknownClasses = defineRule({
     /** Spelling candidates for a variant segment, nearest neighbour first. */
     function correctionsFor(segment: string, names: string[]): string[] {
       const out: string[] = []
-      const whole = findBestSuggestion(segment, names)
+      const whole = findBestSuggestion(segment, names, suggestionDistance(segment))
       if (whole) out.push(whole)
 
       // Compound variants (`group-hoverr`, `peer-cheked`) are a known root plus a
       // variant name: correcting the last part keeps the root intact.
       const dash = segment.lastIndexOf('-')
       if (dash > 0) {
-        const tail = findBestSuggestion(segment.slice(dash + 1), names)
+        const tailInput = segment.slice(dash + 1)
+        const tail = findBestSuggestion(tailInput, names, suggestionDistance(tailInput))
         if (tail) out.push(`${segment.slice(0, dash)}-${tail}`)
       }
       return out

@@ -66,6 +66,6 @@ export const noUnnecessaryWhitespace = defineRule({
       }
     }
 
-    return createExtractorVisitors(context, check)
+    return createExtractorVisitors(context, check, { raw: true })
   },
 })

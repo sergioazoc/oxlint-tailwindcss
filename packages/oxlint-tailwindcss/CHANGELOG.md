@@ -18,9 +18,36 @@
   `ds.canonicalizeCandidates is not a function` behind a hint to check the CSS for syntax errors.
   The guard now names the real floor, v4.1.15. Those versions never worked; only the message
   changes. CI pins the floor exactly and asserts that 4.1.14 is rejected by the guard.
+- **Autofixes no longer split a class built with `${}`.** In `` `bg-${c}-500 p-4 p-4` `` the static
+  text glued to the expression (`bg-`, `-500`) is part of one runtime class, but rules saw it as
+  classes of their own, and fixes re-inserted a space at the `${}` boundary: `no-duplicate-classes`
+  turned that string into `` `bg-${c} -500 p-4` ``, and `enforce-logical` turned
+  `` `ml-2 text-${c}` `` into `` `ms-2 text- ${c}` ``. The same happened in
+  `enforce-consistent-important-position`, `enforce-consistent-variable-syntax`,
+  `enforce-sort-order` and `consistent-variant-order` (which could also move a fragment away from
+  its expression), `enforce-shorthand`, `enforce-canonical`, `no-deprecated-classes`,
+  `enforce-negative-arbitrary-values`, `no-unnecessary-arbitrary-value`, and in the suggestions of
+  `no-unknown-classes`, `prefer-scale-token` and `prefer-theme-tokens`. Glued fragments are now left
+  out of what these rules check and rewrite, so the dynamic class is kept byte for byte and
+  `no-unknown-classes` no longer reports `bg-` or `-500` as unknown classes.
+  `no-unnecessary-whitespace`, `enforce-consistent-line-wrapping` and `max-class-count` still see
+  the text as written.
+- **`no-unknown-classes` offers fewer wrong quick-fixes on short classes.** A suggestion used to be
+  any known class within 3 edits, so a CSS-less marker such as `line` was offered `inline` (a layout
+  change), and `w-[]` was offered `w-0`. The allowance now scales with length (one edit per three
+  characters, from 1 to 3) for utilities and variants alike, and swapping two adjacent letters
+  counts as one edit, so `flxe` → `flex` and `opne:` → `open:` are still suggested. Such classes are
+  still reported; only the suggestion goes away.
 - **Tailwind insiders builds are no longer rejected as "too old".** `0.0.0-insiders.<sha>` was read
   as version 0; it is now treated as an untested newer engine — a one-time notice, then linting as
   usual.
+
+### Performance
+
+- **`no-unknown-classes` finds typo suggestions in about half the time.** The edit-distance scan
+  over every known class now stops as soon as a candidate can't beat the suggestion budget, and
+  reuses its buffers instead of allocating per candidate. On shadcn/ui `apps/v4`, warm, the rule
+  went from 502 ms to 277 ms, with identical diagnostics.
 
 ### Documentation
 
