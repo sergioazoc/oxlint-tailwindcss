@@ -5,7 +5,7 @@ description: "All oxlint-tailwindcss lint rules for Tailwind CSS, grouped by wha
 
 # Rules
 
-The 24 rules in `oxlint-tailwindcss`, grouped by what they enforce. Click into any rule for examples
+The 25 rules in `oxlint-tailwindcss`, grouped by what they enforce. Click into any rule for examples
 and option reference.
 
 ## Correctness
@@ -21,6 +21,8 @@ These rules catch problems that would generate invalid or unexpected CSS.
 - [no-dark-without-light](./no-dark-without-light) — a `dark:` colour should have a light-mode pair
   (only on literal class lists on native elements, not `cn`/`twMerge` fragments).
 - [no-duplicate-classes](./no-duplicate-classes) — same class twice is dead weight.
+- [no-dynamic-classes](./no-dynamic-classes) — `bg-${color}-500` is built at runtime, so Tailwind
+  generates no CSS for it.
 
 ## Modernization
 
@@ -105,6 +107,7 @@ also accepts a rule-level `entryPoint` that overrides the shared setting.
 | `no-contradicting-variants`        | `{}`                                    | What each variant's selector does                                             |
 | `no-dark-without-light`            | `{ variants: ['dark'] }`                | Tells colours from the rest, and groups the base by declared CSS property     |
 | `no-deprecated-classes`            | `{}`                                    | Derives the rename list instead of using the built-in table                   |
+| `no-dynamic-classes`               | `{}`                                    | Your project's own utilities and variants count as Tailwind's                 |
 
 ### DS-independent rules
 

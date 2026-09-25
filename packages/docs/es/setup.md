@@ -84,6 +84,7 @@ Si quieres un set "bendecido" que detecte problemas reales sin ser ruidoso, acti
     "tailwindcss/no-conflicting-classes": "error",
     "tailwindcss/no-deprecated-classes": "error",
     "tailwindcss/no-duplicate-classes": "warn",
+    "tailwindcss/no-dynamic-classes": "error",
     "tailwindcss/no-unknown-classes": "error",
 
     // Modernización — mantiene las clases en su forma canónica actual
