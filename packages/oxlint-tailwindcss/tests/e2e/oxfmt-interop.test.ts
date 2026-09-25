@@ -16,7 +16,10 @@ import { assertFreshDist, DIST_CJS } from './helpers/dist'
 //   - class strings oxfmt doesn't format (a variable) stay the linter's;
 //   - without `functions`, `cn(…)` arguments are left unsorted by oxfmt;
 //   - without `stylesheet`, oxfmt doesn't know the project's tokens and orders
-//     them differently.
+//     them differently;
+//   - oxfmt leaves the variant chain inside a class as written, so
+//     `consistent-variant-order` has no formatter counterpart (its rule page
+//     says so).
 // When one of these changes (an oxfmt release), update interop.md first.
 
 const ROOT = resolve(__dirname, '../..')
@@ -137,5 +140,15 @@ describe('E2E: oxfmt sortTailwindcss and oxlint-tailwindcss agree', () => {
     run(OXFMT, ['--write', 'src/a.tsx'], dir)
     expect(read(dir)).toContain('className="text-brand bg-brand flex p-4"')
     expect(lint(dir)).toContain('3 enforce-sort-order')
+  })
+
+  it('CANARY: oxfmt leaves the variant chain inside a class as written', () => {
+    const dir = project({ stylesheet: './src/app.css', functions: ['cn'] })
+    writeFileSync(
+      resolve(dir, 'src/a.tsx'),
+      'export const A = () => <div className="hover:sm:flex" />;\n',
+    )
+    run(OXFMT, ['--write', 'src/a.tsx'], dir)
+    expect(read(dir)).toContain('className="hover:sm:flex"')
   })
 })
