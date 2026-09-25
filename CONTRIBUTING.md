@@ -8,8 +8,10 @@ docs site in `packages/docs/`. The root `CLAUDE.md` documents the architecture i
 
 ## Prerequisites
 
-- **Node.js ≥ 20**
-- **pnpm ≥ 11.4.0** (enforced via `engines`; a lower version is rejected on install)
+- **Node.js ≥ 22.13** for the dev toolchain (pnpm 11 itself requires it). The published plugin
+  supports a wider range; see `engines` in `packages/oxlint-tailwindcss/package.json`.
+- **pnpm ≥ 11.17.0** (enforced via the root `engines`; a lower version is rejected on install). The
+  exact version is pinned by `packageManager` in the root `package.json`.
 
 ## Setup
 
