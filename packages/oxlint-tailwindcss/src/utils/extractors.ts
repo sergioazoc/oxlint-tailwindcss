@@ -272,31 +272,98 @@ export function resetExtractorConfig(context?: { settings?: unknown }): void {
   // lifecycle. Module-level global state was removed in v1.
 }
 
+const WHITESPACE = /\s/
+
+/**
+ * Cuts the static text glued to a template expression out of each location.
+ *
+ * In `` `bg-${c}-500 p-4` `` the class `bg-${c}-500` is built at runtime, so the
+ * quasis' `bg-` and `-500` are FRAGMENTS of one class, not classes. Handed to a
+ * rule they read as unknown classes, get sorted, deduplicated or rewritten, and
+ * a fixer's `preserveSpaces` then inserted a space where the source had none —
+ * splitting the dynamic class (`bg-${c} -500`). A quasi preceded by `${}` whose
+ * text doesn't start with whitespace loses its first token; one followed by
+ * `${}` that doesn't end with whitespace loses its last token. The whitespace
+ * around the cut stays in `value`/`range`, so the rewritten span is exactly the
+ * self-contained classes and the boundary is untouched. A quasi that is glued
+ * on every side with no whitespace (`${a}-${b}`, `bg-${c}`) holds no complete
+ * class and is dropped.
+ *
+ * `preserveLeadingSpace` / `preserveTrailingSpace` mark exactly the quasis
+ * adjacent to an expression, so they are the glue test — no AST needed.
+ */
+export function narrowGluedFragments(locations: ClassLocation[]): ClassLocation[] {
+  let out: ClassLocation[] | null = null
+  for (let i = 0; i < locations.length; i++) {
+    const loc = locations[i]
+    let value = loc.value
+    let start = loc.range[0]
+    if (loc.preserveLeadingSpace && value.length > 0 && !WHITESPACE.test(value[0])) {
+      const firstSpace = value.search(WHITESPACE)
+      value = firstSpace === -1 ? '' : value.slice(firstSpace)
+      start += firstSpace === -1 ? loc.value.length : firstSpace
+    }
+    if (
+      loc.preserveTrailingSpace &&
+      value.length > 0 &&
+      !WHITESPACE.test(value[value.length - 1])
+    ) {
+      let lastSpace = value.length - 1
+      while (lastSpace >= 0 && !WHITESPACE.test(value[lastSpace])) lastSpace--
+      value = value.slice(0, lastSpace + 1)
+    }
+    const changed = value !== loc.value
+    if (changed && out === null) out = locations.slice(0, i)
+    if (!changed) {
+      out?.push(loc)
+    } else if (value.trim().length > 0) {
+      out!.push({ ...loc, value, range: [start, start + value.length] })
+    }
+  }
+  return out ?? locations
+}
+
+export interface ExtractorVisitorOptions {
+  /**
+   * Hand the rule every quasi as written, glued fragments included. Only for
+   * rules that reason about the raw text itself — whitespace
+   * (`no-unnecessary-whitespace`), layout (`enforce-consistent-line-wrapping`,
+   * which has its own glued-boundary guards) and counting (`max-class-count`).
+   */
+  raw?: boolean
+}
+
 /**
  * Creates the 4 standard AST visitor callbacks that all rules use.
  * Resolves extractor config lazily from context.settings on first visitor call.
+ * Template fragments glued to `${}` are cut out unless `options.raw` is set
+ * (see `narrowGluedFragments`).
  */
 export function createExtractorVisitors(
   context: { settings?: Readonly<Record<string, unknown>> },
   check: (locations: ClassLocation[]) => void,
+  options: ExtractorVisitorOptions = {},
 ): {
   JSXAttribute: (node: ESTree.JSXAttribute) => void
   CallExpression: (node: ESTree.CallExpression) => void
   TaggedTemplateExpression: (node: ESTree.TaggedTemplateExpression) => void
   VariableDeclarator: (node: ESTree.VariableDeclarator) => void
 } {
+  const deliver = options.raw
+    ? check
+    : (locations: ClassLocation[]) => check(narrowGluedFragments(locations))
   return {
     JSXAttribute(node) {
-      check(extractFromJSXAttribute(node, getExtractorConfig(context)))
+      deliver(extractFromJSXAttribute(node, getExtractorConfig(context)))
     },
     CallExpression(node) {
-      check(extractFromCallExpression(node, getExtractorConfig(context)))
+      deliver(extractFromCallExpression(node, getExtractorConfig(context)))
     },
     TaggedTemplateExpression(node) {
-      check(extractFromTaggedTemplate(node, getExtractorConfig(context)))
+      deliver(extractFromTaggedTemplate(node, getExtractorConfig(context)))
     },
     VariableDeclarator(node) {
-      check(extractFromVariableDeclarator(node, getExtractorConfig(context)))
+      deliver(extractFromVariableDeclarator(node, getExtractorConfig(context)))
     },
   }
 }
