@@ -8,6 +8,7 @@ import { createLazyOptions, createLazySettings, safeCwd } from '../utils/context
 import { createLazyLoader, rootFontSizeFromSettings } from '../design-system/loader'
 import { softGetDS } from '../utils/fatal'
 import { closestOnScale, formatOptions } from '../utils/measure'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 type AllowVariables = 'none' | 'runtime' | 'all'
 
@@ -58,6 +59,7 @@ export const noArbitraryValue = defineRule({
     ],
     defaultOptions: [{ allow: [], allowVariables: 'none' }],
     messages: {
+      ...SETTINGS_MESSAGE,
       noArbitrary:
         '"{{className}}" uses an arbitrary value. Use a design token or extend your theme instead.',
       noArbitraryOptions:

@@ -11,6 +11,7 @@ import {
 } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 export const noUnnecessaryArbitraryValue = defineRule({
   meta: {
@@ -34,6 +35,7 @@ export const noUnnecessaryArbitraryValue = defineRule({
     hasSuggestions: true,
     defaultOptions: [{}],
     messages: {
+      ...SETTINGS_MESSAGE,
       unnecessaryArbitrary:
         '"{{className}}" can be written as "{{replacement}}". Use the named class instead.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',

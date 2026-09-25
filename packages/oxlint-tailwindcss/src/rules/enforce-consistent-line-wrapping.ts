@@ -6,6 +6,7 @@ import { createLazyOptions, safeSourceCode } from '../utils/context'
 import { getVariantPrefix, stripProjectPrefix } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import { softGetDS } from '../utils/fatal'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 /*
  * A template literal is linted per QUASI — each run of static text between
@@ -179,6 +180,7 @@ export const enforceConsistentLineWrapping = defineRule({
     // leaving either unset turns its fixer off.
     defaultOptions: [{ printWidth: DEFAULT_PRINT_WIDTH, group: DEFAULT_GROUP }],
     messages: {
+      ...SETTINGS_MESSAGE,
       tooLong:
         'Class string exceeds the print width of {{printWidth}} (longest line is {{length}} characters). Consider splitting into multiple lines or extracting into a component.',
       tooManyPerLine:

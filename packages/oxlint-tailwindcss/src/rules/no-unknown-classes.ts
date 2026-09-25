@@ -14,6 +14,7 @@ import { validateClassesSync } from '../design-system/declaration-service'
 import type { DesignSystemCache } from '../design-system/cache'
 import { createLazyOptions } from '../utils/context'
 import { DS_UNAVAILABLE_MESSAGE, reportFatalDsError, safeGetDS } from '../utils/fatal'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 interface Options {
   entryPoint?: string
@@ -53,6 +54,7 @@ export const noUnknownClasses = defineRule({
     hasSuggestions: true,
     defaultOptions: [{ allowlist: [], ignorePrefixes: [] }],
     messages: {
+      ...SETTINGS_MESSAGE,
       unknown: '"{{className}}" is not a valid Tailwind class.',
       unknownWithSuggestion:
         '"{{className}}" is not a valid Tailwind class. Did you mean "{{suggestion}}"?',

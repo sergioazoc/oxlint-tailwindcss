@@ -7,6 +7,7 @@ import { createLazyLoader } from '../design-system/loader'
 import { sortClassesSync } from '../design-system/sort-service'
 import { createLazyOptions } from '../utils/context'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 interface Options {
   entryPoint?: string
@@ -37,6 +38,7 @@ export const enforceSortOrder = defineRule({
     ],
     defaultOptions: [{ mode: 'default' }],
     messages: {
+      ...SETTINGS_MESSAGE,
       unsorted: 'Tailwind classes are not in the recommended order.',
       ...DS_UNAVAILABLE_MESSAGE,
     },

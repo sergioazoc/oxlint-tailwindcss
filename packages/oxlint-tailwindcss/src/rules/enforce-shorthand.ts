@@ -11,6 +11,7 @@ import {
 import { createLazyLoader } from '../design-system/loader'
 import { softGetDS } from '../utils/fatal'
 import type { DesignSystemCache } from '../design-system/cache'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 /**
  * One collapsible group: every `parts` utility carrying the SAME value can be
@@ -235,6 +236,7 @@ export const enforceShorthand = defineRule({
     ],
     defaultOptions: [{}],
     messages: {
+      ...SETTINGS_MESSAGE,
       shorthand: '{{parts}} can be simplified to "{{replacement}}".',
     },
   },

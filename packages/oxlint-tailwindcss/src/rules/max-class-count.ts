@@ -3,6 +3,7 @@ import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import { createLazyOptions } from '../utils/context'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 interface Options {
   max?: number
@@ -48,6 +49,7 @@ export const maxClassCount = defineRule({
     ],
     defaultOptions: [{ max: DEFAULT_MAX }],
     messages: {
+      ...SETTINGS_MESSAGE,
       tooMany:
         'Too many Tailwind classes ({{count}}). Maximum allowed is {{max}}. Consider extracting into a component or utility.',
     },

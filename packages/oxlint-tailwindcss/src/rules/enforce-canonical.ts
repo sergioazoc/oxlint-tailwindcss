@@ -16,6 +16,7 @@ import { createLazyLoader, rootFontSizeFromSettings } from '../design-system/loa
 import { canonicalizeClassesSync } from '../design-system/canonicalize-service'
 import { createLazyOptions, createLazySettings } from '../utils/context'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 /**
  * Preserve the user's `!` position after canonicalization.
@@ -73,6 +74,7 @@ export const enforceCanonical = defineRule({
     hasSuggestions: true,
     defaultOptions: [{ reportNonEquivalent: false }],
     messages: {
+      ...SETTINGS_MESSAGE,
       nonCanonical: '"{{className}}" can be written as "{{canonical}}". Use the canonical form.',
       nonEquivalentVariant:
         '"{{className}}" is not the same CSS as its canonical form "{{canonical}}" in this project: "{{variant}}:" is defined differently from "{{written}}:" (a custom variant in your CSS), so the two match different elements. It is left as written; switch to "{{variant}}:" only if that is what you mean.',

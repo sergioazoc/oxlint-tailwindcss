@@ -9,6 +9,7 @@ import { compileRegexList, matchesAny } from '../utils/allowlist'
 import { createLazyLoader } from '../design-system/loader'
 import { softGetDS } from '../utils/fatal'
 import { makeReplacementGuard } from '../utils/replacement'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 export type Direction = 'inline' | 'block' | 'both'
 
@@ -194,6 +195,7 @@ export const enforceLogical = defineRule({
     hasSuggestions: true,
     defaultOptions: [{ allowlist: [], direction: 'both' }],
     messages: {
+      ...SETTINGS_MESSAGE,
       useLogical:
         '"{{className}}" uses a physical property. Use "{{replacement}}" for LTR/RTL support.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',

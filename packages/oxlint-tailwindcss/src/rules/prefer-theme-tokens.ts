@@ -6,6 +6,7 @@ import { reportClassReplacements } from '../utils/report'
 import { reattachImportant, splitImportant, splitUtilityAndVariant } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 /**
  * Match `prefix-(--name)` or `prefix-(--name)/modifier`.
@@ -52,6 +53,7 @@ export const preferThemeTokens = defineRule({
     hasSuggestions: true,
     defaultOptions: [{}],
     messages: {
+      ...SETTINGS_MESSAGE,
       preferNamed:
         '"{{className}}" can be written as "{{replacement}}". Use the named theme token.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',

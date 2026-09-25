@@ -38,5 +38,5 @@ features:
     details: |
       Misconfiguration surfaces as a single `designSystemUnavailable`
       diagnostic with an actionable hint — never as silently-skipped
-      rules. The error tells you exactly which file and what to set.
+      rules — and a misspelt setting is named, with the one you meant.
 ---

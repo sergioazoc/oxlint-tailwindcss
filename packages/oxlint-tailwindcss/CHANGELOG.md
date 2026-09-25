@@ -4,6 +4,15 @@
 
 ### Features
 
+- **A misspelt or mistyped setting is reported.** oxlint doesn't check `settings`, and the plugin
+  read each key it knew and nothing else, so `rootfontsize`, `atributes` or
+  `"attributes": "className"` (read letter by letter) changed nothing — or the wrong thing —
+  silently. Now the first rule to lint each file reports what's wrong with `settings.tailwindcss` on
+  its first line, once per file: an unknown key (with the setting you likely meant), a value of the
+  wrong type, a pattern that isn't a regular expression, or a `calleeExtractors` kind that doesn't
+  exist (`invalidSetting`: "Check settings.tailwindcss: "rootfontsize" is not a setting (did you
+  mean "rootFontSize"?)"). Valid settings report nothing new.
+
 - **New rule: `no-dynamic-classes`.** Tailwind generates CSS only for class names written out in
   full, so a class built at runtime — `` `bg-${color}-500` ``, `` `w-[${width}px]` ``,
   `` `hover:${cls}` `` — gets no CSS and the element silently goes unstyled. The rule reports each
