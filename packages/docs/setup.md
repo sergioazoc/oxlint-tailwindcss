@@ -17,7 +17,8 @@ Requirements:
   project's Tailwind per entry point; releases before 4.1.15 are not supported (they predate a
   design-system API the plugin needs) and are reported with a clear diagnostic. Insiders builds
   (`tailwindcss@insiders`) run with a one-time "untested engine" notice.
-- **Node.js 20** or newer for the linter process itself.
+- **Node.js `^20.19.0 || >=22.12.0`** for the linter process — the same range oxlint itself
+  requires.
 
 ::: warning Avoid oxlint 1.77.0 with the editor extension
 
@@ -57,8 +58,11 @@ Create or extend your `.oxlintrc.json` at the project root:
 `@import "tailwindcss";` and (optionally) declare your `@theme { ... }` tokens. The plugin reads
 that file to build the design system every rule queries against.
 
-That's it. Run `oxlint` and the plugin lints every JS / TS / JSX / TSX / Vue / Svelte file in your
-project against the design system loaded from `src/styles.css`.
+That's it. Run `oxlint` and the plugin checks every file oxlint lints — `.js`, `.jsx`, `.ts`, `.tsx`
+(and `.mjs`, `.cjs`, `.mts`, `.cts`) — against the design system loaded from `src/styles.css`. In
+`.vue`, `.svelte` and `.astro` files oxlint only hands plugins the `<script>` blocks (and Astro's
+frontmatter), so classes written in the template or markup are **not** checked yet. See
+[Vue, Svelte & Astro](/frameworks).
 
 ## 3. Recommended starter rule set
 

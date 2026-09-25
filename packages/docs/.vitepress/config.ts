@@ -60,6 +60,7 @@ export default defineConfig({
               items: [
                 { text: 'Introduction', link: '/' },
                 { text: 'Setup', link: '/setup' },
+                { text: 'Vue, Svelte & Astro', link: '/frameworks' },
               ],
             },
             {
@@ -100,6 +101,7 @@ export default defineConfig({
               items: [
                 { text: 'Introducción', link: '/es/' },
                 { text: 'Setup', link: '/es/setup' },
+                { text: 'Vue, Svelte y Astro', link: '/es/frameworks' },
               ],
             },
             {

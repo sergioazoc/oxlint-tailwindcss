@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
-import { existsSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs'
+import { writeFileSync, unlinkSync, mkdirSync } from 'node:fs'
+import { assertFreshDist, DIST_CJS } from './helpers/dist'
 
 const ROOT = resolve(__dirname, '../..')
-const DIST_CJS = resolve(ROOT, 'dist/index.cjs')
 // On Windows the npm bin shim is `oxlint.cmd`, and a `.cmd` can't be run via
 // execFileSync without a shell (Node refuses to spawn .cmd/.bat directly). Pick
 // the right shim per platform and only opt into the shell where it's needed.
@@ -38,9 +38,7 @@ describe('E2E: oxlint plugin loading', () => {
   const invalidFile = resolve(E2E_DIR, 'invalid.tsx')
 
   beforeAll(() => {
-    if (!existsSync(DIST_CJS)) {
-      throw new Error('dist/index.cjs not found. Run `pnpm build` first.')
-    }
+    assertFreshDist()
 
     mkdirSync(E2E_DIR, { recursive: true })
 

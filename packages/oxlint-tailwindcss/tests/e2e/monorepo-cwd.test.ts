@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { assertFreshDist, DIST_CJS } from './helpers/dist'
 
 // End-to-end regression for issue #39.
 //
@@ -22,7 +23,6 @@ import { tmpdir } from 'node:os'
 // the built plugin, exactly as a user would hit it.
 
 const ROOT = resolve(__dirname, '../..')
-const DIST_CJS = resolve(ROOT, 'dist/index.cjs')
 const IS_WINDOWS = process.platform === 'win32'
 const OXLINT = resolve(ROOT, 'node_modules/.bin', IS_WINDOWS ? 'oxlint.cmd' : 'oxlint')
 
@@ -53,9 +53,7 @@ describe('E2E #39: relative entryPoint resolves per-package regardless of CWD', 
   let packageDir: string
 
   beforeAll(() => {
-    if (!existsSync(DIST_CJS)) {
-      throw new Error('dist/index.cjs not found. Run `pnpm build` first.')
-    }
+    assertFreshDist()
 
     MONO = mkdtempSync(resolve(tmpdir(), 'oxtw-e2e39-'))
     packageDir = resolve(MONO, 'packages/ui')
@@ -137,7 +135,7 @@ describe('E2E #39: explicit `-c` config with an unrelated nested config below', 
   let MONO: string
 
   beforeAll(() => {
-    if (!existsSync(DIST_CJS)) throw new Error('dist/index.cjs not found. Run `pnpm build` first.')
+    assertFreshDist()
 
     MONO = mkdtempSync(resolve(tmpdir(), 'oxtw-e2e39c-'))
     mkdirSync(resolve(MONO, 'styles'), { recursive: true })

@@ -19,7 +19,8 @@ Requisitos:
   anteriores a una API del design system que el plugin necesita) y se reportan con un diagnóstico
   claro. Los builds insiders (`tailwindcss@insiders`) corren con un aviso único de "motor no
   probado".
-- **Node.js 20** o posterior para el proceso del linter.
+- **Node.js `^20.19.0 || >=22.12.0`** para el proceso del linter — el mismo rango que exige el
+  propio oxlint.
 
 ::: warning Evita oxlint 1.77.0 con la extensión del editor
 
@@ -59,8 +60,11 @@ Crea o extiende tu `.oxlintrc.json` en la raíz del proyecto:
 haces `@import "tailwindcss";` y (opcionalmente) declaras tus tokens `@theme { ... }`. El plugin lee
 ese archivo para construir el design system que todas las reglas consultan.
 
-Eso es todo. Ejecuta `oxlint` y el plugin va a lintear cada archivo JS / TS / JSX / TSX / Vue /
-Svelte del proyecto contra el design system cargado desde `src/styles.css`.
+Eso es todo. Ejecuta `oxlint` y el plugin revisa cada archivo que oxlint lintea — `.js`, `.jsx`,
+`.ts`, `.tsx` (y `.mjs`, `.cjs`, `.mts`, `.cts`) — contra el design system cargado desde
+`src/styles.css`. En los archivos `.vue`, `.svelte` y `.astro`, oxlint solo le pasa a los plugins
+los bloques `<script>` (y el frontmatter de Astro), así que las clases escritas en el template o en
+el markup **todavía no** se revisan. Ver [Vue, Svelte y Astro](/es/frameworks).
 
 ## 3. Conjunto de reglas recomendado
 

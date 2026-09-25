@@ -197,6 +197,16 @@ when none is configured. Because it goes through `softGetDS` it never emits
 `createExtractorVisitors(context, check)` which generates the 4 standard AST visitors and resolves
 the extractor config lazily from `settings.tailwindcss`.
 
+**What oxlint hands the extractor in framework files.** In `.vue`, `.svelte` and `.astro`, oxlint's
+partial loaders pass JS plugins only the script sections — every Vue `<script>`/`<script setup>`
+(incl. `lang="tsx"`), Svelte's `<script module>` and instance script, Astro's frontmatter and
+`<script>` tags — each as its own program, with diagnostics and fixes mapped back to file positions
+(byte offsets). Templates and markup are never visible, and `.html` is not linted. So the 4 visitors
+never see a template `class="…"`. `tests/e2e/framework-files.test.ts` locks this with the real
+binary and has canaries that fail on purpose when oxlint changes it (languagePlugins,
+oxc#24597/#23207/#20501; multi-line `<script`, oxc#26289); update `packages/docs/frameworks.md`,
+`setup.md` (EN+ES) and both READMEs first when one flips.
+
 **Default detection targets** (extended additively via settings):
 
 - **Attributes**: `className`, `class` (JSX)
@@ -618,6 +628,12 @@ escape hatches):
 
 Every DS-dependent rule test in v1 declares its `entryPoint` via one of these helpers — there is no
 shared in-memory fallback the suite can rely on accidentally.
+
+**e2e tests run the BUILT plugin** (`dist/index.cjs`) through the real oxlint binary.
+`tests/e2e/helpers/dist.ts` (`assertFreshDist`) fails them loudly when `dist` is older than `src/`,
+because a bare `pnpm test` (the Stop hook, an editor runner) never rebuilds — run `pnpm build`
+first. `tests/docs/*` guard the markdown itself (e.g. `markdown-containers.test.ts`: VitePress `:::`
+containers must survive oxfmt's `proseWrap`).
 
 **Per-run isolation (concurrent `pnpm test` safety).** The disk cache is a single per-uid dir shared
 by every process on the machine, so two `pnpm test` invocations overlapping (a background run + the
