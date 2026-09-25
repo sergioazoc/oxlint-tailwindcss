@@ -193,6 +193,17 @@
   whitespace, and that `oxlint --fix` applies one fix per class string per run (it has no multi-pass
   fixing), with the snippets updated. A new end-to-end test with the real oxlint and oxfmt holds
   each of these.
+- **Every example on the rule pages runs as a test, in English and Spanish.** Each ✗ example must be
+  reported by its rule and each ✓ example must not be, with the options it states, and the fixed
+  result shown after `→` must be what `oxlint --fix` writes. That caught examples that didn't do
+  what they said: the `enforce-consistent-line-wrapping` examples named their variables `cardClass`
+  / `buttonClass`, which the plugin doesn't read by default (only `className`, `classNames`,
+  `classes` and `styles`), so neither the ✗ nor the ✓ one was ever checked; the
+  `no-unnecessary-whitespace` "tab" example wrote the escape `\t`, not a tab; `no-unknown-classes`
+  showed a concatenation as an "allowlisted" class (the plugin doesn't read concatenations — the
+  example now uses `allowlist` and `ignorePrefixes`); and the options several pages described in
+  prose are now given as real config. Pages with an autofix now show the fixed line for every ✗
+  example. The README's hero example is checked the same way.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

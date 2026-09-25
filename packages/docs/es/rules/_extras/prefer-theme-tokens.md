@@ -42,15 +42,19 @@ Asumiendo un theme estilo shadcn con tokens como `--border`, `--primary`, `--bac
 ```tsx
 // Shorthand de paréntesis — el caso canónico
 <div className="border-(--border) bg-(--primary)" />
+// → <div className="border-border bg-primary" />
 
 // Forma bracket
 <div className="bg-[var(--primary)]/50" />
+// → <div className="bg-primary/50" />
 
 // Variants, important y modificadores de opacidad se preservan
 <div className="hover:!border-(--border) dark:bg-(--primary)/80" />
+// → <div className="hover:!border-border dark:bg-primary/80" />
 
 // Sub-utility direccional
 <div className="border-l-(--border)" />
+// → <div className="border-l-border" />
 ```
 
 ### ✓ Correcto

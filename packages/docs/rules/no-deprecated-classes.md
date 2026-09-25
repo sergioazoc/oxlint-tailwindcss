@@ -49,16 +49,21 @@ still works with nothing configured and never emits a `designSystemUnavailable` 
 ```tsx
 // v3 flex aliases — v4 dropped the `flex-` prefix
 <div className="flex-grow flex-shrink-0" />
+// → <div className="grow shrink-0" />
 
 // Gradient direction — renamed to bg-linear-to-*
 <div className="bg-gradient-to-r from-blue-500 to-purple-500" />
+// → <div className="bg-linear-to-r from-blue-500 to-purple-500" />
 
 // Text overflow alias and box-decoration shorthand
 <div className="overflow-ellipsis" />
+// → <div className="text-ellipsis" />
 <div className="decoration-clone" />
+// → <div className="box-decoration-clone" />
 
 // Variants and important are preserved on the way out
 <div className="hover:!flex-grow" />
+// → <div className="hover:!grow" />
 ```
 
 ### ✓ Correct

@@ -54,6 +54,43 @@ SVG's `<desc>`).
   deploy (`verify-live`, informational). `npx wrangler pages dev .vitepress/dist` emulates Pages
   locally to run it before a release.
 
+## Rule-page examples are tests
+
+Every code block under `### ✗` / `### ✓` in `rules/_extras/<rule>.md` **and** its `es/` twin runs
+through the real oxlint (`packages/oxlint-tailwindcss/tests/docs/doc-examples.test.ts`, against
+`tests/fixtures/docs-examples.css`: the default theme plus the tokens, typography plugin, custom
+utility and shadcn-style variables the pages mention). Examples are split at blank lines; each ✗
+example must be reported by the page's rule, each ✓ example must not be, and must hold a class
+string the plugin reads (a ✓ example the rule never looks at would pass without meaning anything).
+Inside a block:
+
+- `// options: { … }` — the rule's options (JSON), for the whole block as its first line, else for
+  its example. Don't write options as prose ("with `max: 5`") without this line.
+- `// → <whole line>` after code — what `oxlint --fix --fix-suggestions` makes of it, byte for byte;
+  `//   ` lines right after it continue a multi-line result.
+- `//   ~~~~ ~~~~ → text` under a line, or `<div … />  →  text` at its end — the fixed code contains
+  the text (surrounding quotes dropped).
+- `// reports: text` — one of the rule's messages contains the text (messages are English in both
+  locales).
+- `<!-- doc-test: skip — why -->` right before a block that isn't a runnable example.
+
+Snippets can stay snippets: comment lines are dropped, an example that starts with JSX is wrapped in
+a fragment, and a JSX line after other code gets the `;` it needs. The root README's hero example is
+pinned the same way by `tests/docs/readme-hero.test.ts`.
+
+## Config snippets are loaded by the real tools
+
+Every `json` / `jsonc` block in the docs, the READMEs, `CONTRIBUTING.md` and the skills is loaded by
+oxlint or oxfmt (`packages/oxlint-tailwindcss/tests/docs/doc-configs.test.ts`), so an unknown rule,
+a bad severity, an option outside a rule's schema, a `settings.tailwindcss` key or type that
+`PluginSettings` doesn't have, or a `sortTailwindcss` key oxfmt doesn't know fails the build. A
+block can hold several documents. Name a document's file in the comment right above it
+(`// packages/ui/.oxlintrc.json`, `// .oxfmtrc.json`, `// .prettierrc`), or it's read as an
+`.oxlintrc.json`; a bare `{ "tailwindcss/…": … }` or a `rules` / `settings` excerpt is completed
+with the plugin, while a document with `$schema` or `extends` is shown whole and must stand on its
+own. A comment starting with `v0` marks old syntax (the migration guide), which is not loaded, and
+`.prettierrc` isn't either (Prettier isn't installed).
+
 ## Generated blocks outside the rule pages
 
 The recommended configs (`setup.md`, `es/setup.md`, the package README) and the rule list by

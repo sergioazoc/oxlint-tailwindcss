@@ -78,18 +78,20 @@ Otherwise the first matching pattern wins.
 
 ```tsx
 // Banned exact class
+// options: { "classes": ["hidden"] }
 <div className="hidden" />
-// with options.classes: ["hidden"]
 
 // Banned somewhere in the middle of a class string
+// options: { "classes": ["hidden"] }
 <div className="flex hidden items-center" />
 
 // Banned via pattern with custom message
+// options: { "patterns": [{ "pattern": "^float-", "message": "Use flexbox" }] }
 <div className="float-left" />
-// with patterns: [{ pattern: "^float-", message: "Use flexbox" }]
-// → '"float-left" is restricted: Use flexbox'
+// reports: "float-left" is restricted: Use flexbox
 
 // Inside a cn() call
+// options: { "classes": ["float-right"] }
 cn("float-right")
 ```
 
@@ -100,9 +102,11 @@ cn("float-right")
 <div className="hidden" />
 
 // Class not in the ban list
+// options: { "classes": ["hidden"] }
 <div className="flex items-center" />
 
 // Variant changes the class — `hover:hidden` doesn't match `hidden`
+// options: { "classes": ["hidden"] }
 <div className="hover:hidden" />
 ```
 

@@ -67,18 +67,20 @@ regla reporta una sola vez. Si no, gana el primer pattern que coincide.
 
 ```tsx
 // Clase exacta prohibida
+// options: { "classes": ["hidden"] }
 <div className="hidden" />
-// con options.classes: ["hidden"]
 
 // Prohibida en el medio de un class string
+// options: { "classes": ["hidden"] }
 <div className="flex hidden items-center" />
 
 // Prohibida vía pattern con mensaje personalizado
+// options: { "patterns": [{ "pattern": "^float-", "message": "Usa flexbox" }] }
 <div className="float-left" />
-// con patterns: [{ pattern: "^float-", message: "Usa flexbox" }]
-// → '"float-left" is restricted: Usa flexbox'
+// reports: "float-left" is restricted: Usa flexbox
 
 // Adentro de una llamada cn()
+// options: { "classes": ["float-right"] }
 cn("float-right")
 ```
 
@@ -89,9 +91,11 @@ cn("float-right")
 <div className="hidden" />
 
 // Clase fuera de la ban list
+// options: { "classes": ["hidden"] }
 <div className="flex items-center" />
 
 // El variant cambia la clase — `hover:hidden` no coincide con `hidden`
+// options: { "classes": ["hidden"] }
 <div className="hover:hidden" />
 ```
 

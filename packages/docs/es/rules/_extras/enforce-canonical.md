@@ -58,18 +58,23 @@ configura el entry point en `settings.tailwindcss.entryPoint` para todo el proye
 ```tsx
 // El negativo-de-cero es simplemente cero
 <div className="-m-0 -mt-0" />
+// → <div className="m-0 mt-0" />
 
 // Shorthand de inset lógico → canónico inset-s-* / inset-e-*
 <div className="start-2 end-4" />
+// → <div className="inset-s-2 inset-e-4" />
 
 // Un valor arbitrario cuya forma nombrada emite el mismo CSS
 <div className="flex-grow-[2]" />
+// → <div className="grow-2" />
 
 // Variants e important se preservan
 <div className="hover:!flex-grow-[2]" />
+// → <div className="hover:!grow-2" />
 
 // Modificadores de opacidad y variantes arbitrarias, con o sin otras variantes
 <div className="dark:bg-white/[.08] data-[open]:flex min-[40rem]:flex" />
+// → <div className="dark:bg-white/8 data-open:flex sm:flex" />
 ```
 
 ### ✓ Correcto

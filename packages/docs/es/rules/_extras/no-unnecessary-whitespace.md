@@ -41,7 +41,7 @@ newlines intencionales y espacios de boundary de templates" — no hay eje útil
 //              ~~~~~~~~~~~~~~~~~~  → "flex items-center"
 
 // Tab como separador dentro de una sola línea
-const className = `flex\titems-center`
+const className = `flex	items-center`
 //                 ~~~~~~~~~~~~~~~~~  → "flex items-center"
 ```
 

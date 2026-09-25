@@ -50,16 +50,21 @@ sigue funcionando sin nada configurado y nunca emite un diagnóstico `designSyst
 ```tsx
 // Aliases de flex de v3 — v4 sacó el prefijo `flex-`
 <div className="flex-grow flex-shrink-0" />
+// → <div className="grow shrink-0" />
 
 // Dirección de gradient — renombrada a bg-linear-to-*
 <div className="bg-gradient-to-r from-blue-500 to-purple-500" />
+// → <div className="bg-linear-to-r from-blue-500 to-purple-500" />
 
 // Alias de text overflow y shorthand de box-decoration
 <div className="overflow-ellipsis" />
+// → <div className="text-ellipsis" />
 <div className="decoration-clone" />
+// → <div className="box-decoration-clone" />
 
 // Variants e important se preservan en la salida
 <div className="hover:!flex-grow" />
+// → <div className="hover:!grow" />
 ```
 
 ### ✓ Correcto

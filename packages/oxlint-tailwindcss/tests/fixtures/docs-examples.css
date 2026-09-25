@@ -1,0 +1,31 @@
+/*
+ * The design system the rule pages' ✗ / ✓ examples are written against
+ * (tests/docs/doc-examples.test.ts): Tailwind's default theme, plus what the
+ * pages say you declared — theme colors, the typography plugin, a custom
+ * utility with a functional value, and shadcn-style variables.
+ */
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@theme {
+  --color-brand: #6d28d9;
+  --color-card: #ffffff;
+  --color-card-foreground: #0a0a0a;
+}
+
+@utility step-* {
+  --step: --value(integer);
+}
+
+/* A shadcn-style layer: a variable, and the theme color that reads it. */
+:root {
+  --background: oklch(1 0 0);
+  --primary: oklch(0.205 0 0);
+  --border: oklch(0.922 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-primary: var(--primary);
+  --color-border: var(--border);
+}

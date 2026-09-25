@@ -121,6 +121,7 @@ utility bare — la misma forma que la opción de `no-arbitrary-value`.
 
 // Los variants y el `!` viajan con la clase
 <div className="hover:p-[10px] p-[10px]!" />
+// → <div className="hover:p-2.5 p-2.5!" />
 ```
 
 ### ✓ Correcto

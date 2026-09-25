@@ -165,24 +165,24 @@ once in `settings`.
 ### ✗ Incorrect
 
 ```tsx
-// Typo
+// Typos — each class is reported with a suggestion
 <div className="flx items-cetner" />
-//             ~~~  ~~~~~~~~~~~~~ both reported with suggestions:
-//             flx → flex
-//             items-cetner → items-center
+//              ~~~ ~~~~~~~~~~~~ → flex items-center
 
 // Class doesn't exist (no plugin / no @theme token)
 <div className="text-brrrand" />
+// → <div className="text-brand" />
 
 // Variant on a bogus class
 <div className="hover:foo-500" />
 
 // Typo in the VARIANT — the utility is fine, the class emits nothing
 <div className="hoverr:flex peer-cheked:underline" />
-//              ~~~~~~      ~~~~~~~~~~~ → hover: / peer-checked:
+//              ~~~~~~      ~~~~~~~~~~~ → hover:flex peer-checked:underline
 
 // Shaped like an off-scale value, but Tailwind compiles neither
 <div className="bg-red-5000 bg-blue-500/foo" />
+// → <div className="bg-red-500 bg-blue-500/foo" />
 ```
 
 ### ✓ Correct
@@ -211,8 +211,13 @@ once in `settings`.
 <div className="group/menu-item peer/menu-button" />
 <div className="group-hover/menu-item:underline peer-data-[size=sm]/menu-button:top-1" />
 
-// Allowlisted runtime class
-<div className={"hover:" + dynamicSuffix} />
+// A class your runtime adds, allowlisted
+// options: { "allowlist": ["my-runtime-class"] }
+<div className="flex my-runtime-class" />
+
+// A library's own classes, by prefix
+// options: { "ignorePrefixes": ["swiper-"] }
+<div className="swiper-slide flex" />
 ```
 
 ## Interactions with other rules

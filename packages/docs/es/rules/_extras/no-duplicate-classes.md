@@ -32,20 +32,27 @@ profunda para `cva` / `tv` / `classed` cubre `base`, `slots`, `variants`, `compo
 ```tsx
 // Duplicado trivial
 <div className="flex flex items-center" />
+// → <div className="flex items-center" />
 
 // Duplicado con variante — mismo token, dos veces
 <div className="hover:flex hover:flex items-center" />
+// → <div className="hover:flex items-center" />
 
 // Triple duplicado — dos diagnósticos, el fix colapsa a una
 <div className="flex flex flex" />
+// → <div className="flex" />
 
 // Dentro de helpers
 cn("flex flex items-center")
+// → cn("flex items-center")
 cva("flex flex", {})
+// → cva("flex", {})
 tv({ slots: { header: "p-2 p-2" } })
+// → tv({ slots: { header: "p-2" } })
 
 // Template literal — el whitespace alrededor se preserva
 <div className={`flex flex items-center ${x}`} />
+// → <div className={`flex items-center ${x}`} />
 ```
 
 ### ✓ Correcto

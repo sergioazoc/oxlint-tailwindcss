@@ -52,7 +52,7 @@ newlines and template-boundary spaces" — there's no useful axis to configure.
 //              ~~~~~~~~~~~~~~~~~~  → "flex items-center"
 
 // Tab as separator inside a single line
-const className = `flex\titems-center`
+const className = `flex	items-center`
 //                 ~~~~~~~~~~~~~~~~~  → "flex items-center"
 ```
 

@@ -44,20 +44,27 @@ all 14 default callees (`cn`, `clsx`, `cva`, `twMerge`, `tv`, `cx`, `classnames`
 ```tsx
 // Trivial duplicate
 <div className="flex flex items-center" />
+// → <div className="flex items-center" />
 
 // Duplicate with variant — same token, twice
 <div className="hover:flex hover:flex items-center" />
+// → <div className="hover:flex items-center" />
 
 // Triple duplicate — two diagnostics, fix collapses to one
 <div className="flex flex flex" />
+// → <div className="flex" />
 
 // Inside helpers
 cn("flex flex items-center")
+// → cn("flex items-center")
 cva("flex flex", {})
+// → cva("flex", {})
 tv({ slots: { header: "p-2 p-2" } })
+// → tv({ slots: { header: "p-2" } })
 
 // Template literal — surrounding whitespace is preserved
 <div className={`flex flex items-center ${x}`} />
+// → <div className={`flex items-center ${x}`} />
 ```
 
 ### ✓ Correct

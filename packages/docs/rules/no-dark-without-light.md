@@ -112,10 +112,8 @@ works without it.
 <div className="hover:bg-blue-500" />
 
 // Custom variant + matching base
-<div
-  className="bg-white contrast-more:bg-black"
-  // with options: [{ variants: ["contrast-more"] }]
-/>
+// options: { "variants": ["contrast-more"] }
+<div className="bg-white contrast-more:bg-black" />
 
 // A dark-only string inside a merge helper or on a custom component is an
 // override fragment — the light base lives elsewhere, so it is NOT reported.
