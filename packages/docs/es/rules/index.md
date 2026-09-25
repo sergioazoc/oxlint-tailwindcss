@@ -102,6 +102,7 @@ además un `entryPoint` propio que pisa el ajuste compartido.
 | `enforce-logical`                  | `{ allowlist: [], direction: 'both' }`              | Confirma que la clase sugerida exista                                                             |
 | `enforce-physical`                 | `{ allowlist: [], direction: 'both' }`              | Confirma que la clase sugerida exista                                                             |
 | `enforce-shorthand`                | `{}`                                                | Verifica cada fusión contra el CSS emitido                                                        |
+| `no-arbitrary-value`               | `{ allow: [], allowVariables: 'none' }`             | Con `allowVariables: 'runtime'`, qué variables CSS define tu stylesheet                           |
 | `no-contradicting-variants`        | `{}`                                                | Qué hace el selector de cada variant                                                              |
 | `no-dark-without-light`            | `{ variants: ['dark'] }`                            | Distingue los colores del resto y agrupa la base por propiedad CSS declarada                      |
 | `no-deprecated-classes`            | `{}`                                                | Deriva la lista de renombres en vez de usar la tabla interna                                      |
@@ -114,7 +115,6 @@ además un `entryPoint` propio que pisa el ajuste compartido.
 | `enforce-consistent-variable-syntax`    | `{ syntax: 'shorthand' }`       |
 | `enforce-negative-arbitrary-values`     | (sin opciones)                  |
 | `max-class-count`                       | `{ max: 20 }`                   |
-| `no-arbitrary-value`                    | `{ allow: [] }`                 |
 | `no-duplicate-classes`                  | (sin opciones)                  |
 | `no-hardcoded-colors`                   | `{ allow: [] }`                 |
 | `no-restricted-classes`                 | `{ classes: [], patterns: [] }` |
