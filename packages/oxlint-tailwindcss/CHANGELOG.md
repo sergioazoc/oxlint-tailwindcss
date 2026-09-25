@@ -37,6 +37,18 @@
 
 ### Bug fixes
 
+- **`consistent-variant-order` writes chains outermost first, with or without an entry point.**
+  Without an entry point the rule wanted `dark:hover:` and `sm:hover:` — as its docs, Tailwind's
+  docs and shadcn/ui write them — but with one it followed the order Tailwind registers variants in
+  and wanted the opposite, `hover:dark:` and `hover:sm:`, so configuring an entry point flipped the
+  autofix. Both now use one order: page conditions (breakpoints, `dark`, `supports-*`, container
+  queries) → `group-*` / `peer-*` → what the element is (`aria-*`, `data-*`, `has-*`) → how it's
+  used (`hover`, `focus`) → form state → position (`first`, `last`), with pseudo-elements innermost
+  as before. The design system only says what the project's own variants are — a pseudo-element, a
+  barrier, or a `--breakpoint-*` — and a `@custom-variant` the rule can't place is left where it is,
+  as is everything across it. Without an entry point, `aria-*` / `data-*` / `has-*` now go before
+  `hover` / `focus` / `first` (they used to sort last). **If you ran `--fix` with an entry point,
+  the rule rewrites those chains back once.** On shadcn/ui `apps/v4`: 58 reports → 8.
 - **`no-unknown-classes` keeps named group/peer markers valid when a custom variant names
   `.group`.** With a `@custom-variant` whose selector names `.group` or `.peer` in the entry point
   (e.g. `next-group-hover (&:is(:where(.group):has(~ .group:hover) *))`), `group/row` and

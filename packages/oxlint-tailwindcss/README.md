@@ -846,17 +846,19 @@ Does NOT convert complex expressions — only simple `var(--name)` wrappers:
 
 Enforces a consistent order for variant prefixes.
 
-Uses the design system's variant order when available, falls back to a sensible static default. Only
-checks classes with 2+ variants. Pseudo-element variants (`before:`, `after:`, `placeholder:`, etc.)
-are always kept innermost (closest to the utility) regardless of the ordering source — placing them
-before element-selecting variants like `[&>svg]:` or `has-[.active]:` produces broken CSS in
-Tailwind v4.
+Outermost first — breakpoints and other page conditions (`dark`, `supports-*`, `@md`), then
+`group-*` / `peer-*`, then what the element is (`aria-*`, `data-*`), how it's used (`hover`,
+`focus`) and where it sits (`first`) — the same order with or without a design system, which only
+says what the project's own variants are. Only checks classes with 2+ variants. Pseudo-element
+variants (`before:`, `after:`, `placeholder:`, etc.) are always kept innermost (closest to the
+utility) — placing them before element-selecting variants like `[&>svg]:` or `has-[.active]:`
+produces broken CSS in Tailwind v4.
 
 **Options:**
 
-| Option  | Type       | Default                     | Description                  |
-| ------- | ---------- | --------------------------- | ---------------------------- |
-| `order` | `string[]` | (DS order or builtin order) | Custom variant priority list |
+| Option  | Type       | Default         | Description                  |
+| ------- | ---------- | --------------- | ---------------------------- |
+| `order` | `string[]` | (builtin order) | Custom variant priority list |
 
 **Optionally uses design system.** **Autofix:** Reorders variants.
 

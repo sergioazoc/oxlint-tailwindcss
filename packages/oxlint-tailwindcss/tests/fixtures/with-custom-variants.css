@@ -20,3 +20,8 @@
  * has to stay valid for `no-unknown-classes` even though nothing declares it.
  */
 @custom-variant sidebar-open (&:where(.sidebar-open *));
+
+/* A project breakpoint: a variant the design system registers among `sm`…`2xl`. */
+@theme {
+  --breakpoint-3xl: 120rem;
+}

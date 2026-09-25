@@ -128,10 +128,10 @@ describe('template fragments glued to ${} are left intact', () => {
     valid: [],
     invalid: [
       {
-        code: tpl('dark:hover:flex text-${c}'),
+        code: tpl('hover:dark:flex text-${c}'),
         filename: 'a.tsx',
         errors: 1,
-        output: tpl('hover:dark:flex text-${c}'),
+        output: tpl('dark:hover:flex text-${c}'),
       },
     ],
   })

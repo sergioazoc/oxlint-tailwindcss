@@ -186,22 +186,25 @@ that never are (filters, opacity, display, visibility, position, `sr-only`, bord
 widths) and everything else is still checked. Prefix grouping of the base is unchanged, so
 `border dark:border-gray-700` and `shadow-sm dark:shadow-white/10` stay valid.
 `consistent-variant-order`, `no-contradicting-variants`, and `enforce-consistent-line-wrapping` have
-static fallbacks (variant order; the pseudo-element/barrier name lists plus the
+static fallbacks (the pseudo-element/barrier name lists; the same lists plus the
 `display`/`visibility` property groups; and prefix-unaware variant-run grouping respectively) that
-are themselves deterministic. `no-contradicting-variants` also runs a **responsive-reset guard
-(#150)**: before flagging `V:util` redundant against an unconditional base `util`, it suppresses the
-report when a sibling with a DIFFERENT utility writes an overlapping CSS property (`md:hidden`
-overriding `display` between `block` and `lg:block`) — that variant is load-bearing, not redundant.
-Property source is `cache.getCssProperties` with an entryPoint, else the static
-`display`/`visibility` groups; sibling scan skips `changesTarget` variants (other box) and
-same-utility siblings (same value). Strictly report-reducing, so it can never introduce a new false
-positive. `enforce-consistent-line-wrapping` consults the DS ONLY for the project prefix (so
-`wrapLines: 'all'` grouping treats `tw:` as transparent, matching the prefix invariant); everything
-else it does is DS-free. `no-deprecated-classes` is DS-optional, not DS-independent (#69 removed the
-hard DS requirement, not DS use itself): with an entryPoint it prefers the richer rename map the
-precompute derives from `canonicalizeCandidates`, and falls back to the hardcoded `DEPRECATED_MAP`
-when none is configured. Because it goes through `softGetDS` it never emits
-`designSystemUnavailable`.
+are themselves deterministic. `consistent-variant-order`'s order is `CANONICAL_ORDER` in both paths
+— outermost first, as Tailwind's docs and shadcn/ui write chains — and the DS only says what a
+project variant is (a pseudo-element, a barrier, or a `--breakpoint-*`); a variant with no rank
+splits segments like a barrier, so a project's `@custom-variant` is never moved.
+`no-contradicting-variants` also runs a **responsive-reset guard (#150)**: before flagging `V:util`
+redundant against an unconditional base `util`, it suppresses the report when a sibling with a
+DIFFERENT utility writes an overlapping CSS property (`md:hidden` overriding `display` between
+`block` and `lg:block`) — that variant is load-bearing, not redundant. Property source is
+`cache.getCssProperties` with an entryPoint, else the static `display`/`visibility` groups; sibling
+scan skips `changesTarget` variants (other box) and same-utility siblings (same value). Strictly
+report-reducing, so it can never introduce a new false positive. `enforce-consistent-line-wrapping`
+consults the DS ONLY for the project prefix (so `wrapLines: 'all'` grouping treats `tw:` as
+transparent, matching the prefix invariant); everything else it does is DS-free.
+`no-deprecated-classes` is DS-optional, not DS-independent (#69 removed the hard DS requirement, not
+DS use itself): with an entryPoint it prefers the richer rename map the precompute derives from
+`canonicalizeCandidates`, and falls back to the hardcoded `DEPRECATED_MAP` when none is configured.
+Because it goes through `softGetDS` it never emits `designSystemUnavailable`.
 
 ## Extraction System
 
@@ -664,7 +667,7 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
 - **`defaultOptions`**: every rule with options declares `meta.defaultOptions`. Rules with
   `schema: []` (no options) deliberately do NOT declare it — oxlint's schema validator rejects `{}`
   against an empty schema. `consistent-variant-order` declares `defaultOptions: [{}]` (no `order`)
-  so that leaving `order` undefined still triggers the DS-vs-static fallback detection.
+  so that leaving `order` undefined selects the built-in `CANONICAL_ORDER`.
 - **Runtime deps**: only `@tailwindcss/node` and `tailwindcss`. No synckit, no external workers, and
   no `semver` — the engine guard's version comparator (`parseVersion`/`compareVersions` in
   `engine-guard.ts`) is a hand-rolled subset to keep the runtime dependency set at two.
