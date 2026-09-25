@@ -115,3 +115,64 @@ describe('E2E: OXLINT_TAILWINDCSS_CACHE_DIR', () => {
     expect(snapshot()).toEqual(afterFirst)
   })
 })
+
+// H19, as a user hits it: edit a local `@plugin` and lint again, with the same
+// cache directory. The class the plugin no longer defines must be reported on
+// the very next run — it used to stay "valid" until the cache was cleared.
+describe('E2E: editing a local @plugin invalidates the cached design system', () => {
+  let PLUGIN_DIR: string
+  const run = (cacheDir: string) => {
+    try {
+      return execFileSync(OXLINT, ['-f', 'json', 'src'], {
+        cwd: PLUGIN_DIR,
+        encoding: 'utf8',
+        timeout: 120_000,
+        shell: IS_WINDOWS,
+        env: { ...process.env, OXLINT_TAILWINDCSS_CACHE_DIR: cacheDir },
+      })
+    } catch (error: unknown) {
+      const err = error as { status?: number; stdout?: string; stderr?: string }
+      if (err.status === 1 && typeof err.stdout === 'string') return err.stdout
+      throw new Error(`oxlint exited ${err.status}: ${err.stderr ?? ''}`)
+    }
+  }
+  const plugin = (utility: string) =>
+    `module.exports = function ({ addUtilities }) { addUtilities({ '.${utility}': { color: 'red' } }) }\n`
+
+  beforeAll(() => {
+    PLUGIN_DIR = mkdtempSync(resolve(tmpdir(), 'oxtw-plugin-edit-'))
+    mkdirSync(resolve(PLUGIN_DIR, 'src'))
+    const tailwind = resolve(ROOT, 'node_modules/tailwindcss/index.css').split('\\').join('/')
+    writeFileSync(
+      resolve(PLUGIN_DIR, 'src/app.css'),
+      `@import '${tailwind}';\n@plugin "./my-plugin.cjs";\n`,
+    )
+    writeFileSync(resolve(PLUGIN_DIR, 'src/my-plugin.cjs'), plugin('foo-bar'))
+    writeFileSync(
+      resolve(PLUGIN_DIR, 'src/A.tsx'),
+      'export const A = () => <div className="foo-bar" />\n',
+    )
+    writeFileSync(
+      resolve(PLUGIN_DIR, '.oxlintrc.json'),
+      JSON.stringify({
+        categories: { correctness: 'off' },
+        jsPlugins: [DIST_CJS.split('\\').join('/')],
+        settings: { tailwindcss: { entryPoint: './src/app.css' } },
+        rules: { 'tailwindcss/no-unknown-classes': 'error' },
+      }),
+    )
+  })
+
+  afterAll(() => {
+    if (PLUGIN_DIR) rmSync(PLUGIN_DIR, { recursive: true, force: true })
+  })
+
+  it('reports the class the edited plugin no longer defines', () => {
+    const cache = join(PLUGIN_DIR, '.cache')
+    expect(diagnostics(run(cache))).toEqual([])
+    writeFileSync(resolve(PLUGIN_DIR, 'src/my-plugin.cjs'), plugin('foo-baz'))
+    expect(diagnostics(run(cache))).toEqual([
+      'tailwindcss(no-unknown-classes) "foo-bar" is not a valid Tailwind class. Did you mean "foo-baz"?',
+    ])
+  })
+})

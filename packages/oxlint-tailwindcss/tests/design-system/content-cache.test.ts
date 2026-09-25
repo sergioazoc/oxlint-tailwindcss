@@ -174,4 +174,95 @@ describe('Content-based cache deduplication', () => {
     // Different artifact path ⇒ the content hash folded in the import (DS-A2).
     expect(jsonAfter).not.toBe(jsonBefore)
   })
+
+  // H19: what a design system is built from, beyond CSS. A local `@plugin` or
+  // `@config` is JS the entry pulls in; a package the CSS imports or loads as
+  // a plugin has its own version, which the Tailwind engine version does not
+  // cover. Editing or upgrading either must change the key — otherwise a class
+  // the plugin no longer defines stays "valid" until the cache is cleared.
+  describe('keys on everything the design system is built from', () => {
+    const fresh = (name: string) => {
+      resetDesignSystem()
+      const dir = join(TEMP_DIR, name)
+      rmSync(dir, { recursive: true, force: true })
+      mkdirSync(dir, { recursive: true })
+      return dir
+    }
+    const fakePackage = (dir: string, name: string, version: string) => {
+      const pkgDir = join(dir, 'node_modules', name)
+      mkdirSync(pkgDir, { recursive: true })
+      writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name, version }))
+      writeFileSync(join(pkgDir, 'index.css'), '.from-package { color: red; }\n')
+    }
+
+    it('a local @plugin file', () => {
+      const dir = fresh('local-plugin')
+      const entry = join(dir, 'entry.css')
+      writeFileSync(join(dir, 'plugin.cjs'), "module.exports = () => {} // 'foo-bar'\n")
+      writeFileSync(entry, "@import 'tailwindcss';\n@plugin './plugin.cjs';\n")
+      const before = cacheArtifactPaths(entry).json
+      writeFileSync(join(dir, 'plugin.cjs'), "module.exports = () => {} // 'foo-baz'\n")
+      expect(cacheArtifactPaths(entry).json).not.toBe(before)
+    })
+
+    it('a local @config file', () => {
+      const dir = fresh('local-config')
+      const entry = join(dir, 'entry.css')
+      writeFileSync(join(dir, 'tailwind.config.js'), 'module.exports = { theme: {} }\n')
+      writeFileSync(entry, '@import "tailwindcss";\n@config "./tailwind.config.js";\n')
+      const before = cacheArtifactPaths(entry).json
+      writeFileSync(join(dir, 'tailwind.config.js'), 'module.exports = { theme: { x: 1 } }\n')
+      expect(cacheArtifactPaths(entry).json).not.toBe(before)
+    })
+
+    it('a local @plugin pulled in by an @import-ed file', () => {
+      const dir = fresh('nested-plugin')
+      const entry = join(dir, 'entry.css')
+      writeFileSync(join(dir, 'plugin.cjs'), 'module.exports = () => {} // 1\n')
+      writeFileSync(join(dir, 'theme.css'), "@plugin './plugin.cjs';\n")
+      writeFileSync(entry, "@import 'tailwindcss';\n@import './theme.css';\n")
+      const before = cacheArtifactPaths(entry).json
+      writeFileSync(join(dir, 'plugin.cjs'), 'module.exports = () => {} // 2\n')
+      expect(cacheArtifactPaths(entry).json).not.toBe(before)
+    })
+
+    it('the version of an imported package', () => {
+      const dir = fresh('package-import')
+      const entry = join(dir, 'entry.css')
+      fakePackage(dir, 'fake-animate', '1.0.0')
+      writeFileSync(entry, "@import 'tailwindcss';\n@import 'fake-animate';\n")
+      const before = cacheArtifactPaths(entry).json
+      fakePackage(dir, 'fake-animate', '1.1.0')
+      expect(cacheArtifactPaths(entry).json).not.toBe(before)
+    })
+
+    it('the version of a package used as @plugin, scoped or not', () => {
+      const dir = fresh('package-plugin')
+      const entry = join(dir, 'entry.css')
+      fakePackage(dir, '@acme/typography', '0.5.0')
+      fakePackage(dir, 'fake-forms', '2.0.0')
+      writeFileSync(
+        entry,
+        '@import "tailwindcss";\n@plugin "@acme/typography";\n@plugin "fake-forms/plugin";\n',
+      )
+      const a = cacheArtifactPaths(entry).json
+      fakePackage(dir, '@acme/typography', '0.5.1')
+      const b = cacheArtifactPaths(entry).json
+      fakePackage(dir, 'fake-forms', '2.1.0')
+      const c = cacheArtifactPaths(entry).json
+      expect(new Set([a, b, c]).size).toBe(3)
+    })
+
+    it('stays the same when nothing changed', () => {
+      const dir = fresh('stable')
+      const entry = join(dir, 'entry.css')
+      fakePackage(dir, 'fake-animate', '1.0.0')
+      writeFileSync(join(dir, 'plugin.cjs'), 'module.exports = () => {}\n')
+      writeFileSync(
+        entry,
+        "@import 'tailwindcss';\n@import 'fake-animate';\n@plugin './plugin.cjs';\n",
+      )
+      expect(cacheArtifactPaths(entry).json).toBe(cacheArtifactPaths(entry).json)
+    })
+  })
 })
