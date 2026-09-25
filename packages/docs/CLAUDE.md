@@ -78,6 +78,19 @@ Snippets can stay snippets: comment lines are dropped, an example that starts wi
 a fragment, and a JSX line after other code gets the `;` it needs. The root README's hero example is
 pinned the same way by `tests/docs/readme-hero.test.ts`.
 
+## Config snippets are loaded by the real tools
+
+Every `json` / `jsonc` block in the docs, the READMEs, `CONTRIBUTING.md` and the skills is loaded by
+oxlint or oxfmt (`packages/oxlint-tailwindcss/tests/docs/doc-configs.test.ts`), so an unknown rule,
+a bad severity, an option outside a rule's schema, a `settings.tailwindcss` key or type that
+`PluginSettings` doesn't have, or a `sortTailwindcss` key oxfmt doesn't know fails the build. A
+block can hold several documents. Name a document's file in the comment right above it
+(`// packages/ui/.oxlintrc.json`, `// .oxfmtrc.json`, `// .prettierrc`), or it's read as an
+`.oxlintrc.json`; a bare `{ "tailwindcss/…": … }` or a `rules` / `settings` excerpt is completed
+with the plugin, while a document with `$schema` or `extends` is shown whole and must stand on its
+own. A comment starting with `v0` marks old syntax (the migration guide), which is not loaded, and
+`.prettierrc` isn't either (Prettier isn't installed).
+
 ## Generated blocks outside the rule pages
 
 The recommended configs (`setup.md`, `es/setup.md`, the package README) and the rule list by
