@@ -1,7 +1,18 @@
+---
+title: "no-contradicting-variants — Tailwind CSS lint rule"
+description: "oxlint rule that reports Tailwind CSS variant classes made redundant by the same utility applied unconditionally, like hover:flex next to flex."
+---
+
 # no-contradicting-variants
 
-> Disallow variant-prefixed classes that are redundant because the base class already applies
-> unconditionally
+oxlint rule that reports Tailwind CSS variant classes made redundant by the same utility applied
+unconditionally, like `hover:flex` next to `flex`.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system                            | Options      |
+| ------- | ------------------ | ---------------------------------------- | ------------ |
+| No      | No                 | Optional — used when `entryPoint` is set | `entryPoint` |
 
 ## What this rule does
 

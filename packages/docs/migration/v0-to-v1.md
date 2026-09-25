@@ -1,3 +1,8 @@
+---
+title: "Migrating from v0 to v1"
+description: "Upgrade oxlint-tailwindcss from v0.x to v1: deterministic entryPoint shapes, design-system errors that fail loud, cache and timeout changes, new rule options."
+---
+
 # Migrating from v0.x to v1.0.0
 
 v1.0.0 aligns `oxlint-tailwindcss` with the deterministic-config philosophy that the rest of the

@@ -1,6 +1,18 @@
+---
+title: "consistent-variant-order — Tailwind CSS lint rule"
+description: "oxlint rule that writes Tailwind CSS variant chains in one order — hover:dark: or dark:hover: — and rewrites the rest to match, with an autofix."
+---
+
 # consistent-variant-order
 
-> Enforce a consistent order for Tailwind CSS variant prefixes
+oxlint rule that writes Tailwind CSS variant chains in one order — `hover:dark:` or `dark:hover:` —
+and rewrites the rest to match, with an autofix.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system                            | Options               |
+| ------- | ------------------ | ---------------------------------------- | --------------------- |
+| Yes     | Yes                | Optional — used when `entryPoint` is set | `entryPoint`, `order` |
 
 ## What this rule does
 

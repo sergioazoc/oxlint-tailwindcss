@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that rewrites Tailwind CSS classes renamed in v4, like `flex-grow` → `grow` and `bg-gradient-to-r` → `bg-linear-to-r`, with an autofix."
+---
+
 ## What this rule does
 
 Flags any class that was renamed when Tailwind moved from v3 to v4 and rewrites it in place with an

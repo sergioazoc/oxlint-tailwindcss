@@ -1,6 +1,18 @@
+---
+title: "enforce-negative-arbitrary-values — Tailwind CSS lint rule"
+description: "oxlint rule that moves the negative sign into Tailwind CSS arbitrary values, like -top-[5px] → top-[-5px], with an autofix."
+---
+
 # enforce-negative-arbitrary-values
 
-> Enforce moving the negative sign inside arbitrary value brackets: -top-[5px] → top-[-5px]
+oxlint rule that moves the negative sign into Tailwind CSS arbitrary values, like `-top-[5px]` →
+`top-[-5px]`, with an autofix.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system | Options |
+| ------- | ------------------ | ------------- | ------- |
+| Yes     | Yes                | Not used      | None    |
 
 ## What this rule does
 

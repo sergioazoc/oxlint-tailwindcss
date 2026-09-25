@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that writes Tailwind CSS variant chains in one order — `hover:dark:` or `dark:hover:` — and rewrites the rest to match, with an autofix."
+---
+
 ## What this rule does
 
 Reorders the variant prefixes inside a single class so that the chain is always written the same

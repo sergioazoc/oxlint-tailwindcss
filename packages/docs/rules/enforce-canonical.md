@@ -1,6 +1,18 @@
+---
+title: "enforce-canonical — Tailwind CSS lint rule"
+description: "oxlint rule that rewrites Tailwind CSS classes to the canonical form Tailwind itself computes, like -m-0 → m-0, with an autofix."
+---
+
 # enforce-canonical
 
-> Enforce canonical Tailwind CSS class names using canonicalizeCandidates()
+oxlint rule that rewrites Tailwind CSS classes to the canonical form Tailwind itself computes, like
+`-m-0` → `m-0`, with an autofix.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system           | Options      |
+| ------- | ------------------ | ----------------------- | ------------ |
+| Yes     | Yes                | Required (`entryPoint`) | `entryPoint` |
 
 ## What this rule does
 

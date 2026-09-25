@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that reports a Tailwind CSS class repeated in the same class list, like `flex flex`, and removes the extra copies with `--fix`."
+---
+
 ## What this rule does
 
 Reports the same class string appearing more than once in the same class list, then autofixes by

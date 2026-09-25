@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that puts the Tailwind CSS important modifier in one position — suffix `flex!` (the v4 form) or prefix `!flex` — and fixes the rest."
+---
+
 ## What this rule does
 
 Tailwind v4 supports two syntaxes for the `!important` modifier: prefix (`!flex`, the v3-era form)

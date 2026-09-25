@@ -1,6 +1,18 @@
+---
+title: "no-unnecessary-whitespace — Tailwind CSS lint rule"
+description: "oxlint rule that collapses repeated spaces and trims leading and trailing whitespace in Tailwind CSS class strings, with an autofix."
+---
+
 # no-unnecessary-whitespace
 
-> Disallow unnecessary whitespace in Tailwind CSS class strings
+oxlint rule that collapses repeated spaces and trims leading and trailing whitespace in Tailwind CSS
+class strings, with an autofix.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system | Options |
+| ------- | ------------------ | ------------- | ------- |
+| Yes     | No                 | Not used      | None    |
 
 ## What this rule does
 

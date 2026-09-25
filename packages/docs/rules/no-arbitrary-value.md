@@ -1,6 +1,18 @@
+---
+title: "no-arbitrary-value — Tailwind CSS lint rule"
+description: "oxlint rule that reports Tailwind CSS arbitrary values like w-[200px] or bg-[#ff0000], so values come from your theme; an allow list covers exceptions."
+---
+
 # no-arbitrary-value
 
-> Disallow arbitrary values in Tailwind CSS classes
+oxlint rule that reports Tailwind CSS arbitrary values like `w-[200px]` or `bg-[#ff0000]`, so values
+come from your theme; an allow list covers exceptions.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system | Options |
+| ------- | ------------------ | ------------- | ------- |
+| No      | No                 | Not used      | `allow` |
 
 ## What this rule does
 

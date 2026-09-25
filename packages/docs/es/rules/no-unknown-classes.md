@@ -1,6 +1,18 @@
+---
+title: "no-unknown-classes — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que reporta clases de Tailwind CSS que tu design system no genera, según tu CSS, con arreglos de typos como itms-center → items-center."
+---
+
 # no-unknown-classes
 
-> Disallow classes that are not defined in the Tailwind CSS design system
+Regla de oxlint que reporta clases de Tailwind CSS que tu design system no genera, según tu CSS, con
+arreglos de typos como `itms-center` → `items-center`.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system              | Opciones                                    |
+| ------- | ------------------------ | -------------------------- | ------------------------------------------- |
+| No      | Sí                       | Obligatorio (`entryPoint`) | `entryPoint`, `allowlist`, `ignorePrefixes` |
 
 ## Qué hace esta regla
 

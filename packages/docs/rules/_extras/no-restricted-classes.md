@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that bans the Tailwind CSS classes you list, by exact name or regex, each with a message saying what to use instead."
+---
+
 ## What this rule does
 
 The manual veto. Lets you ban specific Tailwind classes — by exact name or by regex pattern — and

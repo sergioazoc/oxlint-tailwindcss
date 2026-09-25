@@ -1,6 +1,18 @@
+---
+title: "prefer-scale-token — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que sugiere el paso de escala o token de Tailwind CSS igual a un valor fijo, como p-[10px] → p-2.5 o rounded-[0.5rem] → rounded-lg."
+---
+
 # prefer-scale-token
 
-> Prefer the scale step or theme token a hardcoded value is numerically equal to
+Regla de oxlint que sugiere el paso de escala o token de Tailwind CSS igual a un valor fijo, como
+`p-[10px]` → `p-2.5` o `rounded-[0.5rem]` → `rounded-lg`.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system              | Opciones                      |
+| ------- | ------------------------ | -------------------------- | ----------------------------- |
+| No      | Sí                       | Obligatorio (`entryPoint`) | `entryPoint`, `step`, `allow` |
 
 ## Qué hace esta regla
 

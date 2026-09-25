@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that suggests the Tailwind CSS scale step or theme token a hardcoded value equals, like `p-[10px]` → `p-2.5` or `rounded-[0.5rem]` → `rounded-lg`."
+---
+
 ## What this rule does
 
 Reports a hardcoded value that is **numerically equal** to something your design system already

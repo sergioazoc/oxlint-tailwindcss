@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that reports Tailwind CSS class strings over a print width or a classes-per-line budget, and can wrap them onto several lines."
+---
+
 ## What this rule does
 
 Flags long class strings so they don't sprawl past a sensible line length and, when you opt in,

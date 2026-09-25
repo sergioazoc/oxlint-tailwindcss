@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que prohíbe las clases de Tailwind CSS que listes, por nombre exacto o regex, cada una con un mensaje que dice qué usar en su lugar."
+---
+
 ## Qué hace esta regla
 
 El veto manual. Te deja bloquear clases específicas de Tailwind — por nombre exacto o por patrón

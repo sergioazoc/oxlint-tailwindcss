@@ -1,6 +1,18 @@
+---
+title: "no-conflicting-classes — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que reporta clases de Tailwind CSS de un mismo elemento cuyo CSS choca, como p-2 p-4, comparando lo que emite tu design system."
+---
+
 # no-conflicting-classes
 
-> Disallow Tailwind CSS classes that generate conflicting CSS properties
+Regla de oxlint que reporta clases de Tailwind CSS de un mismo elemento cuyo CSS choca, como
+`p-2 p-4`, comparando lo que emite tu design system.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system              | Opciones                                 |
+| ------- | ------------------------ | -------------------------- | ---------------------------------------- |
+| No      | No                       | Obligatorio (`entryPoint`) | `entryPoint`, `reportRedundant`, `allow` |
 
 ## Qué hace esta regla
 

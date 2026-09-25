@@ -138,6 +138,15 @@ describe.each(LOCALES)('rules/_extras ($dir) document every option', ({ dir, opt
   })
 })
 
+describe('the home page', () => {
+  it.each([
+    ['index.md', /(\d+) rules/],
+    ['es/index.md', /(\d+) reglas/],
+  ])('%s states the real rule count', (page, count) => {
+    expect(Number(read(join(DOCS, page)).match(count)?.[1])).toBe(RULES.length)
+  })
+})
+
 describe('the README setup snippet', () => {
   it('sets a severity for every rule, once', () => {
     const md = read(join(PKG, 'README.md'))

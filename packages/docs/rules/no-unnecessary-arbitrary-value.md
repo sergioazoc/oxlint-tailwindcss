@@ -1,6 +1,18 @@
+---
+title: "no-unnecessary-arbitrary-value — Tailwind CSS lint rule"
+description: "oxlint rule that replaces a Tailwind CSS arbitrary value with the named class that emits the same CSS in your theme, like w-[100%] → w-full."
+---
+
 # no-unnecessary-arbitrary-value
 
-> Disallow arbitrary values when a named Tailwind class produces the same CSS
+oxlint rule that replaces a Tailwind CSS arbitrary value with the named class that emits the same
+CSS in your theme, like `w-[100%]` → `w-full`.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system           | Options      |
+| ------- | ------------------ | ----------------------- | ------------ |
+| Yes     | Yes                | Required (`entryPoint`) | `entryPoint` |
 
 ## What this rule does
 

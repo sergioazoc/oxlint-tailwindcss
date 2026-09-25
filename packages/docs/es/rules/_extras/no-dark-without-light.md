@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que reporta una clase `dark:` de Tailwind CSS, como `dark:bg-gray-900`, sin una clase base para el modo claro de la misma propiedad."
+---
+
 ## Qué hace esta regla
 
 Atrapa el caso donde escribiste `dark:bg-gray-900` pero te olvidaste de la base correspondiente en

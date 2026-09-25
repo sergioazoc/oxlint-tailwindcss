@@ -1,6 +1,18 @@
+---
+title: "prefer-theme-tokens — Tailwind CSS lint rule"
+description: "oxlint rule that rewrites raw CSS variable references into your theme's named Tailwind CSS utilities, like border-(--border) → border-border."
+---
+
 # prefer-theme-tokens
 
-> Prefer named theme-token utilities over raw CSS variable references when a matching utility exists
+oxlint rule that rewrites raw CSS variable references into your theme's named Tailwind CSS
+utilities, like `border-(--border)` → `border-border`.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system           | Options      |
+| ------- | ------------------ | ----------------------- | ------------ |
+| Yes     | Yes                | Required (`entryPoint`) | `entryPoint` |
 
 ## What this rule does
 

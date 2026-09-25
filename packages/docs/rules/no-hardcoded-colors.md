@@ -1,6 +1,18 @@
+---
+title: "no-hardcoded-colors — Tailwind CSS lint rule"
+description: "oxlint rule that reports hardcoded colors in Tailwind CSS arbitrary values — hex, rgb(), hsl(), oklch() and more — so colors come from your theme."
+---
+
 # no-hardcoded-colors
 
-> Disallow hardcoded color values in Tailwind CSS classes
+oxlint rule that reports hardcoded colors in Tailwind CSS arbitrary values — hex, `rgb()`, `hsl()`,
+`oklch()` and more — so colors come from your theme.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system | Options |
+| ------- | ------------------ | ------------- | ------- |
+| No      | No                 | Not used      | `allow` |
 
 ## What this rule does
 

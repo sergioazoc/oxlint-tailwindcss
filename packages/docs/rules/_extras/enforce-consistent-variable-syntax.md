@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that writes Tailwind CSS variable values one way — shorthand `bg-(--primary)` or `bg-[var(--primary)]` — and rewrites the other form."
+---
+
 ## What this rule does
 
 Tailwind v4 added a shorthand for arbitrary CSS variable values: `bg-(--primary)` is sugar for

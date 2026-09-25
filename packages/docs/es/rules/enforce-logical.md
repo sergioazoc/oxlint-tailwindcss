@@ -1,6 +1,18 @@
+---
+title: "enforce-logical — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que reescribe utilidades físicas de Tailwind CSS a lógicas, compatibles con RTL, como ml-4 → ms-4 y pr-2 → pe-2, con autofix."
+---
+
 # enforce-logical
 
-> Enforce logical (RTL-friendly) Tailwind CSS properties instead of physical ones
+Regla de oxlint que reescribe utilidades físicas de Tailwind CSS a lógicas, compatibles con RTL,
+como `ml-4` → `ms-4` y `pr-2` → `pe-2`, con autofix.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system                         | Opciones                               |
+| ------- | ------------------------ | ------------------------------------- | -------------------------------------- |
+| Sí      | Sí                       | Opcional — se usa si hay `entryPoint` | `allowlist`, `direction`, `entryPoint` |
 
 ## Qué hace esta regla
 

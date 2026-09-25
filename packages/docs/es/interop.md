@@ -1,3 +1,8 @@
+---
+title: "Interop con oxfmt y Prettier"
+description: "Usa oxlint-tailwindcss junto a oxfmt o prettier-plugin-tailwindcss y obtén el mismo orden de clases de Tailwind CSS en los tres, apuntándolos a tu CSS."
+---
+
 # Interop con oxfmt y prettier-plugin-tailwindcss
 
 `oxlint-tailwindcss/enforce-sort-order` produce exactamente el mismo orden oficial de Tailwind que

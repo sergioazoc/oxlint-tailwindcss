@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que ordena las clases de Tailwind CSS en el orden oficial — el de `prettier-plugin-tailwindcss` y `oxfmt` — con autofix."
+---
+
 ## Qué hace esta regla
 
 Ordena cada string de clases Tailwind en tu código para que coincida con el orden oficial de

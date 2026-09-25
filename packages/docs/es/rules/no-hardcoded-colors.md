@@ -1,6 +1,18 @@
+---
+title: "no-hardcoded-colors — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que reporta colores fijos en valores arbitrarios de Tailwind CSS — hex, rgb(), hsl(), oklch() y más — para que salgan de tu theme."
+---
+
 # no-hardcoded-colors
 
-> Disallow hardcoded color values in Tailwind CSS classes
+Regla de oxlint que reporta colores fijos en valores arbitrarios de Tailwind CSS — hex, `rgb()`,
+`hsl()`, `oklch()` y más — para que salgan de tu theme.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system | Opciones |
+| ------- | ------------------------ | ------------- | -------- |
+| No      | No                       | No se usa     | `allow`  |
 
 ## Qué hace esta regla
 

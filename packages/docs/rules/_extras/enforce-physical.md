@@ -1,3 +1,7 @@
+---
+description: "oxlint rule for LTR-only projects that rewrites logical Tailwind CSS utilities into physical ones, like `ms-4` → `ml-4` — the mirror of `enforce-logical`."
+---
+
 ## What this rule does
 
 The mirror of `enforce-logical`. Rewrites logical, writing-direction aware utilities (`ms-4`,

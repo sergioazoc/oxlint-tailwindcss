@@ -15,16 +15,7 @@
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-
-interface RuleMeta {
-  type?: string
-  docs?: { description?: string }
-  fixable?: 'code' | 'whitespace'
-  hasSuggestions?: boolean
-  schema?: unknown
-  defaultOptions?: unknown[]
-  messages?: Record<string, string>
-}
+import type { RuleMeta } from './rule-page.ts'
 
 export interface RuleExport {
   meta?: RuleMeta

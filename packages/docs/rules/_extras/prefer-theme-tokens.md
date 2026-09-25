@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that rewrites raw CSS variable references into your theme's named Tailwind CSS utilities, like `border-(--border)` → `border-border`."
+---
+
 ## What this rule does
 
 Detects utilities written as a raw CSS-variable reference — `border-(--border)`,

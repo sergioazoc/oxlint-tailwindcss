@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que escribe las cadenas de variantes de Tailwind CSS en un solo orden — `hover:dark:` o `dark:hover:` — y reescribe el resto, con autofix."
+---
+
 ## Qué hace esta regla
 
 Reordena los prefijos de variants dentro de una sola clase para que la cadena se escriba siempre

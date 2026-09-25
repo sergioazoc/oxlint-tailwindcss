@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that rewrites physical Tailwind CSS utilities into logical, RTL-friendly ones, like `ml-4` → `ms-4` and `pr-2` → `pe-2`, with an autofix."
+---
+
 ## What this rule does
 
 Rewrites physical-direction Tailwind utilities (`ml-4`, `pr-2`, `left-0`, `rounded-tl-md`, …) into

@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que mueve el signo negativo dentro de los valores arbitrarios de Tailwind CSS, como `-top-[5px]` → `top-[-5px]`, con autofix."
+---
+
 ## Qué hace esta regla
 
 Detecta utilities escritas con un prefijo negativo afuera de un bracket de valor arbitrario —

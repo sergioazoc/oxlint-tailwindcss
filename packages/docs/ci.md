@@ -1,8 +1,6 @@
 ---
 title: Running in CI
-description:
-  Run oxlint-tailwindcss in CI — pull-request annotations with -f github, caching the design-system
-  precompute between jobs with OXLINT_TAILWINDCSS_CACHE_DIR, per-rule timings, and what to trust.
+description: "Run oxlint-tailwindcss in CI: pull-request annotations, the design-system precompute cached between jobs, per-rule timings, and what to trust."
 ---
 
 # Running in CI

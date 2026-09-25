@@ -1,3 +1,8 @@
+---
+title: "Uso en monorepos"
+description: "Usa oxlint-tailwindcss en un monorepo: un config con un mapping de entryPoint o un .oxlintrc.json por package, y qué puede cambiar entre packages."
+---
+
 # Monorepos
 
 `oxlint-tailwindcss` v1 soporta dos patrones para monorepos, ambos totalmente deterministas — sin

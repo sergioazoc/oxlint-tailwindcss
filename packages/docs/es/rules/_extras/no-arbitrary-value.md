@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que reporta valores arbitrarios de Tailwind CSS como `w-[200px]` o `bg-[#ff0000]`, para que salgan de tu theme; una allow list cubre excepciones."
+---
+
 ## Qué hace esta regla
 
 Marca cualquier utility de Tailwind que use un arbitrary value — la escotilla — para forzar al

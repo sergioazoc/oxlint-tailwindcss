@@ -1,6 +1,18 @@
+---
+title: "enforce-shorthand — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que une utilidades de Tailwind CSS con el mismo valor en cada lado en su shorthand, como mt-2 mr-2 mb-2 ml-2 → m-2 o w-4 h-4 → size-4."
+---
+
 # enforce-shorthand
 
-> Enforce shorthand Tailwind CSS classes when all axes have the same value
+Regla de oxlint que une utilidades de Tailwind CSS con el mismo valor en cada lado en su shorthand,
+como `mt-2 mr-2 mb-2 ml-2` → `m-2` o `w-4 h-4` → `size-4`.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system                         | Opciones     |
+| ------- | ------------------------ | ------------------------------------- | ------------ |
+| Sí      | No                       | Opcional — se usa si hay `entryPoint` | `entryPoint` |
 
 ## Qué hace esta regla
 

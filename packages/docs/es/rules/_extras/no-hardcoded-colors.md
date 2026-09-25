@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que reporta colores fijos en valores arbitrarios de Tailwind CSS — hex, `rgb()`, `hsl()`, `oklch()` y más — para que salgan de tu theme."
+---
+
 ## Qué hace esta regla
 
 Marca cualquier clase cuyo arbitrary value lleve un literal de color hardcodeado — cualquier cosa

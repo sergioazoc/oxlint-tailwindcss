@@ -1,6 +1,18 @@
+---
+title: "max-class-count — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que reporta un string de clases de Tailwind CSS con más clases que un máximo (20 por defecto): señal de que debería ser un componente."
+---
+
 # max-class-count
 
-> Enforce a maximum number of Tailwind CSS classes per class string
+Regla de oxlint que reporta un string de clases de Tailwind CSS con más clases que un máximo (20 por
+defecto): señal de que debería ser un componente.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system | Opciones |
+| ------- | ------------------------ | ------------- | -------- |
+| No      | No                       | No se usa     | `max`    |
 
 ## Qué hace esta regla
 

@@ -1,6 +1,18 @@
+---
+title: "no-unnecessary-whitespace — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que colapsa espacios repetidos y recorta los del inicio y el final de los strings de clases de Tailwind CSS, con autofix."
+---
+
 # no-unnecessary-whitespace
 
-> Disallow unnecessary whitespace in Tailwind CSS class strings
+Regla de oxlint que colapsa espacios repetidos y recorta los del inicio y el final de los strings de
+clases de Tailwind CSS, con autofix.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system | Opciones |
+| ------- | ------------------------ | ------------- | -------- |
+| Sí      | No                       | No se usa     | Ninguna  |
 
 ## Qué hace esta regla
 

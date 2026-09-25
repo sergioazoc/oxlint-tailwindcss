@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que reporta clases de Tailwind CSS de un mismo elemento cuyo CSS choca, como `p-2 p-4`, comparando lo que emite tu design system."
+---
+
 ## Qué hace esta regla
 
 Detecta pares de clases de Tailwind en el mismo elemento, bajo la misma variante, cuyas

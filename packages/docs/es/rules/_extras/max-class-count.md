@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que reporta un string de clases de Tailwind CSS con más clases que un máximo (20 por defecto): señal de que debería ser un componente."
+---
+
 ## Qué hace esta regla
 
 Cuenta las clases de Tailwind de cada string de clases y reporta cuando el conteo supera un máximo

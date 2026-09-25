@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that moves the negative sign into Tailwind CSS arbitrary values, like `-top-[5px]` → `top-[-5px]`, with an autofix."
+---
+
 ## What this rule does
 
 Detects utilities written with a negative prefix outside an arbitrary value bracket — `-top-[5px]`,

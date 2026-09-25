@@ -1,5 +1,7 @@
 ---
 layout: home
+title: "Tailwind CSS linting for oxlint"
+description: "oxlint-tailwindcss is the oxlint plugin for Tailwind CSS v4: lint rules that check your classes against your own design system, with autofixes."
 
 hero:
   name: oxlint-tailwindcss

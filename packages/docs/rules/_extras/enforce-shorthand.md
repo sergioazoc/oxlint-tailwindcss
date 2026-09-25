@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that merges Tailwind CSS utilities with the same value on every side into their shorthand, like `mt-2 mr-2 mb-2 ml-2` → `m-2` or `w-4 h-4` → `size-4`."
+---
+
 ## What this rule does
 
 Combines per-axis Tailwind utilities into their shorthand equivalents when every axis carries the

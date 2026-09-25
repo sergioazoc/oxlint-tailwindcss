@@ -1,6 +1,18 @@
+---
+title: "consistent-variant-order — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que escribe las cadenas de variantes de Tailwind CSS en un solo orden — hover:dark: o dark:hover: — y reescribe el resto, con autofix."
+---
+
 # consistent-variant-order
 
-> Enforce a consistent order for Tailwind CSS variant prefixes
+Regla de oxlint que escribe las cadenas de variantes de Tailwind CSS en un solo orden —
+`hover:dark:` o `dark:hover:` — y reescribe el resto, con autofix.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system                         | Opciones              |
+| ------- | ------------------------ | ------------------------------------- | --------------------- |
+| Sí      | Sí                       | Opcional — se usa si hay `entryPoint` | `entryPoint`, `order` |
 
 ## Qué hace esta regla
 

@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that reports a Tailwind CSS class string with more classes than a set maximum (20 by default) — a sign it should be a component."
+---
+
 ## What this rule does
 
 Counts the Tailwind classes in each class string and reports when the count exceeds a configurable
