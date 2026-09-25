@@ -370,9 +370,12 @@ export const noDynamicClasses = defineRule({
         }
         if (!startsTailwindClass(fragment, roots, dsPrefixes)) continue
 
-        source ??= safeSourceCode(context)?.text
-        const start = loc.range[0] + tokenStart
-        const className = source ? classFrom(source, start) : `${fragment}\${…}`
+        let className = loc.runtimeClass
+        if (className === undefined) {
+          source ??= safeSourceCode(context)?.text
+          const start = loc.range[0] + tokenStart
+          className = source ? classFrom(source, start) : `${fragment}\${…}`
+        }
         context.report({ node: loc.node, messageId: 'dynamicClass', data: { className } })
       }
     }

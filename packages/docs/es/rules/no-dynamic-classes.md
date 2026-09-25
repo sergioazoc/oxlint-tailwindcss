@@ -22,18 +22,19 @@ nunca aparece completa en ningún lado, así que Tailwind no emite nada para ell
 queda sin estilo sin avisar. En desarrollo solo funciona si esa misma clase está escrita completa en
 otra parte.
 
-La regla reporta cada una de esas clases una vez, cuando el texto pegado a un `${}` empieza con una
-utilidad de Tailwind (`bg-`, `grid-cols-`, `-mt-`, `w-[`) o una variante (`hover:`, `md:`, `data-`).
-Una clase o lista completa que viene de una variable (`` `${base} p-4` ``) está bien, y también un
-texto que no es de Tailwind (`` `icon-${name}` ``, `` `${a}-${b}` ``). No hay autofix: el arreglo es
-escribir completa cada clase a la que puede corresponder el valor.
+La regla reporta cada una de esas clases una vez, cuando el texto pegado a un `${}` — o a un
+operando de `+`, `"bg-" + color` — empieza con una utilidad de Tailwind (`bg-`, `grid-cols-`,
+`-mt-`, `w-[`) o una variante (`hover:`, `md:`, `data-`). Una clase o lista completa que viene de
+una variable (`` `${base} p-4` ``, `"p-4 " + extra`) está bien, y también un texto que no es de
+Tailwind (`` `icon-${name}` ``, `` `${a}-${b}` ``). Una clase partida en dos strings
+(`"bg-" + "red-500"`) también se reporta: Tailwind lee cada string por separado. No hay autofix: el
+arreglo es escribir completa cada clase a la que puede corresponder el valor.
 
 DS-opcional. Con un `entryPoint` también cuentan las utilidades y variantes de tu proyecto (un
 namespace de `@theme` como `bar-*`); sin él, se usan las raíces de utilidades y variantes propias de
 Tailwind.
 
-Lo que no ve: la concatenación `"bg-" + color` (el extractor lee strings y template literals, no
-expresiones con `+`), y una variante elegida en runtime después del texto estático
+Lo que no ve: una variante elegida en runtime después del texto estático
 (`` `${breakpoint}:flex` ``).
 
 ## Opciones
@@ -53,6 +54,7 @@ utilidades y variantes de tu proyecto.
 <div className={`w-[${width}px]`} />
 <div className={`hover:${hoverClass}`} />
 <div className={cn(`p-${padding}`)} />
+<div className={"text-" + tone} />
 ```
 
 ### ✓ Correcto
