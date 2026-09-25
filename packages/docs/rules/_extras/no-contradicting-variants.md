@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that reports Tailwind CSS variant classes made redundant by the same utility applied unconditionally, like `hover:flex` next to `flex`."
+---
+
 ## What this rule does
 
 Flags variant-prefixed classes that are redundant because the same utility is already applied

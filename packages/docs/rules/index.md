@@ -1,3 +1,8 @@
+---
+title: "Rules"
+description: "All oxlint-tailwindcss lint rules for Tailwind CSS, grouped by what they catch, with each rule's default options and whether it needs your design system."
+---
+
 # Rules
 
 The 24 rules in `oxlint-tailwindcss`, grouped by what they enforce. Click into any rule for examples

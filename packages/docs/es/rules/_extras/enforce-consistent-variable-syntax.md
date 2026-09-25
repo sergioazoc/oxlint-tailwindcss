@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que escribe las variables CSS en clases de Tailwind de una sola forma — `bg-(--primary)` o `bg-[var(--primary)]` — y reescribe la otra."
+---
+
 ## Qué hace esta regla
 
 Tailwind v4 agregó un shorthand para valores arbitrarios de variables CSS: `bg-(--primary)` es

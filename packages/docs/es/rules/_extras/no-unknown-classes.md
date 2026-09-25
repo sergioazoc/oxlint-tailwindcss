@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que reporta clases de Tailwind CSS que tu design system no genera, según tu CSS, con arreglos de typos como `itms-center` → `items-center`."
+---
+
 ## Qué hace esta regla
 
 Recorre cada clase de Tailwind extraída de tu código y le pregunta al design system — construido a

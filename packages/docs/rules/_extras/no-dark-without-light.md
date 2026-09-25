@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that reports a Tailwind CSS `dark:` class, like `dark:bg-gray-900`, with no light-mode base class for the same property on the element."
+---
+
 ## What this rule does
 
 Catches the case where you wrote `dark:bg-gray-900` but forgot the matching light-mode base

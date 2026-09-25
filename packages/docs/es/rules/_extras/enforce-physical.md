@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint para proyectos solo LTR que reescribe utilidades lógicas de Tailwind CSS a físicas, como `ms-4` → `ml-4` — el espejo de `enforce-logical`."
+---
+
 ## Qué hace esta regla
 
 El espejo de `enforce-logical`. Reescribe utilities lógicas conscientes del writing direction

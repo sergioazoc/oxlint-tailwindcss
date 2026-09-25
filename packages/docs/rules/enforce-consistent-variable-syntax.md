@@ -1,6 +1,18 @@
+---
+title: "enforce-consistent-variable-syntax — Tailwind CSS lint rule"
+description: "oxlint rule that writes Tailwind CSS variable values one way — shorthand bg-(--primary) or bg-[var(--primary)] — and rewrites the other form."
+---
+
 # enforce-consistent-variable-syntax
 
-> Enforce consistent CSS variable syntax: bg-[var(--color)] ↔ bg-(--color)
+oxlint rule that writes Tailwind CSS variable values one way — shorthand `bg-(--primary)` or
+`bg-[var(--primary)]` — and rewrites the other form.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system | Options  |
+| ------- | ------------------ | ------------- | -------- |
+| Yes     | Yes                | Not used      | `syntax` |
 
 ## What this rule does
 

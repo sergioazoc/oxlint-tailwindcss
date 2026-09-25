@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que colapsa espacios repetidos y recorta los del inicio y el final de los strings de clases de Tailwind CSS, con autofix."
+---
+
 ## Qué hace esta regla
 
 Normaliza el whitespace dentro de strings de clases Tailwind: las corridas de espacios o tabs

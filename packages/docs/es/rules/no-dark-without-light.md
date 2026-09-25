@@ -1,6 +1,18 @@
+---
+title: "no-dark-without-light — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que reporta una clase dark: de Tailwind CSS, como dark:bg-gray-900, sin una clase base para el modo claro de la misma propiedad."
+---
+
 # no-dark-without-light
 
-> Require a base (light) utility when using dark: (or other scheme) variant
+Regla de oxlint que reporta una clase `dark:` de Tailwind CSS, como `dark:bg-gray-900`, sin una
+clase base para el modo claro de la misma propiedad.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system                         | Opciones                 |
+| ------- | ------------------------ | ------------------------------------- | ------------------------ |
+| No      | No                       | Opcional — se usa si hay `entryPoint` | `variants`, `entryPoint` |
 
 ## Qué hace esta regla
 

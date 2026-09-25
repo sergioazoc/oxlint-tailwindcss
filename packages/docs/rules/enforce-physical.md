@@ -1,7 +1,18 @@
+---
+title: "enforce-physical — Tailwind CSS lint rule"
+description: "oxlint rule for LTR-only projects that rewrites logical Tailwind CSS utilities into physical ones, like ms-4 → ml-4 — the mirror of enforce-logical."
+---
+
 # enforce-physical
 
-> Enforce physical Tailwind CSS properties instead of logical ones for consistency in LTR-only
-> projects
+oxlint rule for LTR-only projects that rewrites logical Tailwind CSS utilities into physical ones,
+like `ms-4` → `ml-4` — the mirror of `enforce-logical`.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system                            | Options                                |
+| ------- | ------------------ | ---------------------------------------- | -------------------------------------- |
+| Yes     | Yes                | Optional — used when `entryPoint` is set | `allowlist`, `direction`, `entryPoint` |
 
 ## What this rule does
 

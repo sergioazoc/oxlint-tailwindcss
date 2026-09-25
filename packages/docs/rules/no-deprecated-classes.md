@@ -1,6 +1,18 @@
+---
+title: "no-deprecated-classes — Tailwind CSS lint rule"
+description: "oxlint rule that rewrites Tailwind CSS classes renamed in v4, like flex-grow → grow and bg-gradient-to-r → bg-linear-to-r, with an autofix."
+---
+
 # no-deprecated-classes
 
-> Disallow deprecated Tailwind CSS v4 classes
+oxlint rule that rewrites Tailwind CSS classes renamed in v4, like `flex-grow` → `grow` and
+`bg-gradient-to-r` → `bg-linear-to-r`, with an autofix.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system                            | Options      |
+| ------- | ------------------ | ---------------------------------------- | ------------ |
+| Yes     | Yes                | Optional — used when `entryPoint` is set | `entryPoint` |
 
 ## What this rule does
 

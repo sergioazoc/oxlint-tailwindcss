@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que reescribe las clases de Tailwind CSS a la forma canónica que calcula el propio Tailwind, como `-m-0` → `m-0`, con autofix."
+---
+
 ## Qué hace esta regla
 
 Le pregunta al design system cuál es la forma canónica de cada utility en tu código y reescribe las

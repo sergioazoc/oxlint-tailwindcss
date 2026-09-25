@@ -18,7 +18,7 @@
     "dev": "pnpm -C packages/docs dev",
     "build": "pnpm -C packages/oxlint-tailwindcss build",
     "build:watch": "pnpm -C packages/oxlint-tailwindcss dev",
-    "test": "pnpm -C packages/oxlint-tailwindcss test",
+    "test": "pnpm -C packages/oxlint-tailwindcss test && pnpm -C packages/docs test",
     "test:watch": "pnpm -C packages/oxlint-tailwindcss test:watch",
     "bench": "pnpm -C packages/oxlint-tailwindcss bench",
     "lint": "oxlint",

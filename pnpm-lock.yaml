@@ -221,6 +221,9 @@ importers:
       vitepress:
         specifier: ^2.0.0-alpha.20
         version: 2.0.0-alpha.20(@types/node@26.6.2)(jiti@2.7.0)(postcss@8.5.28)(typescript@7.0.2)
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@types/node@26.6.2)(vite@8.3.1(@types/node@26.6.2)(jiti@2.7.0))
 
   packages/oxlint-tailwindcss:
     dependencies:

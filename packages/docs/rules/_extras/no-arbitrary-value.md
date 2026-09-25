@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that reports Tailwind CSS arbitrary values like `w-[200px]` or `bg-[#ff0000]`, so values come from your theme; an allow list covers exceptions."
+---
+
 ## What this rule does
 
 Flags any Tailwind utility that uses an arbitrary value — the escape hatch — so your team is forced

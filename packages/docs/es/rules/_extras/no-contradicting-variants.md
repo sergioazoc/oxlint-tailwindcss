@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que reporta clases con variante de Tailwind CSS que sobran porque la misma utilidad ya aplica siempre, como `hover:flex` junto a `flex`."
+---
+
 ## Qué hace esta regla
 
 Marca clases con variant que son redundantes porque la misma utility ya está aplicada sin

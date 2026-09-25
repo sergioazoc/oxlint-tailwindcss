@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that rewrites Tailwind CSS classes to the canonical form Tailwind itself computes, like `-m-0` → `m-0`, with an autofix."
+---
+
 ## What this rule does
 
 Asks the design system for the canonical form of every utility in your code and rewrites the ones

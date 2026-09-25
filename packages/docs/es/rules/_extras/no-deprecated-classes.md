@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que reescribe las clases de Tailwind CSS renombradas en v4, como `flex-grow` → `grow` y `bg-gradient-to-r` → `bg-linear-to-r`, con autofix."
+---
+
 ## Qué hace esta regla
 
 Marca cualquier clase que fue renombrada cuando Tailwind pasó de v3 a v4 y la reescribe en el lugar

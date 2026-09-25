@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that reports hardcoded colors in Tailwind CSS arbitrary values — hex, `rgb()`, `hsl()`, `oklch()` and more — so colors come from your theme."
+---
+
 ## What this rule does
 
 Flags any class whose arbitrary value carries a hardcoded color literal — anything you'd write with

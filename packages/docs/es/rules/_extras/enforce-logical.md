@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que reescribe utilidades físicas de Tailwind CSS a lógicas, compatibles con RTL, como `ml-4` → `ms-4` y `pr-2` → `pe-2`, con autofix."
+---
+
 ## Qué hace esta regla
 
 Reescribe utilities de dirección física de Tailwind (`ml-4`, `pr-2`, `left-0`, `rounded-tl-md`, …) a

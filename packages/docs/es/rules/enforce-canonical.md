@@ -1,6 +1,18 @@
+---
+title: "enforce-canonical — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que reescribe las clases de Tailwind CSS a la forma canónica que calcula el propio Tailwind, como -m-0 → m-0, con autofix."
+---
+
 # enforce-canonical
 
-> Enforce canonical Tailwind CSS class names using canonicalizeCandidates()
+Regla de oxlint que reescribe las clases de Tailwind CSS a la forma canónica que calcula el propio
+Tailwind, como `-m-0` → `m-0`, con autofix.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system              | Opciones     |
+| ------- | ------------------------ | -------------------------- | ------------ |
+| Sí      | Sí                       | Obligatorio (`entryPoint`) | `entryPoint` |
 
 ## Qué hace esta regla
 

@@ -7,6 +7,19 @@ overwritten on every build/generate. Editing them directly is silently lost. Cha
 `_extras` partial — `rules/_extras/<rule>.md` (EN), `es/rules/_extras/<rule>.md` (ES) — then run
 `pnpm -C packages/docs generate`. Mirror EN edits into ES (neutral tuteo, never voseo).
 
+## Every page has its own title and description
+
+- A rule page's description lives in the frontmatter of its `_extras` file, per locale
+  (`description: "…"`, JSON-quoted; inline code allowed). The generator (`scripts/rule-page.ts`,
+  pure and tested) prints it as the page's first paragraph and, as plain text, as the `<meta>`
+  description; it titles the page `<rule> — Tailwind CSS lint rule` (ES:
+  `— regla de lint para Tailwind CSS`) and builds the "At a glance" table from `meta`. A missing or
+  over-160-character description fails `generate`.
+- Hand-written pages carry `title` and `description` in their own frontmatter. The Spanish ones are
+  written in Spanish, not copied — `tests/frontmatter.test.ts` checks every page (both locales
+  present, ≤ 160 characters, unique per locale, ES ≠ EN). Run the docs tests with
+  `pnpm -C packages/docs test` (after `pnpm build`).
+
 ## Markdown is formatted by oxfmt (`generate` formats its own output)
 
 All `.md` is formatted by oxfmt (`proseWrap: always`, so prose is wrapped at the print width — don't

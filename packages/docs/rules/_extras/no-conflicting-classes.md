@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that reports Tailwind CSS classes on one element whose CSS clashes, like `p-2 p-4`, comparing the declarations your design system emits."
+---
+
 ## What this rule does
 
 Detects pairs of Tailwind classes on the same element, under the same variant, whose CSS

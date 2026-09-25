@@ -1,8 +1,18 @@
+---
+title: "enforce-consistent-important-position — Tailwind CSS lint rule"
+description: "oxlint rule that puts the Tailwind CSS important modifier in one position — suffix flex! (the v4 form) or prefix !flex — and fixes the rest."
+---
+
 # enforce-consistent-important-position
 
-> Enforce consistent position of the important (!) modifier. Default: suffix (Tailwind v4 canonical
-> form). This rule is the single source of truth for ! placement — enforce-canonical preserves the
-> position you wrote, so the two never conflict.
+oxlint rule that puts the Tailwind CSS important modifier in one position — suffix `flex!` (the v4
+form) or prefix `!flex` — and fixes the rest.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system | Options    |
+| ------- | ------------------ | ------------- | ---------- |
+| Yes     | Yes                | Not used      | `position` |
 
 ## What this rule does
 

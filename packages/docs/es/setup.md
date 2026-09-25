@@ -1,3 +1,8 @@
+---
+title: "Instalación y configuración"
+description: "Instala oxlint-tailwindcss, apúntalo a tu CSS de entrada de Tailwind y activa sus reglas: requisitos, una config inicial y qué cubre cada tipo de archivo."
+---
+
 # Setup
 
 Todo lo necesario para tener `oxlint-tailwindcss` corriendo en un proyecto, en una sola página.

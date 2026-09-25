@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that collapses repeated spaces and trims leading and trailing whitespace in Tailwind CSS class strings, with an autofix."
+---
+
 ## What this rule does
 
 Normalizes whitespace inside Tailwind class strings: runs of spaces or tabs collapse to one space,

@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que sugiere el paso de escala o token de Tailwind CSS igual a un valor fijo, como `p-[10px]` → `p-2.5` o `rounded-[0.5rem]` → `rounded-lg`."
+---
+
 ## Qué hace esta regla
 
 Reporta un valor hardcodeado que es **numéricamente igual** a algo que tu design system ya nombra, y

@@ -1,9 +1,6 @@
 ---
 title: En CI
-description:
-  Corre oxlint-tailwindcss en CI — anotaciones en el pull request con -f github, caché del
-  precompute del design system entre jobs con OXLINT_TAILWINDCSS_CACHE_DIR, tiempos por regla y en
-  qué confiar.
+description: "Corre oxlint-tailwindcss en CI: anotaciones en el pull request, el precompute del design system en caché entre jobs, tiempos por regla y en qué confiar."
 ---
 
 # En CI

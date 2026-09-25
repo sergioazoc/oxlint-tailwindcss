@@ -1,6 +1,18 @@
+---
+title: "no-restricted-classes — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que prohíbe las clases de Tailwind CSS que listes, por nombre exacto o regex, cada una con un mensaje que dice qué usar en su lugar."
+---
+
 # no-restricted-classes
 
-> Disallow specific Tailwind CSS classes
+Regla de oxlint que prohíbe las clases de Tailwind CSS que listes, por nombre exacto o regex, cada
+una con un mensaje que dice qué usar en su lugar.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system | Opciones              |
+| ------- | ------------------------ | ------------- | --------------------- |
+| No      | No                       | No se usa     | `classes`, `patterns` |
 
 ## Qué hace esta regla
 

@@ -1,6 +1,18 @@
+---
+title: "enforce-sort-order — Tailwind CSS lint rule"
+description: "oxlint rule that sorts Tailwind CSS classes in the official order — the one prettier-plugin-tailwindcss and oxfmt use — with an autofix."
+---
+
 # enforce-sort-order
 
-> Enforce consistent sort order of Tailwind CSS classes using the official class order
+oxlint rule that sorts Tailwind CSS classes in the official order — the one
+`prettier-plugin-tailwindcss` and `oxfmt` use — with an autofix.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system           | Options              |
+| ------- | ------------------ | ----------------------- | -------------------- |
+| Yes     | No                 | Required (`entryPoint`) | `entryPoint`, `mode` |
 
 ## What this rule does
 

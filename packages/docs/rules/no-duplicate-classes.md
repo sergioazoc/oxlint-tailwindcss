@@ -1,6 +1,18 @@
+---
+title: "no-duplicate-classes — Tailwind CSS lint rule"
+description: "oxlint rule that reports a Tailwind CSS class repeated in the same class list, like flex flex, and removes the extra copies with --fix."
+---
+
 # no-duplicate-classes
 
-> Disallow duplicate Tailwind CSS classes
+oxlint rule that reports a Tailwind CSS class repeated in the same class list, like `flex flex`, and
+removes the extra copies with `--fix`.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system | Options |
+| ------- | ------------------ | ------------- | ------- |
+| Yes     | No                 | Not used      | None    |
 
 ## What this rule does
 

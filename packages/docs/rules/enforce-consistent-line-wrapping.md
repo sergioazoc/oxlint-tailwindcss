@@ -1,7 +1,18 @@
+---
+title: "enforce-consistent-line-wrapping — Tailwind CSS lint rule"
+description: "oxlint rule that reports Tailwind CSS class strings over a print width or a classes-per-line budget, and can wrap them onto several lines."
+---
+
 # enforce-consistent-line-wrapping
 
-> Warn (and optionally autofix) when a class string exceeds the configured print width or
-> classes-per-line budget
+oxlint rule that reports Tailwind CSS class strings over a print width or a classes-per-line budget,
+and can wrap them onto several lines.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system                            | Options                                                            |
+| ------- | ------------------ | ---------------------------------------- | ------------------------------------------------------------------ |
+| Yes     | No                 | Optional — used when `entryPoint` is set | `entryPoint`, `printWidth`, `classesPerLine`, `wrapLines`, `group` |
 
 ## What this rule does
 

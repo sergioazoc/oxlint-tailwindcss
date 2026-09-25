@@ -110,6 +110,11 @@
   Spanish. They caught four gaps, now fixed: `no-unknown-classes` didn't document its `entryPoint`
   option, `/settings` never named `exclude`, the README's full setup snippet left out
   `prefer-scale-token`, and a typo.
+- **Every docs page has its own title and description, in its own language.** All pages shared the
+  site-wide English description — Spanish pages included — and rule pages were titled with the bare
+  rule name. Each rule page now opens with a one-sentence definition (also its search description)
+  and an "At a glance" table — autofix, editor suggestions, whether it needs the design system, its
+  options — generated from the rule's metadata.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

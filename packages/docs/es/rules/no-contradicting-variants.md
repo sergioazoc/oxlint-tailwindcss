@@ -1,7 +1,18 @@
+---
+title: "no-contradicting-variants — regla de lint para Tailwind CSS"
+description: "Regla de oxlint que reporta clases con variante de Tailwind CSS que sobran porque la misma utilidad ya aplica siempre, como hover:flex junto a flex."
+---
+
 # no-contradicting-variants
 
-> Disallow variant-prefixed classes that are redundant because the base class already applies
-> unconditionally
+Regla de oxlint que reporta clases con variante de Tailwind CSS que sobran porque la misma utilidad
+ya aplica siempre, como `hover:flex` junto a `flex`.
+
+## De un vistazo
+
+| Autofix | Sugerencias en el editor | Design system                         | Opciones     |
+| ------- | ------------------------ | ------------------------------------- | ------------ |
+| No      | No                       | Opcional — se usa si hay `entryPoint` | `entryPoint` |
 
 ## Qué hace esta regla
 

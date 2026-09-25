@@ -1,8 +1,6 @@
 ---
 title: Vue, Svelte & Astro
-description:
-  Which parts of .vue, .svelte and .astro files oxlint-tailwindcss checks today (the script blocks),
-  which it can't yet (templates and markup), and how to keep class lists covered.
+description: "Which parts of .vue, .svelte and .astro files oxlint-tailwindcss checks today — the scripts, not the templates — and how to keep class lists covered."
 ---
 
 # Vue, Svelte & Astro

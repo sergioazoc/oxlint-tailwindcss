@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que pone el modificador important de Tailwind CSS en una sola posición — sufijo `flex!` (la forma de v4) o prefijo `!flex` — y corrige el resto."
+---
+
 ## Qué hace esta regla
 
 Tailwind v4 soporta dos sintaxis para el modificador `!important`: prefijo (`!flex`, la forma de la

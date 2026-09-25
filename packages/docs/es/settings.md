@@ -1,3 +1,8 @@
+---
+title: "Referencia de settings"
+description: "Cada opción de settings.tailwindcss de oxlint-tailwindcss — entryPoint, rootFontSize, timeout, debug y el extractor de clases — y sus variables de entorno."
+---
+
 # `settings.tailwindcss`
 
 Cada setting vive bajo `settings.tailwindcss` en tu `.oxlintrc.json`. Los settings se leen para cada

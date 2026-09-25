@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que reescribe referencias a variables CSS en las utilidades con nombre de tu theme de Tailwind CSS, como `border-(--border)` → `border-border`."
+---
+
 ## Qué hace esta regla
 
 Detecta utilities escritas como referencia cruda a una variable CSS — `border-(--border)`,

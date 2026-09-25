@@ -1,3 +1,8 @@
+---
+title: "Reglas"
+description: "Todas las reglas de lint para Tailwind CSS de oxlint-tailwindcss, agrupadas por lo que detectan, con sus opciones por defecto y si usan tu design system."
+---
+
 # Reglas
 
 Las 24 reglas de `oxlint-tailwindcss`, agrupadas por lo que hacen cumplir. Haz clic en cualquier

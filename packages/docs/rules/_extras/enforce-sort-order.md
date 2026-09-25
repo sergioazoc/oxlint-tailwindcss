@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that sorts Tailwind CSS classes in the official order — the one `prettier-plugin-tailwindcss` and `oxfmt` use — with an autofix."
+---
+
 ## What this rule does
 
 Sorts every Tailwind class string in your code to match the official Tailwind class order — the same

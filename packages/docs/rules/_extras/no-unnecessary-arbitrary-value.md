@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that replaces a Tailwind CSS arbitrary value with the named class that emits the same CSS in your theme, like `w-[100%]` → `w-full`."
+---
+
 ## What this rule does
 
 Detects utilities written with an arbitrary value (`w-[200px]`, `h-[auto]`,

@@ -1,3 +1,7 @@
+---
+description: "Regla de oxlint que cambia un valor arbitrario de Tailwind CSS por la clase con nombre que emite el mismo CSS en tu theme, como `w-[100%]` → `w-full`."
+---
+
 ## Qué hace esta regla
 
 Detecta utilities escritas con un valor arbitrario (`w-[200px]`, `h-[auto]`,

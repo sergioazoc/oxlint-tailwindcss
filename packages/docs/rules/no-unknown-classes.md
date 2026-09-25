@@ -1,6 +1,18 @@
+---
+title: "no-unknown-classes — Tailwind CSS lint rule"
+description: "oxlint rule that reports Tailwind CSS classes your design system doesn't generate, checked against your CSS, with typo fixes like itms-center → items-center."
+---
+
 # no-unknown-classes
 
-> Disallow classes that are not defined in the Tailwind CSS design system
+oxlint rule that reports Tailwind CSS classes your design system doesn't generate, checked against
+your CSS, with typo fixes like `itms-center` → `items-center`.
+
+## At a glance
+
+| Autofix | Editor suggestions | Design system           | Options                                     |
+| ------- | ------------------ | ----------------------- | ------------------------------------------- |
+| No      | Yes                | Required (`entryPoint`) | `entryPoint`, `allowlist`, `ignorePrefixes` |
 
 ## What this rule does
 

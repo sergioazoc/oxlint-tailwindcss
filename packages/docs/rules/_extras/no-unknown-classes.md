@@ -1,3 +1,7 @@
+---
+description: "oxlint rule that reports Tailwind CSS classes your design system doesn't generate, checked against your CSS, with typo fixes like `itms-center` → `items-center`."
+---
+
 ## What this rule does
 
 Walks every Tailwind class extracted from your code and asks the design system — built from your
