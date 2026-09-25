@@ -169,24 +169,25 @@ If instead each package has its own `.oxlintrc.json` extending a shared base, ju
 
 ## 6. Coexisting with oxfmt or prettier-plugin-tailwindcss
 
-`enforce-sort-order` agrees byte-for-byte with oxfmt and prettier-plugin-tailwindcss **if all three
-tools read the same CSS**. By default, oxfmt and the prettier plugin use the bundled
-`tailwindcss/theme.css` — which doesn't know about your custom `@theme` tokens. Point them at your
-CSS:
+`enforce-sort-order` sorts classes the way oxfmt and prettier-plugin-tailwindcss do **once they read
+the same CSS and know your class helpers**. By default the formatters use the theme bundled in
+`tailwindcss` — which doesn't know your `@theme` tokens — and sort only class attributes. Point them
+at your CSS and list your helpers:
 
 ```jsonc
 // .oxfmtrc.json
-{ "sortTailwindcss": { "stylesheet": "./src/styles.css" } }
+{ "sortTailwindcss": { "stylesheet": "./src/styles.css", "functions": ["cn", "clsx", "cva", "tv"] } }
 
 // .prettierrc
 {
   "plugins": ["prettier-plugin-tailwindcss"],
-  "tailwindStylesheet": "./src/styles.css"
+  "tailwindStylesheet": "./src/styles.css",
+  "tailwindFunctions": ["cn", "clsx", "cva", "tv"]
 }
 ```
 
-Read the full [interop guide](/interop) for the why and edge cases around tagged template tags and
-plugins like `@tailwindcss/typography`.
+Read the full [interop guide](/interop) for who formats what, the `--fix` note, and plugins like
+`@tailwindcss/typography`.
 
 ## 7. Going further
 

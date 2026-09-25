@@ -96,15 +96,16 @@ sub-app). Almost nobody needs this — set the entry point once in `settings` an
   the shorthand where it belongs.
 - **`no-unnecessary-whitespace`**: harmless in either direction. The fixer rebuilds the string from
   a deterministic token list, so any leftover double spaces collapse on the next pass.
-- **`prettier-plugin-tailwindcss` / `oxfmt`**: pick one source of truth. Pointed at the same
-  `entryPoint`, all three produce byte-identical output, so you can run formatter + linter without
-  fighting fixers.
+- **`prettier-plugin-tailwindcss` / `oxfmt`**: pick one source of truth. Pointed at the same CSS,
+  with your class helpers listed in the formatter's `functions`, they sort the same way, so
+  formatter and linter don't fight — see [Interop](/interop).
 
 ## When to disable it
 
 - **You delegate sort to `prettier-plugin-tailwindcss` or `oxfmt` exclusively** and want to keep the
-  rule budget small — the formatter already does this job byte-for-byte. Leaving both on is fine (no
-  conflicts), it's just redundant work.
+  rule budget small — for the class attributes and helpers it formats, the formatter does the same
+  job. Class strings it doesn't format (variables, for instance) then go unsorted. Leaving both on
+  is fine (no conflicts), it's just redundant work where they overlap.
 - **Working in a codebase that intentionally orders classes by authoring intent** (e.g. visual
   grouping that doesn't match Tailwind's priority). Disable locally rather than globally if it's a
   per-component preference.

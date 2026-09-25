@@ -172,23 +172,24 @@ simplemente pon `entryPoint: "./src/styles.css"` (string) en los settings de cad
 
 ## 6. Coexistencia con oxfmt o prettier-plugin-tailwindcss
 
-`enforce-sort-order` coincide byte por byte con oxfmt y prettier-plugin-tailwindcss **si las tres
-herramientas leen el mismo CSS**. Por defecto, oxfmt y el plugin de prettier usan el
-`tailwindcss/theme.css` bundled — que no conoce tus tokens `@theme` personalizados. Apúntalos a tu
-CSS:
+`enforce-sort-order` ordena las clases igual que oxfmt y prettier-plugin-tailwindcss **cuando leen
+el mismo CSS y conocen tus helpers de clases**. Por defecto los formateadores usan el theme que trae
+`tailwindcss` — que no conoce tus tokens `@theme` — y solo ordenan atributos de clase. Apúntalos a
+tu CSS y lista tus helpers:
 
 ```jsonc
 // .oxfmtrc.json
-{ "sortTailwindcss": { "stylesheet": "./src/styles.css" } }
+{ "sortTailwindcss": { "stylesheet": "./src/styles.css", "functions": ["cn", "clsx", "cva", "tv"] } }
 
 // .prettierrc
 {
   "plugins": ["prettier-plugin-tailwindcss"],
-  "tailwindStylesheet": "./src/styles.css"
+  "tailwindStylesheet": "./src/styles.css",
+  "tailwindFunctions": ["cn", "clsx", "cva", "tv"]
 }
 ```
 
-Lee la [guía completa de interop](/es/interop) para el porqué y los edge cases con tagged templates
+Lee la [guía completa de interop](/es/interop) para saber quién formatea qué, la nota sobre `--fix`
 y plugins como `@tailwindcss/typography`.
 
 ## 7. Yendo más allá

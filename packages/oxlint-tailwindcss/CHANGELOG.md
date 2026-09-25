@@ -173,6 +173,14 @@
   rules, `no-duplicate-classes` `error` in one and `warn` in the other). Both are now generated from
   a `recommended` severity in each rule's metadata, and so is the README's rule list by category.
   The four categories are Correctness, Modernization, Consistency and Design-system guardrails.
+- **The oxfmt / Prettier interop claims hold, with the setting they were missing.** The docs said
+  the formatter and `enforce-sort-order` "agree byte-for-byte if they read the same CSS"; that also
+  needs the formatter's `functions` (`tailwindFunctions` for Prettier) to list your class helpers —
+  otherwise `cn("p-4 flex")` stays unsorted — and it covers only the strings the formatter formats.
+  `/interop` now says who formats what, that the formatter also drops duplicates and collapses
+  whitespace, and that `oxlint --fix` applies one fix per class string per run (it has no multi-pass
+  fixing), with the snippets updated. A new end-to-end test with the real oxlint and oxfmt holds
+  each of these.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

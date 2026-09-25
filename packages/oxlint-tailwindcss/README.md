@@ -16,8 +16,9 @@ Read the story behind this plugin:
   output on every machine.
 - **Monorepo-ready** — Single root config with a glob → CSS mapping array, or one `.oxlintrc.json`
   per package. Both fully deterministic.
-- **Coexists with oxfmt and Prettier** — Point all tools at the same CSS and they agree
-  byte-for-byte. See the [interop guide](https://oxlint-tailwindcss.pages.dev/interop).
+- **Coexists with oxfmt and Prettier** — Point all tools at the same CSS and list your class helpers
+  in the formatter, and they sort the same way. See the
+  [interop guide](https://oxlint-tailwindcss.pages.dev/interop).
 - **Tailwind CSS v4.1.15+** — Designed for v4 from day one. Reads your `@theme { ... }` custom
   tokens, your shadcn variables, your typography plugin. It loads _your_ project's Tailwind engine,
   resolved per entry point, so the linter and your build agree; an engine older than v4.1.15, a
