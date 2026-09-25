@@ -61,6 +61,7 @@ export default defineConfig({
                 { text: 'Introduction', link: '/' },
                 { text: 'Setup', link: '/setup' },
                 { text: 'Vue, Svelte & Astro', link: '/frameworks' },
+                { text: 'Running in CI', link: '/ci' },
               ],
             },
             {
@@ -102,6 +103,7 @@ export default defineConfig({
                 { text: 'Introducción', link: '/es/' },
                 { text: 'Setup', link: '/es/setup' },
                 { text: 'Vue, Svelte y Astro', link: '/es/frameworks' },
+                { text: 'En CI', link: '/es/ci' },
               ],
             },
             {

@@ -104,8 +104,11 @@ seconds (up from 30 seconds).
 The disk cache (`os.tmpdir()/oxlint-tailwindcss/`) used to combine an mtime index with a content
 cache. v1.0.0 keys by content hash only — mtime is an in-memory fast path inside the linter process.
 
-**Action**: clear `os.tmpdir()/oxlint-tailwindcss/` once after upgrading. Stale v0.x `.idx` files
-are harmless but waste disk.
+**Action**: delete the v0.x cache directory, `os.tmpdir()/oxlint-tailwindcss/`, once after
+upgrading. Its stale `.idx` files are harmless but waste disk. Since v1.3 the cache lives in a
+per-user directory (`oxlint-tailwindcss-<uid>` in the same temp dir, or wherever
+[`OXLINT_TAILWINDCSS_CACHE_DIR`](/settings#environment-variables) points), so the old one is never
+read again.
 
 ## Changed: timeouts
 
@@ -119,7 +122,10 @@ Default values raised to reduce spurious failures on slower hardware / CI:
 | `canonicalize-service` init timeout    | 30 s | 60 s   |
 | `canonicalize-service` request timeout | 10 s | 30 s   |
 
-All overridable via `settings.tailwindcss.timeout`.
+`settings.tailwindcss.timeout` sets the `loadDesignSystemSync` (precompute) timeout. The service
+init timeouts are fixed at 60 s. The per-request timeouts can be raised with the
+[`OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT`](/settings#environment-variables) environment variable
+(since v1.11).
 
 ## Changed: `enforce-physical` accepts options
 
@@ -149,7 +155,8 @@ To bring it into shape parity with `enforce-logical`:
   `unsorted`, `no-unknown-classes` still emits `unknown`, etc.
 - Default extractor patterns (attributes, callees, tags, variable patterns) are the same. Custom
   `attributes`, `callees`, `tags`, `variablePatterns` and `exclude` settings work as before.
-- The disk-cache path (`os.tmpdir()/oxlint-tailwindcss/`) is the same.
+- The disk-cache path (`os.tmpdir()/oxlint-tailwindcss/`) was the same in v1.0; v1.3 moved it to a
+  per-user directory (see [above](#changed-disk-cache-key)).
 - Performance: the runtime cost per file is unchanged or slightly faster (fewer fallback branches).
 
 ## Need help?

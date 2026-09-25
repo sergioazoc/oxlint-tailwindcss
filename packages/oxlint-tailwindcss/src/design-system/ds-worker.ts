@@ -62,8 +62,16 @@ const REQUEST_STICKY_BACKOFF_MS = 60_000
  * (settings throw inside `createOnce`). Read once per worker construction.
  */
 function envRequestTimeout(): number | undefined {
-  const raw = process.env.OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT
-  if (raw === undefined || raw === '') return undefined
+  return parseRequestTimeout(process.env.OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT)
+}
+
+/**
+ * `OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT` → milliseconds, or `undefined`
+ * (use the default) for anything that isn't a finite positive number. Exported
+ * for the tests that pin what the settings page documents.
+ */
+export function parseRequestTimeout(raw: string | undefined): number | undefined {
+  if (raw === undefined || raw.trim() === '') return undefined
   const n = Number(raw)
   return Number.isFinite(n) && n > 0 ? n : undefined
 }

@@ -88,8 +88,10 @@ the run fails fast, and the state self-heals once the machine recovers.
 
 When on, the plugin logs to stderr:
 
-- Which CSS entry point resolved for each linted file.
-- DS load successes and cache hits.
+- Which CSS entry point resolved for each linted file (`src/Button.tsx → src/styles.css`).
+- Each design-system load, once per entry point per run (`Loaded design system from "…"`) — the same
+  line whether it came from the disk cache or a fresh precompute.
+- The Tailwind engine check for each entry point (`engine E=4.3.3 B=4.3.3 → ok`).
 
 Use this when you're debugging which CSS the plugin actually loaded.
 
@@ -204,6 +206,20 @@ Mapped names are registered as callees automatically — no need to list them in
 value must be one of `tv`, `cva`, `classed`, or `flat`; any other value is ignored rather than
 throwing. The reserved names `tv`, `cva`, and `classed` always use their built-in extractor and
 can't be remapped.
+
+## Environment variables
+
+For what doesn't belong in a shared config file — CI tuning and one-off debugging:
+
+| Variable                                    | Effect                                                                                                                                                                                                                      |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DEBUG=oxlint-tailwindcss`                  | Same as [`debug: true`](#debug), for every file.                                                                                                                                                                            |
+| `OXLINT_TAILWINDCSS_CACHE_DIR`              | Where the design-system disk cache lives. Default: a per-user directory in the system temp dir (`oxlint-tailwindcss-<uid>`, the user name on Windows). Set it to keep the cache between CI jobs — see [Running in CI](/ci). |
+| `OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT` | Per-request timeout of the worker services, in milliseconds (default `30000`). See [`timeout`](#timeout). A value that isn't a positive number is ignored.                                                                  |
+
+A cache directory the plugin creates is private to its owner (`0700`). If you point the variable at
+an existing directory, make sure no one else can write to it: what the cache holds feeds the
+autofixes.
 
 ## Cheat sheet
 

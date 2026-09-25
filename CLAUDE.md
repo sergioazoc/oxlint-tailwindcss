@@ -358,7 +358,10 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   They never read this setting: the request-timeout hint points at that env var, and the
   init-timeout hint names neither knob, since nothing configurable moves it.
 - **Debug logging**: `settings.tailwindcss.debug: true` or `DEBUG=oxlint-tailwindcss` env var. Off
-  by default — fatal errors always surface as rule diagnostics, not console output.
+  by default — fatal errors always surface as rule diagnostics, not console output. The
+  `file → entry point` line is printed once per file (module-level `lastLoggedFile` in `loader.ts`),
+  not once per DS-dependent rule; there is no cache-hit log line. `/settings` lists the env vars and
+  `tests/e2e/cache-dir.test.ts` holds what `/ci` promises about `OXLINT_TAILWINDCSS_CACHE_DIR`.
 - **Fail-loud (v1)**: If the DS can't load, DS-dependent rules emit a single
   `designSystemUnavailable` diagnostic via the shared `safeGetDS` helper in `src/utils/fatal.ts`.
   There is no silent fallback; the exceptions are the 8 DS-optional rules listed under Architecture,

@@ -219,9 +219,10 @@ DEBUG=oxlint-tailwindcss oxlint .
 Output:
 
 ```
-[oxlint-tailwindcss] Loaded design system from "packages/web/src/globals.css"
+[oxlint-tailwindcss] engine E=4.3.3 B=4.3.3 → ok
+[oxlint-tailwindcss] Loaded design system from "/repo/packages/web/src/globals.css"
 [oxlint-tailwindcss] packages/web/src/App.tsx → packages/web/src/globals.css
-[oxlint-tailwindcss] packages/admin/src/Dashboard.tsx → packages/admin/src/styles.css
+[oxlint-tailwindcss] packages/web/src/Nav.tsx → packages/web/src/globals.css
 ```
 
 If no entry point is configured, the DS-dependent rules (`no-unknown-classes`,

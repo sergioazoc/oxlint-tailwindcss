@@ -90,4 +90,26 @@ describe('debug logging', () => {
     expect(hasMapping).toBe(true)
     spy.mockRestore()
   })
+
+  // Every DS-dependent rule has its own loader, and they all run on each file.
+  // /monorepo promises "one line per file" — not one per rule per file.
+  it('prints one mapping line per file, however many rules load the design system', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const context = {
+      options: [{}],
+      settings: { tailwindcss: { entryPoint: ENTRY_POINT, debug: true } },
+      filename: '/some/project/src/App.tsx',
+    }
+    const rules = [createLazyLoader(context), createLazyLoader(context), createLazyLoader(context)]
+
+    for (const getDS of rules) getDS()
+    context.filename = '/some/project/src/Nav.tsx'
+    for (const getDS of rules) getDS()
+
+    const mappings = spy.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('.tsx →'))
+    expect(mappings).toHaveLength(2)
+    expect(mappings[0]).toContain('App.tsx')
+    expect(mappings[1]).toContain('Nav.tsx')
+    spy.mockRestore()
+  })
 })
