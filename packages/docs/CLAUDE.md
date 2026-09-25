@@ -40,6 +40,20 @@ SVG's `<desc>`).
   (`/setup.md`, `/rules/index.md`) — `scripts/llms.ts`, pure and tested. Each page links its copy
   with `<link rel="alternate" type="text/markdown">`.
 
+## The built site is checked; so is the live one
+
+- `pnpm -C packages/docs build` ends with `scripts/check-dist.ts`, which fails the build (so PRs and
+  the deploy) on: internal files published, a wrong `<html lang>`, a missing, overlong, duplicated
+  or copied-from-English title/description, a wrong canonical, missing `og:*`, broken or one-sided
+  hreflang, an unrendered custom container, a rule page without breadcrumbs, a page without its
+  markdown copy, a home page without the `WebSite` site name, an indexable 404, a sitemap that
+  doesn't match the canonicals, a robots.txt without the sitemap, or missing `llms*.txt`. One test
+  per failure class in `tests/check-dist.test.ts` — extend both together.
+- `scripts/check-live.ts [base-url]` checks what Cloudflare Pages serves (our robots.txt, the
+  `_redirects`/`_headers` rules, the site name, crawler access). `release.yml` runs it after the
+  deploy (`verify-live`, informational). `npx wrangler pages dev .vitepress/dist` emulates Pages
+  locally to run it before a release.
+
 ## Markdown is formatted by oxfmt (`generate` formats its own output)
 
 All `.md` is formatted by oxfmt (`proseWrap: always`, so prose is wrapped at the print width — don't
