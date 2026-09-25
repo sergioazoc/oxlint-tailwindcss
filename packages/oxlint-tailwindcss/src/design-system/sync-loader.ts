@@ -17,6 +17,7 @@
  * For arbitrary values (bg-[#123]) that aren't in the class list, we use heuristics.
  */
 
+import { createRequire } from 'node:module'
 import { Worker, threadId } from 'node:worker_threads'
 import { createHash } from 'node:crypto'
 import {
@@ -1136,48 +1137,119 @@ function computeContentHash(content: string, engineVersion: string): string {
 
 // Captures the target of `@import "..."`, `@import '...'` and `@import url("...")`.
 const IMPORT_RE = /@import\s+(?:url\(\s*)?['"]([^'"]+)['"]/g
+// Captures the target of `@plugin "..."` and `@config "..."` — JS the design
+// system is built from.
+const PLUGIN_RE = /@(?:plugin|config)\s+['"]([^'"]+)['"]/g
+
+const isPathSpecifier = (spec: string): boolean =>
+  spec.startsWith('.') || spec.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(spec)
+
+/** The package a bare specifier names: `@scope/name/sub` → `@scope/name`, `name/sub` → `name`. */
+function packageNameOf(spec: string): string | null {
+  const parts = spec.split('/')
+  if (spec.startsWith('@')) return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : null
+  return parts[0] || null
+}
 
 /**
- * Concatenate the entry CSS with the content of its locally-imported files, so
- * the cache key invalidates when an `@import`'d file changes — not only when the
- * entry itself does (DS-A2). Without this, editing a `@theme`/component file
- * pulled in via `@import "./theme.css"` served a stale design system until the
- * entry was touched or the Tailwind version changed.
+ * `name@version` of the package a file in `fromDir` would load — found the way
+ * Node does, walking up through `node_modules` — or `name@?` when it can't be
+ * read. Read from `package.json` directly: many packages don't export it.
+ */
+function packageVersionFrom(fromDir: string, name: string): string {
+  let dir = fromDir
+  for (;;) {
+    try {
+      const pkg = JSON.parse(readFileSync(join(dir, 'node_modules', name, 'package.json'), 'utf-8'))
+      return `${name}@${typeof pkg?.version === 'string' ? pkg.version : '?'}`
+    } catch {
+      // not here — keep walking up
+    }
+    const parent = dirname(dir)
+    if (parent === dir) return `${name}@?`
+    dir = parent
+  }
+}
+
+/**
+ * Everything a design system is built from besides the Tailwind engine, as one
+ * string for the cache key — so the cache invalidates when any of it changes,
+ * not only the entry file:
  *
- * Resolves RELATIVE imports (`./`, `../`) recursively up to a small depth;
- * package imports (`@import "tailwindcss"`, `tw-animate-css`) are already
- * covered by the engine version folded into the content hash. Best-effort:
- * an unreadable import contributes nothing (it can't affect the DS either).
+ *   - the entry CSS and its RELATIVE `@import`s, recursively up to a small
+ *     depth (DS-A2: editing `@import "./theme.css"` served a stale design
+ *     system until the entry was touched);
+ *   - local `@plugin` / `@config` files (`@plugin "./my-plugin.js"`), read as
+ *     text — the file itself, not what it `require`s;
+ *   - the installed version of every PACKAGE the CSS imports or loads as a
+ *     plugin (`tw-animate-css`, `@tailwindcss/typography`): the engine version
+ *     folded into the hash says nothing about them, so upgrading one used to
+ *     keep serving the old class list (H19).
+ *
+ * Best-effort: an unreadable file contributes nothing and an unresolvable
+ * package contributes `name@?` — neither can be what the build loads either.
  */
 function hashableContent(entryPath: string, entryContent: string): string {
   const parts: string[] = [entryContent]
   const seen = new Set<string>([resolve(entryPath)])
+  const packages = new Set<string>()
+
+  const readOnce = (path: string): string | null => {
+    if (seen.has(path)) return null
+    seen.add(path)
+    try {
+      return readFileSync(path, 'utf-8')
+    } catch {
+      return null
+    }
+  }
 
   const visit = (cssPath: string, content: string, depth: number): void => {
     if (depth <= 0) return
     const baseDir = dirname(cssPath)
-    IMPORT_RE.lastIndex = 0
-    const specifiers: string[] = []
-    let m: RegExpExecArray | null
-    while ((m = IMPORT_RE.exec(content)) !== null) {
-      if (m[1].startsWith('.')) specifiers.push(m[1])
+    const collect = (re: RegExp): string[] => {
+      const out: string[] = []
+      re.lastIndex = 0
+      let m: RegExpExecArray | null
+      while ((m = re.exec(content)) !== null) out.push(m[1].split('?')[0])
+      return out
     }
-    for (const spec of specifiers) {
-      const importPath = resolve(baseDir, spec.split('?')[0])
-      if (seen.has(importPath)) continue
-      seen.add(importPath)
-      let importContent: string
+    const addPackage = (spec: string) => {
+      const name = packageNameOf(spec)
+      if (name) packages.add(packageVersionFrom(baseDir, name))
+    }
+
+    for (const spec of collect(IMPORT_RE)) {
+      if (!isPathSpecifier(spec)) {
+        addPackage(spec)
+        continue
+      }
+      const importPath = resolve(baseDir, spec)
+      const importContent = readOnce(importPath)
+      if (importContent === null) continue
+      parts.push(importContent)
+      visit(importPath, importContent, depth - 1)
+    }
+    for (const spec of collect(PLUGIN_RE)) {
+      if (!isPathSpecifier(spec)) {
+        addPackage(spec)
+        continue
+      }
+      // `./plugin` may omit the extension or name a directory: resolve it the
+      // way Tailwind's loader (Node resolution) does.
+      let pluginPath: string
       try {
-        importContent = readFileSync(importPath, 'utf-8')
+        pluginPath = createRequire(join(baseDir, 'noop.js')).resolve(spec)
       } catch {
         continue
       }
-      parts.push(importContent)
-      visit(importPath, importContent, depth - 1)
+      const pluginContent = readOnce(pluginPath)
+      if (pluginContent !== null) parts.push(`js:${pluginContent}`)
     }
   }
 
   visit(resolve(entryPath), entryContent, 4)
+  for (const pkg of packages) parts.push(`pkg:${pkg}`)
   return parts.join('\0')
 }
 

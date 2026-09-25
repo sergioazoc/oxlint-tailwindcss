@@ -54,6 +54,12 @@
   since they are often conditional or alternatives; the docs used to say the count was per element
   or per call, which was never the case, and now describe it as it is. The README example printed 20
   classes under a "(21)" diagnostic; it now has 21.
+- **The design-system cache notices local plugins and package upgrades.** Its key covered the CSS
+  entry and its local `@import`s, but not a local `@plugin` / `@config` file or the version of a
+  package the CSS imports or loads as a plugin (`tw-animate-css`, `@tailwindcss/typography`).
+  Editing the plugin or upgrading the package kept serving the old class list, so a class that no
+  longer existed stopped being reported until the cache was cleared. Both are part of the key now.
+  The new key means one cold precompute per entry point after upgrading.
 - **`debug` prints one line per file.** The `file → entry point` line came once per
   design-system-dependent rule, so with four such rules on, every file was listed four times.
 - **Tailwind insiders builds are no longer rejected as "too old".** `0.0.0-insiders.<sha>` was read
