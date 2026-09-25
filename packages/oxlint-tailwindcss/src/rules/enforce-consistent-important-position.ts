@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
@@ -12,10 +13,13 @@ interface Options {
 export const enforceConsistentImportantPosition = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('enforce-consistent-important-position', {
       description:
         'Enforce consistent position of the important (!) modifier. Default: suffix (Tailwind v4 canonical form). This rule is the single source of truth for ! placement — enforce-canonical preserves the position you wrote, so the two never conflict.',
-    },
+      category: 'consistency',
+      recommended: 'warn',
+      designSystem: 'none',
+    }),
     fixable: 'code',
     schema: [
       {

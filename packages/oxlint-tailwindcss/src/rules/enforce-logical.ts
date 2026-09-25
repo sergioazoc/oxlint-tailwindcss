@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
@@ -181,10 +182,13 @@ export function createDirectionalMapper(
 export const enforceLogical = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('enforce-logical', {
       description:
         'Enforce logical (RTL-friendly) Tailwind CSS properties instead of physical ones',
-    },
+      category: 'consistency',
+      recommended: false,
+      designSystem: 'optional',
+    }),
     fixable: 'code',
     schema: [LOGICAL_PHYSICAL_SCHEMA],
     hasSuggestions: true,

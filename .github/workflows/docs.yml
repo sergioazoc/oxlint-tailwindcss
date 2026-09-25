@@ -41,10 +41,11 @@ jobs:
       - name: Generate rule pages
         run: pnpm -C packages/docs generate
 
-      # Rule pages are generated from the rule registry + rules/_extras. A PR
-      # that edits either without regenerating would ship stale pages.
+      # Rule pages and the marked blocks (recommended configs, rule lists) are
+      # generated from the rule registry + rules/_extras. A PR that edits either
+      # without regenerating would ship stale docs.
       - name: Generated pages are committed
-        run: git diff --exit-code -- packages/docs
+        run: git diff --exit-code -- packages/docs README.md packages/oxlint-tailwindcss/README.md
 
       - name: Build docs site
         run: pnpm -C packages/docs build

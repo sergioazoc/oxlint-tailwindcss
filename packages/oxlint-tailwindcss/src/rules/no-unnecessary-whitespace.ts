@@ -1,12 +1,17 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 
 export const noUnnecessaryWhitespace = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('no-unnecessary-whitespace', {
       description: 'Disallow unnecessary whitespace in Tailwind CSS class strings',
-    },
+      category: 'consistency',
+      recommended: 'warn',
+      designSystem: 'none',
+      formatterOverlap: 'oxfmt',
+    }),
     fixable: 'code',
     schema: [],
     messages: {

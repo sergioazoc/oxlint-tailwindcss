@@ -169,6 +169,10 @@
   and [`llms.txt`](https://oxlint-tailwindcss.pages.dev/llms.txt) /
   [`llms-full.txt`](https://oxlint-tailwindcss.pages.dev/llms-full.txt) plus a markdown copy of
   every page (`/setup.md`, `/rules/no-unknown-classes.md`), each linked from its HTML page.
+- **One recommended config.** `/setup`'s starter set and the README's config disagreed (different
+  rules, `no-duplicate-classes` `error` in one and `warn` in the other). Both are now generated from
+  a `recommended` severity in each rule's metadata, and so is the README's rule list by category.
+  The four categories are Correctness, Modernization, Consistency and Design-system guardrails.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

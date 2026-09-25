@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { createLazyLoader } from '../design-system/loader'
 import type { DesignSystemCache } from '../design-system/cache'
@@ -317,10 +318,13 @@ function classFrom(source: string, start: number): string {
 export const noDynamicClasses = defineRule({
   meta: {
     type: 'problem',
-    docs: {
+    docs: ruleDocs('no-dynamic-classes', {
       description:
         'Disallow Tailwind CSS class names built at runtime, which Tailwind cannot see and generates no CSS for',
-    },
+      category: 'correctness',
+      recommended: 'error',
+      designSystem: 'optional',
+    }),
     schema: [
       {
         type: 'object',

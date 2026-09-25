@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
 import {
@@ -23,9 +24,12 @@ interface Options {
 export const preferScaleToken = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('prefer-scale-token', {
       description: 'Prefer the scale step or theme token a hardcoded value is numerically equal to',
-    },
+      category: 'modernization',
+      recommended: false,
+      designSystem: 'required',
+    }),
     // Deliberately NOT fixable. The equivalence is numeric, not textual: the
     // token resolves through `var()`, so a `:root` override or a different root
     // font size makes the two diverge. Autofixing that is the mistake #78 fixed;

@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import { createLazyOptions, safeSourceCode } from '../utils/context'
@@ -153,10 +154,13 @@ function packGroupedToWidth(
 export const enforceConsistentLineWrapping = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('enforce-consistent-line-wrapping', {
       description:
         'Warn (and optionally autofix) when a class string exceeds the configured print width or classes-per-line budget',
-    },
+      category: 'consistency',
+      recommended: false,
+      designSystem: 'optional',
+    }),
     fixable: 'whitespace',
     schema: [
       {

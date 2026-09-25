@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
@@ -38,9 +39,12 @@ export const DEPRECATED_MAP: Record<string, string> = {
 export const noDeprecatedClasses = defineRule({
   meta: {
     type: 'problem',
-    docs: {
+    docs: ruleDocs('no-deprecated-classes', {
       description: 'Disallow deprecated Tailwind CSS v4 classes',
-    },
+      category: 'modernization',
+      recommended: 'error',
+      designSystem: 'optional',
+    }),
     fixable: 'code',
     schema: [
       {

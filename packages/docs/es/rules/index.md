@@ -37,7 +37,7 @@ Reglas que atrapan problemas que generarían CSS inválido o inesperado.
 - [enforce-negative-arbitrary-values](./enforce-negative-arbitrary-values) — `-top-[5px]` →
   `top-[-5px]`.
 
-## Estilo y consistencia
+## Consistencia
 
 - [enforce-sort-order](./enforce-sort-order) — ordena las clases en el orden oficial de Tailwind.
 - [consistent-variant-order](./consistent-variant-order) — `dark:hover:` vs `hover:dark:`.
@@ -52,7 +52,7 @@ Reglas que atrapan problemas que generarían CSS inválido o inesperado.
 - [enforce-shorthand](./enforce-shorthand) — `mt-2 mr-2 mb-2 ml-2` → `m-2`.
 - [no-unnecessary-whitespace](./no-unnecessary-whitespace) — colapsa runs de espacios.
 
-## Disciplina del design system
+## Protección del design system
 
 - [no-arbitrary-value](./no-arbitrary-value) — prohíbe `w-[3.14rem]` y amigos.
 - [no-hardcoded-colors](./no-hardcoded-colors) — prohíbe `bg-[#fff]`, prefiere theme tokens.

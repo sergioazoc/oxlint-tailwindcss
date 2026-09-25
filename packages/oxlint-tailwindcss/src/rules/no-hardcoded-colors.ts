@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import { hasArbitraryValue, getArbitraryValue } from '../utils/class-parser'
@@ -36,9 +37,12 @@ function isHardcodedColor(value: string): boolean {
 export const noHardcodedColors = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('no-hardcoded-colors', {
       description: 'Disallow hardcoded color values in Tailwind CSS classes',
-    },
+      category: 'design-system',
+      recommended: 'warn',
+      designSystem: 'none',
+    }),
     schema: [
       {
         type: 'object',

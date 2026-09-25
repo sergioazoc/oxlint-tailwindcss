@@ -7,7 +7,7 @@
     "dev": "pnpm -C ../oxlint-tailwindcss build && pnpm generate && vitepress dev .",
     "build": "pnpm -C ../oxlint-tailwindcss build && pnpm generate && vitepress build . && node --experimental-strip-types scripts/check-dist.ts",
     "preview": "vitepress preview .",
-    "generate": "node --experimental-strip-types scripts/generate-rules.ts && oxfmt --write rules es/rules",
+    "generate": "node --experimental-strip-types scripts/generate-rules.ts && node --experimental-strip-types scripts/generate-blocks.ts && oxfmt --write rules es/rules setup.md es/setup.md && cd ../.. && oxfmt --write README.md packages/oxlint-tailwindcss/README.md",
     "test": "vitest run"
   },
   "devDependencies": {

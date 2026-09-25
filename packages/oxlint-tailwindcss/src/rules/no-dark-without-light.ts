@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, isFinalClassList, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import {
@@ -196,9 +197,12 @@ function getUtilityPrefix(utility: string): string {
 export const noDarkWithoutLight = defineRule({
   meta: {
     type: 'problem',
-    docs: {
+    docs: ruleDocs('no-dark-without-light', {
       description: 'Require a base (light) utility when using dark: (or other scheme) variant',
-    },
+      category: 'correctness',
+      recommended: 'warn',
+      designSystem: 'optional',
+    }),
     schema: [
       {
         type: 'object',

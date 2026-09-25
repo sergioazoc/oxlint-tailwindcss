@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
 import plugin from '../../src/index'
 import { DEFAULT_EXTRACTOR_CONFIG } from '../../src/utils/extractors'
 import { DS_UNAVAILABLE_MESSAGE_ID } from '../../src/utils/fatal'
+import { DOCS_URL, type TailwindRuleDocs } from '../../src/utils/rule-docs'
 
 const PKG = resolve(__dirname, '../..')
 const REPO = resolve(PKG, '../..')
@@ -24,12 +25,29 @@ type Rule = (typeof plugin.rules)[keyof typeof plugin.rules]
 const rule = (name: string) => (plugin.rules as Record<string, Rule>)[name]
 
 const LOCALES = [
-  { dir: '', options: '## Options', defaults: '## Defaults reference', count: /The (\d+) rules/ },
+  {
+    dir: '',
+    options: '## Options',
+    defaults: '## Defaults reference',
+    count: /The (\d+) rules/,
+    categories: {
+      correctness: 'Correctness',
+      'design-system': 'Design-system guardrails',
+      modernization: 'Modernization',
+      consistency: 'Consistency',
+    },
+  },
   {
     dir: 'es/',
     options: '## Opciones',
     defaults: '## Referencia de defaults',
     count: /Las (\d+) reglas/,
+    categories: {
+      correctness: 'Corrección',
+      'design-system': 'Protección del design system',
+      modernization: 'Modernización',
+      consistency: 'Consistencia',
+    },
   },
 ] as const
 
@@ -67,9 +85,26 @@ function reachesLoader(name: string, seen = new Set<string>()): boolean {
   }
   return false
 }
-const dsDependent = RULES.filter((n) => DS_UNAVAILABLE_MESSAGE_ID in (rule(n).meta?.messages ?? {}))
-const dsOptional = RULES.filter((n) => !dsDependent.includes(n) && reachesLoader(n))
-const dsIndependent = RULES.filter((n) => !dsDependent.includes(n) && !dsOptional.includes(n))
+const docsOf = (name: string) => rule(name).meta?.docs as TailwindRuleDocs
+const byDesignSystem = (use: string) => RULES.filter((n) => docsOf(n).designSystem === use)
+const dsDependent = byDesignSystem('required')
+const dsOptional = byDesignSystem('optional')
+const dsIndependent = byDesignSystem('none')
+
+describe('meta.docs says what each rule does', () => {
+  it.each(RULES)('%s', (name) => {
+    const docs = docsOf(name)
+    const declaresUnavailable = DS_UNAVAILABLE_MESSAGE_ID in (rule(name).meta?.messages ?? {})
+    const actual = declaresUnavailable ? 'required' : reachesLoader(name) ? 'optional' : 'none'
+    expect(docs.designSystem, 'designSystem').toBe(actual)
+    expect(docs.url).toBe(`${DOCS_URL}/rules/${name}`)
+    expect(['correctness', 'design-system', 'modernization', 'consistency']).toContain(
+      docs.category,
+    )
+    expect(['error', 'warn', false]).toContain(docs.recommended)
+    expect(docs.description.length).toBeGreaterThan(20)
+  })
+})
 
 /** Rule names in the first column of a markdown table: `| \`name\` | … |`. */
 function tableRules(md: string): string[] {
@@ -87,7 +122,7 @@ function parseDocDefault(cell: string): unknown {
   return JSON.parse(json)
 }
 
-describe.each(LOCALES)('rules/index.md ($dir)', ({ dir, defaults, count }) => {
+describe.each(LOCALES)('rules/index.md ($dir)', ({ dir, defaults, count, categories }) => {
   const md = read(join(DOCS, dir, 'rules/index.md'))
   const lists = md.slice(0, md.indexOf(`\n${defaults}`))
   const reference = section(md, defaults)
@@ -99,6 +134,13 @@ describe.each(LOCALES)('rules/index.md ($dir)', ({ dir, defaults, count }) => {
   it('lists every rule exactly once in the category lists', () => {
     for (const name of RULES) {
       expect(lists.split(`](./${name})`).length - 1, name).toBe(1)
+    }
+  })
+
+  it('lists each rule under its meta.docs.category', () => {
+    for (const name of RULES) {
+      const heading = categories[docsOf(name).category]
+      expect(section(md, `## ${heading}`), `${name} under "${heading}"`).toContain(`](./${name})`)
     }
   })
 

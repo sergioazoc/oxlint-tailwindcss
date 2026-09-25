@@ -1,4 +1,5 @@
 import { defineRule, type ESTree } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import { createLazyOptions } from '../utils/context'
@@ -30,9 +31,12 @@ function countTemplateClasses(template: ESTree.TemplateLiteral): number {
 export const maxClassCount = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('max-class-count', {
       description: 'Enforce a maximum number of Tailwind CSS classes per class string',
-    },
+      category: 'design-system',
+      recommended: false,
+      designSystem: 'none',
+    }),
     schema: [
       {
         type: 'object',

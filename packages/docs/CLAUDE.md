@@ -54,6 +54,13 @@ SVG's `<desc>`).
   deploy (`verify-live`, informational). `npx wrangler pages dev .vitepress/dist` emulates Pages
   locally to run it before a release.
 
+## Generated blocks outside the rule pages
+
+The recommended configs (`setup.md`, `es/setup.md`, the package README) and the rule list by
+category (root README) sit between `<!-- generated:… -->` markers and come from each rule's
+`meta.docs` (`scripts/blocks.ts`). Edit the rule's `ruleDocs(...)`, not the block, then run
+`generate`.
+
 ## Markdown is formatted by oxfmt (`generate` formats its own output)
 
 All `.md` is formatted by oxfmt (`proseWrap: always`, so prose is wrapped at the print width — don't

@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
 import {
@@ -111,9 +112,12 @@ const DEFAULT_VARIANT_ORDER = [
 export const consistentVariantOrder = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('consistent-variant-order', {
       description: 'Enforce a consistent order for Tailwind CSS variant prefixes',
-    },
+      category: 'consistency',
+      recommended: 'warn',
+      designSystem: 'optional',
+    }),
     fixable: 'code',
     schema: [
       {

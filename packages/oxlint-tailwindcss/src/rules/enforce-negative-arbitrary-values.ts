@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
@@ -46,10 +47,13 @@ function fixClass(cls: string): string | null {
 export const enforceNegativeArbitraryValues = defineRule({
   meta: {
     type: 'suggestion',
-    docs: {
+    docs: ruleDocs('enforce-negative-arbitrary-values', {
       description:
         'Enforce moving the negative sign inside arbitrary value brackets: -top-[5px] → top-[-5px]',
-    },
+      category: 'modernization',
+      recommended: 'warn',
+      designSystem: 'none',
+    }),
     fixable: 'code',
     schema: [],
     hasSuggestions: true,

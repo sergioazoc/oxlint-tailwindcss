@@ -1,4 +1,5 @@
 import { defineRule } from '@oxlint/plugins'
+import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
 import { findBestSuggestion, suggestionDistance } from '../utils/levenshtein'
@@ -29,9 +30,12 @@ const PROBE_UTILITY = 'flex'
 export const noUnknownClasses = defineRule({
   meta: {
     type: 'problem',
-    docs: {
+    docs: ruleDocs('no-unknown-classes', {
       description: 'Disallow classes that are not defined in the Tailwind CSS design system',
-    },
+      category: 'correctness',
+      recommended: 'error',
+      designSystem: 'required',
+    }),
     schema: [
       {
         type: 'object',
