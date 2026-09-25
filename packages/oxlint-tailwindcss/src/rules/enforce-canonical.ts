@@ -12,7 +12,7 @@ import {
 } from '../utils/class-parser'
 import { createLazyLoader, rootFontSizeFromSettings } from '../design-system/loader'
 import { canonicalizeClassesSync } from '../design-system/canonicalize-service'
-import { safeSettings } from '../utils/context'
+import { createLazySettings } from '../utils/context'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 
 /**
@@ -59,14 +59,8 @@ export const enforceCanonical = defineRule({
   createOnce(context) {
     const getDS = createLazyLoader(context)
 
-    let _rem: number | null = null
-    function getRem(): number {
-      if (_rem === null) {
-        const settings = safeSettings(context)
-        _rem = rootFontSizeFromSettings(settings)
-      }
-      return _rem
-    }
+    // Per file: a nested .oxlintrc.json can set its own `rootFontSize`.
+    const getRem = createLazySettings(context, rootFontSizeFromSettings)
 
     function check(locations: ClassLocation[]) {
       if (locations.length === 0) return

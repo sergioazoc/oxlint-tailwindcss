@@ -18,6 +18,14 @@
   `ds.canonicalizeCandidates is not a function` behind a hint to check the CSS for syntax errors.
   The guard now names the real floor, v4.1.15. Those versions never worked; only the message
   changes. CI pins the floor exactly and asserts that 4.1.14 is rejected by the guard.
+- **Rule options and settings now apply per file.** oxlint lints many files with one rule instance,
+  and the plugin compiled options and settings on the first file and kept them for the whole run. So
+  a rule's options from an `overrides` block or a nested `.oxlintrc.json` were ignored (or leaked
+  into other files), and a nested config's `attributes`, `callees`, `tags`, `variablePatterns`,
+  `calleeExtractors`, `rootFontSize` and `debug` applied only if a file of that package happened to
+  be linted first — which, with several threads, changed from run to run. Each file now gets its own
+  config's values; `entryPoint` was already per file. Files of one config still share one compiled
+  config, so this costs nothing measurable.
 - **Autofixes no longer split a class built with `${}`.** In `` `bg-${c}-500 p-4 p-4` `` the static
   text glued to the expression (`bg-`, `-500`) is part of one runtime class, but rules saw it as
   classes of their own, and fixes re-inserted a space at the `${}` boundary: `no-duplicate-classes`
@@ -68,6 +76,10 @@
   so template and markup classes are not checked. A new
   [Vue, Svelte & Astro](https://oxlint-tailwindcss.pages.dev/frameworks) page shows what is and
   isn't linted, and an end-to-end test with canaries keeps the docs honest when oxlint changes it.
+- **`/monorepo` explains where options and settings can vary per package** (`overrides` for options
+  only, nested configs for both, Vite+ and editor caveats), and its Pattern B example now uses
+  `"extends": ["../../.oxlintrc.json"]`: the string form it showed is rejected by oxlint
+  (`expected a sequence`).
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

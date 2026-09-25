@@ -10,7 +10,7 @@ import {
 } from '../utils/class-parser'
 import { createLazyLoader, rootFontSizeFromSettings } from '../design-system/loader'
 import type { DesignSystemCache } from '../design-system/cache'
-import { createLazyOptions, safeSettings } from '../utils/context'
+import { createLazyOptions, createLazySettings } from '../utils/context'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 
 interface Options {
@@ -117,11 +117,8 @@ export const preferScaleToken = defineRule({
       (o) => ({ step: typeof o?.step === 'number' ? o.step : null, allow: o?.allow ?? [] }),
     )
 
-    let _rem: number | null = null
-    function rootFontSize(): number {
-      if (_rem === null) _rem = rootFontSizeFromSettings(safeSettings(context))
-      return _rem
-    }
+    // Per file: a nested .oxlintrc.json can set its own `rootFontSize`.
+    const rootFontSize = createLazySettings(context, rootFontSizeFromSettings)
 
     /**
      * The class this literal could have been written as, or null.

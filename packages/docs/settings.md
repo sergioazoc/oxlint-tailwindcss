@@ -1,6 +1,8 @@
 # `settings.tailwindcss`
 
-Every setting lives under `settings.tailwindcss` in your `.oxlintrc.json`.
+Every setting lives under `settings.tailwindcss` in your `.oxlintrc.json`. Settings are read for
+each linted file, so a nested `.oxlintrc.json` can give one package its own values — see
+[different options and settings per package](/monorepo#different-options-and-settings-per-package).
 
 ## `entryPoint` (required)
 

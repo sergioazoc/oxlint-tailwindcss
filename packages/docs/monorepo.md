@@ -63,7 +63,7 @@ my-monorepo/
 ```jsonc
 // packages/ui/.oxlintrc.json
 {
-  "extends": "../../.oxlintrc.json",
+  "extends": ["../../.oxlintrc.json"],
   "settings": {
     "tailwindcss": { "entryPoint": "./src/styles.css" }
   }
@@ -94,6 +94,34 @@ When to use this:
 - Packages diverge significantly in rules, plugins, or globals.
 - Different teams own different packages and want self-contained config.
 - You have packages without Tailwind that should not run the plugin at all.
+
+## Different options and settings per package
+
+Rule options and `settings.tailwindcss` are resolved for each file, so packages can differ in both —
+within one run, in the terminal and in the editor. Where you can set them:
+
+| Set in                                    | Rule options | `settings.tailwindcss` |
+| ----------------------------------------- | ------------ | ---------------------- |
+| An `overrides` block of the root config   | ✓            | ✗                      |
+| A nested `.oxlintrc.json` (Pattern B)     | ✓            | ✓                      |
+| The root `entryPoint` mapping (Pattern A) | —            | `entryPoint` only      |
+
+oxlint rejects `settings` inside `overrides` (``unknown field `settings` ``), so a package that
+needs its own `attributes`, `callees`, `rootFontSize` or `debug` gets a nested config. A nested
+config stands alone unless it lists the root in `extends` — then it inherits `jsPlugins` and `rules`
+and only adds what differs, as in the Pattern B example.
+
+::: warning Vite+ and editors
+
+- **Vite+** (`vp lint`) doesn't discover nested `.oxlintrc.json` files (oxlint 1.85+,
+  [oxc#26763](https://github.com/oxc-project/oxc/pull/26763)): only the root config applies. Use
+  Pattern A's `entryPoint` mapping for per-package CSS; other settings can't vary by package there.
+- **Editors** (the oxc VS Code extension and other LSP clients) discover nested configs when
+  `oxc.configPath` is unset. Since oxlint 1.84 an empty `""` counts as unset too
+  ([oxc#26762](https://github.com/oxc-project/oxc/pull/26762)); pointing it at one file disables
+  nested configs, like `oxlint -c`.
+
+:::
 
 ## What does **not** work in v1
 
