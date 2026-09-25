@@ -20,6 +20,16 @@ overwritten on every build/generate. Editing them directly is silently lost. Cha
   present, ≤ 160 characters, unique per locale, ES ≠ EN). Run the docs tests with
   `pnpm -C packages/docs test` (after `pnpm build`).
 
+## `<head>`: `.vitepress/seo.ts`
+
+Canonical, hreflang (en / es / x-default), `og:*`, the JSON-LD (`WebSite` on `/` only,
+`SoftwareSourceCode` on the home page, `BreadcrumbList` on rule pages) and `noindex` on the 404 come
+from `seo.ts`, pure and tested (`tests/seo.test.ts`). `SITE_URL` / `SITE_NAME` are the single
+source, and the npm `homepage` must equal `SITE_URL`. The `WebSite` JSON-LD is what fixes Google
+showing "Cloudflare" as our site name — keep it, `og:site_name` and the home title in agreement.
+Images: `public/favicon.svg` and `scripts/assets/og.svg` are the sources (render commands in the
+SVG's `<desc>`).
+
 ## Markdown is formatted by oxfmt (`generate` formats its own output)
 
 All `.md` is formatted by oxfmt (`proseWrap: always`, so prose is wrapped at the print width — don't
