@@ -104,6 +104,12 @@
   old URLs redirect to the rule page. A dead internal link fails the docs build, "Edit this page" on
   a rule page opens the file the page is generated from, and the Spanish site's theme labels
   (search, outline, pager, 404…) are in Spanish.
+- **The docs are checked against the code.** New tests hold the rule count and lists, each rule's
+  defaults and design-system group, every documented option and setting, the environment variables,
+  the default extractor lists and the version floors, plus page-by-page parity between English and
+  Spanish. They caught four gaps, now fixed: `no-unknown-classes` didn't document its `entryPoint`
+  option, `/settings` never named `exclude`, the README's full setup snippet left out
+  `prefer-scale-token`, and a typo.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

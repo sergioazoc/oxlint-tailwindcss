@@ -28,13 +28,19 @@ pnpm -C packages/docs dev    # run the docs site locally
 Run these from the repo root so your code arrives already formatted and green:
 
 ```bash
-pnpm format && pnpm lint && pnpm typecheck && pnpm test
+pnpm format && pnpm lint && pnpm typecheck && pnpm lint:types && pnpm build && pnpm test
 ```
+
+That is what CI runs, in its order (with `format:check` in place of `format`). Add `pnpm docs:build`
+when you touched the docs: a dead internal link fails it.
 
 - `pnpm format` auto-fixes formatting (oxfmt) in place — commit the result. CI then verifies it with
   `pnpm format:check`, which only checks and fails if anything is unformatted.
 - `format`, `lint`, `typecheck`, `test` all run from the **root** and cover the whole monorepo —
   oxlint/oxfmt are centralized there, not per package.
+- `pnpm build` comes before `pnpm test` because the end-to-end tests drive the real oxlint binary
+  against the **built** plugin; run against a `dist/` older than `src/`, they fail and tell you to
+  build.
 - Run a single test file:
   `pnpm -C packages/oxlint-tailwindcss exec vitest run tests/rules/<file>.test.ts`
 

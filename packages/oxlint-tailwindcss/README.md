@@ -84,6 +84,7 @@ Add the plugin to your `.oxlintrc.json`:
     "tailwindcss/no-hardcoded-colors": "warn",
     "tailwindcss/no-unnecessary-arbitrary-value": "warn",
     "tailwindcss/prefer-theme-tokens": "off",
+    "tailwindcss/prefer-scale-token": "off",
   },
 }
 ```

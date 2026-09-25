@@ -144,7 +144,7 @@ you want it to survive linting. Matches are literal — `"my-special"` does not 
 
 Skip any class whose name begins with one of these prefixes. Use this for whole families of classes
 you intentionally manage outside the design system — e.g. a CSS module compiled namespace (`s-`), a
-third- party UI kit (`ant-`, `chakra-`), or framework-injected classes (`vue-enter`).
+third-party UI kit (`ant-`, `chakra-`), or framework-injected classes (`vue-enter`).
 
 ```jsonc
 { "tailwindcss/no-unknown-classes": ["error", { "ignorePrefixes": ["ant-", "swiper-"] }] }
@@ -152,6 +152,13 @@ third- party UI kit (`ant-`, `chakra-`), or framework-injected classes (`vue-ent
 
 Prefer `ignorePrefixes` over `allowlist` when there are many classes sharing a stem — easier to
 maintain.
+
+### `entryPoint`
+
+`string`, optional.
+
+Per-rule override of `settings.tailwindcss.entryPoint`. Almost nobody needs it — set the entry point
+once in `settings`.
 
 ## Examples
 
