@@ -50,7 +50,7 @@ These rules catch problems that would generate invalid or unexpected CSS.
 - [no-arbitrary-value](./no-arbitrary-value) — disallow `w-[3.14rem]` and friends.
 - [no-hardcoded-colors](./no-hardcoded-colors) — disallow `bg-[#fff]`, prefer theme tokens.
 - [no-restricted-classes](./no-restricted-classes) — ban specific classes or regex patterns.
-- [max-class-count](./max-class-count) — cap how many classes can stack on a single element.
+- [max-class-count](./max-class-count) — cap how many classes a single class string can stack.
 
 ## Per-rule pages
 

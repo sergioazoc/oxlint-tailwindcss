@@ -1,9 +1,16 @@
 ## Qué hace esta regla
 
-Cuenta las clases de Tailwind sobre cada elemento (o adentro de cada llamada
-`cn()`/`clsx()`/`tw\`\``) y reporta cuando el conteo supera un máximo configurable. El diagnóstico
-sugiere extraer un componente o utility — el supuesto es que cuando un elemento necesita más de ~20
-clases, estás describiendo un _componente_ inline y lo correcto es ponerle nombre.
+Cuenta las clases de Tailwind de cada string de clases y reporta cuando el conteo supera un máximo
+configurable. El diagnóstico sugiere extraer un componente o utility — el supuesto es que cuando un
+elemento necesita más de ~20 clases, estás describiendo un _componente_ inline y lo correcto es
+ponerle nombre.
+
+Un string de clases es un string literal — `className="…"`, un argumento de `cn()`/`clsx()`, un
+valor de `cva()`/`tv()` — o un template literal completo, incluido `` tw`…` ``. En un template se
+suman las partes alrededor de `${}`: una clase pegada a una expresión (`bg-${tone}-500`) cuenta una
+vez, y un `${expr}` suelto no cuenta, porque sus clases no se conocen estáticamente. Los argumentos
+de `cn()` y los valores de variantes se cuentan uno por uno: suelen ser condicionales o
+alternativas, y sumarlos reportaría listas de clases que nunca se aplican juntas.
 
 El contador es tonto a propósito: cuenta clases separadas por whitespace después de que el extractor
 estándar resolvió la location. Sin deduplicación, sin agrupado semántico, sin lookup al DS. Eso lo
@@ -20,7 +27,7 @@ que la regla no puede tomar por ti.
 
 `number`, default `20`.
 
-El máximo de clases permitidas en un solo elemento / llamada. La regla reporta cuando
+El máximo de clases permitidas en un solo string de clases. La regla reporta cuando
 `classes.length > max` (es decir, el límite es inclusivo: `max: 20` permite _exactamente_ 20).
 Ajústalo al umbral de tu equipo para "esto ya es un componente".
 
@@ -50,6 +57,9 @@ Rangos sugeridos:
 
 // 6 clases con `max: 5`
 <div className="flex items-center p-4 m-2 gap-2 w-full" />
+
+// Un template es un solo string de clases: 6 clases con `max: 5`
+<div className={`flex items-center p-4 ${gap} m-2 bg-${tone}-500 w-full`} />
 ```
 
 ### ✓ Correcto
@@ -67,7 +77,7 @@ function Card({ children }) {
   )
 }
 
-// `cn()` cuenta igual — se cuenta a nivel de location
+// Cada argumento de `cn()` es su propio string de clases: 2 + 3, no 5
 cn("flex items-center", "p-4 m-2 gap-2")
 ```
 
@@ -77,8 +87,8 @@ cn("flex items-center", "p-4 m-2 gap-2")
   Arregla el duplicado primero — el conteo baja y esta regla puede dejar de disparar sola.
 - **`enforce-sort-order`** / **`enforce-consistent-line-wrapping`**: primas cosméticas. El contador
   es insensible al whitespace, así que el line-wrapping no cambia el veredicto.
-- **`enforce-canonical`**: colapsa pares redundantes (`-m-0` → `m-0`) antes de que esta regla corra,
-  a veces empujando un elemento borderline de vuelta bajo el límite.
+- **`enforce-shorthand`**: une pares como `w-4 h-4` → `size-4`. Una vez aplicado su fix, un string
+  de clases que estaba justo en el límite puede volver a quedar bajo él.
 - **`no-arbitrary-value`**: ortogonal pero relacionada en espíritu — ambas empujan hacia extraer un
   componente cuando un solo elemento empieza a cargar demasiada lógica de markup.
 

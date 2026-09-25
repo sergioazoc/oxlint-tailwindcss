@@ -50,7 +50,8 @@ Reglas que atrapan problemas que generarían CSS inválido o inesperado.
 - [no-arbitrary-value](./no-arbitrary-value) — prohíbe `w-[3.14rem]` y amigos.
 - [no-hardcoded-colors](./no-hardcoded-colors) — prohíbe `bg-[#fff]`, prefiere theme tokens.
 - [no-restricted-classes](./no-restricted-classes) — bloquea clases específicas o patrones regex.
-- [max-class-count](./max-class-count) — limita cuántas clases se pueden apilar en un elemento.
+- [max-class-count](./max-class-count) — limita cuántas clases se pueden apilar en un string de
+  clases.
 
 ## Páginas por regla
 

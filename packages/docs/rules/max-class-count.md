@@ -1,13 +1,20 @@
 # max-class-count
 
-> Enforce a maximum number of Tailwind CSS classes per element
+> Enforce a maximum number of Tailwind CSS classes per class string
 
 ## What this rule does
 
-Counts the Tailwind classes on each element (or inside each `cn()`/`clsx()`/`tw\`\`` call) and
-reports when the count exceeds a configurable maximum. The diagnostic suggests extracting a
-component or utility — the assumption being that once an element needs more than ~20 classes, you're
-describing a _component_ inline and the right move is to name it.
+Counts the Tailwind classes in each class string and reports when the count exceeds a configurable
+maximum. The diagnostic suggests extracting a component or utility — the assumption being that once
+an element needs more than ~20 classes, you're describing a _component_ inline and the right move is
+to name it.
+
+A class string is a string literal — `className="…"`, one argument of `cn()`/`clsx()`, one
+`cva()`/`tv()` value — or a whole template literal, `` tw`…` `` included. In a template the parts
+around `${}` are added together: a class glued to an expression (`bg-${tone}-500`) counts once, and
+a bare `${expr}` counts as nothing, since its classes aren't known statically. Separate `cn()`
+arguments and variant values are counted one by one: they are often conditional or alternatives, and
+adding them up would report class lists that never apply together.
 
 The counter is dumb on purpose: it counts whitespace-separated classes after the standard extractor
 has resolved the location. No deduplication, no semantic grouping, no DS lookup. That keeps it
@@ -23,7 +30,7 @@ rule can't make for you.
 
 `number`, default `20`.
 
-The maximum number of classes allowed on a single element / call. The rule reports when
+The maximum number of classes allowed in a single class string. The rule reports when
 `classes.length > max` (i.e. the limit is inclusive: `max: 20` allows _exactly_ 20). Adjust it to
 your team's threshold for "this is now a component."
 
@@ -53,6 +60,9 @@ Suggested ballparks:
 
 // 6 classes with `max: 5`
 <div className="flex items-center p-4 m-2 gap-2 w-full" />
+
+// A template is one class string: 6 classes with `max: 5`
+<div className={`flex items-center p-4 ${gap} m-2 bg-${tone}-500 w-full`} />
 ```
 
 ### ✓ Correct
@@ -70,7 +80,7 @@ function Card({ children }) {
   )
 }
 
-// `cn()` counts the same — counted at the location level
+// Each `cn()` argument is its own class string: 2 + 3, not 5
 cn("flex items-center", "p-4 m-2 gap-2")
 ```
 
@@ -80,8 +90,8 @@ cn("flex items-center", "p-4 m-2 gap-2")
   duplicate first — the count drops and this rule may stop firing on its own.
 - **`enforce-sort-order`** / **`enforce-consistent-line-wrapping`**: cosmetic siblings. The counter
   is whitespace-insensitive so line-wrapping doesn't change the verdict.
-- **`enforce-canonical`**: collapses redundant pairs (`-m-0` → `m-0`) before this rule runs,
-  sometimes pushing a borderline element back under the limit.
+- **`enforce-shorthand`**: merges pairs such as `w-4 h-4` → `size-4`. Once its fix is applied, a
+  borderline class string can drop back under the limit.
 - **`no-arbitrary-value`**: orthogonal, but related in spirit — both nudge toward extracting a
   component when a single element starts carrying too much markup-level logic.
 
