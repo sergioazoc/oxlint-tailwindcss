@@ -18,7 +18,7 @@ These rules catch problems that would generate invalid or unexpected CSS.
   property.
 - [no-contradicting-variants](./no-contradicting-variants) — `flex hover:flex` is redundant (only on
   literal class lists on native elements, not `cn`/`twMerge` fragments).
-- [no-dark-without-light](./no-dark-without-light) — `dark:` should usually have a light-mode pair
+- [no-dark-without-light](./no-dark-without-light) — a `dark:` colour should have a light-mode pair
   (only on literal class lists on native elements, not `cn`/`twMerge` fragments).
 - [no-duplicate-classes](./no-duplicate-classes) — same class twice is dead weight.
 
@@ -102,7 +102,7 @@ also accepts a rule-level `entryPoint` that overrides the shared setting.
 | `enforce-physical`                 | `{ allowlist: [], direction: 'both' }` | Confirms the suggested class exists                                         |
 | `enforce-shorthand`                | `{}`                                   | Verifies each merge against the emitted CSS                                 |
 | `no-contradicting-variants`        | `{}`                                   | What each variant's selector does                                           |
-| `no-dark-without-light`            | `{ variants: ['dark'] }`               | Groups the base by declared CSS property, not just by prefix                |
+| `no-dark-without-light`            | `{ variants: ['dark'] }`               | Tells colours from the rest, and groups the base by declared CSS property   |
 | `no-deprecated-classes`            | `{}`                                   | Derives the rename list instead of using the built-in table                 |
 
 ### DS-independent rules

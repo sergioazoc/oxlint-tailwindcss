@@ -1,5 +1,5 @@
 ---
-description: "oxlint rule that reports a Tailwind CSS `dark:` class, like `dark:bg-gray-900`, with no light-mode base class for the same property on the element."
+description: "oxlint rule that reports a Tailwind CSS `dark:` colour, like `dark:bg-gray-900`, with no class setting that colour for light mode on the element."
 ---
 
 ## What this rule does
@@ -8,6 +8,15 @@ Catches the case where you wrote `dark:bg-gray-900` but forgot the matching ligh
 (`bg-white`, `bg-zinc-50`, whatever). The moment a theme switcher is active, that element renders
 unstyled in light mode — usually as transparent or whatever the parent inherits, almost never what
 you wanted.
+
+**Only colour needs a base.** A dark-only filter, display, border width or opacity leaves light mode
+with the element's normal rendering — that's the point of `dark:brightness-[0.2]` on an image, or
+`dark:hidden` on a decoration. So only a variant class that sets a colour is checked: with an entry
+point configured, "sets a colour" is read from the CSS the class emits (a colour property such as
+`color`, `background-color` or `fill`, a `--color-*` theme variable, or a colour literal); without
+one, every class is checked except the families that are never colour — filters and backdrop
+filters, opacity, display, visibility, position, `sr-only`, and border / outline / ring widths.
+`dark:text-white` on its own is still reported: text colour is colour.
 
 The check is by group, not by exact value: for every class that uses a watched variant, is there at
 least one class in the same group that does NOT use one? If not, the variant class has no light-mode
@@ -82,6 +91,10 @@ works without it.
 
 // Show in light, hide in dark: both write `display`
 <div className="block dark:hidden" />
+
+// Not a colour: light mode keeps the element's normal rendering on purpose
+<img className="object-cover dark:brightness-[0.2] dark:grayscale" />
+<div className="flex-col dark:border-r" />
 
 // No watched variant → rule doesn't care about base coverage
 <div className="hover:bg-blue-500" />

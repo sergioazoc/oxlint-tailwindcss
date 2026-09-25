@@ -26,6 +26,15 @@
   be linted first — which, with several threads, changed from run to run. Each file now gets its own
   config's values; `entryPoint` was already per file. Files of one config still share one compiled
   config, so this costs nothing measurable.
+- **`no-dark-without-light` only asks for a light-mode base for colours.** A dark-only filter,
+  display, border width or opacity — `dark:brightness-[0.2] dark:grayscale` on an image,
+  `dark:hidden` on a decoration — was reported as missing a base nobody should add; light mode keeps
+  the element's normal rendering on purpose. With an entry point, a variant class is checked when
+  the CSS it emits sets a colour (a colour property, a `--color-*` variable or a colour literal);
+  without one, the families that are never colour are skipped. `dark:text-white` on its own is still
+  reported. With an entry point the message now names the property (`missingBaseProperty`: "sets
+  color only under the dark variant…"). On shadcn/ui `apps/v4`: 11 reports → 1
+  (`dark:text-foreground`).
 - **Autofixes no longer split a class built with `${}`.** In `` `bg-${c}-500 p-4 p-4` `` the static
   text glued to the expression (`bg-`, `-500`) is part of one runtime class, but rules saw it as
   classes of their own, and fixes re-inserted a space at the `${}` boundary: `no-duplicate-classes`
