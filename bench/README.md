@@ -69,19 +69,25 @@ the same commit.
 Competitor snapshots are not committed: they are reproducible from the pinned versions with the
 commands above.
 
-## /shadcn against @shadcn/lint
+## The pages that name other plugins
 
 ```bash
 node interop.mjs   # after `pnpm -C .. build`
 ```
 
-Lints every example of `packages/docs/data/shadcn-lint.json` in a minimal shadcn/ui project
-(`interop/project`: `components.json`, a Button, the fixture theme), first with @shadcn/lint alone —
-it must report exactly what the page's @shadcn/lint column says — then with the combined config read
-from `packages/docs/shadcn.md`, where every example must still be reported and each concern by the
-tool the page gives it to. Exits 1 on any disagreement. The page's oxlint-tailwindcss column is
-checked by the main test suite (`tests/docs/shadcn-interop.test.ts`).
-`.github/workflows/interop.yml` runs this weekly with the pinned and the latest @shadcn/lint.
+For `/shadcn`: lints every example of `packages/docs/data/shadcn-lint.json` in a minimal shadcn/ui
+project (`interop/project`: `components.json`, a Button, the fixture theme), first with @shadcn/lint
+alone — it must report exactly what the page's @shadcn/lint column says — then with the combined
+config read from `packages/docs/shadcn.md`, where every example must still be reported and each
+concern by the tool the page gives it to. The page's oxlint-tailwindcss column is checked by the
+main test suite (`tests/docs/shadcn-interop.test.ts`).
+
+For `/migration/from-better-tailwindcss`: every row of `packages/docs/data/better-tailwindcss.json`
+— its example must be reported by their rule and by ours, each with the row's options — and every
+rule of eslint-plugin-better-tailwindcss must have a row.
+
+Exits 1 on any disagreement. `.github/workflows/interop.yml` runs it weekly with the pinned versions
+and with the latest releases.
 
 ## Files
 
@@ -91,6 +97,6 @@ checked by the main test suite (`tests/docs/shadcn-interop.test.ts`).
 - `synthetic/` — hand-written files seeded with typical agent mistakes (raw palette colors,
   arbitrary values, restyled components, components rebuilt from raw elements, conflicts, typos,
   `var()` references, runtime-built classes). Excluded from the repo's own lint and format.
-- `interop.mjs`, `interop/project/` — the /shadcn check above.
+- `interop.mjs`, `interop/project/` — the checks above.
 - `r8/` — the regex prototype for detecting raw elements that borrow a design-system component's
   styles, and the original head-to-head analysis script, kept as reference.

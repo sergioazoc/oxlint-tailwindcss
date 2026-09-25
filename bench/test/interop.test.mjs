@@ -7,6 +7,7 @@ import {
   exampleFiles,
   firedRules,
   generatedFence,
+  mappingGaps,
 } from '../lib/interop.mjs'
 
 const concerns = [
@@ -72,5 +73,23 @@ describe('generatedFence', () => {
     const md =
       'x\n<!-- generated:c -->\n```jsonc\n{\n  // note\n  "a": 1,\n}\n```\n<!-- /generated:c -->\n'
     assert.deepEqual(generatedFence(md, 'c'), { a: 1 })
+  })
+})
+
+describe('mappingGaps', () => {
+  const rows = [{ theirs: 'no-x', ours: 'no-y', example: '<a />' }]
+  it('is empty when both rules report the example and every rule has a row', () => {
+    const theirs = firedRules({ diagnostics: [diag('btw-0.tsx', 'better-tailwindcss(no-x)')] })
+    const ours = firedRules({ diagnostics: [diag('btw-0.tsx', 'tailwindcss(no-y)')] })
+    assert.deepEqual(mappingGaps(rows, ['no-x'], theirs, ours), [])
+  })
+
+  it('names a silent rule on either side and an unmapped rule', () => {
+    const none = firedRules({ diagnostics: [] })
+    assert.deepEqual(mappingGaps(rows, ['no-x', 'no-z'], none, none), [
+      "no-x: doesn't report <a />",
+      "no-y (for no-x): doesn't report <a />",
+      'no-z: a rule of theirs with no row',
+    ])
   })
 })

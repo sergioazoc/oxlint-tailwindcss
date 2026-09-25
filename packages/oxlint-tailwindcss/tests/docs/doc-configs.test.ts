@@ -208,7 +208,13 @@ function withoutOtherPlugins(config: Record<string, unknown>): Record<string, un
   if (!Array.isArray(config.jsPlugins)) return config
   const others = config.jsPlugins.filter((p) => p !== 'oxlint-tailwindcss')
   if (others.length === 0) return config
-  const prefixes = others.map((p) => `${String(p).replace(/^@|\/.*$/g, '')}/`)
+  // Their rules' prefix: `@shadcn/lint` → `shadcn/`, `eslint-plugin-foo` → `foo/`.
+  const prefixes = others.map(
+    (p) =>
+      `${String(p)
+        .replace(/^@([^/]+)\/.*$/, '$1')
+        .replace(/^eslint-plugin-/, '')}/`,
+  )
   const rules = (r: unknown) =>
     isObject(r)
       ? Object.fromEntries(

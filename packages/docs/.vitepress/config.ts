@@ -123,7 +123,10 @@ export default defineConfig({
             },
             {
               text: 'Migration',
-              items: [{ text: 'v0 → v1', link: '/migration/v0-to-v1' }],
+              items: [
+                { text: 'v0 → v1', link: '/migration/v0-to-v1' },
+                { text: 'From better-tailwindcss', link: '/migration/from-better-tailwindcss' },
+              ],
             },
           ],
         },
@@ -196,7 +199,10 @@ export default defineConfig({
             },
             {
               text: 'Migración',
-              items: [{ text: 'v0 → v1', link: '/es/migration/v0-to-v1' }],
+              items: [
+                { text: 'v0 → v1', link: '/es/migration/v0-to-v1' },
+                { text: 'Desde better-tailwindcss', link: '/es/migration/from-better-tailwindcss' },
+              ],
             },
           ],
         },
