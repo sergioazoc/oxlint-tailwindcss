@@ -11,5 +11,11 @@
         "typescript/no-for-in-array": "error"
       }
     }
+  ],
+  "ignorePatterns": [
+    "bench/.corpus/**",
+    "bench/out/**",
+    "bench/node_modules/**",
+    "bench/synthetic/**"
   ]
 }
