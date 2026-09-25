@@ -13,10 +13,12 @@ pnpm add -D oxlint oxlint-tailwindcss
 Requisitos:
 
 - **oxlint 1.43.0** o posterior.
-- **Tailwind CSS v4.1** o posterior. El plugin carga tu design system vía `@tailwindcss/node` y solo
-  entiende sintaxis v4 (`@import "tailwindcss";`, `@theme { ... }`). Resuelve el Tailwind de _tu_
-  proyecto por entry point; 4.0.x no está soportado (es anterior a una API del design system que el
-  plugin necesita) y se reporta con un diagnóstico claro.
+- **Tailwind CSS v4.1.15** o posterior. El plugin carga tu design system vía `@tailwindcss/node` y
+  solo entiende sintaxis v4 (`@import "tailwindcss";`, `@theme { ... }`). Resuelve el Tailwind de
+  _tu_ proyecto por entry point; las versiones anteriores a 4.1.15 no están soportadas (son
+  anteriores a una API del design system que el plugin necesita) y se reportan con un diagnóstico
+  claro. Los builds insiders (`tailwindcss@insiders`) corren con un aviso único de "motor no
+  probado".
 - **Node.js 20** o posterior para el proceso del linter.
 
 ::: warning Evita oxlint 1.77.0 con la extensión del editor

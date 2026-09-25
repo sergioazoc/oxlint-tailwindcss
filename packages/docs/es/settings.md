@@ -101,17 +101,17 @@ El plugin carga **tu** motor de Tailwind — el `@tailwindcss/node` resuelto des
 alrededor de cada entry point, por entry point (así los paquetes de un monorepo pueden estar en
 versiones distintas de Tailwind). Evalúa ese motor contra la versión para la que fue construido:
 
-- **Más viejo que Tailwind v4.1** → fatal (`designSystemUnavailable`). No lo afecta esta opción
-  (4.0.x no tiene una API del design system que el plugin necesita).
+- **Más viejo que Tailwind v4.1.15** → fatal (`designSystemUnavailable`). No lo afecta esta opción
+  (las versiones anteriores no tienen una API del design system que el plugin necesita).
 - **Un major más nuevo que el plugin** (p. ej. un futuro Tailwind 5), o un **drift de major** entre
   el motor y el `tailwindcss` que usa tu build → fatal por defecto.
-- **Un minor más nuevo**, o un **drift a nivel de minor** respecto de tu build → un warning único en
-  stderr; el plugin lintea best-effort.
+- **Un minor más nuevo**, un **build insiders** de Tailwind (`0.0.0-insiders.*`), o un **drift a
+  nivel de minor** respecto de tu build → un warning único en stderr; el plugin lintea best-effort.
 - **En rango y alineado** → silencioso.
 
 Ponlo en `true` para degradar los **fatales** de major futuro / drift de major a un warning y
 lintear igual (los resultados pueden ser inexactos contra un motor no probado). Un motor más viejo
-que v4.1 sigue siendo fatal de todos modos.
+que v4.1.15 sigue siendo fatal de todos modos.
 
 ```jsonc
 {

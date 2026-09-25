@@ -173,6 +173,33 @@ describe('assessEngine — decision table (bundled = 4.3.3 unless noted)', () =>
       verdict: 'fatal',
       kind: 'engine-too-old',
     },
+    {
+      // 4.1.0–4.1.14 lack ds.canonicalizeCandidates too (it shipped in 4.1.15):
+      // before the floor moved, these crashed the precompute with a raw
+      // `is not a function` TypeError behind a misleading "check your CSS" hint.
+      name: 'released 4.1.0 is below the floor',
+      E: '4.1.0',
+      B: '4.1.0',
+      opts: B33,
+      verdict: 'fatal',
+      kind: 'engine-too-old',
+    },
+    {
+      name: '4.1.14, the last release without canonicalizeCandidates, is below the floor',
+      E: '4.1.14',
+      B: '4.1.14',
+      opts: B33,
+      verdict: 'fatal',
+      kind: 'engine-too-old',
+    },
+    {
+      name: 'a 4.1.15 prerelease is below the floor',
+      E: '4.1.15-beta.1',
+      B: '4.1.15-beta.1',
+      opts: B33,
+      verdict: 'fatal',
+      kind: 'engine-too-old',
+    },
     // Row 4 — future major.
     {
       name: 'v5 blocks by default',
@@ -281,9 +308,36 @@ describe('assessEngine — decision table (bundled = 4.3.3 unless noted)', () =>
       verdict: 'warn',
       kind: 'engine-newer-minor',
     },
+    // Tailwind insiders builds are versioned `0.0.0-insiders.<sha>`: ahead of the
+    // latest v4 release, not a v0. They must run with the "untested" notice, never
+    // be rejected as too old (they were, before this row existed).
+    {
+      name: 'an insiders engine warns and runs',
+      E: '0.0.0-insiders.9798a8a',
+      B: '0.0.0-insiders.9798a8a',
+      opts: B33,
+      verdict: 'warn',
+      kind: 'engine-insiders',
+    },
+    {
+      name: 'an insiders engine against a released build still warns (no major drift)',
+      E: '0.0.0-insiders.9798a8a',
+      B: '4.3.3',
+      opts: B33,
+      verdict: 'warn',
+      kind: 'engine-insiders',
+    },
+    {
+      name: 'an insiders build with a released engine is not a major drift',
+      E: '4.3.3',
+      B: '0.0.0-insiders.9798a8a',
+      opts: B33,
+      verdict: 'ok',
+      kind: 'ok',
+    },
     // Row 8 — ok.
     { name: 'exactly bundled', E: '4.3.3', B: '4.3.3', opts: B33, verdict: 'ok', kind: 'ok' },
-    { name: 'floor version', E: '4.1.0', B: '4.1.0', opts: B33, verdict: 'ok', kind: 'ok' },
+    { name: 'floor version', E: '4.1.15', B: '4.1.15', opts: B33, verdict: 'ok', kind: 'ok' },
     {
       name: 'older-but-supported is silent',
       E: '4.2.0',
@@ -330,7 +384,13 @@ describe('assessEngine — decision table (bundled = 4.3.3 unless noted)', () =>
 
     const old = assessEngine('3.4.17', '3.4.17', B33)
     expect(old.message).toContain('3.4.17')
-    expect(old.message).toContain('v4.1') // names the supported floor
+    expect(old.message).toContain('v4.1.15') // names the supported floor
+    expect(old.hint).toContain('v4.1.15')
+
+    const tooOld41 = assessEngine('4.1.14', '4.1.14', B33)
+    expect(tooOld41.verdict).toBe('fatal')
+    expect(tooOld41.message).toContain('4.1.14')
+    expect(tooOld41.message).toContain('v4.1.15')
 
     const tooOld40 = assessEngine('4.0.9', '4.0.9', B33)
     expect(tooOld40.verdict).toBe('fatal')
@@ -338,6 +398,12 @@ describe('assessEngine — decision table (bundled = 4.3.3 unless noted)', () =>
 
     const driftMajor = assessEngine('4.3.3', '3.4.0', B33)
     expect(driftMajor.hint).toContain('allowUntestedEngine')
+  })
+
+  it('names the insiders build in its notice', () => {
+    const r = assessEngine('0.0.0-insiders.9798a8a', '0.0.0-insiders.9798a8a', B33)
+    expect(r.message).toContain('0.0.0-insiders.9798a8a')
+    expect(r.message).toContain('insiders')
   })
 
   it('is silent (empty message) only for the ok verdict', () => {

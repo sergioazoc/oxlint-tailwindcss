@@ -107,7 +107,7 @@ Classes are detected in `className`/`class` attributes, 14 utility helpers (`cn`
 ## Requirements
 
 - Node.js ≥ 20
-- Tailwind CSS v4.1+ (4.0.x is not supported)
+- Tailwind CSS v4.1.15+ (older releases lack a design-system API the plugin needs)
 - oxlint ≥ 1.43.0
 
 ## Repository structure

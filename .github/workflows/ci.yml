@@ -89,14 +89,22 @@ jobs:
   # can't block the main matrix. Assertions are coarse — class lists and order
   # shift across versions, so only the guard verdict + rule firing are checked.
   engine-matrix:
-    name: Smoke — Tailwind ${{ matrix.tailwind }}
+    name: Smoke — Tailwind ${{ matrix.tailwind }}${{ matrix.smoke-args && ' (expect fatal)' || '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # 4.1 is the supported floor: 4.0.x lacks `ds.canonicalizeCandidates`
-        # (the version guard fails those loud). Test the older supported lines.
-        tailwind: ['4.1', '4.2']
+        # 4.1.15 is the supported floor: 4.0.x and 4.1.0–4.1.14 lack
+        # `ds.canonicalizeCandidates`, and the version guard fails those loud.
+        # Pin the floor exactly (a bare '4.1' resolves to the newest 4.1.x and
+        # would never exercise it), plus the newest older supported line, plus
+        # the last unsupported release, which must be REJECTED with the guard's
+        # own message rather than crash.
+        tailwind: ['4.1.15', '4.2']
+        smoke-args: ['']
+        include:
+          - tailwind: '4.1.14'
+            smoke-args: '--expect-fatal'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -113,4 +121,4 @@ jobs:
         run: pnpm build
 
       - name: Smoke against tailwindcss ${{ matrix.tailwind }}
-        run: node scripts/engine-smoke.mjs ${{ matrix.tailwind }}
+        run: node scripts/engine-smoke.mjs ${{ matrix.tailwind }} ${{ matrix.smoke-args }}
