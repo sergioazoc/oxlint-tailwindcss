@@ -1,0 +1,27 @@
+{
+  "plugins": [],
+  "categories": {
+    "correctness": "off"
+  },
+  "jsPlugins": ["@shadcn/lint"],
+  "rules": {
+    "shadcn/no-restyle": [
+      "error",
+      {
+        "allow": ["layout"]
+      }
+    ],
+    "shadcn/no-raw-colors": "error",
+    "shadcn/no-arbitrary-values": "error",
+    "shadcn/no-unknown-classes": "error"
+  },
+  "overrides": [
+    {
+      "files": ["registry/new-york-v4/ui/**"],
+      "rules": {
+        "shadcn/no-restyle": "off",
+        "shadcn/no-arbitrary-values": "off"
+      }
+    }
+  ]
+}

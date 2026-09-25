@@ -10,3 +10,7 @@ AUDIT.md
 packages/oxlint-tailwindcss/tests/e2e/tmp-*/
 packages/oxlint-tailwindcss/tests/fixtures/.worker-*.css
 packages/oxlint-tailwindcss/tests/fixtures/.lock-coordination-*.css
+# Benchmark harness (bench/): the cloned corpus, run outputs and its own npm install.
+bench/.corpus/
+bench/out/
+bench/node_modules/

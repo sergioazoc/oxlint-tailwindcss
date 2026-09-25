@@ -4,5 +4,13 @@
   "singleQuote": true,
   "proseWrap": "always",
   "embeddedLanguageFormatting": "off",
-  "ignorePatterns": [".claude/**"]
+  "ignorePatterns": [
+    ".claude/**",
+    "bench/.corpus/**",
+    "bench/out/**",
+    "bench/node_modules/**",
+    "bench/synthetic/**",
+    "bench/baseline/**",
+    "bench/package-lock.json"
+  ]
 }
