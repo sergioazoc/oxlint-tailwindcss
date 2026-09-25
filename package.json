@@ -33,7 +33,7 @@
   "devDependencies": {
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
-    "oxlint-tsgolint": "^7.0.2001"
+    "oxlint-tsgolint": "^7.0.2003"
   },
   "engines": {
     "node": ">=20",

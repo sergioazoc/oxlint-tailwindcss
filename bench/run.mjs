@@ -2,13 +2,15 @@
 //
 // Usage:
 //   node run.mjs --config otw-all [--plugin published|local] [--cache cold|warm]
-//                [--target corpus|synthetic] [--label NAME]
+//                [--target corpus|synthetic] [--label NAME] [--timings]
 //
 // --plugin published  the oxlint-tailwindcss version pinned in bench/package.json
 // --plugin local      this repo's packages/oxlint-tailwindcss/dist (run `pnpm build` first)
 // --cache cold        a fresh OXLINT_TAILWINDCSS_CACHE_DIR (measures the precompute)
 // --cache warm        a reused cache dir, primed by an untimed run when empty
 // --target synthetic  lint only bench/synthetic (the seeded agent mistakes)
+// --timings           after the measured run, a second (warm) run with
+//                     `--debug=timings` records per-rule JS plugin time in meta
 //
 // Writes out/<label>.json (raw oxlint output) and out/<label>.snapshot.json
 // (normalized records + metadata), and prints the per-rule counts.
@@ -30,6 +32,7 @@ import { fileURLToPath } from 'node:url'
 
 import { CORPUS_SHA, ensureCorpus } from './corpus.mjs'
 import { normalizeReport, serializeSnapshot } from './lib/normalize.mjs'
+import { parseTimings } from './lib/timings.mjs'
 
 const BENCH = dirname(fileURLToPath(import.meta.url))
 const REPO = dirname(BENCH)
@@ -50,6 +53,7 @@ const { values } = parseArgs({
     cache: { type: 'string', default: 'warm' },
     target: { type: 'string', default: 'corpus' },
     label: { type: 'string' },
+    timings: { type: 'boolean', default: false },
   },
 })
 
@@ -101,8 +105,8 @@ const cacheDir =
     : join(BENCH, 'out', `cache-warm-${values.plugin}`)
 mkdirSync(cacheDir, { recursive: true })
 
-function lint() {
-  const args = ['-c', configPath, ...IGNORES.map((p) => `--ignore-pattern=${p}`), '-f', 'json']
+function oxlint(extraArgs) {
+  const args = ['-c', configPath, ...IGNORES.map((p) => `--ignore-pattern=${p}`), ...extraArgs]
   const started = process.hrtime.bigint()
   let stdout
   try {
@@ -115,16 +119,25 @@ function lint() {
       stdio: ['ignore', 'pipe', 'pipe'],
     })
   } catch (error) {
-    // oxlint exits 1 when it reports errors; the JSON is still on stdout.
-    if (typeof error.stdout !== 'string' || !error.stdout.trim().startsWith('{')) throw error
+    // oxlint exits 1 when it reports errors; the output is still on stdout.
+    if (typeof error.stdout !== 'string' || error.status !== 1) throw error
     stdout = error.stdout
   }
-  const wallMs = Number(process.hrtime.bigint() - started) / 1e6
+  return { stdout, wallMs: Number(process.hrtime.bigint() - started) / 1e6 }
+}
+
+function lint() {
+  const { stdout, wallMs } = oxlint(['-f', 'json'])
   return { report: JSON.parse(stdout), raw: stdout, wallMs }
 }
 
 if (values.cache === 'warm' && readdirSync(cacheDir).length === 0) lint()
 const { report, raw, wallMs } = lint()
+// `-f default` on purpose: oxlint switches to the `agent` formatter by itself
+// when it detects an AI agent, and that formatter prints no timing table.
+const timings = values.timings
+  ? parseTimings(oxlint(['-f', 'default', '--quiet', '--debug=timings']).stdout)
+  : undefined
 if (values.cache === 'cold') rmSync(cacheDir, { recursive: true, force: true })
 
 const versions = JSON.parse(readFileSync(join(BENCH, 'package.json'), 'utf8')).devDependencies
@@ -145,6 +158,7 @@ const snapshot = {
     files: report.number_of_files,
     threads: report.threads_count,
     wallMs: Math.round(wallMs),
+    ...(timings && { timings }),
   },
   records,
 }
@@ -161,4 +175,10 @@ console.log(
 )
 for (const [id, count] of [...counts].sort((a, b) => b[1] - a[1])) {
   console.log(`  ${String(count).padStart(6)} ${id}`)
+}
+if (timings) {
+  console.log(`JS plugin runtime: ${timings.jsRuntime.totalMs ?? '?'} ms (warm, --debug=timings)`)
+  for (const t of timings.rules) {
+    console.log(`  ${t.ms.toFixed(1).padStart(9)} ms ${String(t.share).padStart(5)}% ${t.rule}`)
+  }
 }

@@ -27,12 +27,18 @@ node run.mjs --config otw-all --plugin local                     # warm cache
 node run.mjs --config otw-all --plugin local --cache cold        # fresh cache: measures the precompute
 node run.mjs --config otw-all --plugin local --target synthetic  # the seeded agent-mistake files
 node run.mjs --config shadcn-all                                 # a competitor, for reference
+node run.mjs --config otw-all --plugin local --timings           # + per-rule JS plugin time
 ```
 
 - `--plugin published` uses the oxlint-tailwindcss version pinned in `package.json`;
   `--plugin local` uses `packages/oxlint-tailwindcss/dist` from this repo.
 - `--config` picks a template from `configs/` (`otw-all`, `otw-recommended`, `otw-ds`, `shadcn-all`,
   `shadcn-ds`, `btw-recommended`, `combo`).
+- `--timings` adds a second, warm run with `oxlint -f default --debug=timings` (oxlint >= 1.84
+  reports JS plugin rules) and stores the per-rule table in the snapshot's `meta.timings`. It covers
+  rule creation, hooks and visitor callbacks, not plugin load or the design-system precompute. The
+  `-f default` matters: oxlint switches to its terse `agent` formatter on its own when it detects an
+  AI agent, and that formatter prints no timing table.
 - Output: `out/<label>.json` (raw `oxlint -f json`) and `out/<label>.snapshot.json` (normalized
   records, one per line, plus metadata: versions, file count, threads, wall time).
 
