@@ -120,3 +120,29 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # What Cloudflare Pages actually serves after the deploy — robots.txt, the
+  # _redirects/_headers rules, the site-name JSON-LD, crawler access
+  # (packages/docs/scripts/check-live.ts). Informational: a CDN hiccup must not
+  # read as a failed release, so the job may fail without failing the workflow.
+  verify-live:
+    needs: release
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      # The script imports only node: builtins and seo.ts — no install needed.
+      # Retried while the deploy propagates.
+      - name: Check the live site
+        run: |
+          for attempt in 1 2 3; do
+            node --experimental-strip-types packages/docs/scripts/check-live.ts && exit 0
+            echo "attempt $attempt failed; retrying in 60 s"
+            sleep 60
+          done
+          exit 1
