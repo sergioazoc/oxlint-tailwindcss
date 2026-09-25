@@ -1,0 +1,2 @@
+/rules/_extras/*  /rules/:splat  301
+/es/rules/_extras/*  /es/rules/:splat  301
