@@ -121,6 +121,7 @@ todos los modos.
 <div className="[&>svg]:w-4" />
 
 // Permitido vía `allow: ["grid-cols-"]`
+// options: { "allow": ["grid-cols-"] }
 <div className="grid grid-cols-[18rem_1fr]" />
 ```
 

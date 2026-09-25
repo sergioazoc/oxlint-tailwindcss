@@ -42,15 +42,19 @@ This rule has no options. It applies the same transformation everywhere.
 ```tsx
 // Negative outside brackets — move it inside
 <div className="-top-[5px] -left-[10px]" />
+// → <div className="top-[-5px] left-[-10px]" />
 
 // Transform with arbitrary value
 <div className="-translate-x-[10px]" />
+// → <div className="translate-x-[-10px]" />
 
 // Variant prefix preserved
 <div className="hover:-mt-[8px]" />
+// → <div className="hover:mt-[-8px]" />
 
 // Important modifier preserved
 <div className="!-top-[5px]" />
+// → <div className="!top-[-5px]" />
 ```
 
 ### ✓ Correct

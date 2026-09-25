@@ -103,10 +103,8 @@ la regla funciona sin él.
 <div className="hover:bg-blue-500" />
 
 // Variante personalizada + base correspondiente
-<div
-  className="bg-white contrast-more:bg-black"
-  // con options: [{ variants: ["contrast-more"] }]
-/>
+// options: { "variants": ["contrast-more"] }
+<div className="bg-white contrast-more:bg-black" />
 
 // Un string sólo-dark dentro de un helper de merge o en un componente personalizado es
 // un fragmento de override — la base light vive en otro lado, así que NO se

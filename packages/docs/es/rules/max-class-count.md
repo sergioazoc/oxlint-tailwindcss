@@ -66,15 +66,14 @@ Rangos sugeridos:
 ```tsx
 // 21 clases — sobre el default de 20
 <div className="flex items-center p-4 m-2 bg-white text-black rounded shadow border w-full h-10 gap-2 justify-between font-bold text-sm overflow-hidden cursor-pointer transition duration-200 opacity-50 z-10" />
-//
-// Diagnóstico:
-//   Too many Tailwind classes (21). Maximum allowed is 20.
-//   Consider extracting into a component or utility.
+// reports: Too many Tailwind classes (21). Maximum allowed is 20.
 
 // 6 clases con `max: 5`
+// options: { "max": 5 }
 <div className="flex items-center p-4 m-2 gap-2 w-full" />
 
 // Un template es un solo string de clases: 6 clases con `max: 5`
+// options: { "max": 5 }
 <div className={`flex items-center p-4 ${gap} m-2 bg-${tone}-500 w-full`} />
 ```
 
@@ -93,7 +92,8 @@ function Card({ children }) {
   )
 }
 
-// Cada argumento de `cn()` es su propio string de clases: 2 + 3, no 5
+// Cada argumento de `cn()` es su propio string de clases: 2 + 3, no 5, así que `max: 4` pasa
+// options: { "max": 4 }
 cn("flex items-center", "p-4 m-2 gap-2")
 ```
 

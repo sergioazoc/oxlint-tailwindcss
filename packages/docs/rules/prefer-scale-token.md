@@ -134,6 +134,7 @@ utility — the same shape as `no-arbitrary-value`'s option.
 
 // Variants and `!` travel with the class
 <div className="hover:p-[10px] p-[10px]!" />
+// → <div className="hover:p-2.5 p-2.5!" />
 ```
 
 ### ✓ Correct

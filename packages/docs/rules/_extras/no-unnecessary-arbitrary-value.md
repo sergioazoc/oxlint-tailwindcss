@@ -32,12 +32,15 @@ for the whole project instead of per-rule whenever possible.
 ```tsx
 // `h-[auto]` is just `h-auto`
 <div className="h-[auto] w-[auto]" />
+// → <div className="h-auto w-auto" />
 
 // var() reference to a theme color that has a named utility
 <div className="bg-[var(--color-red-500)] text-[var(--color-blue-700)]" />
+// → <div className="bg-red-500 text-blue-700" />
 
 // Variant prefix and important are preserved
 <div className="hover:h-[auto] !w-[auto]" />
+// → <div className="hover:h-auto !w-auto" />
 ```
 
 ### ✓ Correct

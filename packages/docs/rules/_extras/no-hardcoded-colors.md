@@ -98,7 +98,8 @@ hex in a single brand-asset component.
 <svg className="fill-[url(#gradient)]" />
 
 // Allowlisted exact string
-<div className="bg-[#000]" /> // with allow: ["bg-[#000]"]
+// options: { "allow": ["bg-[#000]"] }
+<div className="bg-[#000]" />
 ```
 
 ## Interactions with other rules

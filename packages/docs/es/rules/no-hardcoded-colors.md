@@ -112,7 +112,8 @@ puerta. Útil para el hex ocasional mandado por brand en un único componente de
 <svg className="fill-[url(#gradient)]" />
 
 // String exacto allowlisteado
-<div className="bg-[#000]" /> // con allow: ["bg-[#000]"]
+// options: { "allow": ["bg-[#000]"] }
+<div className="bg-[#000]" />
 ```
 
 ## Interacciones con otras reglas

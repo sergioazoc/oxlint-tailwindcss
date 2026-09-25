@@ -40,15 +40,19 @@ Assuming a shadcn-style theme with tokens like `--border`, `--primary`, `--backg
 ```tsx
 // Paren shorthand — the canonical case
 <div className="border-(--border) bg-(--primary)" />
+// → <div className="border-border bg-primary" />
 
 // Bracket form
 <div className="bg-[var(--primary)]/50" />
+// → <div className="bg-primary/50" />
 
 // Variants, important, opacity modifiers all preserved
 <div className="hover:!border-(--border) dark:bg-(--primary)/80" />
+// → <div className="hover:!border-border dark:bg-primary/80" />
 
 // Directional sub-utility
 <div className="border-l-(--border)" />
+// → <div className="border-l-border" />
 ```
 
 ### ✓ Correct

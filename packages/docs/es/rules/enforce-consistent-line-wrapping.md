@@ -165,6 +165,7 @@ para el prefix de proyecto de Tailwind v4, y solo bajo `wrapLines: "all"` con `g
 //              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ tooLong
 
 // 6 clases con classesPerLine: 3 — el template literal autofixea a un bloque
+// options: { "classesPerLine": 3 }
 const className = `flex items-center justify-between p-4 m-2 bg-white`
 // → const className = `
 //     flex items-center justify-between
@@ -172,16 +173,18 @@ const className = `flex items-center justify-between p-4 m-2 bg-white`
 //   `
 
 // Mismo conteo, string literal — reporta pero no autofixea
+// options: { "classesPerLine": 3 }
 <div className="flex items-center justify-between p-4 m-2 bg-white" />
 
 // printWidth: 40 con wrapLines: "overWidth" — SOLO se re-envuelve la
 // línea que excede; las líneas conformes alrededor quedan tal como estaban
-const cardClass = `
+// options: { "printWidth": 40, "wrapLines": "overWidth" }
+const className = `
   flex hover:underline
   items-center justify-between gap-4 rounded-lg p-6
   focus:outline-none
 `
-// → const cardClass = `
+// → const className = `
 //     flex hover:underline
 //     items-center justify-between gap-4
 //     rounded-lg p-6
@@ -189,8 +192,9 @@ const cardClass = `
 //   `
 
 // printWidth: 40 con wrapLines: "all" — re-layout completo, agrupado por variante
-const buttonClass = `flex items-center gap-2 hover:bg-red-500 hover:underline focus:outline-none`
-// → const buttonClass = `
+// options: { "printWidth": 40, "wrapLines": "all" }
+const className = `flex items-center gap-2 hover:bg-red-500 hover:underline focus:outline-none`
+// → const className = `
 //     flex items-center gap-2
 //     hover:bg-red-500 hover:underline
 //     focus:outline-none
@@ -211,7 +215,7 @@ const className = `
 
 // Template multilínea formateado a mano, cada línea dentro del printWidth —
 // con wrapLines sin setear o en "overWidth"; solo "all" lo reagrupa
-const cardClass = `
+const className = `
   flex hover:underline
   items-center
 `

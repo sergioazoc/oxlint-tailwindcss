@@ -43,15 +43,19 @@ Esta regla no tiene opciones. Aplica la misma transformación en todos lados.
 ```tsx
 // Negativo afuera del bracket — muévelo adentro
 <div className="-top-[5px] -left-[10px]" />
+// → <div className="top-[-5px] left-[-10px]" />
 
 // Transform con valor arbitrario
 <div className="-translate-x-[10px]" />
+// → <div className="translate-x-[-10px]" />
 
 // Prefijo de variant preservado
 <div className="hover:-mt-[8px]" />
+// → <div className="hover:mt-[-8px]" />
 
 // Modificador important preservado
 <div className="!-top-[5px]" />
+// → <div className="!top-[-5px]" />
 ```
 
 ### ✓ Correcto

@@ -46,12 +46,15 @@ defecto es `settings.tailwindcss.entryPoint`). Configura el entry point en
 ```tsx
 // `h-[auto]` es simplemente `h-auto`
 <div className="h-[auto] w-[auto]" />
+// → <div className="h-auto w-auto" />
 
 // Referencia var() a un color del theme que tiene utility con nombre
 <div className="bg-[var(--color-red-500)] text-[var(--color-blue-700)]" />
+// → <div className="bg-red-500 text-blue-700" />
 
 // El prefijo de variant y el important se preservan
 <div className="hover:h-[auto] !w-[auto]" />
+// → <div className="hover:h-auto !w-auto" />
 ```
 
 ### ✓ Correcto

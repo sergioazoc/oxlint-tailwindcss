@@ -162,6 +162,7 @@ the Tailwind v4 project prefix, and only under `wrapLines: "all"` with `group` `
 //              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ tooLong
 
 // 6 classes with classesPerLine: 3 — template literal autofixes into a block
+// options: { "classesPerLine": 3 }
 const className = `flex items-center justify-between p-4 m-2 bg-white`
 // → const className = `
 //     flex items-center justify-between
@@ -169,16 +170,18 @@ const className = `flex items-center justify-between p-4 m-2 bg-white`
 //   `
 
 // Same count, string literal — reports but no autofix
+// options: { "classesPerLine": 3 }
 <div className="flex items-center justify-between p-4 m-2 bg-white" />
 
 // printWidth: 40 with wrapLines: "overWidth" — ONLY the over-budget
 // line is re-wrapped; the conforming lines around it stay exactly as written
-const cardClass = `
+// options: { "printWidth": 40, "wrapLines": "overWidth" }
+const className = `
   flex hover:underline
   items-center justify-between gap-4 rounded-lg p-6
   focus:outline-none
 `
-// → const cardClass = `
+// → const className = `
 //     flex hover:underline
 //     items-center justify-between gap-4
 //     rounded-lg p-6
@@ -186,8 +189,9 @@ const cardClass = `
 //   `
 
 // printWidth: 40 with wrapLines: "all" — full re-layout, grouped by variant
-const buttonClass = `flex items-center gap-2 hover:bg-red-500 hover:underline focus:outline-none`
-// → const buttonClass = `
+// options: { "printWidth": 40, "wrapLines": "all" }
+const className = `flex items-center gap-2 hover:bg-red-500 hover:underline focus:outline-none`
+// → const className = `
 //     flex items-center gap-2
 //     hover:bg-red-500 hover:underline
 //     focus:outline-none
@@ -208,7 +212,7 @@ const className = `
 
 // Hand-formatted multiline template, every line within printWidth — untouched
 // when wrapLines is unset or "overWidth"; only "all" re-groups it
-const cardClass = `
+const className = `
   flex hover:underline
   items-center
 `

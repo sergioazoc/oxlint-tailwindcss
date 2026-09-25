@@ -53,6 +53,7 @@ const FIXTURES = [
   'open-value-utility.css',
   'with-prefix-utility.css',
   'with-imported-theme.css',
+  'docs-examples.css',
 ]
 
 /**

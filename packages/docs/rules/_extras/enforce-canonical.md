@@ -57,18 +57,23 @@ point in `settings.tailwindcss.entryPoint` for the whole project instead wheneve
 ```tsx
 // Negative-of-zero is just zero
 <div className="-m-0 -mt-0" />
+// → <div className="m-0 mt-0" />
 
 // Logical inset shorthand → canonical inset-s-* / inset-e-*
 <div className="start-2 end-4" />
+// → <div className="inset-s-2 inset-e-4" />
 
 // An arbitrary value whose named form emits identical CSS
 <div className="flex-grow-[2]" />
+// → <div className="grow-2" />
 
 // Variants and important are preserved
 <div className="hover:!flex-grow-[2]" />
+// → <div className="hover:!grow-2" />
 
 // Opacity modifiers and arbitrary variants, with or without other variants
 <div className="dark:bg-white/[.08] data-[open]:flex min-[40rem]:flex" />
+// → <div className="dark:bg-white/8 data-open:flex sm:flex" />
 ```
 
 ### ✓ Correct
