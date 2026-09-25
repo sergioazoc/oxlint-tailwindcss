@@ -113,7 +113,7 @@ regla funciona sin él.
 
 - **`enforce-logical`**: la inversa. Elige **una**. Correr las dos simultáneamente reescribe en
   loop.
-- **`enforce-canonical`**: reescribe `start-2` → `inset-s-2`. Inofensivo acá: esta regla convierte
+- **`enforce-canonical`**: reescribe `start-2` → `inset-s-2`. Inofensivo aquí: esta regla convierte
   las dos formas a `left-2`.
 - **`enforce-shorthand`**: corre sobre shorthands `m-*` / `p-*` direction-neutral, así que no se
   solapan.

@@ -507,6 +507,15 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   would feed unbounded strings to the Levenshtein scan. Under a prefix an unprefixed marker reports
   `missingPrefix`, never a Levenshtein neighbour — for `peer//x` that neighbour is the bare `peer`,
   and the quick-fix would delete the name every consumer binds to.
+- **Why a canonical rewrite isn't equivalent** (`CanonicalizeResult.reason`, R5): the worker
+  compares the two classes' CSS; when only the SELECTOR differs it compiles both again in STOCK
+  Tailwind (`env.loadStock()` in `makeWorkerScript`: `@import "tailwindcss"` from the same base,
+  same engine, loaded lazily on the first such case). Equal there → `'variant'` (the project
+  redefines the variant, e.g. shadcn's `data-disabled:`); different there too → `'selector'` (a
+  spelling, `has-[[…]]:` vs `has-data-[…]:`); declarations differ → `'value'` (#78). Only
+  `'variant'` is reported, and only with `enforce-canonical`'s `reportNonEquivalent`. The reason is
+  persisted as the tuple's third element (`[canonical, safe, reason?]`); two-element entries still
+  read.
 - **Typo suggestions have a length-proportional budget** (`suggestionDistance` in
   `utils/levenshtein.ts`: `max(1, floor(len / 3))`, capped at 3), used for utilities and for both
   variant corrections (whole segment and dash tail). The distance is OSA — an adjacent swap costs 1

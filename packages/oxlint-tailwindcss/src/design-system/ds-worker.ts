@@ -121,16 +121,31 @@ async function main() {
   }
 
   let ds;
+  let loadDesignSystem;
+  let base;
   try {
-    const { __unstable__loadDesignSystem } = require(workerData.tailwindNodePath);
+    ({ __unstable__loadDesignSystem: loadDesignSystem } = require(workerData.tailwindNodePath));
     const { readFileSync } = require('fs');
     const { dirname } = require('path');
     const css = readFileSync(cssPath, 'utf-8');
-    ds = await __unstable__loadDesignSystem(css, { base: dirname(cssPath) });
+    base = dirname(cssPath);
+    ds = await loadDesignSystem(css, { base });
   } catch (e) {
     signalLoadError(e);
     return;
   }
+
+  // What a handler may need besides the project's design system. \`loadStock\`:
+  // plain \`@import "tailwindcss"\` from the same place, on the same engine — the
+  // baseline that tells what the project's own CSS changed. Loaded the first
+  // time a handler asks, never otherwise.
+  let stockPromise = null;
+  const env = {
+    loadStock() {
+      if (!stockPromise) stockPromise = loadDesignSystem('@import "tailwindcss";', { base });
+      return stockPromise;
+    },
+  };
 
   Atomics.store(control, 2, 1);
   Atomics.notify(control, 2);
@@ -146,7 +161,7 @@ async function main() {
     let response;
     try {
       const request = JSON.parse(requestStr);
-      const result = handler(ds, request);
+      const result = await handler(ds, request, env);
       response = Buffer.from(JSON.stringify(result), 'utf-8');
     } catch {
       response = Buffer.from('null', 'utf-8');

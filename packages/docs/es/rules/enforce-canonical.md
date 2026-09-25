@@ -10,9 +10,9 @@ Tailwind, como `-m-0` → `m-0`, con autofix.
 
 ## De un vistazo
 
-| Autofix | Sugerencias en el editor | Design system              | Opciones     |
-| ------- | ------------------------ | -------------------------- | ------------ |
-| Sí      | Sí                       | Obligatorio (`entryPoint`) | `entryPoint` |
+| Autofix | Sugerencias en el editor | Design system              | Opciones                            |
+| ------- | ------------------------ | -------------------------- | ----------------------------------- |
+| Sí      | Sí                       | Obligatorio (`entryPoint`) | `entryPoint`, `reportNonEquivalent` |
 
 ## Qué hace esta regla
 
@@ -38,9 +38,30 @@ silencio.
 
 ## Opciones
 
-Esta regla no tiene opciones propias más allá del override estándar `entryPoint` (string, por
-defecto es `settings.tailwindcss.entryPoint`). Configura el entry point en
-`settings.tailwindcss.entryPoint` para todo el proyecto en vez de por-regla cuando puedas.
+### `reportNonEquivalent`
+
+`boolean`, default `false`.
+
+Algunas formas canónicas **no son el mismo CSS en tu proyecto**, y la regla deja esas clases como
+están. Con esta opción activa, además te avisa de un tipo de ellas, sin fix: una variante que tu CSS
+define distinto del Tailwind de stock. shadcn/ui, por ejemplo, trae `data-disabled:` como una
+variante propia construida sobre `:where([data-disabled="true"]), …`, así que
+`data-[disabled]:opacity-50` — que el Tailwind de stock reescribe a `data-disabled:opacity-50` —
+selecciona otros elementos aquí. El reporte nombra las dos variantes, y cambiar es decisión tuya.
+
+Una diferencia que también tiene el Tailwind de stock (`has-[[data-slot=x]]:` vs
+`has-data-[slot=x]:` emiten selectores distintos en cualquier proyecto) no se reporta, y tampoco un
+valor que lee el theme (`p-[2px]` vs `p-0.5`, mira [`prefer-scale-token`](./prefer-scale-token)). En
+`apps/v4` de shadcn/ui la opción agrega 23 reportes, todos `data-[disabled]:`.
+
+```jsonc
+{ "tailwindcss/enforce-canonical": ["warn", { "reportNonEquivalent": true }] }
+```
+
+### `entryPoint`
+
+`string`, opcional. Override por regla de `settings.tailwindcss.entryPoint`. Cuando puedas,
+configura el entry point en `settings.tailwindcss.entryPoint` para todo el proyecto.
 
 ## Ejemplos
 
@@ -92,10 +113,10 @@ defecto es `settings.tailwindcss.entryPoint`). Configura el entry point en
 - **`no-deprecated-classes`**: **es la dueña de los renombres de v3, y esta regla los omite.**
   Tailwind también los canonicaliza, así que `bg-gradient-to-r` → `bg-linear-to-r` antes se
   reportaba dos veces con el mismo fix; el mensaje de la otra regla ("deprecada en v4") es el más
-  accionable de los dos. Acá queda todo lo que es actual-pero-no-canónico: `-m-0` → `m-0`, `start-2`
-  → `inset-s-2`, y las formas con valor arbitrario como `flex-grow-[2]` → `grow-2` (la lista de
-  renombres tiene grafías, no valores). Mantén ambas activas — con solo esta los renombres quedan
-  sin reportar.
+  accionable de los dos. Aquí queda todo lo que es actual-pero-no-canónico: `-m-0` → `m-0`,
+  `start-2` → `inset-s-2`, y las formas con valor arbitrario como `flex-grow-[2]` → `grow-2` (la
+  lista de renombres tiene grafías, no valores). Mantén ambas activas — con solo esta los renombres
+  quedan sin reportar.
 - **`prefer-scale-token`**: la mitad solo-reporte de lo que esta regla cedió en #78. Una reescritura
   cuyo CSS emitido difiere textualmente (`p-[10px]` → `p-2.5`, donde el token llega por
   `var(--spacing)`) no se autofixea aquí y no lo hará nunca; esa regla lo reporta con una

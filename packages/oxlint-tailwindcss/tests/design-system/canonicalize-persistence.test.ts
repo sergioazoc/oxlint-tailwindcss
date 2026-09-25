@@ -37,8 +37,8 @@ const BATCH = 20
 
 const cachePath = (rem?: number) => persistFileFor(ENTRY_POINT, rem) as string
 
-/** Persisted shape: Record<class, [canonical, safe]>. */
-type Persisted = Record<string, [string, boolean]>
+/** Persisted shape: Record<class, [canonical, safe, reason?]>. */
+type Persisted = Record<string, [string, boolean, string?]>
 const readPersisted = (rem?: number) =>
   JSON.parse(readFileSync(cachePath(rem), 'utf-8')) as Persisted
 
@@ -75,7 +75,8 @@ describe('canonicalize cache disk persistence', () => {
     const persisted = readPersisted()
     // Every class round-trips through the tuple format, carrying the safe flag.
     for (let i = 0; i < classes.length; i++) {
-      expect(persisted[classes[i]]).toEqual([results[i].canonical, results[i].safe])
+      const { canonical, safe, reason } = results[i]
+      expect(persisted[classes[i]]).toEqual(reason ? [canonical, safe, reason] : [canonical, safe])
     }
   })
 
@@ -103,6 +104,25 @@ describe('canonicalize cache disk persistence', () => {
 
     const [result] = canonicalizeClassesSync(ENTRY_POINT, ['p-[16px]'])
     expect(result).toEqual({ canonical: 'p-4', safe: false })
+  })
+
+  it('persists why a rewrite is not equivalent, and reads it back', () => {
+    // p-[2px] → p-0.5 is the #78 case: p-0.5 is calc(var(--spacing) * 0.5).
+    const [first] = canonicalizeClassesSync(ENTRY_POINT, ['p-[2px]'], 16)
+    expect(first).toEqual({ canonical: 'p-0.5', safe: false, reason: 'value' })
+    expect(readPersisted(16)['p-[2px]']).toEqual(['p-0.5', false, 'value'])
+
+    resetCanonicalizeService()
+    expect(canonicalizeClassesSync(ENTRY_POINT, ['p-[2px]'], 16)[0]).toEqual(first)
+  })
+
+  it('still reads a two-element entry (no reason)', () => {
+    writeFileSync(cachePath(), JSON.stringify({ 'p-[16px]': ['p-4', false] }))
+    resetCanonicalizeService()
+    expect(canonicalizeClassesSync(ENTRY_POINT, ['p-[16px]'])[0]).toEqual({
+      canonical: 'p-4',
+      safe: false,
+    })
   })
 
   describe('staleness guard (logic-hash keying)', () => {

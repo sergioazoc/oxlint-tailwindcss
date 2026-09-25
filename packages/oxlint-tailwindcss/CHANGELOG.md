@@ -4,6 +4,14 @@
 
 ### Features
 
+- **`enforce-canonical` can tell you when a canonical form means something else in your project:
+  `reportNonEquivalent: true`** (off by default). shadcn/ui ships `data-disabled:`, `data-open:`… as
+  custom variants built on `:where(…)`, so `data-[disabled]:opacity-50` — which stock Tailwind
+  rewrites to `data-disabled:opacity-50` — matches different elements there. Since #78 the rule
+  silently left such classes alone; with the option it reports them, naming both variants, without a
+  fix. The check compares against stock Tailwind on the same engine, so a selector difference stock
+  Tailwind has too (`has-[[data-slot=x]]:` vs `has-data-[slot=x]:`) is not reported. On shadcn/ui
+  `apps/v4`: 23 reports, all `data-[disabled]:`.
 - **`no-arbitrary-value` can allow runtime CSS variables:
   `allowVariables: 'none' | 'runtime' | 'all'`** (default `'none'`, so nothing changes unless you
   opt in). A value that is nothing but a variable — `w-(--sidebar-width)`,

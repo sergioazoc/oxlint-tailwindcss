@@ -293,11 +293,12 @@ describe('worker handlers — a throwing ds.* degrades to a no-op (#130)', () =>
     throw new Error('preamble helper should not be reached on the throw path')
   }
 
-  test('canonicalize: a throwing canonicalizeCandidates leaves the class unchanged', () => {
+  test('canonicalize: a throwing canonicalizeCandidates leaves the class unchanged', async () => {
+    // Async since R5: it may await a stock design system to explain a result.
     const handler = new Function(`return (${CANONICALIZE_HANDLER})`)() as (
       ds: unknown,
       req: unknown,
-    ) => unknown
+    ) => Promise<unknown>
     const ds = {
       canonicalizeCandidates() {
         throw new Error('boom')
@@ -306,7 +307,7 @@ describe('worker handlers — a throwing ds.* degrades to a no-op (#130)', () =>
         throw new Error('boom')
       },
     }
-    expect(handler(ds, { classes: ['px-[calc(var(--a)+)]'] })).toEqual([
+    expect(await handler(ds, { classes: ['px-[calc(var(--a)+)]'] })).toEqual([
       { canonical: 'px-[calc(var(--a)+)]', safe: true },
     ])
   })

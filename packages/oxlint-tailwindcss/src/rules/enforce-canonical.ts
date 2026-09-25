@@ -3,6 +3,7 @@ import { createExtractorVisitors, type ClassLocation } from '../utils/extractors
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
 import {
+  extractVariants,
   convertVarSyntax,
   reattachImportant,
   splitImportant,
@@ -12,7 +13,7 @@ import {
 } from '../utils/class-parser'
 import { createLazyLoader, rootFontSizeFromSettings } from '../design-system/loader'
 import { canonicalizeClassesSync } from '../design-system/canonicalize-service'
-import { createLazySettings } from '../utils/context'
+import { createLazyOptions, createLazySettings } from '../utils/context'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 
 /**
@@ -32,6 +33,22 @@ function preserveImportantPosition(original: string, canonicalized: string): str
   return variant + reattachImportant(bare, position)
 }
 
+/**
+ * The first variant that differs between a class and its canonical form —
+ * `data-[disabled]:opacity-50` / `data-disabled:opacity-50` → `data-[disabled]`
+ * / `data-disabled` — or the whole chains when they don't line up.
+ */
+function differingVariant(cls: string, canonical: string): { written: string; variant: string } {
+  const a = extractVariants(cls)
+  const b = extractVariants(canonical)
+  if (a.length === b.length) {
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return { written: a[i], variant: b[i] }
+    }
+  }
+  return { written: a.join(':'), variant: b.join(':') }
+}
+
 export const enforceCanonical = defineRule({
   meta: {
     type: 'suggestion',
@@ -44,14 +61,17 @@ export const enforceCanonical = defineRule({
         type: 'object',
         properties: {
           entryPoint: { type: 'string' },
+          reportNonEquivalent: { type: 'boolean' },
         },
         additionalProperties: false,
       },
     ],
     hasSuggestions: true,
-    defaultOptions: [{}],
+    defaultOptions: [{ reportNonEquivalent: false }],
     messages: {
       nonCanonical: '"{{className}}" can be written as "{{canonical}}". Use the canonical form.',
+      nonEquivalentVariant:
+        '"{{className}}" is not the same CSS as its canonical form "{{canonical}}" in this project: "{{variant}}:" is defined differently from "{{written}}:" (a custom variant in your CSS), so the two match different elements. It is left as written; switch to "{{variant}}:" only if that is what you mean.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
       ...DS_UNAVAILABLE_MESSAGE,
     },
@@ -61,6 +81,10 @@ export const enforceCanonical = defineRule({
 
     // Per file: a nested .oxlintrc.json can set its own `rootFontSize`.
     const getRem = createLazySettings(context, rootFontSizeFromSettings)
+    const getReportNonEquivalent = createLazyOptions<{ reportNonEquivalent?: boolean }, boolean>(
+      context,
+      (o) => o?.reportNonEquivalent === true,
+    )
 
     function check(locations: ClassLocation[]) {
       if (locations.length === 0) return
@@ -86,6 +110,7 @@ export const enforceCanonical = defineRule({
         // the rest. The local cache preserves `!` position, so no
         // preserveImportantPosition step is needed on that path.
         const canonicals: string[] = Array.from({ length: classes.length })
+        const nonEquivalent: { cls: string; canonical: string }[] = []
         const arbitraryIdx: number[] = []
         const arbitrary: string[] = []
 
@@ -119,9 +144,16 @@ export const enforceCanonical = defineRule({
             loc.node,
           )
           if (!dynamic) return // worker fatal already reported; stop the check
+          const reportNonEquivalent = getReportNonEquivalent()
           for (let k = 0; k < arbitrary.length; k++) {
-            const { canonical, safe } = dynamic[k]
+            const { canonical, safe, reason } = dynamic[k]
             const idx = arbitraryIdx[k]
+            // R5: a rewrite that only changes the SELECTOR — the project defines
+            // the canonical variant differently (shadcn's `data-disabled:` is
+            // `:where(…)`) — is reported on request, never fixed.
+            if (!safe && reason === 'variant' && reportNonEquivalent) {
+              nonEquivalent.push({ cls: arbitrary[k], canonical })
+            }
             // #78: only rewrite when the canonical form is CSS-value-equivalent.
             // `canonicalizeCandidates` matches an arbitrary literal (e.g.
             // `rounded-[4px]` = `4px`) against the compile-time theme, so it
@@ -156,6 +188,14 @@ export const enforceCanonical = defineRule({
           messageId: 'nonCanonical',
           replacementKey: 'canonical',
         })
+        for (const { cls, canonical } of nonEquivalent) {
+          const { written, variant } = differingVariant(cls, canonical)
+          context.report({
+            node: loc.node,
+            messageId: 'nonEquivalentVariant',
+            data: { className: cls, canonical, written, variant },
+          })
+        }
       }
     }
 
