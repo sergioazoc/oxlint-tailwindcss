@@ -5,7 +5,7 @@ description: "Todas las reglas de lint para Tailwind CSS de oxlint-tailwindcss, 
 
 # Reglas
 
-Las 24 reglas de `oxlint-tailwindcss`, agrupadas por lo que hacen cumplir. Haz clic en cualquier
+Las 25 reglas de `oxlint-tailwindcss`, agrupadas por lo que hacen cumplir. Haz clic en cualquier
 regla para ver ejemplos y referencia de opciones.
 
 ## Corrección
@@ -21,6 +21,8 @@ Reglas que atrapan problemas que generarían CSS inválido o inesperado.
   claro (solo en listas de clases literales en elementos nativos, no en fragmentos de
   `cn`/`twMerge`).
 - [no-duplicate-classes](./no-duplicate-classes) — la misma clase dos veces es peso muerto.
+- [no-dynamic-classes](./no-dynamic-classes) — `bg-${color}-500` se arma en runtime, así que
+  Tailwind no genera CSS para ella.
 
 ## Modernización
 
@@ -106,6 +108,7 @@ además un `entryPoint` propio que pisa el ajuste compartido.
 | `no-contradicting-variants`        | `{}`                                                | Qué hace el selector de cada variant                                                              |
 | `no-dark-without-light`            | `{ variants: ['dark'] }`                            | Distingue los colores del resto y agrupa la base por propiedad CSS declarada                      |
 | `no-deprecated-classes`            | `{}`                                                | Deriva la lista de renombres en vez de usar la tabla interna                                      |
+| `no-dynamic-classes`               | `{}`                                                | Las utilidades y variantes propias de tu proyecto cuentan como de Tailwind                        |
 
 ### Reglas DS-independientes
 

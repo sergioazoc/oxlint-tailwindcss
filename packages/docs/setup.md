@@ -82,6 +82,7 @@ If you want a "blessed" set that catches problems without being noisy, turn thes
     "tailwindcss/no-conflicting-classes": "error",
     "tailwindcss/no-deprecated-classes": "error",
     "tailwindcss/no-duplicate-classes": "warn",
+    "tailwindcss/no-dynamic-classes": "error",
     "tailwindcss/no-unknown-classes": "error",
 
     // Modernization — keep classes in current canonical form

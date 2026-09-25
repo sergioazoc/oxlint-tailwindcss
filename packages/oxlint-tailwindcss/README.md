@@ -1,6 +1,6 @@
 # oxlint-tailwindcss
 
-24 Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). Built for
+25 Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). Built for
 Tailwind CSS v4 with deterministic config, typo suggestions, and autofixes.
 
 > **v1** — Upgrading from v0.x? See the
@@ -30,7 +30,7 @@ Read the story behind this plugin:
 - **Typo suggestions** — `itms-center` → "Did you mean `items-center`?"
 - **Conflict detection** — Shows exactly which CSS properties conflict and which class wins.
 - **Lightweight** — Only 2 runtime dependencies: `@tailwindcss/node` and `tailwindcss`.
-- **24 rules** — Correctness, style, complexity, and restriction rules with autofixes where
+- **25 rules** — Correctness, style, complexity, and restriction rules with autofixes where
   possible.
 - **Variable detection** — Lints variables matching `/^classNames?$/`, `/^classes$/`, `/^styles?$/`
   (e.g. `className`, `classNames`, `classes`, `styles`) automatically.
@@ -62,6 +62,7 @@ Add the plugin to your `.oxlintrc.json`:
     "tailwindcss/no-conflicting-classes": "error",
     "tailwindcss/no-deprecated-classes": "error",
     "tailwindcss/no-unnecessary-whitespace": "error",
+    "tailwindcss/no-dynamic-classes": "error",
     // These two only inspect literal class lists on native elements; cn()/twMerge() fragments and custom-component classNames are skipped (issue #117).
     "tailwindcss/no-dark-without-light": "warn",
     "tailwindcss/no-contradicting-variants": "warn",
@@ -271,7 +272,7 @@ entries are appended to the built-in defaults:
 }
 ```
 
-This applies to all 24 rules at once. For example, adding `"classNames"` to `attributes` makes every
+This applies to all 25 rules at once. For example, adding `"classNames"` to `attributes` makes every
 rule lint `<Input classNames={{ root: "..." }} />`.
 
 > **`calleeExtractors`** — `cva`, `tv`, and `classed` are extracted with logic that understands
@@ -415,6 +416,28 @@ duplicates (different variants).
 ```
 
 **Autofix:** Removes the duplicate.
+
+---
+
+#### `no-dynamic-classes`
+
+Reports classes built at runtime. Tailwind only generates CSS for class names written out in full,
+so `` `bg-${color}-500` `` gets no CSS and the element silently goes unstyled.
+
+```tsx
+// ❌ Bad
+<div className={`bg-${color}-500 p-2`} />
+// "bg-${color}-500" is built at runtime, so Tailwind never sees it written out…
+
+// ✅ OK — write out every class the value can map to
+const bgByColor = { red: 'bg-red-500', blue: 'bg-blue-500' } as const
+<div className={`${bgByColor[color]} p-2`} />
+```
+
+A whole class from a variable (`` `${base} p-4` ``) and non-Tailwind text (`` `icon-${name}` ``) are
+fine. With an entry point, your project's own utilities count too.
+
+**No autofix.**
 
 ---
 

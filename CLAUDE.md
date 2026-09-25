@@ -97,9 +97,9 @@ That's it — the push fast-forwards `release` to `main` and `release.yml` takes
 
 ## Architecture
 
-oxlint plugin with 24 Tailwind CSS v4 linting rules. Uses `@oxlint/plugins`' `createOnce` API (runs
+oxlint plugin with 25 Tailwind CSS v4 linting rules. Uses `@oxlint/plugins`' `createOnce` API (runs
 once per lint session; returned visitors run on every matching AST node). This document covers the
-error-prone subsystems, not every rule; the canonical per-rule reference (all 24, with options and
+error-prone subsystems, not every rule; the canonical per-rule reference (all 25, with options and
 defaults) is `packages/docs/rules/index.md`.
 
 **Design principle — deterministic, explicit, fail-loud.** `settings.tailwindcss.entryPoint` is
@@ -169,13 +169,15 @@ DS-dependent rules (the 7 users of `safeGetDS`, which reports `designSystemUnava
 `no-unnecessary-arbitrary-value`, `prefer-scale-token`, `prefer-theme-tokens`. The **DS-optional**
 rules use `softGetDS` instead — they consult the DS when an entryPoint is configured but fall back
 to a deterministic static path when it isn't, so a missing entryPoint is tolerated silently and none
-may ever emit `designSystemUnavailable`. There are 9: `consistent-variant-order`,
+may ever emit `designSystemUnavailable`. There are 10: `consistent-variant-order`,
 `no-contradicting-variants`, `enforce-consistent-line-wrapping`, `no-dark-without-light`,
 `enforce-shorthand`, `enforce-logical`, `enforce-physical` (these last two reach `softGetDS` through
 the shared directional mapper in `enforce-logical.ts`), `no-deprecated-classes`, and
 `no-arbitrary-value` — which touches the DS only under `allowVariables: 'runtime'`, lazily, on the
 first pure `var()` reference (`definesVar` tells a runtime variable from one the stylesheet defines;
-without a DS the reference is reported, the safe side for a restriction rule).
+without a DS the reference is reported, the safe side for a restriction rule), and
+`no-dynamic-classes` — the project's utilities and variants join Tailwind's as roots with a DS;
+without one, `STATIC_UTILITY_ROOTS` / `STATIC_VARIANTS`, which a test pins to Tailwind's own lists.
 `no-dark-without-light` checks only variant classes that set a **colour** (R3): with the DS,
 `colorPropertyOf` reads the class's declarations (a `*-color` / `fill` / `stroke` /
 `--tw-gradient-*` property, a `--color-*` read, or a colour literal outside `var()` fallbacks — so
@@ -275,10 +277,10 @@ strings and cva-like config from remaining args.
   and a quasi that is nothing but fragments is dropped. So fixers only rewrite self-contained
   classes and the `${}` boundary is never re-spaced (it used to split the class: `bg-${c} -500`).
   Rules that reason about the raw text — `no-unnecessary-whitespace`,
-  `enforce-consistent-line-wrapping`, `max-class-count` — pass `{ raw: true }` as the third
-  argument. A new rule gets the narrowed view by default;
-  `tests/integration/template-fragments.test.ts` runs every fixer and suggester over glued
-  templates, so add a new one there.
+  `enforce-consistent-line-wrapping`, `max-class-count`, and `no-dynamic-classes` (whose subject IS
+  the glued fragments) — pass `{ raw: true }` as the third argument. A new rule gets the narrowed
+  view by default; `tests/integration/template-fragments.test.ts` runs every fixer and suggester
+  over glued templates, so add a new one there.
 
 AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `VariableDeclarator`.
 
@@ -374,9 +376,9 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `tests/e2e/cache-dir.test.ts` holds what `/ci` promises about `OXLINT_TAILWINDCSS_CACHE_DIR`.
 - **Fail-loud (v1)**: If the DS can't load, DS-dependent rules emit a single
   `designSystemUnavailable` diagnostic via the shared `safeGetDS` helper in `src/utils/fatal.ts`.
-  There is no silent fallback; the exceptions are the 9 DS-optional rules listed under Architecture,
-  which go through `softGetDS`, fall back to a deterministic static path, and never emit
-  `designSystemUnavailable`. The dedicated error types — `MissingEntryPointError`,
+  There is no silent fallback; the exceptions are the 10 DS-optional rules listed under
+  Architecture, which go through `softGetDS`, fall back to a deterministic static path, and never
+  emit `designSystemUnavailable`. The dedicated error types — `MissingEntryPointError`,
   `DeprecatedEntryPointShapeError`, `DesignSystemLoadError`, `SortServiceError`,
   `UnsupportedEngineError` — all extend `OxlintTailwindError` and carry an optional `hint` field
   that renders alongside the message. `UnsupportedEngineError` (from the engine guard, #114) routes

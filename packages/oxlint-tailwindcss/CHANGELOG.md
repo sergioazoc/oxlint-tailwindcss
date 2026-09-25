@@ -4,6 +4,13 @@
 
 ### Features
 
+- **New rule: `no-dynamic-classes`.** Tailwind generates CSS only for class names written out in
+  full, so a class built at runtime — `` `bg-${color}-500` ``, `` `w-[${width}px]` ``,
+  `` `hover:${cls}` `` — gets no CSS and the element silently goes unstyled. The rule reports each
+  such class once, when the text glued to the `${}` starts with a Tailwind utility or variant (your
+  project's own ones too, with an entry point); `` `${base} p-4` `` and `` `icon-${name}` `` are
+  fine. No autofix. In the recommended README config as `error`. On shadcn/ui `apps/v4`: 0 reports.
+
 - **`enforce-canonical` can tell you when a canonical form means something else in your project:
   `reportNonEquivalent: true`** (off by default). shadcn/ui ships `data-disabled:`, `data-open:`… as
   custom variants built on `:where(…)`, so `data-[disabled]:opacity-50` — which stock Tailwind
