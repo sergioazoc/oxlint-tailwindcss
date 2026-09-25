@@ -210,7 +210,13 @@ Because it goes through `softGetDS` it never emits `designSystemUnavailable`.
 
 `extractors.ts` is the shared class-detection layer used by all rules. Every rule delegates to
 `createExtractorVisitors(context, check)` which generates the 4 standard AST visitors and resolves
-the extractor config lazily from `settings.tailwindcss`.
+the extractor config lazily from `settings.tailwindcss`. It also adds a `Program` visitor that
+checks the settings (`utils/settings-check.ts`): oxlint doesn't validate `settings`, so an unknown
+key (with a did-you-mean), a wrong type, an invalid regex or an unknown `calleeExtractors` kind is
+reported as `invalidSetting` on line 1, once per file — the first rule to see the file's `Program`
+node reports, the rest skip it. `CHECKS` is mapped over `PluginSettings`, so a new setting doesn't
+compile until it has a check; `entryPoint` is left to the loader. Every rule spreads
+`SETTINGS_MESSAGE` into `meta.messages` (a test holds all 25).
 
 **What oxlint hands the extractor in framework files.** In `.vue`, `.svelte` and `.astro`, oxlint's
 partial loaders pass JS plugins only the script sections — every Vue `<script>`/`<script setup>`

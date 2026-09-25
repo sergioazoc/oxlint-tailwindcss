@@ -38,6 +38,6 @@ features:
     details: |
       Si la configuración está mal, ves un diagnóstico
       `designSystemUnavailable` con una pista accionable — nunca reglas
-      saltadas en silencio. El error te dice exactamente qué archivo y
-      qué falta.
+      saltadas en silencio — y un setting mal escrito se nombra, junto
+      al que querías poner.
 ---

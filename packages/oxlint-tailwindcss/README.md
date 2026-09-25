@@ -25,7 +25,8 @@ Read the story behind this plugin:
   future major, or a major-version drift from your build fails loud (opt back in with
   `settings.tailwindcss.allowUntestedEngine`).
 - **Fail loud** — Misconfiguration surfaces as a single `designSystemUnavailable` diagnostic with an
-  actionable hint. Never silently skipped rules.
+  actionable hint. Never silently skipped rules. A misspelt or mistyped setting is reported as
+  `invalidSetting`, with the setting you meant.
 - **Fast** — Native oxlint plugin with per-entry-point caching and content-hash disk cache for
   monorepo deduplication.
 - **Typo suggestions** — `itms-center` → "Did you mean `items-center`?"

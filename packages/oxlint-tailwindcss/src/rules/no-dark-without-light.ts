@@ -14,6 +14,7 @@ import { isFatalError, softGetDS } from '../utils/fatal'
 import { debugLog } from '../design-system/debug'
 import { createLazyOptions } from '../utils/context'
 import type { CssDeclaration } from '../design-system/css-declarations'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 interface Options {
   variants?: string[]
@@ -215,6 +216,7 @@ export const noDarkWithoutLight = defineRule({
     ],
     defaultOptions: [{ variants: DEFAULT_VARIANTS }],
     messages: {
+      ...SETTINGS_MESSAGE,
       missingBase:
         '"{{className}}" uses the {{variant}} variant, but there is no base "{{prefix}}-*" class on this element.',
       missingBaseProperty:

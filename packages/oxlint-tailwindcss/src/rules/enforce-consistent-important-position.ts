@@ -5,6 +5,7 @@ import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
 import { splitUtilityAndVariant } from '../utils/class-parser'
 import { createLazyOptions } from '../utils/context'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 interface Options {
   position?: 'prefix' | 'suffix'
@@ -33,6 +34,7 @@ export const enforceConsistentImportantPosition = defineRule({
     hasSuggestions: true,
     defaultOptions: [{ position: 'suffix' }],
     messages: {
+      ...SETTINGS_MESSAGE,
       usePrefix: '"{{className}}" uses suffix important. Use "{{replacement}}" (prefix) instead.',
       useSuffix: '"{{className}}" uses prefix important. Use "{{replacement}}" (suffix) instead.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',

@@ -14,6 +14,7 @@ import type { DesignSystemCache } from '../design-system/cache'
 import { createLazyOptions, createLazySettings } from '../utils/context'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 import { arbitraryPrefix, formatStep, isOnStep, measure, sameMeasure } from '../utils/measure'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 interface Options {
   entryPoint?: string
@@ -48,6 +49,7 @@ export const preferScaleToken = defineRule({
     ],
     defaultOptions: [{}],
     messages: {
+      ...SETTINGS_MESSAGE,
       preferToken:
         '"{{className}}" is the same value as "{{replacement}}". Use the token — but check it first: the token resolves through a CSS variable, so the two are equal in this theme, not by construction.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',

@@ -47,7 +47,8 @@ variables, typography plugin) for exact, machine-independent results.
 - **Monorepo-ready** — one root config with a glob → CSS mapping, or one `.oxlintrc.json` per
   package. Both fully deterministic.
 - **Fail loud** — misconfiguration surfaces as a single `designSystemUnavailable` diagnostic with an
-  actionable hint, never silently skipped rules.
+  actionable hint, never silently skipped rules, and a misspelt setting is named with the one you
+  meant.
 - **Lightweight & fast** — native oxlint plugin with content-hash disk caching; only two runtime
   dependencies (`@tailwindcss/node`, `tailwindcss`).
 

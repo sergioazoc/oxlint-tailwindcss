@@ -5,6 +5,7 @@ import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
 import { convertVarSyntax } from '../utils/class-parser'
 import { createLazyOptions } from '../utils/context'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 interface Options {
   syntax?: 'shorthand' | 'explicit'
@@ -32,6 +33,7 @@ export const enforceConsistentVariableSyntax = defineRule({
     hasSuggestions: true,
     defaultOptions: [{ syntax: 'shorthand' }],
     messages: {
+      ...SETTINGS_MESSAGE,
       useShorthand:
         '"{{className}}" uses explicit var() syntax. Use "{{replacement}}" (shorthand) instead.',
       useExplicit:

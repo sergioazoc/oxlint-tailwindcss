@@ -11,6 +11,7 @@ import {
 } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import { softGetDS } from '../utils/fatal'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 // Static fallback for the CSS property a utility declares, used when no entry
 // point is configured (this rule is DS-OPTIONAL). Only the closed, stable groups
@@ -67,6 +68,7 @@ export const noContradictingVariants = defineRule({
     ],
     defaultOptions: [{}],
     messages: {
+      ...SETTINGS_MESSAGE,
       redundantVariant:
         '"{{variantClass}}" is redundant because "{{baseClass}}" already applies unconditionally.',
     },

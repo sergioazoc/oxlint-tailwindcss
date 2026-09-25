@@ -4,6 +4,7 @@ import { createExtractorVisitors, type ClassLocation } from '../utils/extractors
 import { splitClassesWithSeparators } from '../utils/class-splitter'
 import { reportClassReplacements } from '../utils/report'
 import { splitUtilityAndVariant } from '../utils/class-parser'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 // Only a plain numeric dimension can be negated by prefixing `-` inside the
 // brackets. Tailwind v4 negates wrapped values (calc(), var(), expressions) by
@@ -58,6 +59,7 @@ export const enforceNegativeArbitraryValues = defineRule({
     schema: [],
     hasSuggestions: true,
     messages: {
+      ...SETTINGS_MESSAGE,
       moveNegative:
         '"{{className}}" has the negative outside brackets. Use "{{replacement}}" instead.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',

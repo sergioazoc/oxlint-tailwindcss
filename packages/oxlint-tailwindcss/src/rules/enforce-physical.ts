@@ -8,6 +8,7 @@ import {
   createDirectionalMapper,
   invertAxisMappings,
 } from './enforce-logical'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 export const enforcePhysical = defineRule({
   meta: {
@@ -24,6 +25,7 @@ export const enforcePhysical = defineRule({
     hasSuggestions: true,
     defaultOptions: [{ allowlist: [], direction: 'both' }],
     messages: {
+      ...SETTINGS_MESSAGE,
       usePhysical:
         '"{{className}}" uses a logical property. Use "{{replacement}}" for consistency.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',

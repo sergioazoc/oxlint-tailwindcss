@@ -2,6 +2,7 @@ import type { ESTree } from '@oxlint/plugins'
 import type { CalleeExtractorKind, PluginSettings } from '../types'
 import { compileRegexList } from './allowlist'
 import { settingsKey } from './context'
+import { reportSettingsProblems } from './settings-check'
 
 /**
  * Where a class string was extracted from. This is the single fact a
@@ -348,10 +349,11 @@ export interface ExtractorVisitorOptions {
  * (see `narrowGluedFragments`).
  */
 export function createExtractorVisitors(
-  context: { settings?: Readonly<Record<string, unknown>> },
+  context: Parameters<typeof reportSettingsProblems>[0],
   check: (locations: ClassLocation[]) => void,
   options: ExtractorVisitorOptions = {},
 ): {
+  Program: (node: ESTree.Program) => void
   JSXAttribute: (node: ESTree.JSXAttribute) => void
   CallExpression: (node: ESTree.CallExpression) => void
   TaggedTemplateExpression: (node: ESTree.TaggedTemplateExpression) => void
@@ -361,6 +363,10 @@ export function createExtractorVisitors(
     ? check
     : (locations: ClassLocation[]) => check(narrowGluedFragments(locations))
   return {
+    // Every rule builds on these visitors, so every rule checks the settings.
+    Program(node) {
+      reportSettingsProblems(context, node)
+    },
     JSXAttribute(node) {
       deliver(extractFromJSXAttribute(node, getExtractorConfig(context)))
     },

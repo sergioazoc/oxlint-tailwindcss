@@ -3,6 +3,7 @@ import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClasses } from '../utils/class-splitter'
 import { createLazyOptions } from '../utils/context'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 interface PatternConfig {
   pattern: string
@@ -46,6 +47,7 @@ export const noRestrictedClasses = defineRule({
     ],
     defaultOptions: [{ classes: [], patterns: [] }],
     messages: {
+      ...SETTINGS_MESSAGE,
       restricted: '"{{className}}" is restricted.',
       restrictedWithMessage: '"{{className}}" is restricted: {{message}}',
     },

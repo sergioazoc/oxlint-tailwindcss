@@ -9,6 +9,17 @@ Every setting lives under `settings.tailwindcss` in your `.oxlintrc.json`. Setti
 each linted file, so a nested `.oxlintrc.json` can give one package its own values — see
 [different options and settings per package](/monorepo#different-options-and-settings-per-package).
 
+oxlint doesn't check `settings`, so the plugin does: a key it doesn't know, a value of the wrong
+type, a pattern that isn't a regular expression or an unknown `calleeExtractors` kind is reported
+once per file, on its first line, by the first rule that lints it (`invalidSetting`):
+
+```text
+Check settings.tailwindcss: "rootfontsize" is not a setting (did you mean "rootFontSize"?)
+```
+
+A bad `entryPoint` is reported by the rules that need the design system, with a hint on how to fix
+it (`designSystemUnavailable`).
+
 ## `entryPoint` (required)
 
 Path to the CSS file that `@import "tailwindcss";` and (optionally) your `@theme { ... }`

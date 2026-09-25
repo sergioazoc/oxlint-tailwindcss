@@ -5,6 +5,7 @@ import { createLazyLoader } from '../design-system/loader'
 import type { DesignSystemCache } from '../design-system/cache'
 import { softGetDS } from '../utils/fatal'
 import { safeSourceCode } from '../utils/context'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 // The first segment of every Tailwind utility that has one (`bg` for
 // `bg-red-500`, `grid` for `grid-cols-2`), for when no design system is
@@ -336,6 +337,7 @@ export const noDynamicClasses = defineRule({
     ],
     defaultOptions: [{}],
     messages: {
+      ...SETTINGS_MESSAGE,
       dynamicClass:
         '"{{className}}" is built at runtime, so Tailwind never sees it written out and generates no CSS for it. Write out the full class names (for example, a map from each value to its class) instead.',
     },

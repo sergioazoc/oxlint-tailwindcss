@@ -10,6 +10,18 @@ archivo lintado, así que un `.oxlintrc.json` anidado puede darle a un package s
 mira
 [opciones y settings distintos por package](/es/monorepo#opciones-y-settings-distintos-por-package).
 
+oxlint no revisa `settings`, así que lo hace el plugin: una clave que no conoce, un valor del tipo
+equivocado, un patrón que no es una expresión regular o un tipo de `calleeExtractors` que no existe
+se reporta una vez por archivo, en su primera línea, desde la primera regla que lo linta
+(`invalidSetting`):
+
+```text
+Check settings.tailwindcss: "rootfontsize" is not a setting (did you mean "rootFontSize"?)
+```
+
+Un `entryPoint` mal escrito lo reportan las reglas que necesitan el design system, con una pista de
+cómo arreglarlo (`designSystemUnavailable`).
+
 ## `entryPoint` (obligatorio)
 
 Ruta al archivo CSS que tiene `@import "tailwindcss";` y (opcionalmente) tus personalizaciones de

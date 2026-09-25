@@ -1,6 +1,7 @@
 import { defineRule } from '@oxlint/plugins'
 import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 export const noUnnecessaryWhitespace = defineRule({
   meta: {
@@ -15,6 +16,7 @@ export const noUnnecessaryWhitespace = defineRule({
     fixable: 'code',
     schema: [],
     messages: {
+      ...SETTINGS_MESSAGE,
       unnecessaryWhitespace: 'Unnecessary whitespace in Tailwind classes. Can be normalized.',
     },
   },

@@ -7,6 +7,7 @@ import { reattachImportant, splitImportant, splitUtilityAndVariant } from '../ut
 import { createLazyLoader } from '../design-system/loader'
 import { softGetDS } from '../utils/fatal'
 import { makeReplacementGuard } from '../utils/replacement'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 /**
  * Fallback rename map, for when no design system is available.
@@ -58,6 +59,7 @@ export const noDeprecatedClasses = defineRule({
     hasSuggestions: true,
     defaultOptions: [{}],
     messages: {
+      ...SETTINGS_MESSAGE,
       deprecated: '"{{className}}" is deprecated in Tailwind v4. Use "{{replacement}}" instead.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
     },

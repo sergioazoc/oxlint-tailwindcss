@@ -14,6 +14,7 @@ import { type VariantFacts } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
 import type { DesignSystemCache } from '../design-system/cache'
 import { softGetDS } from '../utils/fatal'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 interface Options {
   entryPoint?: string
@@ -151,6 +152,7 @@ export const consistentVariantOrder = defineRule({
     // built-in order (CANONICAL_ORDER).
     defaultOptions: [{}],
     messages: {
+      ...SETTINGS_MESSAGE,
       wrongOrder: '"{{className}}" has variants in wrong order. Use "{{replacement}}" instead.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
     },

@@ -2,6 +2,7 @@ import { defineRule } from '@oxlint/plugins'
 import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
 import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 export const noDuplicateClasses = defineRule({
   meta: {
@@ -16,6 +17,7 @@ export const noDuplicateClasses = defineRule({
     fixable: 'code',
     schema: [],
     messages: {
+      ...SETTINGS_MESSAGE,
       duplicate: 'Duplicate class: "{{className}}". Removing the second occurrence.',
     },
   },

@@ -5,6 +5,7 @@ import { splitClasses } from '../utils/class-splitter'
 import { hasArbitraryValue, getArbitraryValue } from '../utils/class-parser'
 import { createLazyOptions } from '../utils/context'
 import { containsColorLiteral } from '../utils/color-literal'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 interface Options {
   allow?: string[]
@@ -54,6 +55,7 @@ export const noHardcodedColors = defineRule({
     ],
     defaultOptions: [{ allow: [] }],
     messages: {
+      ...SETTINGS_MESSAGE,
       noHardcoded:
         '"{{className}}" uses a hardcoded color value. Use a design token from your theme instead.',
     },

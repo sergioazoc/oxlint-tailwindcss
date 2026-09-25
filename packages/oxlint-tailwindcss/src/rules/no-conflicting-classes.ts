@@ -26,6 +26,7 @@ import {
   keyScopeLabel,
   redundantSide,
 } from './no-conflicting-classes/decide'
+import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 export { COMPLEMENTARY_GROUPS, COMPOSITION_PAIRS } from './no-conflicting-classes/spec'
 export {
@@ -188,6 +189,7 @@ export const noConflictingClasses = defineRule({
     ],
     defaultOptions: [{ reportRedundant: true }],
     messages: {
+      ...SETTINGS_MESSAGE,
       // The design system tells us the physical order of the generated
       // stylesheet, and that order — not the order of the class attribute —
       // decides the winner. So the message names it instead of hedging (R-M3).
