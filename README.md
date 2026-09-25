@@ -41,8 +41,9 @@ variables, typography plugin) for exact, machine-independent results.
   design system. Same input → same output on every machine and CI.
 - **Built for Tailwind v4** — reads your `@theme { … }` tokens, shadcn variables, and
   `@plugin`/`@import` plugins (`@tailwindcss/typography`, `tailwindcss-animate`, `tw-animate-css`).
-- **Coexists with oxfmt & Prettier** — point every tool at the same CSS and they agree
-  byte-for-byte. [Interop guide ↗](https://oxlint-tailwindcss.pages.dev/interop)
+- **Coexists with oxfmt & Prettier** — point every tool at the same CSS and list your class helpers
+  in the formatter, and they sort the same way.
+  [Interop guide ↗](https://oxlint-tailwindcss.pages.dev/interop)
 - **Monorepo-ready** — one root config with a glob → CSS mapping, or one `.oxlintrc.json` per
   package. Both fully deterministic.
 - **Fail loud** — misconfiguration surfaces as a single `designSystemUnavailable` diagnostic with an

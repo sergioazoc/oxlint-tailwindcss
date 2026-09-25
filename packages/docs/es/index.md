@@ -31,8 +31,8 @@ features:
       Sin necesidad de mantener una config paralela.
   - title: Coexiste con oxfmt y Prettier
     details: |
-      Apunta `sortTailwindcss.stylesheet` de oxfmt al mismo CSS que usa
-      este plugin y ambas herramientas coinciden byte a byte. La
+      Apunta el `sortTailwindcss` de oxfmt al mismo CSS que usa este plugin
+      y lista tus helpers de clases, y ambas ordenan igual. La
       [guía de interop](/es/interop) lo explica.
   - title: Falla ruidoso, se arregla fácil
     details: |

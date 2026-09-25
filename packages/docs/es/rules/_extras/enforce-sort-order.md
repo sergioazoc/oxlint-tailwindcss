@@ -87,15 +87,17 @@ Casi nadie lo necesita — define el entry point una vez en `settings` y olvída
 - **`no-unnecessary-whitespace`**: inocua en cualquier dirección. El fixer rearma el string desde
   una lista de tokens determinística, así que cualquier doble espacio sobrante colapsa en la próxima
   pasada.
-- **`prettier-plugin-tailwindcss` / `oxfmt`**: elige una fuente de verdad. Apuntando al mismo
-  `entryPoint`, las tres producen output byte-idéntico, así que puedes correr formatter + linter sin
-  que se peleen los fixers.
+- **`prettier-plugin-tailwindcss` / `oxfmt`**: elige una fuente de verdad. Apuntando al mismo CSS,
+  con tus helpers de clases en el `functions` del formateador, ordenan igual, así que formateador y
+  linter no se pelean — mira [Interop](/es/interop).
 
 ## Cuándo desactivarla
 
 - **Delegas el sort a `prettier-plugin-tailwindcss` o `oxfmt` exclusivamente** y quieres mantener el
-  rule budget reducido — el formatter ya hace este trabajo byte-por-byte. Dejar ambas activadas está
-  bien (no hay conflictos), es solo trabajo redundante.
+  rule budget reducido — en los atributos de clase y los helpers que formatea, el formateador hace
+  el mismo trabajo. Los strings de clases que no formatea (variables, por ejemplo) quedan entonces
+  sin ordenar. Dejar ambas activadas está bien (no hay conflictos), es solo trabajo redundante donde
+  se solapan.
 - **Trabajando en un codebase que ordena clases a propósito por intent de autoría** (e.g.
   agrupamiento visual que no coincide con la prioridad de Tailwind). Desactívala localmente en vez
   de globalmente si es una preferencia por componente.
