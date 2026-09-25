@@ -115,6 +115,13 @@
   rule name. Each rule page now opens with a one-sentence definition (also its search description)
   and an "At a glance" table — autofix, editor suggestions, whether it needs the design system, its
   options — generated from the rule's metadata.
+- **The docs site names itself to search engines.** Google showed "Cloudflare" as the site name for
+  our pages: the site had no name signal of its own, and the `pages.dev` root it lives under
+  redirects to cloudflare.com. The home page now declares a `WebSite` (structured data) named
+  `oxlint-tailwindcss`, matched by `og:site_name`, the home title and the npm `homepage`, which now
+  points at the docs. Every page gains a canonical URL, English/Spanish alternates, link-preview
+  tags and image, and a favicon; rule pages get breadcrumbs; the 404 page is kept out of the index,
+  and `<html lang>` is `en` / `es`.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

@@ -5,6 +5,7 @@ import { defineConfig } from 'vitepress'
 // default) cannot resolve an extensionless relative import, and warns about
 // this one on every build.
 import { RULE_NAMES } from '../scripts/rules.ts'
+import { SITE_NAME, pageHead, siteHead } from './seo.ts'
 
 // Read the published package version so the nav label never drifts from the
 // real release. Resolved relative to this file, not the build cwd.
@@ -41,9 +42,21 @@ function editLinkFor({ filePath }: { filePath: string }): string {
 // Spanish lives at `/es`. The sidebar and nav structures mirror each
 // other so users can switch locale at any depth without losing context.
 export default defineConfig({
-  title: 'oxlint-tailwindcss',
+  title: SITE_NAME,
   description:
     'Tailwind CSS linting rules for oxlint — fast, deterministic, designed for Tailwind v4.',
+
+  // Site-wide <head>: favicon, og:site_name, the preview image. Per-page
+  // canonical, hreflang, og:* and JSON-LD come from `transformHead`; both are
+  // defined (and tested) in ./seo.ts.
+  head: siteHead(),
+  transformHead: ({ pageData, title, description }) =>
+    pageHead({
+      relativePath: pageData.relativePath,
+      title,
+      description,
+      isNotFound: pageData.isNotFound,
+    }),
 
   // Same sitemap regardless of locale prefix.
   cleanUrls: true,
@@ -57,7 +70,7 @@ export default defineConfig({
   locales: {
     root: {
       label: 'English',
-      lang: 'en-US',
+      lang: 'en',
       themeConfig: {
         nav: [
           { text: 'Setup', link: '/setup' },
@@ -108,8 +121,11 @@ export default defineConfig({
     },
     es: {
       label: 'Español',
-      lang: 'es-ES',
+      // Neutral Spanish, written for every Spanish-speaking reader.
+      lang: 'es',
       link: '/es/',
+      description:
+        'Reglas de lint de Tailwind CSS para oxlint — rápidas, deterministas, pensadas para Tailwind v4.',
       themeConfig: {
         nav: [
           { text: 'Setup', link: '/es/setup' },
