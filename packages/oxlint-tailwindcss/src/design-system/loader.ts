@@ -335,6 +335,9 @@ export function getLoadedDesignSystem(
  * so the actual work is deferred until the returned thunk is invoked from
  * inside a visitor.
  */
+/** The file whose entry-point mapping was last printed in debug mode (shared by every rule). */
+let lastLoggedFile: string | undefined
+
 export function createLazyLoader(context: {
   options?: readonly unknown[]
   settings?: Readonly<Record<string, unknown>>
@@ -381,7 +384,10 @@ export function createLazyLoader(context: {
       if (isFatalError(err) && err instanceof Error) lastError = err
       throw err
     }
-    if (filePath) {
+    // Every DS-dependent rule has its own loader and they all run on each file:
+    // log the mapping once per file, not once per rule.
+    if (filePath && filePath !== lastLoggedFile) {
+      lastLoggedFile = filePath
       debugLog(
         `${relative(process.cwd(), filePath)} → ${relative(process.cwd(), lastResult.entryPoint)}`,
       )
@@ -437,4 +443,5 @@ export function resetDesignSystem(): void {
   resetTailwindNode()
   resetEngineGuard()
   resetDebug()
+  lastLoggedFile = undefined
 }

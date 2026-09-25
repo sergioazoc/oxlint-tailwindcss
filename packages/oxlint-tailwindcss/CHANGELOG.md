@@ -54,6 +54,8 @@
   since they are often conditional or alternatives; the docs used to say the count was per element
   or per call, which was never the case, and now describe it as it is. The README example printed 20
   classes under a "(21)" diagnostic; it now has 21.
+- **`debug` prints one line per file.** The `file → entry point` line came once per
+  design-system-dependent rule, so with four such rules on, every file was listed four times.
 - **Tailwind insiders builds are no longer rejected as "too old".** `0.0.0-insiders.<sha>` was read
   as version 0; it is now treated as an untested newer engine — a one-time notice, then linting as
   usual.
@@ -80,6 +82,17 @@
   only, nested configs for both, Vite+ and editor caveats), and its Pattern B example now uses
   `"extends": ["../../.oxlintrc.json"]`: the string form it showed is rejected by oxlint
   (`expected a sequence`).
+- **New [Running in CI](https://oxlint-tailwindcss.pages.dev/ci) page (EN and ES):** pull-request
+  annotations with `-f github`, keeping the design-system precompute between jobs with
+  `actions/cache` and `OXLINT_TAILWINDCSS_CACHE_DIR`, per-rule timings with `--debug timings` (which
+  print nothing with `-f github`), and what to trust in a restored cache. A new e2e test holds the
+  cache-directory behavior it describes.
+- **`/settings` lists the environment variables** — `DEBUG`, `OXLINT_TAILWINDCSS_CACHE_DIR` (which
+  was undocumented) and `OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT` — and its `debug` section lists
+  what is actually logged; it promised "cache hits", which are never logged.
+- **The v0 → v1 migration guide is accurate for today's versions.** It pointed at the v0.x cache
+  directory without saying the cache moved to a per-user directory in v1.3, and said every timeout
+  was set by `settings.tailwindcss.timeout`; that setting only moves the precompute timeout.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented

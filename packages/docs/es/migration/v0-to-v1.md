@@ -106,8 +106,11 @@ adivinar.
 El disk cache (`os.tmpdir()/oxlint-tailwindcss/`) combinaba un mtime index con un content cache.
 v1.0.0 usa solo content hash — el mtime es un fast path in-memory dentro del proceso de linter.
 
-**Acción**: borra `os.tmpdir()/oxlint-tailwindcss/` una vez después de actualizar. Los archivos
-`.idx` viejos son inofensivos pero ocupan disco.
+**Acción**: borra el directorio de caché de v0.x, `os.tmpdir()/oxlint-tailwindcss/`, una vez después
+de actualizar. Sus archivos `.idx` viejos son inofensivos pero ocupan disco. Desde v1.3 la caché
+vive en un directorio por usuario (`oxlint-tailwindcss-<uid>` en el mismo temp, o donde apunte
+[`OXLINT_TAILWINDCSS_CACHE_DIR`](/es/settings#variables-de-entorno)), así que el viejo no se vuelve
+a leer.
 
 ## Cambiado: timeouts
 
@@ -121,7 +124,10 @@ Defaults subidos para reducir fallas espurias en hardware lento / CI:
 | `canonicalize-service` init timeout    | 30 s | 60 s   |
 | `canonicalize-service` request timeout | 10 s | 30 s   |
 
-Todos se pueden sobrescribir vía `settings.tailwindcss.timeout`.
+`settings.tailwindcss.timeout` define el timeout de `loadDesignSystemSync` (el precompute). Los
+timeouts de init de los servicios son fijos, de 60 s. Los timeouts por request se pueden subir con
+la variable de entorno
+[`OXLINT_TAILWINDCSS_WORKER_REQUEST_TIMEOUT`](/es/settings#variables-de-entorno) (desde v1.11).
 
 ## Cambiado: `enforce-physical` acepta opciones
 
@@ -152,7 +158,8 @@ Para tener shape-parity con `enforce-logical`:
 - Los patrones default del extractor (attributes, callees, tags, variable patterns) son los mismos.
   Los ajustes personalizados `attributes`, `callees`, `tags`, `variablePatterns` y `exclude`
   funcionan como antes.
-- La ruta del disk cache (`os.tmpdir()/oxlint-tailwindcss/`) es la misma.
+- La ruta del disk cache (`os.tmpdir()/oxlint-tailwindcss/`) era la misma en v1.0; v1.3 la movió a
+  un directorio por usuario (mira [arriba](#cambiado-clave-del-disk-cache)).
 - Performance: el costo runtime por archivo es igual o ligeramente más rápido (menos branches de
   fallback).
 
