@@ -21,18 +21,18 @@ put together at runtime — `` `bg-${color}-500` ``, `` `text-${size}` ``, `` `w
 never appears in full anywhere, so Tailwind emits nothing for it and the element silently goes
 unstyled. It works in development only if the same class happens to be written out somewhere else.
 
-The rule reports each such class once, when the text glued to a `${}` starts with a Tailwind utility
-(`bg-`, `grid-cols-`, `-mt-`, `w-[`) or a variant (`hover:`, `md:`, `data-`). A whole class or list
-coming from a variable (`` `${base} p-4` ``) is fine, and so is text that isn't Tailwind's
-(`` `icon-${name}` ``, `` `${a}-${b}` ``). There is no autofix: the fix is to write out every class
-the value can map to.
+The rule reports each such class once, when the text glued to a `${}` — or to a `+` operand,
+`"bg-" + color` — starts with a Tailwind utility (`bg-`, `grid-cols-`, `-mt-`, `w-[`) or a variant
+(`hover:`, `md:`, `data-`). A whole class or list coming from a variable (`` `${base} p-4` ``,
+`"p-4 " + extra`) is fine, and so is text that isn't Tailwind's (`` `icon-${name}` ``,
+`` `${a}-${b}` ``). A class split over two strings (`"bg-" + "red-500"`) is reported too: Tailwind
+reads each string on its own. There is no autofix: the fix is to write out every class the value can
+map to.
 
 DS-optional. With an `entryPoint`, your project's own utilities and variants count too (a `@theme`
 namespace such as `bar-*`); without one, Tailwind's built-in utility and variant roots are used.
 
-What it doesn't see: `"bg-" + color` concatenation (the extractor reads string and template
-literals, not `+` expressions), and a variant chosen at runtime after the static text
-(`` `${breakpoint}:flex` ``).
+What it doesn't see: a variant chosen at runtime after the static text (`` `${breakpoint}:flex` ``).
 
 ## Options
 
@@ -51,6 +51,7 @@ project's utilities and variants.
 <div className={`w-[${width}px]`} />
 <div className={`hover:${hoverClass}`} />
 <div className={cn(`p-${padding}`)} />
+<div className={"text-" + tone} />
 ```
 
 ### ✓ Correct

@@ -46,6 +46,15 @@
 
 ### Bug fixes
 
+- **Class strings built with `+` are linted.** The extractor skipped concatenations, so no rule
+  checked the classes in `"flex p-4 " + extra` or `"flex " + (active ? "itms-center" : "")`, and
+  `no-dynamic-classes` couldn't report `"bg-" + color`. Each string operand is now read like a
+  template-literal part, glued to its neighbour only where the source is — `"flex " + "p-4"` holds
+  two complete classes, `"bg-" + color` one runtime class — so complete classes get every rule and
+  their fixes, glued fragments are left byte for byte, and `no-dynamic-classes` reports the runtime
+  class written as a template (`"bg-" + color + "-500"` → `bg-${color}-500`), including one split
+  over two strings (`"bg-" + "red-500"`), which Tailwind reads as two. **New reports** in projects
+  that build classes with `+`. On shadcn/ui `apps/v4`: none (it doesn't).
 - **`consistent-variant-order` writes chains outermost first, with or without an entry point.**
   Without an entry point the rule wanted `dark:hover:` and `sm:hover:` — as its docs, Tailwind's
   docs and shadcn/ui write them — but with one it followed the order Tailwind registers variants in
@@ -209,7 +218,7 @@
   / `buttonClass`, which the plugin doesn't read by default (only `className`, `classNames`,
   `classes` and `styles`), so neither the ✗ nor the ✓ one was ever checked; the
   `no-unnecessary-whitespace` "tab" example wrote the escape `\t`, not a tab; `no-unknown-classes`
-  showed a concatenation as an "allowlisted" class (the plugin doesn't read concatenations — the
+  called `"hover:" + dynamicSuffix` an "allowlisted" class, though nothing allowlisted it (the
   example now uses `allowlist` and `ignorePrefixes`); and the options several pages described in
   prose are now given as real config. Pages with an autofix now show the fixed line for every ✗
   example. The README's hero example is checked the same way.

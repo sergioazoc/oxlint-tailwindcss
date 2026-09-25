@@ -47,6 +47,14 @@ export interface ClassLocation {
    * per-class rules ignore it. Relational rules gate on `jsx-native`.
    */
   origin?: ClassOrigin
+  /**
+   * A string operand of a `+` concatenation whose last token is glued to the
+   * next operand: the class it builds, written as a template —
+   * `"p-4 bg-" + color + "-500"` → `bg-${color}-500`. Read by
+   * `no-dynamic-classes`, which can't find the class in the source text the
+   * way it does inside a template literal.
+   */
+  runtimeClass?: string
 }
 
 /**
@@ -762,6 +770,10 @@ function extractFromExpression(node: ESTree.Node, out: ClassLocation[] = []): Cl
     return extractFromExpression((node as ESTree.LogicalExpression).right, out)
   }
 
+  if (node.type === 'BinaryExpression' && (node as ESTree.BinaryExpression).operator === '+') {
+    return appendFromConcatenation(node as ESTree.BinaryExpression, out)
+  }
+
   // Arrays: cn(['flex', 'p-2']) and the idiomatic tv()/cva() multi-line form
   // `base: ['flex', cond && 'p-2']`. Recurse into each element so strings,
   // ternaries, and nested arrays are all reached. SpreadElement and holes
@@ -819,6 +831,107 @@ function appendFromTemplateLiteral(
     }
   }
   return out
+}
+
+/** The operands of `a + b + c`, in order. */
+function concatOperands(node: ESTree.Node, out: ESTree.Node[] = []): ESTree.Node[] {
+  if (node.type === 'BinaryExpression' && (node as ESTree.BinaryExpression).operator === '+') {
+    concatOperands((node as ESTree.BinaryExpression).left, out)
+    concatOperands((node as ESTree.BinaryExpression).right, out)
+  } else {
+    out.push(node)
+  }
+  return out
+}
+
+function stringValue(node: ESTree.Node | undefined): string | undefined {
+  return node?.type === 'Literal' && typeof node.value === 'string' ? node.value : undefined
+}
+
+/** An operand as it reads inside `${}`: `color`, `props.size`, `4`, or `…`. */
+function operandText(node: ESTree.Node): string {
+  if (node.type === 'Identifier') return (node as ESTree.IdentifierReference).name
+  if (node.type === 'Literal') return String(node.value)
+  if (node.type === 'MemberExpression' && !(node as ESTree.MemberExpression).computed) {
+    const object = operandText((node as ESTree.StaticMemberExpression).object)
+    const property = (node as ESTree.StaticMemberExpression).property.name
+    return object === '…' ? '…' : `${object}.${property}`
+  }
+  return '…'
+}
+
+/**
+ * `"flex " + extra`, `"bg-" + color + "-500"`: each string operand is read like
+ * a template quasi. It's glued to a neighbour unless the source puts whitespace
+ * between them — a neighbouring string that ends (or starts) with whitespace
+ * doesn't glue; an expression, or a string that doesn't, does. Non-string
+ * operands contribute their own strings (`(active ? "flex" : "")`), glued at
+ * both ends the same way. Numeric `a + b` holds no string and yields nothing.
+ */
+function appendFromConcatenation(
+  node: ESTree.BinaryExpression,
+  out: ClassLocation[],
+): ClassLocation[] {
+  const operands = concatOperands(node)
+  const strings = operands.map(stringValue)
+  const endsWithSpace = (v: string | undefined) => v !== undefined && /\s$/.test(v)
+  const startsWithSpace = (v: string | undefined) => v !== undefined && /^\s/.test(v)
+
+  for (let i = 0; i < operands.length; i++) {
+    const glueBefore = i > 0 && !endsWithSpace(strings[i - 1])
+    const glueAfter = i < operands.length - 1 && !startsWithSpace(strings[i + 1])
+    const value = strings[i]
+    if (value === undefined) {
+      const inner = extractFromExpression(operands[i], [])
+      for (const loc of inner) {
+        if (glueBefore) loc.preserveLeadingSpace = true
+        if (glueAfter) {
+          loc.preserveTrailingSpace = true
+          if (!/\s$/.test(loc.value))
+            loc.runtimeClass ??= runtimeClass(loc.value, operands, strings, i)
+        }
+        out.push(loc)
+      }
+      continue
+    }
+    if (value.trim().length === 0) continue
+    const operand = operands[i]
+    const loc: ClassLocation = {
+      value,
+      node: operand,
+      range: [operand.range[0] + 1, operand.range[1] - 1],
+      preserveLeadingSpace: glueBefore,
+      preserveTrailingSpace: glueAfter,
+    }
+    if (glueAfter && !/\s$/.test(value))
+      loc.runtimeClass = runtimeClass(value, operands, strings, i)
+    out.push(loc)
+  }
+  return out
+}
+
+/**
+ * The class the last token of `value` (a string at operand `i`) starts, through
+ * the operands glued after it, written as a template: `from-${a}-${b}`.
+ */
+function runtimeClass(
+  value: string,
+  operands: ESTree.Node[],
+  strings: (string | undefined)[],
+  i: number,
+): string {
+  let text = /\S*$/.exec(value)![0]
+  for (let j = i + 1; j < operands.length; j++) {
+    const value = strings[j]
+    if (value === undefined) {
+      text += `\${${operandText(operands[j])}}`
+      continue
+    }
+    const head = /^\S*/.exec(value)![0]
+    text += head
+    if (head.length < value.length) break
+  }
+  return text
 }
 
 function extractFromTemplateLiteral(node: ESTree.TemplateLiteral): ClassLocation[] {

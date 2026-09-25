@@ -29,10 +29,8 @@ ruleTester.run('no-dynamic-classes', noDynamicClasses, {
     // No Tailwind root to speak of.
     { code: 'const className = `${a}-${b}`', filename: 'test.tsx' },
     { code: 'const className = `icon-${name}`', filename: 'test.tsx' },
-    // Limits, documented: `+` concatenation isn't a class string the extractor
-    // reads, and a variant chosen at runtime AFTER the static text isn't a
-    // fragment that starts a class.
-    { code: '<div className={"bg-" + color + "-500"} />', filename: 'test.tsx' },
+    // Limit, documented: a variant chosen at runtime AFTER the static text
+    // isn't a fragment that starts a class.
     { code: 'const className = `${bp}:flex`', filename: 'test.tsx' },
     // The right way: full class names picked at runtime.
     { code: 'const className = cn(active ? "bg-blue-500" : "bg-gray-500")', filename: 'test.tsx' },
@@ -48,6 +46,12 @@ ruleTester.run('no-dynamic-classes', noDynamicClasses, {
       code: 'const className = `text-${size} font-bold`',
       filename: 'test.tsx',
       errors: [err('text-${size}')],
+    },
+    // `+` builds the class just the same; the message writes it as a template.
+    {
+      code: '<div className={"bg-" + color + "-500"} />',
+      filename: 'test.tsx',
+      errors: [err('bg-${color}-500')],
     },
     {
       code: 'const className = `grid-cols-${n}`',
