@@ -5,7 +5,7 @@
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   decideStop,
@@ -35,11 +35,12 @@ const diag = (code: string, severity = 'error', line = 3) => ({
 
 describe('findOxlint', () => {
   it("finds the project's own oxlint, walking up from the directory", () => {
-    const bin = join('/repo', 'node_modules', '.bin', 'oxlint')
+    // resolve(): on Windows, '/repo' is on the current drive.
+    const bin = join(resolve('/repo'), 'node_modules', '.bin', 'oxlint')
     const exists = (p: string) => p === bin
     expect(findOxlint('/repo/packages/web/src', { exists })).toBe(bin)
     expect(findOxlint('/elsewhere', { exists })).toBeNull()
-    const cmd = join('/repo', 'node_modules', '.bin', 'oxlint.cmd')
+    const cmd = join(resolve('/repo'), 'node_modules', '.bin', 'oxlint.cmd')
     expect(findOxlint('/repo', { platform: 'win32', exists: (p: string) => p === cmd })).toBe(cmd)
   })
 })
@@ -47,7 +48,7 @@ describe('findOxlint', () => {
 describe('recording edits', () => {
   it('keeps the lintable paths an edit wrote, relative ones against its cwd', () => {
     expect(editedPaths({ cwd: '/p', tool_input: { file_path: 'src/a.tsx' } })).toEqual([
-      join('/p', 'src/a.tsx'),
+      resolve('/p', 'src/a.tsx'),
     ])
     expect(
       editedPaths({ tool_input: { file_path: '/p/b.vue', edits: [{ old_string: 'a' }] } }),

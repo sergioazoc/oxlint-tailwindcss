@@ -92,10 +92,19 @@ beforeAll(async () => {
   })
 }, 60_000)
 
-afterAll(() => {
-  server?.kill()
+afterAll(async () => {
+  // Shut down as a client does — `shutdown`, then `exit` — so oxlint ends
+  // itself: on Windows, killing the wrapper leaves oxlint (its grandchild)
+  // running in the project directory.
+  if (server && server.exitCode === null) {
+    const exited = new Promise<void>((resolve) => server.once('exit', () => resolve()))
+    await Promise.race([request('shutdown', null), new Promise((r) => setTimeout(r, 5000))])
+    send({ method: 'exit' })
+    await Promise.race([exited, new Promise((r) => setTimeout(r, 10_000))])
+    if (server.exitCode === null) server.kill()
+  }
   project?.cleanup()
-})
+}, 30_000)
 
 describe("the plugin's language server", () => {
   it("is oxlint's, and publishes oxlint-tailwindcss's diagnostics for an opened file", async () => {

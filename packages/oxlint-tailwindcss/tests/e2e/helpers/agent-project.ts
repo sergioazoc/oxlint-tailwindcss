@@ -38,5 +38,8 @@ export function makeAgentProject(files: Record<string, string>): {
   )
   mkdirSync(join(dir, 'src'))
   for (const [name, text] of Object.entries(files)) writeFileSync(join(dir, 'src', name), text)
-  return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
+  // Retries: on Windows, a process that just exited can hold its cwd a moment longer.
+  const cleanup = () =>
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  return { dir, cleanup }
 }
