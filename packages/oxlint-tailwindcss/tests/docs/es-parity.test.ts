@@ -11,6 +11,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { DOCS_URL } from '../../src/utils/rule-docs'
 
 const DOCS = resolve(__dirname, '../../../docs')
 const SKIP = new Set(['node_modules', '.vitepress', 'public', 'es', 'AGENTS.md', 'CLAUDE.md'])
@@ -39,7 +40,11 @@ function shape(md: string, locale: 'en' | 'es') {
     codeBlocks: [...md.matchAll(/^```(\S*)/gm)].map((m) => m[1]).filter((_, i) => i % 2 === 0),
     containers: [...text.matchAll(/^::: ?(\w+)/gm)].map((m) => m[1]),
     tableRows: text.split('\n').filter((l) => l.startsWith('|')).length,
-    externalLinks: [...text.matchAll(/\]\((https?:\/\/[^)\s]+)\)/g)].map((m) => m[1]).sort(),
+    externalLinks: [...text.matchAll(/\]\((https?:\/\/[^)\s]+)\)/g)]
+      .map((m) => m[1])
+      // An absolute link to this site's Spanish page is the English page's twin.
+      .map((url) => (locale === 'es' ? url.replace(`${DOCS_URL}/es/`, `${DOCS_URL}/`) : url))
+      .sort(),
     internalLinks: [...text.matchAll(/\]\((\/[^)\s]*)\)/g)]
       .map((m) => (locale === 'es' ? m[1].replace(/^\/es(?=\/|$)/, '') || '/' : m[1]))
       // Spanish slugs differ: compare the page, not the heading anchor.

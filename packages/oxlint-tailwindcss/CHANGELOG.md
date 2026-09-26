@@ -4,6 +4,14 @@
 
 ### Features
 
+- **A Claude Code plugin.** `/plugin marketplace add sergioazoc/oxlint-tailwindcss`, then
+  `/plugin install oxlint-tailwindcss@oxlint-tailwindcss`. It starts the project's own
+  `oxlint --lsp` as a language server, so Claude sees the diagnostics on the files it opens and
+  edits. It also checks the files Claude edited before it finishes: when oxlint-tailwindcss reports
+  errors in them, Claude is sent back once with the list. Warnings and files Claude didn't touch
+  don't count. It bundles the agent skill, and runs the project's own oxlint and config. See
+  [AI coding agents](https://oxlint-tailwindcss.pages.dev/ai-agents).
+
 - **New rule, experimental: `no-borrowed-component-styles`.** A `<button>` that copies Button's
   classes — or rewrites them from memory — looks right today and drifts tomorrow: it doesn't follow
   Button's changes, and it never had its focus ring, disabled state or variants. Point the rule at

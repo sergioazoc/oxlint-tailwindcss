@@ -8,6 +8,22 @@ This repository is a pnpm workspace with two packages:
   Tailwind CSS linting rules.
 - **`packages/docs/`** — the VitePress v2 documentation site (English default, Spanish at `/es`).
 
+Outside the workspace, with no build of their own:
+
+- **`skills/oxlint-tailwindcss/SKILL.md`** — the agent skill
+  (`npx skills add sergioazoc/oxlint-tailwindcss --skill oxlint-tailwindcss`); its recommended
+  config is a generated block. `tests/docs/skill.test.ts` holds its rule names and links,
+  `docs-sync` its floors, `doc-configs` its config.
+- **`agent/claude-code/`** — the Claude Code plugin, listed by `.claude-plugin/marketplace.json`:
+  `.lsp.json` starts the project's own `oxlint --lsp` (`scripts/oxlint-lsp.mjs`); `hooks/hooks.json`
+  records the files Claude edits (PostToolUse) and, on Stop, lints them with the project's oxlint
+  and sends Claude back once (exit 2, `stop_hook_active` respected) with the `tailwindcss(...)`
+  errors. Plain `.mjs` over `scripts/lib.mjs`, tested in `tests/agent/` and end to end in
+  `tests/e2e/agent-stop-hook.test.ts` / `oxlint-lsp.test.ts`. Its `skills/` is a copy `generate`
+  writes, and `plugin.json`'s `version` must equal the package's (`claude-plugin-manifest.test.ts`)
+  — bump both on release. `claude plugin validate . --strict` checks both manifests.
+- **`bench/`** — the benchmark (its own npm install); see `bench/README.md`.
+
 `lint` and `format` are **centralized at the root** — oxlint/oxfmt run from the root over the whole
 monorepo (a single root `.oxlintrc.json` / `.oxfmtrc.json`; the packages have none). `build`,
 `test`, and `typecheck` delegate to `packages/oxlint-tailwindcss/`. Docs targets use
@@ -80,8 +96,10 @@ Release. `main` is the dev branch; nothing publishes on a push to `main` (CI onl
 
 **To cut a release:**
 
-1. Land the version bump (`packages/oxlint-tailwindcss/package.json`) + `CHANGELOG.md` entry on
-   `main` via a normal PR (squash-merge is fine).
+1. Land the version bump (`packages/oxlint-tailwindcss/package.json` and
+   `agent/claude-code/.claude-plugin/plugin.json`) + `CHANGELOG.md` entry on `main` via a normal PR
+   (squash-merge is fine). Regenerate `bench/results/latest.json` (`node score.mjs` in `bench/`) and
+   the docs in the same PR, so `/benchmark` names the new version.
 2. `git push origin main:release`
 
 That's it — the push fast-forwards `release` to `main` and `release.yml` takes over.

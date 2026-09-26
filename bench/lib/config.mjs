@@ -44,7 +44,7 @@ export function materializeConfig(template, plugin) {
     throw new Error(`x-rules: expected "all" or "recommended", got ${JSON.stringify(intent)}`)
   }
 
-  const rules = { ...generated, ...(config.rules ?? {}) }
+  const rules = { ...generated, ...config.rules }
   const dropped = []
   for (const key of Object.keys(rules)) {
     if (key.startsWith(PREFIX) && !names.includes(key.slice(PREFIX.length))) {
