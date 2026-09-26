@@ -1,6 +1,6 @@
 {
   "name": "oxlint-tailwindcss",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "description": "Tailwind CSS v4 lint rules for oxlint that read your design system: unknown, conflicting and deprecated classes, theme colors, class order — with autofixes.",
   "keywords": [
     "classnames",

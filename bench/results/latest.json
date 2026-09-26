@@ -15,7 +15,7 @@
     "tools": {
       "tailwindcss": {
         "name": "oxlint-tailwindcss",
-        "version": "1.13.0",
+        "version": "1.14.0",
         "config": "otw-all"
       },
       "shadcn": {
@@ -1570,8 +1570,8 @@
           "tailwindcss/no-borrowed-component-styles": 1,
           "tailwindcss/no-dark-without-light": 1
         },
-        "warmMs": 1265,
-        "coldMs": 9042
+        "warmMs": 1270,
+        "coldMs": 8633
       },
       "recommended": {
         "config": "otw-recommended",
@@ -1592,8 +1592,8 @@
           "tailwindcss/enforce-negative-arbitrary-values": 1,
           "tailwindcss/no-dark-without-light": 1
         },
-        "warmMs": 1063,
-        "coldMs": 9047
+        "warmMs": 1138,
+        "coldMs": 9409
       }
     },
     "shadcn": {
@@ -1610,7 +1610,7 @@
           "shadcn/no-inline-styles": 33,
           "shadcn/require-static-classes": 3
         },
-        "warmMs": 966
+        "warmMs": 1005
       }
     },
     "better-tailwindcss": {
@@ -1630,7 +1630,7 @@
           "better-tailwindcss/enforce-consistent-variable-syntax": 4,
           "better-tailwindcss/no-concatenated-classes": 1
         },
-        "warmMs": 30887
+        "warmMs": 36481
       },
       "recommended": {
         "config": "btw-recommended",
@@ -1643,7 +1643,7 @@
           "better-tailwindcss/no-deprecated-classes": 11,
           "better-tailwindcss/no-concatenated-classes": 1
         },
-        "warmMs": 28951
+        "warmMs": 26340
       }
     }
   },

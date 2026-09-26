@@ -304,6 +304,17 @@ if (values.check) {
 const out = join(BENCH, values.out)
 mkdirSync(dirname(out), { recursive: true })
 writeFileSync(out, `${JSON.stringify(results, null, 2)}\n`)
+// In the repo's own format, so committing it passes `pnpm format:check`.
+try {
+  const oxfmt = join(
+    REPO,
+    'node_modules/.bin',
+    process.platform === 'win32' ? 'oxfmt.cmd' : 'oxfmt',
+  )
+  execFileSync(oxfmt, [out], { cwd: REPO, stdio: 'ignore', shell: process.platform === 'win32' })
+} catch {
+  // Without the repo's dev dependencies, the file stays as JSON.stringify writes it.
+}
 
 for (const tool of TOOLS) {
   const s = seeded.summary[tool.id]

@@ -17,7 +17,7 @@ writes; a weekly job checks that a fresh run still agrees with it.
 - **Corpus**:
   [shadcn-ui/ui `apps/v4`](https://github.com/shadcn-ui/ui/tree/98a1fe67b439324ddc857f47fbdce056600a4329/apps/v4)
   @ `98a1fe67`, 880 files
-- **Versions**: oxlint-tailwindcss 1.13.0, @shadcn/lint 0.2.0, eslint-plugin-better-tailwindcss
+- **Versions**: oxlint-tailwindcss 1.14.0, @shadcn/lint 0.2.0, eslint-plugin-better-tailwindcss
   4.7.0; oxlint 1.85.0, tailwindcss 4.3.3
 - **Machine**: Apple M4 Pro, 12 cores, darwin 25.5.0, Node 24.19.0; median of 5 runs
 
@@ -35,11 +35,11 @@ them, like the other two.
 
 | Tool                             | Rules       | Warm run | Cold run | Diagnostics |
 | -------------------------------- | ----------- | -------- | -------- | ----------- |
-| oxlint-tailwindcss               | all         | 1.3 s    | 9.0 s    | 2,704       |
-| oxlint-tailwindcss               | recommended | 1.1 s    | 9.0 s    | 352         |
+| oxlint-tailwindcss               | all         | 1.3 s    | 8.6 s    | 2,704       |
+| oxlint-tailwindcss               | recommended | 1.1 s    | 9.4 s    | 352         |
 | @shadcn/lint                     | all         | 1.0 s    | —        | 2,578       |
-| eslint-plugin-better-tailwindcss | all         | 30.9 s   | —        | 6,284       |
-| eslint-plugin-better-tailwindcss | recommended | 29.0 s   | —        | 705         |
+| eslint-plugin-better-tailwindcss | all         | 36.5 s   | —        | 6,284       |
+| eslint-plugin-better-tailwindcss | recommended | 26.3 s   | —        | 705         |
 
 <!-- /generated:bench-speed -->
 
