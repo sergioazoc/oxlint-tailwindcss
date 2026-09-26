@@ -140,6 +140,10 @@
 
 ### Performance
 
+- **`debug` says where a cold start's time goes.** Each design-system load now logs whether it came
+  from the disk cache or a fresh precompute, and how long hashing, the cache read, the precompute
+  and building the in-memory cache took — for a precompute, phase by phase, timed by the precompute
+  itself (`precomputed in 3850 ms (load 20 ms, validate 402 ms, canonical 1416 ms, …)`).
 - **`no-unknown-classes` finds typo suggestions in about half the time.** The edit-distance scan
   over every known class now stops as soon as a candidate can't beat the suggestion budget, and
   reuses its buffers instead of allocating per candidate. On shadcn/ui `apps/v4`, warm, the rule

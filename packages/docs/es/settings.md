@@ -109,9 +109,10 @@ el resto del run falla rápido, y el estado se auto-sana cuando la máquina se r
 Cuando está activo, el plugin registra en stderr:
 
 - Qué entry point CSS resolvió para cada archivo lintado (`src/Button.tsx → src/styles.css`).
-- Cada carga del design system, una vez por entry point por corrida
-  (`Loaded design system from "…"`) — la misma línea venga de la caché en disco o de un precompute
-  nuevo.
+- Cada carga del design system, una vez por entry point por corrida, con de dónde vino y cuánto
+  tardó cada paso: `Loaded design system from "…" — cache hit; hash 1 ms, read 16 ms, build 18 ms`,
+  o para un precompute nuevo
+  `precomputed in 3850 ms (load 20 ms, validate 402 ms, canonical 1416 ms, …)`.
 - El chequeo del motor de Tailwind de cada entry point (`engine E=4.3.3 B=4.3.3 → ok`).
 
 Útil cuando estás depurando qué CSS terminó cargando el plugin.

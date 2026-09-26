@@ -105,8 +105,9 @@ the run fails fast, and the state self-heals once the machine recovers.
 When on, the plugin logs to stderr:
 
 - Which CSS entry point resolved for each linted file (`src/Button.tsx → src/styles.css`).
-- Each design-system load, once per entry point per run (`Loaded design system from "…"`) — the same
-  line whether it came from the disk cache or a fresh precompute.
+- Each design-system load, once per entry point per run, with where it came from and how long each
+  step took: `Loaded design system from "…" — cache hit; hash 1 ms, read 16 ms, build 18 ms`, or for
+  a fresh precompute `precomputed in 3850 ms (load 20 ms, validate 402 ms, canonical 1416 ms, …)`.
 - The Tailwind engine check for each entry point (`engine E=4.3.3 B=4.3.3 → ok`).
 
 Use this when you're debugging which CSS the plugin actually loaded.
