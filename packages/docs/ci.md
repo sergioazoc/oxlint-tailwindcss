@@ -41,7 +41,9 @@ environment variable:
   not expanded, which is why the step uses `$HOME`.
 - A run that finds its design system in the cache doesn't compute it again. The directory also keeps
   the canonical form of each arbitrary-value class the rules meet (`p-[2px]`), so it grows a little
-  as your code does; that part only saves time.
+  as your code does; that part only saves time. Files the plugin hasn't used for 30 days are removed
+  whenever it computes a new design system, so a cache restored run after run doesn't pile up old
+  ones.
 - The key above changes with the lockfile (which pins the Tailwind version and any Tailwind plugins)
   and with your CSS. Adjust the CSS glob to where your stylesheets live.
 

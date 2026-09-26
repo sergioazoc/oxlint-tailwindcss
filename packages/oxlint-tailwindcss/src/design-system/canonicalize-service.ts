@@ -26,7 +26,7 @@ import {
 } from 'node:fs'
 import { threadId } from 'node:worker_threads'
 import { DesignSystemWorker, makeWorkerScript } from './ds-worker'
-import { cacheArtifactPaths } from './sync-loader'
+import { cacheArtifactPaths, touchCacheFile } from './sync-loader'
 import { SortServiceError } from '../utils/fatal'
 import { roundRemValue } from '../utils/floating-point'
 
@@ -310,6 +310,8 @@ function ensurePersistLoaded(cssPath: string, rem: number | undefined, cachePref
 
   try {
     const data: unknown = JSON.parse(readFileSync(file, 'utf-8'))
+    // In use: keep it past the cache's 30-day pruning.
+    touchCacheFile(file)
     if (typeof data === 'object' && data !== null) {
       for (const [cls, entry] of Object.entries(data)) {
         // Persisted shape: [canonical, safe, reason?]. Validate strictly — a
