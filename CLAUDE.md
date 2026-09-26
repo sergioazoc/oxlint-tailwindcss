@@ -548,6 +548,15 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `'variant'` is reported, and only with `enforce-canonical`'s `reportNonEquivalent`. The reason is
   persisted as the tuple's third element (`[canonical, safe, reason?]`); two-element entries still
   read.
+- **The canonicalize worker starts beside the precompute** (`prewarm` in `ds-worker.ts`,
+  `prewarmCanonicalize`): Tailwind builds its canonicalization tables on the first
+  `canonicalizeCandidates` call, once per `rem` (~1 s on a real theme), so a cold service's first
+  request used to cost ~1.6 s after the precompute. On a disk-cache miss the loader
+  (`loadDesignSystemSync`'s `onPrecompute`) spawns the worker without waiting, and its script's
+  warm-up (the third argument of `makeWorkerScript`, run after the worker signals ready)
+  canonicalizes one class with the `rem` the rule will use; `ensure()` waits for a prewarmed
+  worker's init if it isn't done. `prewarm` never throws and is a no-op for a worker that exists or
+  is known to fail.
 - **Typo suggestions have a length-proportional budget** (`suggestionDistance` in
   `utils/levenshtein.ts`: `max(1, floor(len / 3))`, capped at 3), used for utilities and for both
   variant corrections (whole segment and dash tail). The distance is OSA — an adjacent swap costs 1

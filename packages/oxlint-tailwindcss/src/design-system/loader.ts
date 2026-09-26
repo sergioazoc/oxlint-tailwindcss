@@ -8,6 +8,7 @@ import {
   resetEngineGuard,
 } from './engine-guard'
 import { resetTailwindNode } from './tailwind-node'
+import { prewarmCanonicalize } from './canonicalize-service'
 import { existsSync, statSync } from 'node:fs'
 import { dirname, isAbsolute, relative, resolve } from 'node:path'
 import {
@@ -300,7 +301,12 @@ export function getLoadedDesignSystem(
     // `UnsupportedEngineError` is memoized in `dsFailureCache` by (path, mtime)
     // exactly like a load failure — one assessment per entry point per process.
     guardEngine(resolvedPath, allowUntestedEngineFromSettings(settings), engineInfo)
-    data = loadDesignSystemSync(resolvedPath, timeoutFromSettings(settings))
+    // A cold design system means a cold canonicalize service too: start it now,
+    // warmed for the `rem` enforce-canonical asks with, so it loads beside the
+    // precompute instead of after it.
+    data = loadDesignSystemSync(resolvedPath, timeoutFromSettings(settings), () =>
+      prewarmCanonicalize(resolvedPath, rootFontSizeFromSettings(settings)),
+    )
   } catch (err) {
     // Memoize only plugin-fatal load errors; let genuine bugs propagate without
     // poisoning the cache (mirrors `safeGetDS`'s fatal-vs-rethrow split).

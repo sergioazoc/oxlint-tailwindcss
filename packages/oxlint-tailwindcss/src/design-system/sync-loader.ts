@@ -1680,7 +1680,12 @@ function computeWithLock(
  * error, missing `@tailwindcss/node`, etc.). Callers catch via
  * `reportFatalDsError` to surface a single Program-level diagnostic.
  */
-export function loadDesignSystemSync(cssPath: string, timeout?: number): PrecomputedData {
+export function loadDesignSystemSync(
+  cssPath: string,
+  timeout?: number,
+  /** Called once the design system has to be precomputed, just before it is. */
+  onPrecompute?: () => void,
+): PrecomputedData {
   const resolvedPath = resolve(cssPath)
   const hashStart = performance.now()
 
@@ -1729,6 +1734,7 @@ export function loadDesignSystemSync(cssPath: string, timeout?: number): Precomp
   // given content hash; the rest wait for the cache file it writes. The worker
   // runs in-thread (no fork), so it can't trigger the cold-cache `spawnSync …
   // ENOMEM` that the fork-based precompute hit on constrained CI runners (#24).
+  onPrecompute?.()
   // Returns validated `PrecomputedData` — malformed payloads are caught inside.
   const computeStart = performance.now()
   const data = computeWithLock(
