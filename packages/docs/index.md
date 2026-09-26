@@ -47,7 +47,7 @@ oxlint-tailwindcss is a plugin for [oxlint](https://oxc.rs/docs/guide/usage/lint
 the Oxc project, that lints Tailwind CSS v4 class names. It loads your project's design system from
 the CSS entry point you configure — its `@theme` tokens, `@utility` and `@custom-variant`
 definitions and plugins — and checks every class string in JSX, TSX, JavaScript and TypeScript (and
-the `<script>` of Vue, Svelte and Astro files) against it, with 25 rules, most with an autofix.
+the `<script>` of Vue, Svelte and Astro files) against it, with 26 rules, most with an autofix.
 
 ## What it catches
 

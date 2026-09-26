@@ -112,6 +112,7 @@ Worth a look once you've switched:
 [`no-arbitrary-value`](/rules/no-arbitrary-value) ·
 [`no-contradicting-variants`](/rules/no-contradicting-variants) ·
 [`no-dark-without-light`](/rules/no-dark-without-light) ·
+[`no-default-palette`](/rules/no-default-palette) ·
 [`no-hardcoded-colors`](/rules/no-hardcoded-colors) ·
 [`no-unnecessary-arbitrary-value`](/rules/no-unnecessary-arbitrary-value) ·
 [`prefer-scale-token`](/rules/prefer-scale-token) ·
