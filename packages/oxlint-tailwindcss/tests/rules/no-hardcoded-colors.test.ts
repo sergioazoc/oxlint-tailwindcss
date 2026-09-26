@@ -1,5 +1,9 @@
+import { resolve } from 'node:path'
+import { afterAll, beforeAll, describe } from 'vitest'
 import { RuleTester } from 'oxlint/plugins-dev'
 import { noHardcodedColors } from '../../src/rules/no-hardcoded-colors'
+import { resetDesignSystem } from '../../src/design-system/loader'
+import { runWithFixture } from '../utils/with-fixture'
 
 const ruleTester = new RuleTester()
 
@@ -176,4 +180,57 @@ new RuleTester().run('no-hardcoded-colors (value scan)', noHardcodedColors, {
       errors: [{ messageId: 'noHardcoded' }],
     },
   ],
+})
+
+// With a design system that has colors of its own, the message names them.
+describe('no-hardcoded-colors (the project has its own colors)', () => {
+  const CUSTOM = resolve(__dirname, '../fixtures/custom-theme.css')
+  const DEFAULT = resolve(__dirname, '../fixtures/default.css')
+  beforeAll(() => {
+    resetDesignSystem()
+  })
+  afterAll(() => {
+    resetDesignSystem()
+  })
+
+  runWithFixture(new RuleTester(), 'no-hardcoded-colors (tokens)', noHardcodedColors, CUSTOM, {
+    valid: [{ code: '<div className="bg-brand" />', filename: 'test.tsx' }],
+    invalid: [
+      {
+        code: '<div className="bg-[#ff6600]" />',
+        filename: 'test.tsx',
+        errors: [
+          {
+            messageId: 'noHardcodedTokens',
+            data: { className: 'bg-[#ff6600]', colors: 'brand, brand-light' },
+          },
+        ],
+      },
+    ],
+  })
+
+  // Stock Tailwind has no colors of its own: the message stays as it was.
+  runWithFixture(new RuleTester(), 'no-hardcoded-colors (stock)', noHardcodedColors, DEFAULT, {
+    valid: [],
+    invalid: [
+      {
+        code: '<div className="bg-[#ff6600]" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'noHardcoded', data: { className: 'bg-[#ff6600]' } }],
+      },
+    ],
+  })
+
+  // DS-optional: an entry point that can't load is tolerated, and the message stays as it was.
+  new RuleTester().run('no-hardcoded-colors (missing entry)', noHardcodedColors, {
+    valid: [],
+    invalid: [
+      {
+        code: '<div className="bg-[#ff6600]" />',
+        filename: 'test.tsx',
+        settings: { tailwindcss: { entryPoint: resolve(__dirname, '../fixtures/missing.css') } },
+        errors: [{ messageId: 'noHardcoded', data: { className: 'bg-[#ff6600]' } }],
+      },
+    ],
+  })
 })

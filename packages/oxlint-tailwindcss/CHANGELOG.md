@@ -4,6 +4,14 @@
 
 ### Features
 
+- **`no-hardcoded-colors` names your theme's colors.** With an entry point, and a theme that defines
+  colors of its own, the message lists them —
+  `"bg-[#ff6600]" uses a hardcoded color value. Use one of your theme colors instead: brand, brand-light.`
+  — so the replacement is in the report. The design system is loaded only once there is a color to
+  report; without an entry point, or on stock Tailwind, the message is unchanged. The rule becomes
+  DS-optional and accepts a per-rule `entryPoint`; it never reports a missing design system. Same
+  reports as before, only the text changes.
+
 - **New rule: `no-default-palette`.** In a project whose theme defines its own colors, a color from
   Tailwind's default palette — `bg-red-500`, `text-gray-900`, `bg-white` — is usually a
   design-system leak: it doesn't follow the theme, and `bg-white` stays white in dark mode. The rule

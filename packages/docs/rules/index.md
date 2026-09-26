@@ -111,6 +111,7 @@ also accepts a rule-level `entryPoint` that overrides the shared setting.
 | `no-dark-without-light`            | `{ variants: ['dark'] }`                | Tells colours from the rest, and groups the base by declared CSS property     |
 | `no-deprecated-classes`            | `{}`                                    | Derives the rename list instead of using the built-in table                   |
 | `no-dynamic-classes`               | `{}`                                    | Your project's own utilities and variants count as Tailwind's                 |
+| `no-hardcoded-colors`              | `{ allow: [] }`                         | Names your theme's colors in the message                                      |
 
 ### DS-independent rules
 
@@ -121,6 +122,5 @@ also accepts a rule-level `entryPoint` that overrides the shared setting.
 | `enforce-negative-arbitrary-values`     | (no options)                    |
 | `max-class-count`                       | `{ max: 20 }`                   |
 | `no-duplicate-classes`                  | (no options)                    |
-| `no-hardcoded-colors`                   | `{ allow: [] }`                 |
 | `no-restricted-classes`                 | `{ classes: [], patterns: [] }` |
 | `no-unnecessary-whitespace`             | (no options)                    |

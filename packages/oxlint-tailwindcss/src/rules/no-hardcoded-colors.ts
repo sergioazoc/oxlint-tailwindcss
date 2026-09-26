@@ -6,8 +6,12 @@ import { hasArbitraryValue, getArbitraryValue } from '../utils/class-parser'
 import { createLazyOptions } from '../utils/context'
 import { containsColorLiteral } from '../utils/color-literal'
 import { SETTINGS_MESSAGE } from '../utils/settings-check'
+import { createLazyLoader } from '../design-system/loader'
+import { softGetDS } from '../utils/fatal'
+import { themeColorList } from '../utils/theme-colors'
 
 interface Options {
+  entryPoint?: string
   allow?: string[]
 }
 
@@ -42,12 +46,13 @@ export const noHardcodedColors = defineRule({
       description: 'Disallow hardcoded color values in Tailwind CSS classes',
       category: 'design-system',
       recommended: 'warn',
-      designSystem: 'none',
+      designSystem: 'optional',
     }),
     schema: [
       {
         type: 'object',
         properties: {
+          entryPoint: { type: 'string' },
           allow: { type: 'array', items: { type: 'string' } },
         },
         additionalProperties: false,
@@ -58,9 +63,14 @@ export const noHardcodedColors = defineRule({
       ...SETTINGS_MESSAGE,
       noHardcoded:
         '"{{className}}" uses a hardcoded color value. Use a design token from your theme instead.',
+      noHardcodedTokens:
+        '"{{className}}" uses a hardcoded color value. Use one of your theme colors instead: {{colors}}.',
     },
   },
   createOnce(context) {
+    // DS-OPTIONAL (see `softGetDS`): a design system only adds the project's
+    // colors to the message, and is loaded only once there is one to report.
+    const getDS = createLazyLoader(context)
     const getAllowlist = createLazyOptions<Options, Set<string>>(
       context,
       (o) => new Set(o?.allow ?? []),
@@ -79,11 +89,17 @@ export const noHardcodedColors = defineRule({
           if (!value) continue
 
           if (isHardcodedColor(value)) {
-            context.report({
-              node: loc.node,
-              messageId: 'noHardcoded',
-              data: { className: cls },
-            })
+            const ds = softGetDS(getDS)
+            const colors = ds ? themeColorList(ds.cache) : ''
+            context.report(
+              colors
+                ? {
+                    node: loc.node,
+                    messageId: 'noHardcodedTokens',
+                    data: { className: cls, colors },
+                  }
+                : { node: loc.node, messageId: 'noHardcoded', data: { className: cls } },
+            )
           }
         }
       }

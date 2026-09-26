@@ -997,9 +997,10 @@ etc.).
 
 **Options:**
 
-| Option  | Type       | Default | Description               |
-| ------- | ---------- | ------- | ------------------------- |
-| `allow` | `string[]` | `[]`    | Full class names to allow |
+| Option       | Type       | Default | Description                                                                 |
+| ------------ | ---------- | ------- | --------------------------------------------------------------------------- |
+| `allow`      | `string[]` | `[]`    | Full class names to allow                                                   |
+| `entryPoint` | `string`   | —       | Per-rule `entryPoint`, read only to name your theme's colors in the message |
 
 **No autofix.**
 

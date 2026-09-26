@@ -10,9 +10,9 @@ Regla de oxlint que reporta colores fijos en valores arbitrarios de Tailwind CSS
 
 ## De un vistazo
 
-| Autofix | Sugerencias en el editor | Design system | Opciones |
-| ------- | ------------------------ | ------------- | -------- |
-| No      | No                       | No se usa     | `allow`  |
+| Autofix | Sugerencias en el editor | Design system                         | Opciones              |
+| ------- | ------------------------ | ------------------------------------- | --------------------- |
+| No      | No                       | Opcional — se usa si hay `entryPoint` | `entryPoint`, `allow` |
 
 ## Qué hace esta regla
 
@@ -47,7 +47,16 @@ Los valores que referencian una variable CSS se tratan como indirección del des
 variable). El chequeo de `var()` no es recursivo — `bg-[linear-gradient(hsl(var(--a)),#fff)]` _no_
 se marca porque hay al menos un `var()` presente. Es comportamiento documentado y testeado.
 
-DS-independiente — no se carga ningún design system. No hay autofix: elegir el token correcto es una
+DS-opcional — funciona sin nada configurado. Con `settings.tailwindcss.entryPoint`, el mensaje
+además nombra los colores de tu theme, así tienes el reemplazo a la vista:
+
+```text
+"bg-[#ff6600]" uses a hardcoded color value. Use one of your theme colors instead: brand,
+brand-light.
+```
+
+El design system se carga solo cuando hay un color que reportar, y un proyecto sin colores propios —
+Tailwind tal cual — conserva el mensaje simple. No hay autofix: elegir el token correcto es una
 decisión humana.
 
 ## Opciones
@@ -68,6 +77,11 @@ puerta. Útil para el hex ocasional mandado por brand en un único componente de
 }
 ```
 
+### `entryPoint`
+
+`string`, opcional. Override por regla de `settings.tailwindcss.entryPoint`, que solo se lee para
+nombrar los colores de tu theme en el mensaje.
+
 ## Ejemplos
 
 ### ✗ Incorrecto
@@ -75,6 +89,7 @@ puerta. Útil para el hex ocasional mandado por brand en un único componente de
 ```tsx
 // Hex literales sobre utilities de color
 <div className="bg-[#ff5733] text-[#000]" />
+// reports: Use one of your theme colors instead
 
 // rgb/rgba/hsl/oklch dan la misma respuesta
 <div className="border-[rgba(0,0,0,0.5)] text-[hsl(120,100%,50%)]" />
@@ -96,8 +111,8 @@ puerta. Útil para el hex ocasional mandado por brand en un único componente de
 ### ✓ Correcto
 
 ```tsx
-// Colores nombrados del theme
-<div className="bg-blue-500 text-white" />
+// Colores del theme
+<div className="bg-brand text-brand-light" />
 
 // Indirección por variable CSS pasa
 <div className="bg-[var(--primary)] border-[hsl(var(--border))]" />
@@ -121,6 +136,9 @@ puerta. Útil para el hex ocasional mandado por brand en un único componente de
 - **`no-arbitrary-value`**: superset. Si activas esa regla, cada color hardcodeado ya está marcado.
   Usa `no-hardcoded-colors` sola cuando quieres el mensaje específico de color y toleras otros
   arbitrary values; usa ambas para un diagnóstico más claro sobre el drift de color.
+- **`no-default-palette`**: la otra mitad. Reporta los colores de la paleta por defecto de Tailwind
+  (`bg-red-500`); esta regla reporta literales de color (`bg-[#f00]`). Juntas dejan solo los colores
+  de tu theme.
 - **`prefer-theme-tokens`**: complementaria. `prefer-theme-tokens` le pregunta al design system si
   existe un color `@theme` que coincida y lo sugiere; esta regla dispara igual exista o no el token,
   así que atrapa el drift más temprano (antes de definir el token).

@@ -9,14 +9,13 @@ import type { DesignSystemCache } from '../design-system/cache'
 import { resolveDeclarationsSync } from '../design-system/declaration-service'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
 import { SETTINGS_MESSAGE } from '../utils/settings-check'
+import { themeColorList } from '../utils/theme-colors'
 
 interface Options {
   entryPoint?: string
   allow?: string[]
 }
 
-/** How many of the project's colors the message names before `(+N more)`. */
-const LISTED = 12
 const COLOR_VAR = '--color-'
 
 /** `white`, `gray-*` → a test on palette color names. */
@@ -78,7 +77,6 @@ export const noDefaultPalette = defineRule({
     const getAllow = createLazyOptions<Options, (color: string) => boolean>(context, (o) =>
       compileAllow(o?.allow ?? []),
     )
-    const listed = new WeakMap<readonly string[], string>()
 
     function check(locations: ClassLocation[]) {
       if (locations.length === 0) return
@@ -86,16 +84,8 @@ export const noDefaultPalette = defineRule({
       if (!ds) return
       const { cache, entryPoint } = ds
       // Without colors of its own, the palette IS the project's design system.
-      const own = cache.projectColors()
-      if (own.length === 0) return
-      let colors = listed.get(own)
-      if (colors === undefined) {
-        colors =
-          own.length > LISTED
-            ? `${own.slice(0, LISTED).join(', ')} (+${own.length - LISTED} more)`
-            : own.join(', ')
-        listed.set(own, colors)
-      }
+      const colors = themeColorList(cache)
+      if (colors === '') return
       const allow = getAllow()
 
       for (const loc of locations) {
