@@ -5,7 +5,7 @@ description: "All oxlint-tailwindcss lint rules for Tailwind CSS, grouped by wha
 
 # Rules
 
-The 26 rules in `oxlint-tailwindcss`, grouped by what they enforce. Click into any rule for examples
+The 27 rules in `oxlint-tailwindcss`, grouped by what they enforce. Click into any rule for examples
 and option reference.
 
 ## Correctness
@@ -55,6 +55,8 @@ These rules catch problems that would generate invalid or unexpected CSS.
 ## Design-system guardrails
 
 - [no-arbitrary-value](./no-arbitrary-value) — disallow `w-[3.14rem]` and friends.
+- [no-borrowed-component-styles](./no-borrowed-component-styles) — a plain element that rebuilds one
+  of your components from its classes (experimental).
 - [no-default-palette](./no-default-palette) — disallow `bg-red-500` when your theme has colors of
   its own.
 - [no-hardcoded-colors](./no-hardcoded-colors) — disallow `bg-[#fff]`, prefer theme tokens.
@@ -86,6 +88,7 @@ These rules require `settings.tailwindcss.entryPoint` to be set; they emit a fat
 | -------------------------------- | --------------------------------------- |
 | `enforce-canonical`              | `{ reportNonEquivalent: false }`        |
 | `enforce-sort-order`             | `{ mode: 'default' }`                   |
+| `no-borrowed-component-styles`   | `{ components: [] }`                    |
 | `no-conflicting-classes`         | `{ reportRedundant: true }`             |
 | `no-default-palette`             | `{ allow: [] }`                         |
 | `no-unknown-classes`             | `{ allowlist: [], ignorePrefixes: [] }` |

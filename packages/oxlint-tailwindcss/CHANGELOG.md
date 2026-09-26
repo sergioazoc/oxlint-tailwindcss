@@ -4,6 +4,19 @@
 
 ### Features
 
+- **New rule, experimental: `no-borrowed-component-styles`.** A `<button>` that copies Button's
+  classes — or rewrites them from memory — looks right today and drifts tomorrow: it doesn't follow
+  Button's changes, and it never had its focus ring, disabled state or variants. Point the rule at
+  your components (`"components": ["src/components/ui"]`) and it reports a native element whose
+  classes rebuild one of them, naming the component and its file (`borrowedStyles`: "<button>
+  rebuilds Button: 9 of its 9 style declarations match. Use Button from components/ui/button.tsx
+  instead…"). It reads each component's `cva()` / `tv()` styles and root `className` without running
+  them, and compares what the classes do, not how they're written: `px-4` and `pl-4 pr-4` are the
+  same style, layout and variant classes don't count, a different color is a different style, and
+  text styles alone never match. DS-dependent, no autofix, off in the recommended config.
+  Experimental: its heuristics may change in a minor release. On shadcn/ui `apps/v4`: 1 report, a
+  checkbox drawn by hand inside a command-menu item.
+
 - **`no-hardcoded-colors` names your theme's colors.** With an entry point, and a theme that defines
   colors of its own, the message lists them —
   `"bg-[#ff6600]" uses a hardcoded color value. Use one of your theme colors instead: brand, brand-light.`

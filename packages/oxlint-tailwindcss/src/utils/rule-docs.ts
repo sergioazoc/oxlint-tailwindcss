@@ -27,6 +27,11 @@ export type TailwindRuleDocs = {
    * functions (sorting, duplicates, whitespace) — kept, but not grown further.
    */
   formatterOverlap?: 'oxfmt'
+  /**
+   * Its heuristics may still change in a minor release. Always off in the
+   * recommended config; the docs say so on its page and in the rule lists.
+   */
+  experimental?: true
   url: string
 }
 

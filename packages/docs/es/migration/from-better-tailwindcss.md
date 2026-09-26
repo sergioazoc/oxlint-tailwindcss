@@ -111,6 +111,7 @@ Para revisar una vez hecho el cambio:
 [`enforce-negative-arbitrary-values`](/es/rules/enforce-negative-arbitrary-values) ·
 [`enforce-physical`](/es/rules/enforce-physical) · [`max-class-count`](/es/rules/max-class-count) ·
 [`no-arbitrary-value`](/es/rules/no-arbitrary-value) ·
+[`no-borrowed-component-styles`](/es/rules/no-borrowed-component-styles) ·
 [`no-contradicting-variants`](/es/rules/no-contradicting-variants) ·
 [`no-dark-without-light`](/es/rules/no-dark-without-light) ·
 [`no-default-palette`](/es/rules/no-default-palette) ·

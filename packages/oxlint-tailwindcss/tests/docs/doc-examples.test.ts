@@ -214,6 +214,11 @@ beforeAll(() => {
   DIR = mkdtempSync(resolve(tmpdir(), 'oxtw-doc-examples-'))
   mkdirSync(resolve(DIR, 'src'))
   for (const e of EXAMPLES) writeFileSync(resolve(DIR, 'src', e.file), e.code)
+  // The components a page's examples compare against (`"components": ["components/ui"]`),
+  // outside `src`, so they are read and not linted.
+  cpSync(resolve(ROOT, 'tests/fixtures/components'), resolve(DIR, 'components'), {
+    recursive: true,
+  })
   writeFileSync(
     resolve(DIR, '.oxlintrc.json'),
     JSON.stringify({

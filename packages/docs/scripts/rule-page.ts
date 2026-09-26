@@ -14,7 +14,7 @@ export type Locale = 'en' | 'es'
 
 export interface RuleMeta {
   type?: string
-  docs?: { description?: string }
+  docs?: { description?: string; experimental?: boolean }
   fixable?: 'code' | 'whitespace'
   hasSuggestions?: boolean
   schema?: unknown
@@ -123,6 +123,28 @@ export function atAGlance(meta: RuleMeta, locale: Locale): string {
   ].join('\n')
 }
 
+/**
+ * Under an experimental rule's description: what "experimental" promises. The
+ * opener, body and closer are separate paragraphs, or oxfmt reflows them into
+ * one and the container never opens (tests/docs/markdown-containers.test.ts).
+ */
+const EXPERIMENTAL = {
+  en: [
+    '::: warning Experimental',
+    '',
+    'Its heuristics may still change in a minor release, adding or removing reports. It is off in the recommended config.',
+    '',
+    ':::',
+  ],
+  es: [
+    '::: warning Experimental',
+    '',
+    'Sus heurísticas aún pueden cambiar en una versión minor, agregando o quitando reportes. Viene apagada en la config recomendada.',
+    '',
+    ':::',
+  ],
+} as const
+
 export interface RulePageInput {
   name: string
   meta: RuleMeta
@@ -165,6 +187,7 @@ export function renderRulePage({ name, meta, extras, locale }: RulePageInput): s
     '',
     lede,
     '',
+    ...(meta.docs?.experimental ? [...EXPERIMENTAL[locale], ''] : []),
     atAGlance(meta, locale),
     '',
     body.trim(),

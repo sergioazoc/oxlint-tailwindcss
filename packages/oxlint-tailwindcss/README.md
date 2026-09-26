@@ -1,6 +1,6 @@
 # oxlint-tailwindcss
 
-26 Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). Built for
+27 Tailwind CSS linting rules for [oxlint](https://oxc.rs/docs/guide/usage/linter). Built for
 Tailwind CSS v4 with deterministic config, typo suggestions, and autofixes.
 
 > **v1** — Upgrading from v0.x? See the
@@ -32,7 +32,7 @@ Read the story behind this plugin:
 - **Typo suggestions** — `itms-center` → "Did you mean `items-center`?"
 - **Conflict detection** — Shows exactly which CSS properties conflict and which class wins.
 - **Lightweight** — Only 2 runtime dependencies: `@tailwindcss/node` and `tailwindcss`.
-- **26 rules** — Correctness, style, complexity, and restriction rules with autofixes where
+- **27 rules** — Correctness, style, complexity, and restriction rules with autofixes where
   possible.
 - **Variable detection** — Lints variables matching `/^classNames?$/`, `/^classes$/`, `/^styles?$/`
   (e.g. `className`, `classNames`, `classes`, `styles`) automatically.
@@ -93,6 +93,7 @@ for the opt-in ones):
     // Design-system guardrails
     "tailwindcss/max-class-count": "off",
     "tailwindcss/no-arbitrary-value": "off",
+    "tailwindcss/no-borrowed-component-styles": "off",
     "tailwindcss/no-default-palette": "off",
     "tailwindcss/no-hardcoded-colors": "warn",
     "tailwindcss/no-restricted-classes": "off"
@@ -241,12 +242,12 @@ Output:
 
 If no entry point is configured, the DS-dependent rules (`no-unknown-classes`,
 `no-conflicting-classes`, `enforce-canonical`, `enforce-sort-order`,
-`no-unnecessary-arbitrary-value`, `prefer-scale-token`, `prefer-theme-tokens`, `no-default-palette`)
-emit a single `designSystemUnavailable` diagnostic per file with an actionable hint — no more silent
-skips. `consistent-variant-order` tolerates a missing entryPoint (its static fallback is itself
-deterministic), and `no-deprecated-classes` tolerates one too — it falls back to a hardcoded v3→v4
-rename map, and derives a richer map from the design system when an entry point is configured. All
-non-DS rules work without an entry point.
+`no-unnecessary-arbitrary-value`, `prefer-scale-token`, `prefer-theme-tokens`, `no-default-palette`,
+`no-borrowed-component-styles`) emit a single `designSystemUnavailable` diagnostic per file with an
+actionable hint — no more silent skips. `consistent-variant-order` tolerates a missing entryPoint
+(its static fallback is itself deterministic), and `no-deprecated-classes` tolerates one too — it
+falls back to a hardcoded v3→v4 rename map, and derives a richer map from the design system when an
+entry point is configured. All non-DS rules work without an entry point.
 
 ## Custom class detection
 
@@ -284,7 +285,7 @@ entries are appended to the built-in defaults:
 }
 ```
 
-This applies to all 26 rules at once. For example, adding `"classNames"` to `attributes` makes every
+This applies to all 27 rules at once. For example, adding `"classNames"` to `attributes` makes every
 rule lint `<Input classNames={{ root: "..." }} />`.
 
 > **`calleeExtractors`** — `cva`, `tv`, and `classed` are extracted with logic that understands
