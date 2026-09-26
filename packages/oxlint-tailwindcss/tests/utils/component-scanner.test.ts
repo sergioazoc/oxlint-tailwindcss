@@ -124,6 +124,23 @@ describe('scanComponentStyles', () => {
     expect(byName(source)).toEqual({ Tag: 'rounded px-2' })
   })
 
+  it('reads a root className that spans lines, as line wrapping leaves it', () => {
+    const source = `
+      function Kbd() {
+        return (
+          <kbd
+            className="
+              rounded border
+              px-1
+            "
+          >Don't</kbd>
+        )
+      }
+      function Note() { return <p className="rounded bg-muted p-2" /> }
+    `
+    expect(byName(source)).toEqual({ Kbd: 'rounded border px-1', Note: 'rounded bg-muted p-2' })
+  })
+
   it('survives an apostrophe in JSX text', () => {
     const source = `
       function Empty() { return <p className="text-muted-foreground text-sm">Don't panic</p> }

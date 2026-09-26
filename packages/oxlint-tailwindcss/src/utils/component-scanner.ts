@@ -12,8 +12,9 @@
  *
  * The lexer knows strings, template literals, comments, identifiers and
  * punctuation. JSX text can hold a lone `'` (`Don't`); a `'` or `"` string
- * never spans a line, so such a stray quote costs the rest of its line, not
- * the file.
+ * ends at the end of its line, so such a stray quote costs the rest of that
+ * line, not the file — unless it follows `=`, an attribute's value, which may
+ * span lines (`className="\n  rounded\n  px-1\n"`, as line wrapping leaves it).
  */
 
 export interface ComponentStyle {
@@ -46,9 +47,11 @@ function lex(src: string): Token[] {
       const end = src.indexOf('*/', i + 2)
       i = end === -1 ? n : end + 2
     } else if (c === '"' || c === "'") {
+      const prev = tokens[tokens.length - 1]
+      const multiline = prev?.t === 'p' && prev.v === '='
       let j = i + 1
       let text = ''
-      while (j < n && src[j] !== c && src[j] !== '\n') {
+      while (j < n && src[j] !== c && (multiline || src[j] !== '\n')) {
         if (src[j] === '\\') j++
         text += src[j]
         j++
