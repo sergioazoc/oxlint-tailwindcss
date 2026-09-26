@@ -20,6 +20,18 @@ import {
   type RuleForBlocks,
   type ShadcnData,
 } from './blocks.ts'
+import {
+  benchFixChanges,
+  benchFixes,
+  benchOracles,
+  benchSeeded,
+  benchSeededLines,
+  benchSetup,
+  benchSpeed,
+  comparisonCoverage,
+  comparisonSummary,
+  type BenchResults,
+} from './bench-blocks.ts'
 import { RULE_NAMES, oxlintPlugin } from './rules.ts'
 
 const DOCS = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -71,4 +83,23 @@ for (const locale of ['en', 'es'] as const) {
     'btw-extra': btwExtraRules(btw, RULE_NAMES, locale),
   })
 }
-console.log('[generate-blocks] wrote 8 files')
+const bench = JSON.parse(
+  readFileSync(resolve(REPO, 'bench/results/latest.json'), 'utf-8'),
+) as BenchResults
+for (const locale of ['en', 'es'] as const) {
+  const dir = locale === 'en' ? DOCS : resolve(DOCS, 'es')
+  update(resolve(dir, 'benchmark.md'), {
+    'bench-setup': benchSetup(bench, locale),
+    'bench-speed': benchSpeed(bench, locale),
+    'bench-seeded': benchSeeded(bench, locale),
+    'bench-seeded-lines': benchSeededLines(bench, locale),
+    'bench-oracles': benchOracles(bench, locale),
+    'bench-fixes': benchFixes(bench, locale),
+    'bench-fix-changes': benchFixChanges(bench, locale),
+  })
+  update(resolve(dir, 'comparison.md'), {
+    'comparison-summary': comparisonSummary(bench, locale),
+    'comparison-coverage': comparisonCoverage(bench, locale),
+  })
+}
+console.log('[generate-blocks] wrote 12 files')

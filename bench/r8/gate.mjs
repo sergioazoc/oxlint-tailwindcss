@@ -16,10 +16,12 @@
 
 import { execFileSync } from 'node:child_process'
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { ensureCorpus } from '../corpus.mjs'
+import { materializeConfig } from '../lib/config.mjs'
 
 const R8 = dirname(fileURLToPath(import.meta.url))
 const BENCH = dirname(R8)
@@ -152,13 +154,14 @@ for (const r of corpus) {
 }
 
 // Overhead: otw-all with and without the rule, warm, interleaved.
-const otwAll = JSON.parse(
-  readFileSync(join(BENCH, 'configs/otw-all.json'), 'utf8')
-    .replaceAll('{{ENTRY_POINT}}', entryPoint)
-    .replaceAll('{{OXLINT_TAILWINDCSS}}', LOCAL_DIST),
-).rules
-const without = writeConfig('without', otwAll)
-const withRule = writeConfig('with', { ...otwAll, [RULE]: RULE_OPTIONS })
+const plugin = createRequire(import.meta.url)(LOCAL_DIST)
+const otwAll = materializeConfig(
+  JSON.parse(readFileSync(join(BENCH, 'configs/otw-all.json'), 'utf8')),
+  plugin.default ?? plugin,
+).config.rules
+const { [RULE]: _, ...others } = otwAll
+const without = writeConfig('without', others)
+const withRule = writeConfig('with', { ...others, [RULE]: RULE_OPTIONS })
 oxlint(without, CORPUS_PATHS)
 oxlint(withRule, CORPUS_PATHS)
 const times = { without: [], with: [] }

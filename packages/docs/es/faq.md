@@ -68,6 +68,12 @@ No, trabajan juntos. El formateador ordena clases, quita duplicados y colapsa es
 formatea; este plugin revisa la corrección — clases desconocidas, en conflicto, deprecadas o armadas
 en runtime, y más. Apunta los dos al mismo CSS y ordenan igual: mira [Interop](/es/interop).
 
+## ¿Cómo se compara con @shadcn/lint y better-tailwindcss?
+
+Revisan cosas distintas: [Frente a otros plugins](/es/comparison) muestra qué revisa cada uno, y el
+[benchmark](/es/benchmark) los mide sobre el mismo código — errores detectados, falsos positivos,
+velocidad y qué hacen sus fixes.
+
 ## ¿Puedo usarlo con @shadcn/lint?
 
 Sí. [shadcn/ui y @shadcn/lint](/es/shadcn) muestra quién reporta qué y una config combinada que

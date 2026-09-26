@@ -1,0 +1,66 @@
+{
+  "$comment": "The concerns the seeded files are labeled with (`expect: <concern>`), beyond those of packages/docs/data/shadcn-lint.json, which lib/concerns.mjs reads for the rest. Each tool's rules for a concern come from the docs data: ours and @shadcn/lint's from shadcn-lint.json, better-tailwindcss's from better-tailwindcss.json (their rule ↔ ours). `formatting` concerns are style policy: a report of one on an `ok` line is not a false alarm.",
+  "extra": [
+    {
+      "id": "rebuilt",
+      "label": {
+        "en": "Component rebuilt from raw classes",
+        "es": "Componente rearmado con clases sueltas"
+      },
+      "ours": ["no-borrowed-component-styles"]
+    },
+    {
+      "id": "variants",
+      "label": {
+        "en": "Redundant or contradicting variant",
+        "es": "Variant redundante o contradictoria"
+      },
+      "ours": ["no-contradicting-variants"]
+    },
+    {
+      "id": "scale",
+      "label": {
+        "en": "Arbitrary value that is on the scale",
+        "es": "Valor arbitrario que está en la escala"
+      },
+      "ours": ["no-unnecessary-arbitrary-value", "prefer-scale-token"]
+    },
+    {
+      "id": "whitespace",
+      "label": {
+        "en": "Extra whitespace",
+        "es": "Espacios de más"
+      },
+      "ours": ["no-unnecessary-whitespace"],
+      "formatting": true
+    },
+    {
+      "id": "shorthand",
+      "label": {
+        "en": "Longhands with a shorthand",
+        "es": "Longhands con un shorthand"
+      },
+      "ours": ["enforce-shorthand"],
+      "formatting": true
+    },
+    {
+      "id": "style",
+      "label": {
+        "en": "Other style policy",
+        "es": "Otras políticas de estilo"
+      },
+      "ours": [
+        "enforce-consistent-line-wrapping",
+        "enforce-consistent-important-position",
+        "enforce-consistent-variable-syntax",
+        "enforce-negative-arbitrary-values",
+        "enforce-logical",
+        "enforce-physical",
+        "max-class-count",
+        "no-restricted-classes"
+      ],
+      "formatting": true
+    }
+  ],
+  "formatting": ["order", "canonical"]
+}

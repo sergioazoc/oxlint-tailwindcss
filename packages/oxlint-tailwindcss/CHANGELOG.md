@@ -205,6 +205,13 @@
 
 ### Documentation
 
+- **New pages: [Benchmark](https://oxlint-tailwindcss.pages.dev/benchmark) and
+  [Compared with other plugins](https://oxlint-tailwindcss.pages.dev/comparison) (EN and ES).**
+  oxlint-tailwindcss, @shadcn/lint and eslint-plugin-better-tailwindcss are run over shadcn/ui's
+  `apps/v4` and a set of labeled mistakes, and Tailwind itself judges the results: which mistakes
+  each tool catches, its false positives, its speed, and whether its fixes change what a class
+  string does. On that corpus, every class string `--fix` changed kept its style. Every number is
+  generated from `bench/results/latest.json`, which a weekly job checks against a fresh run.
 - **The warning and tip boxes on `/setup` and `/monorepo` render again (EN and ES).** oxfmt's
   `proseWrap` had merged each container's opener, body and closer into one paragraph, so the page
   printed a literal `:::` and the unclosed box wrapped everything below it. A new test keeps every
