@@ -15,36 +15,25 @@
 // Writes out/<label>.json (raw oxlint output) and out/<label>.snapshot.json
 // (normalized records + metadata), and prints the per-rule counts.
 
-import { execFileSync } from 'node:child_process'
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
-import { dirname, join } from 'node:path'
+import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { parseArgs } from 'node:util'
-import { fileURLToPath } from 'node:url'
 
 import { CORPUS_SHA, ensureCorpus } from './corpus.mjs'
 import { normalizeReport, serializeSnapshot } from './lib/normalize.mjs'
-import { parseTimings } from './lib/timings.mjs'
-
-const BENCH = dirname(fileURLToPath(import.meta.url))
-const REPO = dirname(BENCH)
-const LOCAL_DIST = join(REPO, 'packages/oxlint-tailwindcss/dist/index.cjs')
-const OXLINT = join(
+import {
   BENCH,
-  'node_modules/.bin',
-  process.platform === 'win32' ? 'oxlint.cmd' : 'oxlint',
-)
-const CORPUS_PATHS = ['app', 'components', 'registry/new-york-v4', 'hooks', 'lib']
-const SYNTHETIC_DIR = 'bench-synthetic'
-const IGNORES = ['**/__index__.tsx', '**/__components__/**']
+  LOCAL_DIST,
+  OXLINT,
+  benchVersions,
+  cacheDirFor,
+  lintJson,
+  pluginVersion,
+  prepareConfig,
+  prepareTarget,
+  runOxlint,
+} from './lib/runner.mjs'
+import { parseTimings } from './lib/timings.mjs'
 
 const { values } = parseArgs({
   options: {
@@ -73,88 +62,33 @@ if (values.plugin === 'local' && !existsSync(LOCAL_DIST)) {
 
 const label = values.label ?? `${values.config}-${values.plugin}-${values.target}-${values.cache}`
 const app = ensureCorpus()
+const { configPath, dropped } = prepareConfig(app, values.config, values.plugin, label)
+if (dropped.length > 0) console.log(`not in this plugin version: ${dropped.join(', ')}`)
+const paths = prepareTarget(app, values.target)
+const cacheDir = cacheDirFor(values.cache, values.plugin)
+const run = { cwd: app, configPath, paths, cacheDir }
 
-// The config must sit inside the corpus app so `overrides` globs resolve
-// against it, the same way a real project's .oxlintrc.json would.
-const pluginRef =
-  values.plugin === 'local' ? LOCAL_DIST.replaceAll('\\', '/') : 'oxlint-tailwindcss'
-const template = readFileSync(join(BENCH, 'configs', `${values.config}.json`), 'utf8')
-const configPath = join(app, `.bench-${label}.oxlintrc.json`)
-writeFileSync(
-  configPath,
-  template
-    .replaceAll('{{ENTRY_POINT}}', join(app, 'app/globals.css').replaceAll('\\', '/'))
-    .replaceAll('{{OXLINT_TAILWINDCSS}}', pluginRef),
-)
-
-let paths = CORPUS_PATHS
-if (values.target === 'synthetic') {
-  const dest = join(app, SYNTHETIC_DIR)
-  rmSync(dest, { recursive: true, force: true })
-  mkdirSync(dest)
-  for (const file of readdirSync(join(BENCH, 'synthetic'))) {
-    copyFileSync(join(BENCH, 'synthetic', file), join(dest, file))
-  }
-  paths = [SYNTHETIC_DIR]
-}
-
-mkdirSync(join(BENCH, 'out'), { recursive: true })
-const cacheDir =
-  values.cache === 'cold'
-    ? mkdtempSync(join(BENCH, 'out', 'cache-cold-'))
-    : join(BENCH, 'out', `cache-warm-${values.plugin}`)
-mkdirSync(cacheDir, { recursive: true })
-
-function oxlint(extraArgs) {
-  const args = ['-c', configPath, ...IGNORES.map((p) => `--ignore-pattern=${p}`), ...extraArgs]
-  const started = process.hrtime.bigint()
-  let stdout
-  try {
-    stdout = execFileSync(OXLINT, [...args, ...paths], {
-      cwd: app,
-      encoding: 'utf8',
-      maxBuffer: 256 * 1024 * 1024,
-      env: { ...process.env, OXLINT_TAILWINDCSS_CACHE_DIR: cacheDir },
-      shell: process.platform === 'win32',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-  } catch (error) {
-    // oxlint exits 1 when it reports errors; the output is still on stdout.
-    if (typeof error.stdout !== 'string' || error.status !== 1) throw error
-    stdout = error.stdout
-  }
-  return { stdout, wallMs: Number(process.hrtime.bigint() - started) / 1e6 }
-}
-
-function lint() {
-  const { stdout, wallMs } = oxlint(['-f', 'json'])
-  return { report: JSON.parse(stdout), raw: stdout, wallMs }
-}
-
-if (values.cache === 'warm' && readdirSync(cacheDir).length === 0) lint()
-const { report, raw, wallMs } = lint()
+if (values.cache === 'warm' && readdirSync(cacheDir).length === 0) lintJson(run)
+const { report, raw, wallMs } = lintJson(run)
 // `-f default` on purpose: oxlint switches to the `agent` formatter by itself
 // when it detects an AI agent, and that formatter prints no timing table.
 const timings = values.timings
-  ? parseTimings(oxlint(['-f', 'default', '--quiet', '--debug=timings']).stdout)
+  ? parseTimings(
+      runOxlint({ ...run, args: ['-f', 'default', '--quiet', '--debug=timings'] }).stdout,
+    )
   : undefined
 if (values.cache === 'cold') rmSync(cacheDir, { recursive: true, force: true })
 
-const versions = JSON.parse(readFileSync(join(BENCH, 'package.json'), 'utf8')).devDependencies
 const records = normalizeReport(report)
 const snapshot = {
   meta: {
     config: values.config,
     plugin: values.plugin,
-    pluginVersion:
-      values.plugin === 'local'
-        ? JSON.parse(readFileSync(join(REPO, 'packages/oxlint-tailwindcss/package.json'), 'utf8'))
-            .version
-        : versions['oxlint-tailwindcss'],
+    pluginVersion: pluginVersion(values.plugin),
     target: values.target,
     cache: values.cache,
     corpus: CORPUS_SHA,
-    versions,
+    versions: benchVersions(),
     files: report.number_of_files,
     threads: report.threads_count,
     wallMs: Math.round(wallMs),

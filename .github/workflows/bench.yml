@@ -1,0 +1,48 @@
+name: Bench
+
+# Early warning, not a gate: the /benchmark and /comparison pages are generated
+# from bench/results/latest.json, and this checks that a fresh run over the
+# pinned corpus still agrees with it — the same diagnostics, seeded catches,
+# oracle verdicts and fix outcomes (wall times differ by machine and are not
+# compared). A red run means the results, and so the pages, need regenerating
+# with `node score.mjs` in bench/.
+on:
+  schedule:
+    - cron: '0 7 * * 1' # Mondays 07:00 UTC, after Interop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  results:
+    name: Results are current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install the bench and fetch the corpus
+        working-directory: bench
+        run: |
+          npm ci
+          npm run corpus
+
+      - name: Bench unit tests
+        working-directory: bench
+        run: npm test
+
+      - name: Check the committed results
+        working-directory: bench
+        run: node score.mjs --check results/latest.json --runs 1

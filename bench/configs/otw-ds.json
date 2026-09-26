@@ -13,6 +13,7 @@
     "tailwindcss/no-hardcoded-colors": "error",
     "tailwindcss/no-arbitrary-value": "error",
     "tailwindcss/no-unknown-classes": "error",
-    "tailwindcss/prefer-theme-tokens": "error"
+    "tailwindcss/prefer-theme-tokens": "error",
+    "tailwindcss/no-default-palette": "error"
   }
 }
