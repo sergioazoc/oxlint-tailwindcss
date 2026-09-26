@@ -129,6 +129,13 @@ export interface PrecomputedData {
    * names WITHOUT the prefix; this is the single source of truth for it.
    */
   prefix: string
+  /**
+   * The theme's `--color-*` variables from Tailwind's default palette (`@theme
+   * default`), and the ones the project declares (including a palette color it
+   * redefines). Read by no-default-palette.
+   */
+  paletteVars: string[]
+  projectColorVars: string[]
   /** Milliseconds per phase of the precompute that produced this data, for `debug`. */
   timings?: Record<string, number>
 }
@@ -996,10 +1003,19 @@ async function main() {
 
   const themeRefs = {};
   const themeValues = new Map();
+  // Tailwind's default palette (\`@theme default\`, theme option DEFAULT = 4)
+  // apart from the colors the project declares, for no-default-palette. A
+  // project that redefines a palette color owns it: its entry loses the flag.
+  const paletteVars = [];
+  const projectColorVars = [];
   if (ds.theme && typeof ds.theme.entries === 'function') {
     for (const [name, entry] of ds.theme.entries()) {
       const value = entry && typeof entry.value === 'string' ? entry.value : '';
       themeValues.set(name, value);
+      if (name.startsWith('--color-')) {
+        if (entry && (entry.options & 4)) paletteVars.push(name);
+        else projectColorVars.push(name);
+      }
       if (!value.includes('var(')) continue;
       const reads = scanVarReads(value);
       const all = [...new Set([...reads[0], ...reads[1]])];
@@ -1079,7 +1095,7 @@ async function main() {
 
   phase('tokens');
 
-  const json = JSON.stringify({ validClasses, canonical, deprecated, order, cssDeclarations, variantOrder, variantFacts, componentClasses, arbitraryEquivalents, themeRefs, definedVars, tokenValues, scale, prefix, timings });
+  const json = JSON.stringify({ validClasses, canonical, deprecated, order, cssDeclarations, variantOrder, variantFacts, componentClasses, arbitraryEquivalents, themeRefs, definedVars, tokenValues, scale, prefix, paletteVars, projectColorVars, timings });
   // Atomic write: write to a unique temp path then rename, so a peer isolate
   // busy-waiting on the cache file never observes a half-written JSON.
   writeFileSync(WD_TMP_PATH, json);
@@ -1353,7 +1369,11 @@ function isPrecomputedData(data: unknown): data is PrecomputedData {
     // that quietly stops reporting is exactly the failure mode v1 forbids.
     isCssDeclarationIndex(d.cssDeclarations) &&
     isObject(d.variantOrder) &&
-    isObject(d.arbitraryEquivalents)
+    isObject(d.arbitraryEquivalents) &&
+    // Required, not optional: without them no-default-palette would pass
+    // everything on an artifact from before they existed.
+    Array.isArray(d.paletteVars) &&
+    Array.isArray(d.projectColorVars)
   )
 }
 

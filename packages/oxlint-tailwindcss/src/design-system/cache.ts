@@ -63,6 +63,8 @@ export class DesignSystemCache {
   private componentOnlySet = new Set<string>()
   private themeRefs = new Map<string, string[]>()
   private definedVarSet = new Set<string>()
+  private paletteVarSet = new Set<string>()
+  private projectColorNames: string[] = []
   // Utility prefix → [literal value, class]. Read by prefer-scale-token; see
   // `PrecomputedData.tokenValues` for why only single-declaration numeric tokens
   // are in here.
@@ -129,6 +131,11 @@ export class DesignSystemCache {
     for (const name of data.definedVars ?? []) {
       cache.definedVarSet.add(name)
     }
+
+    for (const name of data.paletteVars ?? []) cache.paletteVarSet.add(name)
+    cache.projectColorNames = (data.projectColorVars ?? [])
+      .map((name) => name.slice('--color-'.length))
+      .sort((a, b) => a.localeCompare(b))
 
     if (data.themeRefs) {
       for (const [name, refs] of Object.entries(data.themeRefs)) {
@@ -747,6 +754,16 @@ export class DesignSystemCache {
     const refs = this.themeRefs.get(varName)
     if (!refs) return false
     return refs.some((ref) => this.themeVarResolvesTo(ref, target, depth - 1))
+  }
+
+  /** Whether this is one of Tailwind's default palette colors (`--color-red-500`). */
+  isPaletteVar(varName: string): boolean {
+    return this.paletteVarSet.has(varName)
+  }
+
+  /** The colors the project's theme declares, by name (`brand`, `primary`), sorted. */
+  projectColors(): readonly string[] {
+    return this.projectColorNames
   }
 
   /** Whether the project defines this custom property (theme or plain CSS). */

@@ -97,9 +97,9 @@ That's it — the push fast-forwards `release` to `main` and `release.yml` takes
 
 ## Architecture
 
-oxlint plugin with 25 Tailwind CSS v4 linting rules. Uses `@oxlint/plugins`' `createOnce` API (runs
+oxlint plugin with 26 Tailwind CSS v4 linting rules. Uses `@oxlint/plugins`' `createOnce` API (runs
 once per lint session; returned visitors run on every matching AST node). This document covers the
-error-prone subsystems, not every rule; the canonical per-rule reference (all 25, with options and
+error-prone subsystems, not every rule; the canonical per-rule reference (all 26, with options and
 defaults) is `packages/docs/rules/index.md`.
 
 **Design principle — deterministic, explicit, fail-loud.** `settings.tailwindcss.entryPoint` is
@@ -164,12 +164,16 @@ Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is 
    threading. In a monorepo, packages pinned to different Tailwind versions each get their own
    engine.
 
-DS-dependent rules (the 7 users of `safeGetDS`, which reports `designSystemUnavailable`):
+DS-dependent rules (the 8 users of `safeGetDS`, which reports `designSystemUnavailable`):
 `no-unknown-classes`, `no-conflicting-classes`, `enforce-canonical`, `enforce-sort-order`,
-`no-unnecessary-arbitrary-value`, `prefer-scale-token`, `prefer-theme-tokens`. The **DS-optional**
-rules use `softGetDS` instead — they consult the DS when an entryPoint is configured but fall back
-to a deterministic static path when it isn't, so a missing entryPoint is tolerated silently and none
-may ever emit `designSystemUnavailable`. There are 10: `consistent-variant-order`,
+`no-unnecessary-arbitrary-value`, `prefer-scale-token`, `prefer-theme-tokens`, and
+`no-default-palette` — which reads the precompute's `paletteVars` / `projectColorVars` (the theme's
+`--color-*` split by the `DEFAULT` theme option: Tailwind's `@theme default` palette vs the
+project's own, a redefined palette color included), reports a class whose declarations read a
+palette variable, and stays silent when the project declares no color of its own. The
+**DS-optional** rules use `softGetDS` instead — they consult the DS when an entryPoint is configured
+but fall back to a deterministic static path when it isn't, so a missing entryPoint is tolerated
+silently and none may ever emit `designSystemUnavailable`. There are 10: `consistent-variant-order`,
 `no-contradicting-variants`, `enforce-consistent-line-wrapping`, `no-dark-without-light`,
 `enforce-shorthand`, `enforce-logical`, `enforce-physical` (these last two reach `softGetDS` through
 the shared directional mapper in `enforce-logical.ts`), `no-deprecated-classes`, and
@@ -216,7 +220,7 @@ key (with a did-you-mean), a wrong type, an invalid regex or an unknown `calleeE
 reported as `invalidSetting` on line 1, once per file — the first rule to see the file's `Program`
 node reports, the rest skip it. `CHECKS` is mapped over `PluginSettings`, so a new setting doesn't
 compile until it has a check; `entryPoint` is left to the loader. Every rule spreads
-`SETTINGS_MESSAGE` into `meta.messages` (a test holds all 25).
+`SETTINGS_MESSAGE` into `meta.messages` (a test holds all 26).
 
 **What oxlint hands the extractor in framework files.** In `.vue`, `.svelte` and `.astro`, oxlint's
 partial loaders pass JS plugins only the script sections — every Vue `<script>`/`<script setup>`

@@ -24,6 +24,7 @@ import { noUnnecessaryArbitraryValue } from './rules/no-unnecessary-arbitrary-va
 import { preferThemeTokens } from './rules/prefer-theme-tokens'
 import { preferScaleToken } from './rules/prefer-scale-token'
 import { noDynamicClasses } from './rules/no-dynamic-classes'
+import { noDefaultPalette } from './rules/no-default-palette'
 
 const plugin = definePlugin({
   meta: { name: 'tailwindcss' },
@@ -53,6 +54,7 @@ const plugin = definePlugin({
     'prefer-theme-tokens': preferThemeTokens,
     'prefer-scale-token': preferScaleToken,
     'no-dynamic-classes': noDynamicClasses,
+    'no-default-palette': noDefaultPalette,
   },
 })
 

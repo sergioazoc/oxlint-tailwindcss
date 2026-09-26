@@ -6,7 +6,7 @@ description: "oxlint-tailwindcss is the oxlint plugin for Tailwind CSS v4: lint 
 hero:
   name: oxlint-tailwindcss
   text: Tailwind CSS linting for oxlint.
-  tagline: 25 rules, designed for Tailwind v4. Deterministic, fast, fail-loud.
+  tagline: 26 rules, designed for Tailwind v4. Deterministic, fast, fail-loud.
   actions:
     - theme: brand
       text: Get started

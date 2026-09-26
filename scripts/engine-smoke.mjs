@@ -82,10 +82,14 @@ try {
       2,
     ),
   )
-  writeFileSync(join(dir, 'styles/app.css'), '@import "tailwindcss";\n')
+  // A color of the project's own, so no-default-palette has a palette to tell apart.
+  writeFileSync(
+    join(dir, 'styles/app.css'),
+    '@import "tailwindcss";\n@theme { --color-brand: #f00; }\n',
+  )
   writeFileSync(
     join(dir, 'src/app.tsx'),
-    'export const c = <div className="flex bg-notacolor-99999 p-4 px-2 hover:underline" />\n',
+    'export const c = <div className="flex bg-notacolor-99999 bg-red-500 text-brand p-4 px-2 hover:underline" />\n',
   )
 
   const pkgs = ['tailwindcss', '@tailwindcss/node'].map((p) => `${p}@${version}`)
@@ -148,6 +152,13 @@ try {
     check(
       !unknown.some((d) => d.message.includes('"flex"')),
       'the valid class flex was not flagged',
+    )
+    const palette = diagnostics.filter((d) => d.code === 'tailwindcss(no-default-palette)')
+    check(
+      palette.length === 1 &&
+        palette[0].message.includes('"bg-red-500"') &&
+        palette[0].message.includes(': brand.'),
+      "the palette color was flagged, and the project's own color was not",
     )
   }
 } finally {
