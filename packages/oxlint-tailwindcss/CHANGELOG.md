@@ -213,6 +213,12 @@
 
 ### Documentation
 
+- **The npm README is short.** Installation, the full config, a generated table of every rule — what
+  it checks, its recommended severity, its fix, whether it needs the design system — linked to its
+  page, the files and frameworks it reads, and the requirements. The per-rule reference, the
+  settings and the edge cases are on the docs site, where they are tested; the README's copy had
+  drifted (it still said only first-level `@import`s were read). The package's description and
+  keywords say what it does.
 - **An agent skill.** `npx skills add sergioazoc/oxlint-tailwindcss --skill oxlint-tailwindcss`
   installs `skills/oxlint-tailwindcss/SKILL.md` into an AI coding agent: how to set the plugin up —
   requirements, the entry point, the recommended config — and what to do about each diagnostic.

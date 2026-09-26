@@ -93,7 +93,8 @@ own. A comment starting with `v0` marks old syntax (the migration guide), which 
 
 ## Generated blocks outside the rule pages
 
-The recommended configs (`setup.md`, `es/setup.md`, the package README) and the rule list by
+The recommended configs (`setup.md`, `es/setup.md`, the package README), the package README's rule
+table (name, category, `meta.docs.description`, severity, fix, design system) and the rule list by
 category (root README) sit between `<!-- generated:… -->` markers and come from each rule's
 `meta.docs` (`scripts/blocks.ts`). Edit the rule's `ruleDocs(...)`, not the block, then run
 `generate`.

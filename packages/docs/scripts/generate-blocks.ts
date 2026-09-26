@@ -14,6 +14,7 @@ import {
   recommendedConfig,
   replaceBlock,
   ruleList,
+  ruleTable,
   shadcnConfig,
   shadcnTable,
   type BtwData,
@@ -32,20 +33,12 @@ import {
   comparisonSummary,
   type BenchResults,
 } from './bench-blocks.ts'
-import { RULE_NAMES, oxlintPlugin } from './rules.ts'
+import { RULE_NAMES, ruleForBlocks } from './rules.ts'
 
 const DOCS = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const REPO = resolve(DOCS, '../..')
 
-const rules: RuleForBlocks[] = RULE_NAMES.map((name) => {
-  const docs = oxlintPlugin.rules[name].meta?.docs as Omit<RuleForBlocks, 'name'>
-  return {
-    name,
-    category: docs.category,
-    recommended: docs.recommended,
-    experimental: docs.experimental,
-  }
-})
+const rules: RuleForBlocks[] = RULE_NAMES.map(ruleForBlocks)
 
 function update(path: string, blocks: Record<string, string>): void {
   let text = readFileSync(path, 'utf-8')
@@ -56,6 +49,7 @@ function update(path: string, blocks: Record<string, string>): void {
 update(resolve(REPO, 'README.md'), { 'rule-list': ruleList(rules, 'en') })
 update(resolve(REPO, 'packages/oxlint-tailwindcss/README.md'), {
   'full-config': recommendedConfig(rules, { locale: 'en', all: true }),
+  'rule-table': ruleTable(rules),
 })
 update(resolve(DOCS, 'setup.md'), {
   'recommended-config': recommendedConfig(rules, { locale: 'en', all: false, schema: true }),

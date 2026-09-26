@@ -44,6 +44,12 @@ doesn't import, one your app loads separately. Or it has no CSS at all and is a 
 or tests. Import that CSS from the entry point, or tell the rule about the class with
 [`allowlist` or `ignorePrefixes`](/rules/no-unknown-classes#options).
 
+## Does it support Tailwind plugins?
+
+Any plugin your entry point loads — with `@plugin` or `@import` — is part of the design system the
+rules read, so its classes are known like Tailwind's own. The test suite runs with
+`@tailwindcss/typography`, `tailwindcss-animate` and `tw-animate-css`.
+
 ## How do I turn a rule off for one line?
 
 With oxlint's comments, naming the rule:
