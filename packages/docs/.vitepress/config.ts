@@ -118,6 +118,13 @@ export default defineConfig({
               ],
             },
             {
+              text: 'Benchmark & comparison',
+              items: [
+                { text: 'Benchmark', link: '/benchmark' },
+                { text: 'Compared with other plugins', link: '/comparison' },
+              ],
+            },
+            {
               text: 'Reference',
               items: [{ text: 'Settings', link: '/settings' }],
             },
@@ -196,6 +203,13 @@ export default defineConfig({
                 { text: 'En CI', link: '/es/ci' },
                 { text: 'oxfmt y Prettier', link: '/es/interop' },
                 { text: 'shadcn/ui y @shadcn/lint', link: '/es/shadcn' },
+              ],
+            },
+            {
+              text: 'Benchmark y comparación',
+              items: [
+                { text: 'Benchmark', link: '/es/benchmark' },
+                { text: 'Frente a otros plugins', link: '/es/comparison' },
               ],
             },
             {

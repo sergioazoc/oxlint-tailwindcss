@@ -107,6 +107,12 @@ goes for `/migration/from-better-tailwindcss` and `data/better-tailwindcss.json`
 example is reported by both of its rules (`bench/interop.mjs`), and the rules and settings it names
 exist here (`tests/docs/better-tailwindcss-map.test.ts`).
 
+`/benchmark` and `/comparison` hold no hand-typed number: their tables come from
+`bench/results/latest.json` (`scripts/bench-blocks.ts`), which `bench/score.mjs` writes and
+`bench.yml` checks weekly against a fresh run. `tests/bench-blocks.test.ts` fails when a page holds
+tables older than the file. To change a number, rerun `node score.mjs` in `bench/`, then `generate`;
+the prose around the tables is hand-written, so keep it free of figures.
+
 ## Markdown is formatted by oxfmt (`generate` formats its own output)
 
 All `.md` is formatted by oxfmt (`proseWrap: always`, so prose is wrapped at the print width — don't

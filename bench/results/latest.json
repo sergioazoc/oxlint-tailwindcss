@@ -1,0 +1,2887 @@
+{
+  "meta": {
+    "corpus": {
+      "repo": "https://github.com/shadcn-ui/ui.git",
+      "sha": "98a1fe67b439324ddc857f47fbdce056600a4329",
+      "app": "apps/v4"
+    },
+    "runs": 5,
+    "machine": {
+      "cpu": "Apple M4 Pro",
+      "cores": 12,
+      "os": "darwin 25.5.0"
+    },
+    "node": "v24.19.0",
+    "tools": {
+      "tailwindcss": {
+        "name": "oxlint-tailwindcss",
+        "version": "1.13.0",
+        "config": "otw-all"
+      },
+      "shadcn": {
+        "name": "@shadcn/lint",
+        "version": "0.2.0",
+        "config": "shadcn-all"
+      },
+      "better-tailwindcss": {
+        "name": "eslint-plugin-better-tailwindcss",
+        "version": "4.7.0",
+        "config": "btw-all"
+      }
+    },
+    "oxlint": "1.85.0",
+    "tailwindcss": "4.3.3"
+  },
+  "concerns": [
+    {
+      "id": "restyle",
+      "label": {
+        "en": "Restyling a design-system component through `className`",
+        "es": "Reestilar un componente del design system con `className`"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": [],
+        "shadcn": ["no-restyle"],
+        "better-tailwindcss": []
+      }
+    },
+    {
+      "id": "inline-style",
+      "label": {
+        "en": "Inline styles",
+        "es": "Estilos inline"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": [],
+        "shadcn": ["no-inline-styles"],
+        "better-tailwindcss": []
+      }
+    },
+    {
+      "id": "palette",
+      "label": {
+        "en": "A Tailwind palette color instead of a theme color",
+        "es": "Un color de la paleta de Tailwind en vez de un color del theme"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-default-palette"],
+        "shadcn": ["no-raw-colors"],
+        "better-tailwindcss": []
+      }
+    },
+    {
+      "id": "arbitrary",
+      "label": {
+        "en": "Arbitrary values",
+        "es": "Valores arbitrarios"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-arbitrary-value", "no-hardcoded-colors"],
+        "shadcn": ["no-arbitrary-values"],
+        "better-tailwindcss": []
+      }
+    },
+    {
+      "id": "var-token",
+      "label": {
+        "en": "A CSS variable where the theme has a named class",
+        "es": "Una variable CSS donde el theme tiene una clase con nombre"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-arbitrary-value", "prefer-theme-tokens"],
+        "shadcn": [],
+        "better-tailwindcss": []
+      }
+    },
+    {
+      "id": "unknown",
+      "label": {
+        "en": "Classes Tailwind can't generate: typos in utilities, variants and theme colors",
+        "es": "Clases que Tailwind no puede generar: typos en utilities, variants y colores del theme"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-unknown-classes"],
+        "shadcn": ["no-raw-colors", "no-unknown-classes"],
+        "better-tailwindcss": ["no-unknown-classes"]
+      }
+    },
+    {
+      "id": "dynamic",
+      "label": {
+        "en": "Classes built at runtime",
+        "es": "Clases armadas en runtime"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-dynamic-classes"],
+        "shadcn": ["require-static-classes"],
+        "better-tailwindcss": ["no-concatenated-classes"]
+      }
+    },
+    {
+      "id": "conflicts",
+      "label": {
+        "en": "Classes that override each other",
+        "es": "Clases que se pisan entre sí"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-conflicting-classes"],
+        "shadcn": [],
+        "better-tailwindcss": ["no-conflicting-classes"]
+      }
+    },
+    {
+      "id": "duplicates",
+      "label": {
+        "en": "Duplicate classes",
+        "es": "Clases duplicadas"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-duplicate-classes"],
+        "shadcn": [],
+        "better-tailwindcss": ["no-duplicate-classes"]
+      }
+    },
+    {
+      "id": "deprecated",
+      "label": {
+        "en": "Classes deprecated in Tailwind v4",
+        "es": "Clases deprecadas en Tailwind v4"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-deprecated-classes"],
+        "shadcn": [],
+        "better-tailwindcss": ["no-deprecated-classes"]
+      }
+    },
+    {
+      "id": "canonical",
+      "label": {
+        "en": "Classes with a canonical form",
+        "es": "Clases con una forma canónica"
+      },
+      "formatting": true,
+      "rules": {
+        "tailwindcss": ["enforce-canonical"],
+        "shadcn": [],
+        "better-tailwindcss": ["enforce-canonical-classes"]
+      }
+    },
+    {
+      "id": "dark-without-light",
+      "label": {
+        "en": "A dark-mode color with no light-mode base",
+        "es": "Un color de modo oscuro sin base para el modo claro"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-dark-without-light"],
+        "shadcn": [],
+        "better-tailwindcss": []
+      }
+    },
+    {
+      "id": "order",
+      "label": {
+        "en": "Class and variant order",
+        "es": "Orden de clases y variants"
+      },
+      "formatting": true,
+      "rules": {
+        "tailwindcss": ["consistent-variant-order", "enforce-sort-order"],
+        "shadcn": [],
+        "better-tailwindcss": ["enforce-consistent-class-order", "enforce-consistent-variant-order"]
+      }
+    },
+    {
+      "id": "rebuilt",
+      "label": {
+        "en": "Component rebuilt from raw classes",
+        "es": "Componente rearmado con clases sueltas"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-borrowed-component-styles"],
+        "shadcn": [],
+        "better-tailwindcss": []
+      }
+    },
+    {
+      "id": "variants",
+      "label": {
+        "en": "Redundant or contradicting variant",
+        "es": "Variant redundante o contradictoria"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-contradicting-variants"],
+        "shadcn": [],
+        "better-tailwindcss": []
+      }
+    },
+    {
+      "id": "scale",
+      "label": {
+        "en": "Arbitrary value that is on the scale",
+        "es": "Valor arbitrario que está en la escala"
+      },
+      "formatting": false,
+      "rules": {
+        "tailwindcss": ["no-unnecessary-arbitrary-value", "prefer-scale-token"],
+        "shadcn": [],
+        "better-tailwindcss": []
+      }
+    },
+    {
+      "id": "whitespace",
+      "label": {
+        "en": "Extra whitespace",
+        "es": "Espacios de más"
+      },
+      "formatting": true,
+      "rules": {
+        "tailwindcss": ["no-unnecessary-whitespace"],
+        "shadcn": [],
+        "better-tailwindcss": ["no-unnecessary-whitespace"]
+      }
+    },
+    {
+      "id": "shorthand",
+      "label": {
+        "en": "Longhands with a shorthand",
+        "es": "Longhands con un shorthand"
+      },
+      "formatting": true,
+      "rules": {
+        "tailwindcss": ["enforce-shorthand"],
+        "shadcn": [],
+        "better-tailwindcss": ["enforce-shorthand-classes"]
+      }
+    },
+    {
+      "id": "style",
+      "label": {
+        "en": "Other style policy",
+        "es": "Otras políticas de estilo"
+      },
+      "formatting": true,
+      "rules": {
+        "tailwindcss": [
+          "enforce-consistent-important-position",
+          "enforce-consistent-line-wrapping",
+          "enforce-consistent-variable-syntax",
+          "enforce-logical",
+          "enforce-negative-arbitrary-values",
+          "enforce-physical",
+          "max-class-count",
+          "no-restricted-classes"
+        ],
+        "shadcn": [],
+        "better-tailwindcss": [
+          "enforce-consistent-important-position",
+          "enforce-consistent-line-wrapping",
+          "enforce-consistent-variable-syntax",
+          "enforce-logical-properties",
+          "no-restricted-classes"
+        ]
+      }
+    }
+  ],
+  "seeded": {
+    "lines": [
+      {
+        "file": "01-raw-colors.tsx",
+        "line": 5,
+        "concerns": ["palette"],
+        "code": "<div className=\"flex bg-red-500 p-4\">Sale</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-default-palette"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-raw-colors"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "01-raw-colors.tsx",
+        "line": 7,
+        "concerns": ["palette"],
+        "code": "<p className=\"text-gray-600\">Subtitle</p>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-default-palette"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-raw-colors"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "01-raw-colors.tsx",
+        "line": 9,
+        "concerns": ["palette"],
+        "code": "<div className=\"border border-slate-200\">Box</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-default-palette"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-raw-colors"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "01-raw-colors.tsx",
+        "line": 11,
+        "concerns": ["palette"],
+        "code": "<div className=\"bg-white\">White</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-default-palette"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "01-raw-colors.tsx",
+        "line": 13,
+        "concerns": ["palette"],
+        "code": "<div className=\"text-black\">Black</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-default-palette"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "01-raw-colors.tsx",
+        "line": 15,
+        "concerns": ["arbitrary"],
+        "code": "<div className=\"bg-[#1a73e8] p-2\">Hex</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value", "no-hardcoded-colors"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "01-raw-colors.tsx",
+        "line": 17,
+        "concerns": ["arbitrary"],
+        "code": "<div className=\"shadow-[0_1px_2px_rgba(0,0,0,0.1)]\">Shadow</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value", "no-hardcoded-colors"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "01-raw-colors.tsx",
+        "line": 19,
+        "concerns": ["arbitrary"],
+        "code": "<div className=\"text-[oklch(0.6_0.2_250)]\">Oklch</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value", "no-hardcoded-colors"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "01-raw-colors.tsx",
+        "line": 21,
+        "concerns": ["palette"],
+        "code": "<div className=\"hover:bg-blue-600/80\">Hover raw</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-default-palette"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-raw-colors"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "01-raw-colors.tsx",
+        "line": 24,
+        "concerns": ["ok"],
+        "code": "<div className=\"bg-primary text-primary-foreground\">OK token</div>",
+        "tools": {
+          "tailwindcss": {
+            "alarms": []
+          },
+          "shadcn": {
+            "alarms": []
+          },
+          "better-tailwindcss": {
+            "alarms": []
+          }
+        }
+      },
+      {
+        "file": "02-arbitrary.tsx",
+        "line": 5,
+        "concerns": ["arbitrary"],
+        "code": "<div className=\"p-[13px]\">odd padding</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "02-arbitrary.tsx",
+        "line": 7,
+        "concerns": ["arbitrary"],
+        "code": "<div className=\"w-[350px]\">fixed width</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "02-arbitrary.tsx",
+        "line": 9,
+        "concerns": ["arbitrary"],
+        "code": "<div className=\"text-[15px]\">odd text</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "02-arbitrary.tsx",
+        "line": 11,
+        "concerns": ["arbitrary"],
+        "code": "<div className=\"rounded-[10px]\">odd radius</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "02-arbitrary.tsx",
+        "line": 13,
+        "concerns": ["canonical", "scale", "arbitrary"],
+        "code": "<div className=\"mt-[16px]\">same as mt-4</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value", "prefer-scale-token"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "02-arbitrary.tsx",
+        "line": 15,
+        "concerns": ["canonical", "scale", "arbitrary"],
+        "code": "<div className=\"top-[1px] relative\">same as top-px</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["enforce-canonical", "no-arbitrary-value", "no-unnecessary-arbitrary-value"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["enforce-canonical-classes"]
+          }
+        }
+      },
+      {
+        "file": "02-arbitrary.tsx",
+        "line": 17,
+        "concerns": ["canonical", "scale", "arbitrary"],
+        "code": "<div className=\"min-h-[100vh]\">same as min-h-screen</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["enforce-canonical", "no-arbitrary-value", "no-unnecessary-arbitrary-value"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["enforce-canonical-classes"]
+          }
+        }
+      },
+      {
+        "file": "02-arbitrary.tsx",
+        "line": 21,
+        "concerns": ["ok"],
+        "code": "<div className=\"p-4\">OK scale</div>",
+        "tools": {
+          "tailwindcss": {
+            "alarms": []
+          },
+          "shadcn": {
+            "alarms": []
+          },
+          "better-tailwindcss": {
+            "alarms": []
+          }
+        }
+      },
+      {
+        "file": "03-restyled-components.tsx",
+        "line": 8,
+        "concerns": ["restyle"],
+        "code": "<Card className=\"p-8 shadow-xl\">",
+        "tools": {
+          "tailwindcss": {
+            "caught": false,
+            "by": []
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-restyle"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "03-restyled-components.tsx",
+        "line": 10,
+        "concerns": ["restyle"],
+        "code": "<CardTitle className=\"text-2xl font-bold\">Checkout</CardTitle>",
+        "tools": {
+          "tailwindcss": {
+            "caught": false,
+            "by": []
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-restyle"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "03-restyled-components.tsx",
+        "line": 12,
+        "concerns": ["ok"],
+        "code": "<CardContent className=\"mt-2\">",
+        "tools": {
+          "tailwindcss": {
+            "alarms": []
+          },
+          "shadcn": {
+            "alarms": []
+          },
+          "better-tailwindcss": {
+            "alarms": []
+          }
+        }
+      },
+      {
+        "file": "03-restyled-components.tsx",
+        "line": 14,
+        "concerns": ["restyle"],
+        "code": "<Badge className=\"rounded-sm px-3 text-sm\">New</Badge>",
+        "tools": {
+          "tailwindcss": {
+            "caught": false,
+            "by": []
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-restyle"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "03-restyled-components.tsx",
+        "line": 16,
+        "concerns": ["restyle"],
+        "code": "<Button className=\"p-4 rounded-full\">Pay</Button>",
+        "tools": {
+          "tailwindcss": {
+            "caught": false,
+            "by": []
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-restyle"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "03-restyled-components.tsx",
+        "line": 18,
+        "concerns": ["restyle", "palette"],
+        "code": "<Button className=\"bg-blue-600 text-white hover:bg-blue-700\">Buy</Button>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-default-palette"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-raw-colors", "no-restyle"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "03-restyled-components.tsx",
+        "line": 21,
+        "concerns": ["ok"],
+        "code": "<Button className=\"mt-4 w-full\">Allowed layout</Button>",
+        "tools": {
+          "tailwindcss": {
+            "alarms": []
+          },
+          "shadcn": {
+            "alarms": []
+          },
+          "better-tailwindcss": {
+            "alarms": []
+          }
+        }
+      },
+      {
+        "file": "03-restyled-components.tsx",
+        "line": 23,
+        "concerns": ["ok"],
+        "code": "<Button size=\"lg\" variant=\"outline\">Allowed props</Button>",
+        "tools": {
+          "tailwindcss": {
+            "alarms": []
+          },
+          "shadcn": {
+            "alarms": []
+          },
+          "better-tailwindcss": {
+            "alarms": []
+          }
+        }
+      },
+      {
+        "file": "04-borrowed-styles.tsx",
+        "line": 5,
+        "concerns": ["rebuilt"],
+        "code": "<button className=\"inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium whitespace-nowrap text-primary-foreground hover:bg-primary/90 h-9\">",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-borrowed-component-styles"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "04-borrowed-styles.tsx",
+        "line": 9,
+        "concerns": ["rebuilt"],
+        "code": "<input className=\"h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none placeholder:text-muted-foreground md:text-sm\" />",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-borrowed-component-styles"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "04-borrowed-styles.tsx",
+        "line": 11,
+        "concerns": ["rebuilt"],
+        "code": "<div className=\"flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm\">",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-borrowed-component-styles"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "04-borrowed-styles.tsx",
+        "line": 15,
+        "concerns": ["rebuilt"],
+        "code": "<span className=\"inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium bg-primary text-primary-foreground\">",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-borrowed-component-styles"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "05-conflicts.tsx",
+        "line": 5,
+        "concerns": ["conflicts"],
+        "code": "<div className=\"line-clamp-1 flex\">clamp broken</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-conflicting-classes"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "05-conflicts.tsx",
+        "line": 7,
+        "concerns": ["conflicts"],
+        "code": "<div className=\"p-4 p-6\">double padding</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-conflicting-classes"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-conflicting-classes"]
+          }
+        }
+      },
+      {
+        "file": "05-conflicts.tsx",
+        "line": 9,
+        "concerns": ["conflicts"],
+        "code": "<div className=\"text-sm text-base\">double size</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-conflicting-classes"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-conflicting-classes"]
+          }
+        }
+      },
+      {
+        "file": "05-conflicts.tsx",
+        "line": 11,
+        "concerns": ["conflicts"],
+        "code": "<div className=\"block flex\">double display</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-conflicting-classes"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-conflicting-classes"]
+          }
+        }
+      },
+      {
+        "file": "05-conflicts.tsx",
+        "line": 13,
+        "concerns": ["conflicts"],
+        "code": "<div className=\"size-5 w-4\">size vs width</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-conflicting-classes"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "05-conflicts.tsx",
+        "line": 15,
+        "concerns": ["duplicates"],
+        "code": "<div className=\"flex flex items-center\">duplicate</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-duplicate-classes"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-duplicate-classes"]
+          }
+        }
+      },
+      {
+        "file": "05-conflicts.tsx",
+        "line": 17,
+        "concerns": ["variants"],
+        "code": "<div className=\"pt-3 xl:pt-3\">redundant variant</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-contradicting-variants"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "05-conflicts.tsx",
+        "line": 19,
+        "concerns": ["conflicts"],
+        "code": "<div className=\"absolute sr-only\">redundant position</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-conflicting-classes"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "05-conflicts.tsx",
+        "line": 21,
+        "concerns": ["whitespace"],
+        "code": "<div className=\"mt-2   mb-2\">whitespace</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-unnecessary-whitespace"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-unnecessary-whitespace"]
+          }
+        }
+      },
+      {
+        "file": "06-unknown.tsx",
+        "line": 5,
+        "concerns": ["unknown"],
+        "code": "<div className=\"itms-center flex\">typo items</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          }
+        }
+      },
+      {
+        "file": "06-unknown.tsx",
+        "line": 7,
+        "concerns": ["unknown"],
+        "code": "<div className=\"jusitfy-between flex\">typo justify</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          }
+        }
+      },
+      {
+        "file": "06-unknown.tsx",
+        "line": 9,
+        "concerns": ["unknown"],
+        "code": "<div className=\"bg-primray\">typo token</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-raw-colors"]
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          }
+        }
+      },
+      {
+        "file": "06-unknown.tsx",
+        "line": 11,
+        "concerns": ["unknown"],
+        "code": "<div className=\"text-muted-foregound\">typo token 2</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-raw-colors"]
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          }
+        }
+      },
+      {
+        "file": "06-unknown.tsx",
+        "line": 13,
+        "concerns": ["unknown"],
+        "code": "<div className=\"rounded-huge\">unknown radius</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          }
+        }
+      },
+      {
+        "file": "06-unknown.tsx",
+        "line": 15,
+        "concerns": ["unknown"],
+        "code": "<div className=\"flex-cols\">unknown flex</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          }
+        }
+      },
+      {
+        "file": "06-unknown.tsx",
+        "line": 17,
+        "concerns": ["unknown"],
+        "code": "<div className=\"shadow-xxl\">unknown shadow</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          }
+        }
+      },
+      {
+        "file": "06-unknown.tsx",
+        "line": 19,
+        "concerns": ["unknown"],
+        "code": "<div className=\"md:grids-col-2 grid\">typo grid</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          }
+        }
+      },
+      {
+        "file": "06-unknown.tsx",
+        "line": 21,
+        "concerns": ["unknown"],
+        "code": "<div className=\"bg-chart-6\">undeclared token</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-raw-colors"]
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-unknown-classes"]
+          }
+        }
+      },
+      {
+        "file": "06-unknown.tsx",
+        "line": 23,
+        "concerns": ["ok"],
+        "code": "<div className=\"bg-surface text-code-foreground\">declared custom tokens OK</div>",
+        "tools": {
+          "tailwindcss": {
+            "alarms": []
+          },
+          "shadcn": {
+            "alarms": []
+          },
+          "better-tailwindcss": {
+            "alarms": []
+          }
+        }
+      },
+      {
+        "file": "07-vars-deprecated.tsx",
+        "line": 5,
+        "concerns": ["var-token", "arbitrary"],
+        "code": "<div className=\"bg-(--primary)\">var ref to token</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value", "prefer-theme-tokens"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "07-vars-deprecated.tsx",
+        "line": 7,
+        "concerns": ["var-token", "arbitrary"],
+        "code": "<div className=\"text-[var(--muted-foreground)]\">bracket var to token</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "07-vars-deprecated.tsx",
+        "line": 9,
+        "concerns": ["var-token", "arbitrary"],
+        "code": "<div className=\"border-(--border) border\">var to border token</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value", "prefer-theme-tokens"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "07-vars-deprecated.tsx",
+        "line": 12,
+        "concerns": ["deprecated", "canonical"],
+        "code": "<div className=\"bg-gradient-to-r from-primary to-secondary\">deprecated gradient</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-deprecated-classes"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["enforce-canonical-classes"]
+          }
+        }
+      },
+      {
+        "file": "07-vars-deprecated.tsx",
+        "line": 14,
+        "concerns": ["deprecated", "canonical"],
+        "code": "<div className=\"flex-shrink-0\">deprecated shrink</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-deprecated-classes"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["enforce-canonical-classes", "no-deprecated-classes"]
+          }
+        }
+      },
+      {
+        "file": "07-vars-deprecated.tsx",
+        "line": 18,
+        "concerns": ["shorthand", "canonical"],
+        "code": "<div className=\"h-4 w-4\">shorthand size-4</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["enforce-shorthand"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["enforce-canonical-classes", "enforce-shorthand-classes"]
+          }
+        }
+      },
+      {
+        "file": "07-vars-deprecated.tsx",
+        "line": 20,
+        "concerns": ["dark-without-light"],
+        "code": "<div className=\"dark:hover:bg-accent\">variant order</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-dark-without-light"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "08-dynamic.tsx",
+        "line": 10,
+        "concerns": ["palette"],
+        "code": "danger: \"bg-red-500 text-white\",",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-default-palette"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-raw-colors"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "08-dynamic.tsx",
+        "line": 12,
+        "concerns": ["arbitrary", "palette"],
+        "code": "info: \"bg-[#0ea5e9] text-white\",",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-arbitrary-value", "no-default-palette", "no-hardcoded-colors"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-arbitrary-values"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "08-dynamic.tsx",
+        "line": 21,
+        "concerns": ["dynamic"],
+        "code": "<div className={`bg-${color}-500 p-2`}>template</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-dynamic-classes"]
+          },
+          "shadcn": {
+            "caught": false,
+            "by": []
+          },
+          "better-tailwindcss": {
+            "caught": true,
+            "by": ["no-concatenated-classes"]
+          }
+        }
+      },
+      {
+        "file": "08-dynamic.tsx",
+        "line": 23,
+        "concerns": ["palette"],
+        "code": "<div className={cn(\"p-2\", active && \"bg-emerald-500\")}>cn cond</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": true,
+            "by": ["no-default-palette"]
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-raw-colors"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "08-dynamic.tsx",
+        "line": 26,
+        "concerns": ["restyle"],
+        "code": "<Button className={cn(active && \"rounded-none\")}>cn on component</Button>",
+        "tools": {
+          "tailwindcss": {
+            "caught": false,
+            "by": []
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-restyle"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      },
+      {
+        "file": "08-dynamic.tsx",
+        "line": 28,
+        "concerns": ["inline-style"],
+        "code": "<div style={{ color: \"#f00\", padding: 12 }}>inline style</div>",
+        "tools": {
+          "tailwindcss": {
+            "caught": false,
+            "by": []
+          },
+          "shadcn": {
+            "caught": true,
+            "by": ["no-inline-styles"]
+          },
+          "better-tailwindcss": {
+            "caught": false,
+            "by": []
+          }
+        }
+      }
+    ],
+    "summary": {
+      "tailwindcss": {
+        "caught": 50,
+        "mistakes": 56,
+        "falseAlarms": 0,
+        "ok": 6
+      },
+      "shadcn": {
+        "caught": 34,
+        "mistakes": 56,
+        "falseAlarms": 0,
+        "ok": 6
+      },
+      "better-tailwindcss": {
+        "caught": 20,
+        "mistakes": 56,
+        "falseAlarms": 0,
+        "ok": 6
+      }
+    }
+  },
+  "corpus": {
+    "tailwindcss": {
+      "all": {
+        "config": "otw-all",
+        "files": 880,
+        "threads": 12,
+        "diagnostics": 2704,
+        "byRule": {
+          "tailwindcss/no-arbitrary-value": 752,
+          "tailwindcss/enforce-logical": 600,
+          "tailwindcss/enforce-consistent-line-wrapping": 572,
+          "tailwindcss/prefer-scale-token": 241,
+          "tailwindcss/enforce-shorthand": 156,
+          "tailwindcss/no-default-palette": 144,
+          "tailwindcss/no-unknown-classes": 77,
+          "tailwindcss/enforce-canonical": 57,
+          "tailwindcss/max-class-count": 42,
+          "tailwindcss/no-conflicting-classes": 20,
+          "tailwindcss/no-unnecessary-arbitrary-value": 13,
+          "tailwindcss/consistent-variant-order": 8,
+          "tailwindcss/no-deprecated-classes": 7,
+          "tailwindcss/no-contradicting-variants": 6,
+          "tailwindcss/enforce-consistent-variable-syntax": 4,
+          "tailwindcss/no-hardcoded-colors": 2,
+          "tailwindcss/enforce-negative-arbitrary-values": 1,
+          "tailwindcss/no-borrowed-component-styles": 1,
+          "tailwindcss/no-dark-without-light": 1
+        },
+        "warmMs": 1265,
+        "coldMs": 9042
+      },
+      "recommended": {
+        "config": "otw-recommended",
+        "files": 880,
+        "threads": 12,
+        "diagnostics": 352,
+        "byRule": {
+          "tailwindcss/enforce-shorthand": 156,
+          "tailwindcss/no-unknown-classes": 77,
+          "tailwindcss/enforce-canonical": 57,
+          "tailwindcss/no-conflicting-classes": 20,
+          "tailwindcss/no-unnecessary-arbitrary-value": 13,
+          "tailwindcss/consistent-variant-order": 8,
+          "tailwindcss/no-deprecated-classes": 7,
+          "tailwindcss/no-contradicting-variants": 6,
+          "tailwindcss/enforce-consistent-variable-syntax": 4,
+          "tailwindcss/no-hardcoded-colors": 2,
+          "tailwindcss/enforce-negative-arbitrary-values": 1,
+          "tailwindcss/no-dark-without-light": 1
+        },
+        "warmMs": 1063,
+        "coldMs": 9047
+      }
+    },
+    "shadcn": {
+      "all": {
+        "config": "shadcn-all",
+        "files": 880,
+        "threads": 12,
+        "diagnostics": 2578,
+        "byRule": {
+          "shadcn/no-restyle": 1920,
+          "shadcn/no-arbitrary-values": 459,
+          "shadcn/no-raw-colors": 129,
+          "shadcn/no-unknown-classes": 34,
+          "shadcn/no-inline-styles": 33,
+          "shadcn/require-static-classes": 3
+        },
+        "warmMs": 966
+      }
+    },
+    "better-tailwindcss": {
+      "all": {
+        "config": "btw-all",
+        "files": 880,
+        "threads": 12,
+        "diagnostics": 6284,
+        "byRule": {
+          "better-tailwindcss/enforce-logical-properties": 3771,
+          "better-tailwindcss/enforce-consistent-line-wrapping": 1481,
+          "better-tailwindcss/enforce-canonical-classes": 596,
+          "better-tailwindcss/enforce-shorthand-classes": 314,
+          "better-tailwindcss/no-unknown-classes": 97,
+          "better-tailwindcss/no-deprecated-classes": 11,
+          "better-tailwindcss/enforce-consistent-variant-order": 9,
+          "better-tailwindcss/enforce-consistent-variable-syntax": 4,
+          "better-tailwindcss/no-concatenated-classes": 1
+        },
+        "warmMs": 30887
+      },
+      "recommended": {
+        "config": "btw-recommended",
+        "files": 880,
+        "threads": 12,
+        "diagnostics": 705,
+        "byRule": {
+          "better-tailwindcss/enforce-canonical-classes": 596,
+          "better-tailwindcss/no-unknown-classes": 97,
+          "better-tailwindcss/no-deprecated-classes": 11,
+          "better-tailwindcss/no-concatenated-classes": 1
+        },
+        "warmMs": 28951
+      }
+    }
+  },
+  "oracles": {
+    "tailwindcss": {
+      "unknown": {
+        "reports": 77,
+        "compiles": [],
+        "inProjectCss": [
+          {
+            "file": "app/(app)/(styles)/sera/article-directory/index.tsx",
+            "line": 8,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/article-directory/index.tsx",
+            "line": 8,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/audience-analytics/index.tsx",
+            "line": 11,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/audience-analytics/index.tsx",
+            "line": 11,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/components/image-preview.tsx",
+            "line": 25,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/components/lazy-preview.tsx",
+            "line": 130,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/components/lazy-preview.tsx",
+            "line": 130,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/edit-article/index.tsx",
+            "line": 8,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/edit-article/index.tsx",
+            "line": 8,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/empty-state/index.tsx",
+            "line": 8,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/empty-state/index.tsx",
+            "line": 8,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library-table/index.tsx",
+            "line": 9,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library-table/index.tsx",
+            "line": 9,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library/index.tsx",
+            "line": 21,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library/index.tsx",
+            "line": 21,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "components/callout.tsx",
+            "line": 24,
+            "cls": "not-typeset"
+          },
+          {
+            "file": "components/component-preview-tabs.tsx",
+            "line": 238,
+            "cls": "preview"
+          },
+          {
+            "file": "components/docs-base-switcher.tsx",
+            "line": 23,
+            "cls": "not-typeset"
+          }
+        ]
+      },
+      "conflicts": {
+        "reports": 20,
+        "unfounded": []
+      },
+      "fixes": {
+        "autofix": {
+          "files": 298,
+          "strings": 670,
+          "equivalent": 670,
+          "typos": [],
+          "changed": [],
+          "unpaired": []
+        },
+        "suggestions": {
+          "files": 373,
+          "strings": 866,
+          "equivalent": 861,
+          "typos": [
+            {
+              "file": "app/(app)/(root)/cards/contribution-history.tsx",
+              "before": "data-[index=5]:bg-chart-6 min-h-2 rounded-lg data-[index=0]:bg-chart-1 data-[index=1]:bg-chart-2 data-[index=2]:bg-chart-3 data-[index=3]:bg-chart-4 data-[index=4]:bg-chart-5",
+              "after": "data-[index=5]:bg-chart-1 min-h-2 rounded-lg data-[index=0]:bg-chart-1 data-[index=1]:bg-chart-2 data-[index=2]:bg-chart-3 data-[index=3]:bg-chart-4 data-[index=4]:bg-chart-5",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "&[data-index=\"5\"] | background-color",
+                    "before": null,
+                    "after": "var(--chart-1)"
+                  }
+                ],
+                "removedUnknown": ["data-[index=5]:bg-chart-6"],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/cards/index.tsx",
+              "before": "md:grids-col-2 grid **:data-[slot=card]:shadow-none md:gap-4 lg:grid-cols-10 xl:grid-cols-11",
+              "after": "md:grid-cols-2 grid **:data-[slot=card]:shadow-none md:gap-4 lg:grid-cols-10 xl:grid-cols-11",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "@media (width > = 48rem) > & | grid-template-columns",
+                    "before": null,
+                    "after": "repeat(2, minmax(0, 1fr))"
+                  }
+                ],
+                "removedUnknown": ["md:grids-col-2"],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/page-header.tsx",
+              "before": "leading-tighter max-w-3xl text-3xl font-semibold tracking-tight text-balance text-primary lg:leading-[1.1] lg:font-semibold xl:text-5xl xl:tracking-tighter",
+              "after": "leading-tight max-w-3xl text-3xl font-semibold tracking-tight text-balance text-primary lg:leading-[1.1] lg:font-semibold xl:text-5xl xl:tracking-tighter",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | line-height",
+                    "before": "var(--tw-leading, 1.2)",
+                    "after": "1.25"
+                  },
+                  {
+                    "key": "& | --tw-leading",
+                    "before": null,
+                    "after": "1.25"
+                  }
+                ],
+                "removedUnknown": ["leading-tighter"],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "registry/new-york-v4/examples/checkbox-with-text.tsx",
+              "before": "items-top flex gap-2",
+              "after": "items-end flex gap-2",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | align-items",
+                    "before": null,
+                    "after": "flex-end"
+                  }
+                ],
+                "removedUnknown": ["items-top"],
+                "addedUnknown": []
+              }
+            }
+          ],
+          "changed": [
+            {
+              "file": "components/block-viewer.tsx",
+              "before": "relative hidden w-3 bg-transparent p-0 after:absolute after:top-1/2 after:right-0 after:h-8 after:w-[6px] after:translate-x-[-1px] after:-translate-y-1/2 after:rounded-full after:bg-border after:transition-all after:hover:h-10 md:block",
+              "after": "relative hidden w-3 bg-transparent p-0 after:absolute after:top-1/2 after:right-0 after:h-8 after:w-[6px] after:translate-x-[-1px] after:-translate-y-1/2 after:rounded-full after:bg-border after:transition-all hover:after:h-10 md:block",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "&::after > &:hover > @media (hover: hover) | height",
+                    "before": "40px",
+                    "after": null
+                  },
+                  {
+                    "key": "@media (hover: hover) > &:hover::after | content",
+                    "before": null,
+                    "after": "var(--tw-content)"
+                  },
+                  {
+                    "key": "@media (hover: hover) > &:hover::after | height",
+                    "before": null,
+                    "after": "40px"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            }
+          ],
+          "unpaired": []
+        }
+      }
+    },
+    "shadcn": {
+      "unknown": {
+        "reports": 34,
+        "compiles": [],
+        "inProjectCss": [
+          {
+            "file": "app/(app)/(styles)/sera/article-directory/index.tsx",
+            "line": 8,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/article-directory/index.tsx",
+            "line": 8,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/audience-analytics/index.tsx",
+            "line": 11,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/audience-analytics/index.tsx",
+            "line": 11,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/components/image-preview.tsx",
+            "line": 25,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/components/lazy-preview.tsx",
+            "line": 130,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/components/lazy-preview.tsx",
+            "line": 130,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/edit-article/index.tsx",
+            "line": 8,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/edit-article/index.tsx",
+            "line": 8,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/empty-state/index.tsx",
+            "line": 8,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/empty-state/index.tsx",
+            "line": 8,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library-table/index.tsx",
+            "line": 9,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library-table/index.tsx",
+            "line": 9,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library/index.tsx",
+            "line": 21,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library/index.tsx",
+            "line": 21,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "components/callout.tsx",
+            "line": 24,
+            "cls": "not-typeset"
+          },
+          {
+            "file": "components/component-preview-tabs.tsx",
+            "line": 238,
+            "cls": "preview"
+          },
+          {
+            "file": "components/docs-base-switcher.tsx",
+            "line": 23,
+            "cls": "not-typeset"
+          }
+        ]
+      },
+      "conflicts": {
+        "reports": 0,
+        "unfounded": []
+      },
+      "fixes": {
+        "autofix": {
+          "files": 0,
+          "strings": 0,
+          "equivalent": 0,
+          "typos": [],
+          "changed": [],
+          "unpaired": []
+        },
+        "suggestions": {
+          "files": 170,
+          "strings": 249,
+          "equivalent": 212,
+          "typos": [
+            {
+              "file": "app/(app)/(root)/cards/contribution-history.tsx",
+              "before": "data-[index=5]:bg-chart-6 min-h-2 rounded-lg data-[index=0]:bg-chart-1 data-[index=1]:bg-chart-2 data-[index=2]:bg-chart-3 data-[index=3]:bg-chart-4 data-[index=4]:bg-chart-5",
+              "after": "data-[index=5]:bg-chart-1 min-h-2 rounded-lg data-[index=0]:bg-chart-1 data-[index=1]:bg-chart-2 data-[index=2]:bg-chart-3 data-[index=3]:bg-chart-4 data-[index=4]:bg-chart-5",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "&[data-index=\"5\"] | background-color",
+                    "before": null,
+                    "after": "var(--chart-1)"
+                  }
+                ],
+                "removedUnknown": ["data-[index=5]:bg-chart-6"],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/cards/index.tsx",
+              "before": "md:grids-col-2 grid **:data-[slot=card]:shadow-none md:gap-4 lg:grid-cols-10 xl:grid-cols-11",
+              "after": "md:grid-cols-2 grid **:data-[slot=card]:shadow-none md:gap-4 lg:grid-cols-10 xl:grid-cols-11",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "@media (width > = 48rem) > & | grid-template-columns",
+                    "before": null,
+                    "after": "repeat(2, minmax(0, 1fr))"
+                  }
+                ],
+                "removedUnknown": ["md:grids-col-2"],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/page-header.tsx",
+              "before": "leading-tighter max-w-3xl text-3xl font-semibold tracking-tight text-balance text-primary lg:leading-[1.1] lg:font-semibold xl:text-5xl xl:tracking-tighter",
+              "after": "leading-tight max-w-3xl text-3xl font-semibold tracking-tight text-balance text-primary lg:leading-[1.1] lg:font-semibold xl:text-5xl xl:tracking-tighter",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | line-height",
+                    "before": "var(--tw-leading, 1.2)",
+                    "after": "1.25"
+                  },
+                  {
+                    "key": "& | --tw-leading",
+                    "before": null,
+                    "after": "1.25"
+                  }
+                ],
+                "removedUnknown": ["leading-tighter"],
+                "addedUnknown": []
+              }
+            }
+          ],
+          "changed": [
+            {
+              "file": "app/(app)/(create)/components/picker.tsx",
+              "before": "cn-menu-target z-50 no-scrollbar max-h-(--available-height) w-[calc(var(--available-width)-(--spacing(6)))] min-w-32 origin-(--transform-origin) translate-y-2 overflow-x-hidden overflow-y-auto rounded-xl border-0 bg-neutral-950/80 p-1.5 text-neutral-100 ring-1 ring-neutral-950/80 backdrop-blur-xl outline-none md:w-52 dark:bg-neutral-800/90 dark:ring-neutral-700/50 data-closed:overflow-hidden",
+              "after": "cn-menu-target z-50 no-scrollbar max-h-(--available-height) w-[calc(var(--available-width)-(--spacing(6)))] min-w-32 origin-(--transform-origin) translate-y-2 overflow-x-hidden overflow-y-auto rounded-xl border-0 bg-sidebar-primary/80 p-1.5 text-neutral-100 ring-1 ring-neutral-950/80 backdrop-blur-xl outline-none md:w-52 dark:bg-neutral-800/90 dark:ring-neutral-700/50 data-closed:overflow-hidden",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | background-color",
+                    "before": "color-mix(in oklab, oklch(14.5% 0 none) 80%, transparent)",
+                    "after": "color-mix(in oklab, var(--sidebar-primary) 80%, transparent)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(create)/components/picker.tsx",
+              "before": "px-2 py-1.5 text-xs font-medium text-neutral-400 data-inset:pl-8",
+              "after": "px-2 py-1.5 text-xs font-medium text-ring data-inset:pl-8",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(70.8% 0 none)",
+                    "after": "var(--ring)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(create)/components/picker.tsx",
+              "before": "group/dropdown-menu-item relative flex cursor-default items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium outline-hidden select-none **:text-neutral-100 focus:bg-neutral-600 focus:text-neutral-100 focus:**:text-neutral-100 data-inset:pl-8 dark:focus:bg-neutral-700/80 pointer-coarse:gap-3 pointer-coarse:py-2.5 pointer-coarse:pl-3 pointer-coarse:text-base data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+              "after": "group/dropdown-menu-item relative flex cursor-default items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium outline-hidden select-none **:text-muted focus:bg-neutral-600 focus:text-neutral-100 focus:**:text-neutral-100 data-inset:pl-8 dark:focus:bg-neutral-700/80 pointer-coarse:gap-3 pointer-coarse:py-2.5 pointer-coarse:pl-3 pointer-coarse:text-base data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& * | color",
+                    "before": "oklch(97% 0 none)",
+                    "after": "var(--muted)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(create)/components/picker.tsx",
+              "before": "relative flex cursor-default items-center gap-2 rounded-lg py-1.5 pr-8 pl-2 text-sm font-medium outline-hidden select-none **:text-neutral-100 focus:bg-neutral-600 focus:text-neutral-100 focus:**:text-neutral-100 data-inset:pl-8 dark:focus:bg-neutral-700/80 pointer-coarse:gap-3 pointer-coarse:py-2.5 pointer-coarse:pl-3 pointer-coarse:text-base data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+              "after": "relative flex cursor-default items-center gap-2 rounded-lg py-1.5 pr-8 pl-2 text-sm font-medium outline-hidden select-none **:text-muted focus:bg-neutral-600 focus:text-neutral-100 focus:**:text-neutral-100 data-inset:pl-8 dark:focus:bg-neutral-700/80 pointer-coarse:gap-3 pointer-coarse:py-2.5 pointer-coarse:pl-3 pointer-coarse:text-base data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& * | color",
+                    "before": "oklch(97% 0 none)",
+                    "after": "var(--muted)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(create)/components/picker.tsx",
+              "before": "-mx-1.5 my-1.5 h-px bg-neutral-600 dark:bg-neutral-700",
+              "after": "-mx-1.5 my-1.5 h-px bg-muted-foreground dark:bg-neutral-700",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | background-color",
+                    "before": "oklch(43.9% 0 none)",
+                    "after": "var(--muted-foreground)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(create)/components/picker.tsx",
+              "before": "ml-auto text-xs tracking-widest text-neutral-400! group-focus/dropdown-menu-item:text-neutral-100",
+              "after": "ml-auto text-xs tracking-widest text-ring! group-focus/dropdown-menu-item:text-neutral-100",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(70.8% 0 none) !important",
+                    "after": "var(--ring) !important"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(create)/components/project-form.tsx",
+              "before": "size-4 text-neutral-100 [&_svg]:size-4 [&_svg]:fill-current",
+              "after": "size-4 text-muted [&_svg]:size-4 [&_svg]:fill-current",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(97% 0 none)",
+                    "after": "var(--muted)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(create)/components/project-form.tsx",
+              "before": "size-4 text-neutral-100 [&_svg]:size-4 *:[svg]:text-neutral-100!",
+              "after": "size-4 text-muted [&_svg]:size-4 *:[svg]:text-neutral-100!",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(97% 0 none)",
+                    "after": "var(--muted)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(create)/components/project-form.tsx",
+              "before": "size-4 shrink-0 text-neutral-100 [&_svg]:size-4 *:[svg]:text-neutral-100!",
+              "after": "size-4 shrink-0 text-muted [&_svg]:size-4 *:[svg]:text-neutral-100!",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(97% 0 none)",
+                    "after": "var(--muted)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(create)/components/welcome-dialog.tsx",
+              "before": "dialog-ring max-w-92 min-w-0 gap-0 overflow-hidden rounded-xl p-0 sm:max-w-sm dark:bg-neutral-900",
+              "after": "dialog-ring max-w-92 min-w-0 gap-0 overflow-hidden rounded-xl p-0 sm:max-w-sm dark:bg-sidebar-primary",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "&.dark * | background-color",
+                    "before": "oklch(20.5% 0 none)",
+                    "after": "var(--sidebar-primary)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(create)/components/welcome-dialog.tsx",
+              "before": "flex aspect-[2/1.2] w-full items-center justify-center rounded-t-xl bg-neutral-950 text-center text-neutral-100 sm:aspect-2/1",
+              "after": "flex aspect-[2/1.2] w-full items-center justify-center rounded-t-xl bg-sidebar-primary text-center text-neutral-100 sm:aspect-2/1",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | background-color",
+                    "before": "oklch(14.5% 0 none)",
+                    "after": "var(--sidebar-primary)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(styles)/sera/components/theme-switcher.tsx",
+              "before": "w-full max-w-[60vw] rounded-full border-0 bg-neutral-950/50 p-1.5 shadow-xl backdrop-blur-xl sm:max-w-fit",
+              "after": "w-full max-w-[60vw] rounded-full border-0 bg-sidebar-primary/50 p-1.5 shadow-xl backdrop-blur-xl sm:max-w-fit",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | background-color",
+                    "before": "color-mix(in oklab, oklch(14.5% 0 none) 50%, transparent)",
+                    "after": "color-mix(in oklab, var(--sidebar-primary) 50%, transparent)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(styles)/sera/components/theme-switcher.tsx",
+              "before": "shrink-0 snap-center rounded-full px-3 py-1.5 text-sm font-medium text-neutral-300 outline-hidden transition-colors select-none hover:text-neutral-100 data-active:bg-neutral-500 data-active:text-neutral-100",
+              "after": "shrink-0 snap-center rounded-full px-3 py-1.5 text-sm font-medium text-border outline-hidden transition-colors select-none hover:text-neutral-100 data-active:bg-neutral-500 data-active:text-neutral-100",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(87% 0 none)",
+                    "after": "var(--border)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(typeset)/components/picker.tsx",
+              "before": "cn-menu-target z-50 no-scrollbar max-h-(--available-height) w-[calc(var(--available-width)-(--spacing(6)))] min-w-32 origin-(--transform-origin) translate-y-2 overflow-x-hidden overflow-y-auto rounded-xl border-0 bg-neutral-950/80 p-1.5 text-neutral-100 ring-1 ring-neutral-950/80 backdrop-blur-xl outline-none md:w-52 dark:bg-neutral-800/90 dark:ring-neutral-700/50 data-closed:overflow-hidden",
+              "after": "cn-menu-target z-50 no-scrollbar max-h-(--available-height) w-[calc(var(--available-width)-(--spacing(6)))] min-w-32 origin-(--transform-origin) translate-y-2 overflow-x-hidden overflow-y-auto rounded-xl border-0 bg-sidebar-primary/80 p-1.5 text-neutral-100 ring-1 ring-neutral-950/80 backdrop-blur-xl outline-none md:w-52 dark:bg-neutral-800/90 dark:ring-neutral-700/50 data-closed:overflow-hidden",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | background-color",
+                    "before": "color-mix(in oklab, oklch(14.5% 0 none) 80%, transparent)",
+                    "after": "color-mix(in oklab, var(--sidebar-primary) 80%, transparent)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(typeset)/components/picker.tsx",
+              "before": "px-2 py-1.5 text-xs font-medium text-neutral-400 data-inset:pl-8",
+              "after": "px-2 py-1.5 text-xs font-medium text-ring data-inset:pl-8",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(70.8% 0 none)",
+                    "after": "var(--ring)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(typeset)/components/picker.tsx",
+              "before": "group/dropdown-menu-item relative flex cursor-default items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium outline-hidden select-none **:text-neutral-100 focus:bg-neutral-600 focus:text-neutral-100 focus:**:text-neutral-100 data-inset:pl-8 dark:focus:bg-neutral-700/80 pointer-coarse:gap-3 pointer-coarse:py-2.5 pointer-coarse:pl-3 pointer-coarse:text-base data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+              "after": "group/dropdown-menu-item relative flex cursor-default items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium outline-hidden select-none **:text-muted focus:bg-neutral-600 focus:text-neutral-100 focus:**:text-neutral-100 data-inset:pl-8 dark:focus:bg-neutral-700/80 pointer-coarse:gap-3 pointer-coarse:py-2.5 pointer-coarse:pl-3 pointer-coarse:text-base data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& * | color",
+                    "before": "oklch(97% 0 none)",
+                    "after": "var(--muted)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(typeset)/components/picker.tsx",
+              "before": "relative flex cursor-default items-center gap-2 rounded-lg py-1.5 pr-8 pl-2 text-sm font-medium outline-hidden select-none **:text-neutral-100 focus:bg-neutral-600 focus:text-neutral-100 focus:**:text-neutral-100 data-inset:pl-8 dark:focus:bg-neutral-700/80 pointer-coarse:gap-3 pointer-coarse:py-2.5 pointer-coarse:pl-3 pointer-coarse:text-base data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+              "after": "relative flex cursor-default items-center gap-2 rounded-lg py-1.5 pr-8 pl-2 text-sm font-medium outline-hidden select-none **:text-muted focus:bg-neutral-600 focus:text-neutral-100 focus:**:text-neutral-100 data-inset:pl-8 dark:focus:bg-neutral-700/80 pointer-coarse:gap-3 pointer-coarse:py-2.5 pointer-coarse:pl-3 pointer-coarse:text-base data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& * | color",
+                    "before": "oklch(97% 0 none)",
+                    "after": "var(--muted)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(typeset)/components/picker.tsx",
+              "before": "-mx-1.5 my-1.5 h-px bg-neutral-600 dark:bg-neutral-700",
+              "after": "-mx-1.5 my-1.5 h-px bg-muted-foreground dark:bg-neutral-700",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | background-color",
+                    "before": "oklch(43.9% 0 none)",
+                    "after": "var(--muted-foreground)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/(typeset)/components/picker.tsx",
+              "before": "ml-auto text-xs tracking-widest text-neutral-400! group-focus/dropdown-menu-item:text-neutral-100",
+              "after": "ml-auto text-xs tracking-widest text-ring! group-focus/dropdown-menu-item:text-neutral-100",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(70.8% 0 none) !important",
+                    "after": "var(--ring) !important"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/examples/playground/components/preset-actions.tsx",
+              "before": "text-red-600",
+              "after": "text-destructive",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(57.7% 0.245 27.325)",
+                    "after": "var(--destructive)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "app/(app)/examples/rtl/components/notion-prompt-form.tsx",
+              "before": "h-5 rounded-sm bg-blue-100 px-1 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-100",
+              "after": "h-5 rounded-sm bg-border px-1 text-xs text-blue-800 dark:bg-blue-900 dark:text-blue-100",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | background-color",
+                    "before": "oklch(93.2% 0.032 255.585)",
+                    "after": "var(--border)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/chart-code-viewer.tsx",
+              "before": "h-6 rounded-[6px] border bg-transparent px-2 text-xs text-foreground shadow-none hover:bg-muted dark:text-foreground",
+              "after": "h-6 rounded-sm border bg-transparent px-2 text-xs text-foreground shadow-none hover:bg-muted dark:text-foreground",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | border-top-left-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  },
+                  {
+                    "key": "& | border-top-right-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  },
+                  {
+                    "key": "& | border-bottom-right-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  },
+                  {
+                    "key": "& | border-bottom-left-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/chart-copy-button.tsx",
+              "before": "[&_svg]-h-3.5 h-7 w-7 rounded-[6px] [&_svg]:w-3.5",
+              "after": "[&_svg]-h-3.5 h-7 w-7 rounded-sm [&_svg]:w-3.5",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | border-top-left-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  },
+                  {
+                    "key": "& | border-top-right-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  },
+                  {
+                    "key": "& | border-bottom-right-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  },
+                  {
+                    "key": "& | border-bottom-left-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/chart-toolbar.tsx",
+              "before": "[&_svg]-h-3 h-6 w-6 rounded-[6px] bg-transparent text-foreground shadow-none hover:bg-muted dark:text-foreground [&_svg]:w-3",
+              "after": "[&_svg]-h-3 h-6 w-6 rounded-sm bg-transparent text-foreground shadow-none hover:bg-muted dark:text-foreground [&_svg]:w-3",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | border-top-left-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  },
+                  {
+                    "key": "& | border-top-right-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  },
+                  {
+                    "key": "& | border-bottom-right-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  },
+                  {
+                    "key": "& | border-bottom-left-radius",
+                    "before": "6px",
+                    "after": "2.4px"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/command-menu.tsx",
+              "before": "rounded-xl border-none bg-clip-padding p-2 pb-11 shadow-2xl ring-4 ring-neutral-200/80 dark:bg-neutral-900 dark:ring-neutral-800",
+              "after": "rounded-xl border-none bg-clip-padding p-2 pb-11 shadow-2xl ring-4 ring-neutral-200/80 dark:bg-sidebar-primary dark:ring-neutral-800",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "&.dark * | background-color",
+                    "before": "oklch(20.5% 0 none)",
+                    "after": "var(--sidebar-primary)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/command-menu.tsx",
+              "before": "absolute inset-x-0 bottom-0 z-20 flex h-10 items-center gap-2 rounded-b-xl border-t border-t-neutral-100 bg-neutral-50 px-4 text-xs font-medium text-muted-foreground dark:border-t-neutral-700 dark:bg-neutral-800",
+              "after": "absolute inset-x-0 bottom-0 z-20 flex h-10 items-center gap-2 rounded-b-xl border-t border-t-muted bg-neutral-50 px-4 text-xs font-medium text-muted-foreground dark:border-t-neutral-700 dark:bg-neutral-800",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | border-top-color",
+                    "before": "oklch(97% 0 none)",
+                    "after": "var(--muted)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/component-wrapper.tsx",
+              "before": "p-4 text-red-500",
+              "after": "p-4 text-destructive",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(63.7% 0.237 25.331)",
+                    "after": "var(--destructive)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/tailwind-indicator.tsx",
+              "before": "fixed bottom-1 left-1 z-50 flex h-6 w-6 items-center justify-center rounded-full bg-gray-800 p-3 font-mono text-xs text-white",
+              "after": "fixed bottom-1 left-1 z-50 flex h-6 w-6 items-center justify-center rounded-full bg-sidebar-primary p-3 font-mono text-xs text-white",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | background-color",
+                    "before": "oklch(27.8% 0.033 256.848)",
+                    "after": "var(--sidebar-primary)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "components/theme-customizer.tsx",
+              "before": "rounded-2xl border-none bg-clip-padding shadow-2xl ring-4 ring-neutral-200/80 outline-none md:max-w-2xl dark:bg-neutral-800 dark:ring-neutral-900",
+              "after": "rounded-2xl border-none bg-clip-padding shadow-2xl ring-4 ring-neutral-200/80 outline-none md:max-w-2xl dark:bg-sidebar-primary dark:ring-neutral-900",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "&.dark * | background-color",
+                    "before": "oklch(26.9% 0 none)",
+                    "after": "var(--sidebar-primary)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "registry/new-york-v4/examples/button-group-input-group.tsx",
+              "before": "data-[active=true]:bg-orange-100 data-[active=true]:text-orange-700 dark:data-[active=true]:bg-orange-800 dark:data-[active=true]:text-orange-100",
+              "after": "data-[active=true]:bg-code-highlight data-[active=true]:text-orange-700 dark:data-[active=true]:bg-orange-800 dark:data-[active=true]:text-orange-100",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "&[data-active=true] | background-color",
+                    "before": "oklch(95.4% 0.038 75.164)",
+                    "after": "var(--code-highlight)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "registry/new-york-v4/examples/checkbox-demo.tsx",
+              "before": "flex items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 has-[[aria-checked=true]]:border-blue-600 has-[[aria-checked=true]]:bg-blue-50 dark:has-[[aria-checked=true]]:border-blue-900 dark:has-[[aria-checked=true]]:bg-blue-950",
+              "after": "flex items-start gap-3 rounded-lg border p-3 hover:bg-accent/50 has-[[aria-checked=true]]:border-blue-600 has-[[aria-checked=true]]:bg-muted dark:has-[[aria-checked=true]]:border-blue-900 dark:has-[[aria-checked=true]]:bg-blue-950",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "&:has([aria-checked=true]) | background-color",
+                    "before": "oklch(97% 0.014 254.604)",
+                    "after": "var(--muted)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "registry/new-york-v4/examples/combobox-dropdown-menu.tsx",
+              "before": "text-red-600",
+              "after": "text-destructive",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(57.7% 0.245 27.325)",
+                    "after": "var(--destructive)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "registry/new-york-v4/examples/spinner-color.tsx",
+              "before": "size-6 text-red-500",
+              "after": "size-6 text-destructive",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | color",
+                    "before": "oklch(63.7% 0.237 25.331)",
+                    "after": "var(--destructive)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            },
+            {
+              "file": "registry/new-york-v4/examples/toggle-group-spacing.tsx",
+              "before": "data-[state=on]:bg-transparent data-[state=on]:*:[svg]:fill-red-500 data-[state=on]:*:[svg]:stroke-red-500",
+              "after": "data-[state=on]:bg-transparent data-[state=on]:*:[svg]:fill-destructive data-[state=on]:*:[svg]:stroke-red-500",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "&[data-state=on] > *svg | fill",
+                    "before": "oklch(63.7% 0.237 25.331)",
+                    "after": "var(--destructive)"
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            }
+          ],
+          "unpaired": []
+        }
+      }
+    },
+    "better-tailwindcss": {
+      "unknown": {
+        "reports": 97,
+        "compiles": [],
+        "inProjectCss": [
+          {
+            "file": "app/(app)/(create)/components/create-devtools.tsx",
+            "line": 35,
+            "cls": "dark"
+          },
+          {
+            "file": "app/(app)/(create)/components/customizer.tsx",
+            "line": 70,
+            "cls": "dark"
+          },
+          {
+            "file": "app/(app)/(create)/components/open-preset.tsx",
+            "line": 120,
+            "cls": "dark"
+          },
+          {
+            "file": "app/(app)/(create)/components/open-preset.tsx",
+            "line": 148,
+            "cls": "dark"
+          },
+          {
+            "file": "app/(app)/(create)/components/preview-switcher.tsx",
+            "line": 22,
+            "cls": "dark"
+          },
+          {
+            "file": "app/(app)/(create)/components/project-form.tsx",
+            "line": 306,
+            "cls": "dark"
+          },
+          {
+            "file": "app/(app)/(create)/components/welcome-dialog.tsx",
+            "line": 41,
+            "cls": "dialog-ring"
+          },
+          {
+            "file": "app/(app)/(root)/cards/contribution-history.tsx",
+            "line": 61,
+            "cls": "cn-font-heading"
+          },
+          {
+            "file": "app/(app)/(root)/cards/contribution-history.tsx",
+            "line": 75,
+            "cls": "cn-font-heading"
+          },
+          {
+            "file": "app/(app)/(root)/cards/index.tsx",
+            "line": 84,
+            "cls": "theme-neutral"
+          },
+          {
+            "file": "app/(app)/(root)/cards/savings-targets.tsx",
+            "line": 36,
+            "cls": "cn-font-heading"
+          },
+          {
+            "file": "app/(app)/(root)/cards/savings-targets.tsx",
+            "line": 57,
+            "cls": "cn-font-heading"
+          },
+          {
+            "file": "app/(app)/(root)/cards/skeleton/index.tsx",
+            "line": 22,
+            "cls": "theme-neutral"
+          },
+          {
+            "file": "app/(app)/(root)/cards/ui-elements.tsx",
+            "line": 120,
+            "cls": "theme-neutral"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/article-directory/index.tsx",
+            "line": 8,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/article-directory/index.tsx",
+            "line": 8,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/audience-analytics/index.tsx",
+            "line": 11,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/audience-analytics/index.tsx",
+            "line": 11,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/components/image-preview.tsx",
+            "line": 25,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/components/lazy-preview.tsx",
+            "line": 130,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/components/lazy-preview.tsx",
+            "line": 130,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/edit-article/index.tsx",
+            "line": 8,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/edit-article/index.tsx",
+            "line": 8,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/empty-state/index.tsx",
+            "line": 8,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/empty-state/index.tsx",
+            "line": 8,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library-table/index.tsx",
+            "line": 9,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library-table/index.tsx",
+            "line": 9,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library/index.tsx",
+            "line": 21,
+            "cls": "preview"
+          },
+          {
+            "file": "app/(app)/(styles)/sera/media-library/index.tsx",
+            "line": 21,
+            "cls": "theme-taupe"
+          },
+          {
+            "file": "app/(app)/(typeset)/components/customizer.tsx",
+            "line": 88,
+            "cls": "dark"
+          },
+          {
+            "file": "app/(app)/(typeset)/components/toolbar.tsx",
+            "line": 27,
+            "cls": "dark"
+          },
+          {
+            "file": "app/(app)/(typeset)/components/toolbar.tsx",
+            "line": 51,
+            "cls": "dark"
+          },
+          {
+            "file": "app/(app)/docs/[[...slug]]/page.tsx",
+            "line": 147,
+            "cls": "typeset"
+          },
+          {
+            "file": "app/(app)/docs/changelog/page.tsx",
+            "line": 76,
+            "cls": "typeset"
+          },
+          {
+            "file": "app/(view)/preview/typeset/[name]/page.tsx",
+            "line": 28,
+            "cls": "typeset"
+          },
+          {
+            "file": "components/callout.tsx",
+            "line": 24,
+            "cls": "not-typeset"
+          },
+          {
+            "file": "components/component-preview-tabs.tsx",
+            "line": 238,
+            "cls": "preview"
+          },
+          {
+            "file": "components/docs-base-switcher.tsx",
+            "line": 23,
+            "cls": "not-typeset"
+          }
+        ]
+      },
+      "conflicts": {
+        "reports": 0,
+        "unfounded": []
+      },
+      "fixes": {
+        "autofix": {
+          "files": 617,
+          "strings": 2865,
+          "equivalent": 2864,
+          "typos": [],
+          "changed": [
+            {
+              "file": "app/(app)/examples/playground/page.tsx",
+              "before": "h-5 w-5",
+              "after": "block-5",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | width",
+                    "before": "20px",
+                    "after": null
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            }
+          ],
+          "unpaired": []
+        },
+        "suggestions": {
+          "files": 617,
+          "strings": 2865,
+          "equivalent": 2864,
+          "typos": [],
+          "changed": [
+            {
+              "file": "app/(app)/examples/playground/page.tsx",
+              "before": "h-5 w-5",
+              "after": "block-5",
+              "diff": {
+                "changed": [
+                  {
+                    "key": "& | width",
+                    "before": "20px",
+                    "after": null
+                  }
+                ],
+                "removedUnknown": [],
+                "addedUnknown": []
+              }
+            }
+          ],
+          "unpaired": []
+        }
+      }
+    }
+  }
+}

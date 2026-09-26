@@ -65,6 +65,12 @@ No, they work together. The formatter sorts classes, removes duplicates and coll
 what it formats; this plugin checks correctness — unknown, conflicting, deprecated and runtime-built
 classes, and more. Point both at the same CSS and they sort the same way: see [Interop](/interop).
 
+## How does it compare with @shadcn/lint and better-tailwindcss?
+
+They check different things: [Compared with other plugins](/comparison) shows what each one checks,
+and the [benchmark](/benchmark) measures them on the same code — mistakes caught, false positives,
+speed, and what their fixes do.
+
 ## Can I use it with @shadcn/lint?
 
 Yes. [shadcn/ui and @shadcn/lint](/shadcn) shows who reports what and a combined config that reports

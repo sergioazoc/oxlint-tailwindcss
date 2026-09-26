@@ -279,6 +279,13 @@ const results = {
     oxlint: versions.oxlint,
     tailwindcss: versions.tailwindcss,
   },
+  // The taxonomy the seeded results are read with, for the pages.
+  concerns: [...concerns.values()].map((c) => ({
+    id: c.id,
+    label: c.label,
+    formatting: c.formatting,
+    rules: Object.fromEntries(TOOLS.map((t) => [t.id, [...c.rules[t.id]].sort()])),
+  })),
   seeded,
   corpus,
   oracles,

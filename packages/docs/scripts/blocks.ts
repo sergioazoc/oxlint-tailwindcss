@@ -144,7 +144,7 @@ const SHADCN_TABLE: Record<
  * A table cell holding code: backticks, with `|` escaped for the table, and
  * `v-pre` around it when it holds `{{`, which VitePress would read as Vue.
  */
-function code(text: string): string {
+export function code(text: string): string {
   const cell = `\`${text.replaceAll('|', '\\|')}\``
   return text.includes('{{') ? `<span v-pre>${cell}</span>` : cell
 }
@@ -258,7 +258,7 @@ const BTW_HEAD: Record<Locale, { rules: string[]; settings: string[] }> = {
   },
 }
 
-function table(head: string[], rows: string[][]): string {
+export function table(head: string[], rows: string[][]): string {
   return [
     `| ${head.join(' | ')} |`,
     `| ${head.map(() => '---').join(' | ')} |`,
