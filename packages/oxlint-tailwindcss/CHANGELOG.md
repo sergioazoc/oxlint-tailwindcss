@@ -55,6 +55,12 @@
 
 ### Bug fixes
 
+- **Classes and variables from nested stylesheets are known.** The plugin read the classes and
+  custom properties your own CSS defines only in the entry point and the files it imports directly,
+  so a class in a stylesheet imported by an imported stylesheet — even in `@layer components` — was
+  reported as unknown, and its variables as undefined. It now follows your local `@import`s up to
+  four levels, the depth whose edits already invalidate the cache; a package's stylesheet is still
+  read without its own imports, so Tailwind's theme stays the engine's.
 - **Class strings built with `+` are linted.** The extractor skipped concatenations, so no rule
   checked the classes in `"flex p-4 " + extra` or `"flex " + (active ? "itms-center" : "")`, and
   `no-dynamic-classes` couldn't report `"bg-" + color`. Each string operand is now read like a

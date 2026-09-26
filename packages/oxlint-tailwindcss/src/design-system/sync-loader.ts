@@ -419,18 +419,32 @@ function resolveImport(specifier, baseDir) {
 // in an imported file is as real to the browser as one in the entry, and treating
 // it as undefined makes prefer-theme-tokens propose a token that can change the
 // design (the #78 hazard, in miniature).
+// The entry and the stylesheets it reaches: the project's own files through
+// their local @imports, up to 4 levels (the depth hashableContent folds into
+// the cache key, so an edit to any of them recomputes), and a package's
+// stylesheet itself but not the package's own imports — Tailwind's theme and
+// preflight are the engine's, not the project's.
 function collectCssSources(cssPath, baseDir) {
-  let css;
-  try { css = readFileSync(cssPath, 'utf-8'); } catch { return []; }
-  const files = [css];
+  const files = [];
+  const seen = new Set();
   const importRe = /@import\\s+['"]([^'"]+)['"]/g;
-  let m;
-  while ((m = importRe.exec(css)) !== null) {
-    const resolved = resolveImport(m[1], baseDir);
-    if (resolved) {
-      try { files.push(readFileSync(resolved, 'utf-8')); } catch {}
+  const visit = (path, dir, depth, local) => {
+    if (seen.has(path)) return;
+    seen.add(path);
+    let css;
+    try { css = readFileSync(path, 'utf-8'); } catch { return; }
+    files.push(css);
+    if (!local || depth <= 0) return;
+    const specs = [];
+    let m;
+    importRe.lastIndex = 0;
+    while ((m = importRe.exec(css)) !== null) specs.push(m[1]);
+    for (const spec of specs) {
+      const resolved = resolveImport(spec, dir);
+      if (resolved) visit(resolved, dirname(resolved), depth - 1, spec.startsWith('.'));
     }
-  }
+  };
+  visit(cssPath, baseDir, 4, true);
   return files;
 }
 

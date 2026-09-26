@@ -41,9 +41,9 @@ qué no.
 ## ¿Por qué se reporta como desconocida una clase que funciona?
 
 `no-unknown-classes` conoce las clases de Tailwind y las que define tu CSS — en el entry point y en
-las hojas de estilos que importa directamente. Una clase que reporta y que igual funciona en el
-navegador suele venir de CSS al que el entry point no llega: una hoja importada por otra hoja
-importada, o una que tu app carga por separado. O no tiene CSS y es un gancho para JavaScript o
+las hojas tuyas que importa, hasta cuatro `@import` de profundidad, y en la hoja de un paquete que
+importe. Una clase que reporta y que igual funciona en el navegador suele venir de CSS que el entry
+point no importa, uno que tu app carga por separado. O no tiene CSS y es un gancho para JavaScript o
 tests. Importa ese CSS desde el entry point, o avísale a la regla con
 [`allowlist` o `ignorePrefixes`](/es/rules/no-unknown-classes#opciones).
 
