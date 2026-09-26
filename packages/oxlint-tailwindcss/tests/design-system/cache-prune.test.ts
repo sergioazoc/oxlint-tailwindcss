@@ -89,7 +89,9 @@ describe('the loader', () => {
     const css = resolve(__dirname, '../fixtures/default.css')
     loadDesignSystemSync(css)
     const { json } = cacheArtifactPaths(css)
-    age(json, 40)
+    // Over a day, and well under the 30-day prune: the run's cache dir is shared
+    // by every test file, and another one's precompute may prune it meanwhile.
+    age(json, 2)
     loadDesignSystemSync(css)
     expect(Date.now() - statSync(json).mtimeMs).toBeLessThan(DAY)
   })
