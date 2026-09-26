@@ -776,6 +776,10 @@ because a bare `pnpm test` (the Stop hook, an editor runner) never rebuilds — 
 first. `tests/docs/*` guard the markdown itself (e.g. `markdown-containers.test.ts`: VitePress `:::`
 containers must survive oxfmt's `proseWrap`).
 
+**The run's cache dir is shared by every test file**, and a precompute prunes the plugin's files
+unused for 30 days (`pruneCacheDir`): a test that ages an artifact must keep it under 30 days, or
+another file's precompute can delete it mid-test (`cache-prune.test.ts` ages to 2 days for that).
+
 **Per-run isolation (concurrent `pnpm test` safety).** The disk cache is a single per-uid dir shared
 by every process on the machine, so two `pnpm test` invocations overlapping (a background run + the
 stop-hook's run, `--repeats`, or an editor running oxlint) used to race on the same cache files and
@@ -793,3 +797,26 @@ would leak state between runs and break them. Tests that write scratch files und
 with `process.pid` for the same reason; other writers use `mkdtempSync(tmpdir())`. Note: running
 **3+** full suites at once still fails, but from CPU oversubscription (worker-service 30 s
 timeouts), not a shared-state race — that is expected, not a bug.
+
+## Docs verification
+
+Every claim the docs, the READMEs and the agent skill make is held by a test, so a change that
+breaks one fails `pnpm test` (or CI) instead of shipping:
+
+- **What the code says** — `tests/docs/docs-sync.test.ts`: rule counts and lists, defaults, option
+  keys documented in both locales, settings, env vars, callee count, runtime dependencies, version
+  floors, `designSystem` postures. `site-structure.test.ts` and `packages/docs/tests/sidebar-parity`
+  hold the pages and the sidebar; `es-parity.test.ts` holds each Spanish page to its English twin.
+- **What the examples do** — `doc-examples.test.ts` runs every ✗ / ✓ example of every rule page
+  (EN/ES) through the real oxlint; `doc-configs.test.ts` runs every `.oxlintrc.json` snippet;
+  `readme-hero.test.ts` the root README's hero; `skill.test.ts` the agent skill.
+- **What other tools do** — `shadcn-interop.test.ts` and `better-tailwindcss-map.test.ts` here, and
+  `bench/interop.mjs` weekly (`interop.yml`) against @shadcn/lint and better-tailwindcss, pinned and
+  latest.
+- **What the benchmark measured** — `/benchmark` and `/comparison` are generated from
+  `bench/results/latest.json`; `bench.yml` checks weekly that a fresh `score.mjs` run agrees.
+- **What the site serves** — `packages/docs/scripts/check-dist.ts` (in the docs build: titles,
+  descriptions, canonical/hreflang, JSON-LD, sitemap, anchors, no internal pages) and
+  `check-live.ts` (the `verify-live` job after each release, against the deployed site).
+- **Markdown survives formatting** — `markdown-containers.test.ts`; generated blocks match their
+  source — `packages/docs/tests/blocks.test.ts` and the docs workflow's `git diff --exit-code`.
