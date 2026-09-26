@@ -67,6 +67,7 @@ const SOURCES = [
   ...readdirSync(resolve(REPO, '.claude/skills')).map((s) =>
     resolve(REPO, '.claude/skills', s, 'SKILL.md'),
   ),
+  ...readdirSync(resolve(REPO, 'skills')).map((s) => resolve(REPO, 'skills', s, 'SKILL.md')),
 ].filter((f) => existsSync(f))
 
 // ── JSONC ───────────────────────────────────────────────────────────────────
