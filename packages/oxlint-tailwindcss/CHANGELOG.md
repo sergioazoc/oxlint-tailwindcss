@@ -1,6 +1,46 @@
 # Changelog
 
-## Unreleased
+## 1.14.0
+
+This release checks classes against your design system as a whole. Two new rules report what no
+class-by-class check could: `no-default-palette`, a Tailwind palette color in a project with colors
+of its own, and `no-dynamic-classes`, a class built at runtime that Tailwind never generates. An
+experimental third, `no-borrowed-component-styles`, reports a plain element that rebuilds one of
+your components. Messages name the fix — the theme colors to use, the closest scale steps — and a
+misspelt setting is reported instead of silently ignored. Rule options and settings apply per file,
+as oxlint's `overrides` and nested configs intend. A Claude Code plugin and an agent skill bring all
+of it to AI coding agents. The results are measured: the new
+[Benchmark](https://oxlint-tailwindcss.pages.dev/benchmark) runs this plugin, @shadcn/lint and
+eslint-plugin-better-tailwindcss over shadcn/ui's app and judges them with Tailwind itself.
+
+### Before you upgrade
+
+- **One cold start per entry point.** The design-system cache key changed, so the first run after
+  upgrading precomputes each entry point again. That takes seconds, not minutes. Cache files unused
+  for 30 days are now removed.
+- **Tailwind CSS v4.1.15 or newer, and Node.js `^20.19.0 || >=22.12.0`.** Tailwind 4.1.0–4.1.14
+  never worked: they crashed. They now get a clear `designSystemUnavailable`.
+- **Your `.oxlintrc.json` runs only the rules it lists**, so the new rules are opt-in. The
+  recommended config, if you copy it, now includes `no-dynamic-classes` as `error`.
+- **Reports that can appear with the same config:**
+  - a misspelt or mistyped setting (`invalidSetting`, once per file);
+  - classes in strings joined with `+`;
+  - `max-class-count` on long template literals;
+  - rule options from `overrides` and nested configs, which now apply to their files;
+  - `consistent-variant-order`, if you ran `--fix` with an entry point: it rewrites those chains
+    back to outermost-first once.
+- **Reports that go away:**
+  - `no-dark-without-light` on dark-only classes that set no colour;
+  - unknown-class reports of classes defined in nested stylesheets, up to four `@import`s deep, and
+    of the static text glued to a `${}`;
+  - wrong typo suggestions on short classes.
+- **New message texts**, if you match them in scripts:
+  - `no-hardcoded-colors` (`noHardcodedTokens`) names your theme's colors;
+  - `no-arbitrary-value` (`noArbitraryOptions` / `noArbitraryTheme`) names the closest steps or the
+    file to add a token to;
+  - `no-dark-without-light` (`missingBaseProperty`) names the property.
+
+  All three need an entry point; without one, the messages are unchanged.
 
 ### Features
 
@@ -332,6 +372,13 @@
   floors — oxlint 1.43.0, and Node 20.19.0 — so both claims stay true.
 
 Dependencies updated: oxlint / @oxlint/plugins 1.85, oxfmt 0.70, vitest 5.0.1, pnpm 12.6.
+
+### Dependencies
+
+- The runtime dependencies are unchanged: `@tailwindcss/node` and `tailwindcss`, loaded from your
+  project. `engines.node` is now `^20.19.0 || >=22.12.0`, the range oxlint itself requires.
+- Developed and tested with oxlint 1.85, oxfmt 0.70, vitest 5.0.2 and pnpm 12. CI adds Node 26 and
+  smoke-tests the documented floors (oxlint 1.43.0, Node 20.19.0, Tailwind 4.1.15).
 
 ## 1.13.0
 
