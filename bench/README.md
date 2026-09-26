@@ -36,9 +36,9 @@ node run.mjs --config otw-all --plugin local --timings           # + per-rule JS
   `shadcn-ds`, `btw-all`, `btw-recommended`, `combo`). A template may name oxlint-tailwindcss's
   rules by intent instead of listing them — `"x-rules": "all"` (every rule the plugin has, at its
   recommended severity or `warn`; `otw-all` turns `enforce-physical`, `enforce-logical` reversed,
-  off) or `"recommended"` (`meta.docs.recommended`, which 1.13.0 doesn't declare) — with
-  `"x-options"` for a rule's options (`lib/config.mjs`). A listed rule the chosen plugin version
-  doesn't have is dropped and named, so one template serves `published` and `local`.
+  off) or `"recommended"` (`meta.docs.recommended`, declared since 1.14.0) — with `"x-options"` for
+  a rule's options (`lib/config.mjs`). A listed rule the chosen plugin version doesn't have is
+  dropped and named, so one template serves `published` and `local`.
 - `--timings` adds a second, warm run with `oxlint -f default --debug=timings` (oxlint >= 1.84
   reports JS plugin rules) and stores the per-rule table in the snapshot's `meta.timings`. It covers
   rule creation, hooks and visitor callbacks, not plugin load or the design-system precompute. The
