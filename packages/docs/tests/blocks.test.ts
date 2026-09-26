@@ -8,13 +8,16 @@ import {
   recommendedConfig,
   replaceBlock,
   ruleList,
+  ruleTable,
   shadcnConfig,
   shadcnTable,
   type BtwData,
   type RuleForBlocks,
   type ShadcnData,
 } from '../scripts/blocks.ts'
-import { RULE_NAMES, oxlintPlugin } from '../scripts/rules.ts'
+import { RULE_NAMES, oxlintPlugin, ruleForBlocks } from '../scripts/rules.ts'
+
+const RULES_FULL: RuleForBlocks[] = RULE_NAMES.map((name) => ruleForBlocks(name))
 
 const RULES: RuleForBlocks[] = RULE_NAMES.map((name) => {
   const docs = oxlintPlugin.rules[name].meta?.docs as Omit<RuleForBlocks, 'name'>
@@ -74,6 +77,69 @@ describe('ruleList', () => {
     ]
     expect(ruleList(rules, 'en')).toContain('`a` (experimental) · `b`')
     expect(ruleList(rules, 'es')).toContain('`a` (experimental) · `b`')
+  })
+})
+
+describe('ruleTable', () => {
+  const rows: RuleForBlocks[] = [
+    {
+      name: 'no-unknown-classes',
+      category: 'correctness',
+      recommended: 'error',
+      description: 'Disallow classes Tailwind can’t generate',
+      fix: 'suggestion',
+      designSystem: 'required',
+    },
+    {
+      name: 'enforce-sort-order',
+      category: 'consistency',
+      recommended: 'warn',
+      description: 'Enforce the official class order',
+      fix: 'autofix',
+      designSystem: 'required',
+    },
+    {
+      name: 'no-borrowed-component-styles',
+      category: 'design-system',
+      recommended: false,
+      description: 'Disallow a plain element that rebuilds a component',
+      fix: null,
+      designSystem: 'required',
+      experimental: true,
+    },
+  ]
+
+  it('a row per rule, by category, linked to its page, with what it does and needs', () => {
+    const md = ruleTable(rows).split('\n')
+    expect(md).toHaveLength(2 + 3)
+    expect(md[2]).toBe(
+      '| [`no-unknown-classes`](https://oxlint-tailwindcss.pages.dev/rules/no-unknown-classes) | Correctness | Disallow classes Tailwind can’t generate | `error` | suggestion | required |',
+    )
+    expect(md[3]).toContain('| Consistency |')
+    expect(md[4]).toContain('Design-system guardrails (experimental)')
+    expect(md[4]).toContain('| off | — | required |')
+  })
+
+  it('lists every real rule', () => {
+    const md = ruleTable(RULES_FULL)
+    for (const r of RULES_FULL) expect(md).toContain(`[\`${r.name}\`]`)
+  })
+
+  it('the package README holds the current table', () => {
+    // oxfmt re-pads the table: compare what a reader gets.
+    const normalize = (md: string) =>
+      md
+        .replace(/-{3,}/g, '---')
+        .replace(/ *\| */g, '|')
+        .replace(/\s+/g, ' ')
+        .trim()
+    const readme = readFileSync(resolve(__dirname, '../../oxlint-tailwindcss/README.md'), 'utf8')
+    const open = '<!-- generated:rule-table -->'
+    const block = readme.slice(
+      readme.indexOf(open) + open.length,
+      readme.indexOf('<!-- /generated:rule-table -->'),
+    )
+    expect(normalize(block)).toBe(normalize(ruleTable(RULES_FULL)))
   })
 })
 

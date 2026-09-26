@@ -15,6 +15,7 @@
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { RuleForBlocks } from './blocks.ts'
 import type { RuleMeta } from './rule-page.ts'
 
 export interface RuleExport {
@@ -37,3 +38,18 @@ export const oxlintPlugin = require_(LIB_DIST) as PluginShape
  * `definePlugin` preserves insertion order, so this matches `src/index.ts`.
  */
 export const RULE_NAMES: string[] = Object.keys(oxlintPlugin.rules)
+
+/** What the generated blocks show of a rule, from its `meta`. */
+export function ruleForBlocks(name: string): RuleForBlocks {
+  const meta = oxlintPlugin.rules[name].meta ?? {}
+  const docs = meta.docs as Omit<RuleForBlocks, 'name' | 'fix'>
+  return {
+    name,
+    category: docs.category,
+    recommended: docs.recommended,
+    experimental: docs.experimental,
+    description: docs.description,
+    fix: meta.fixable ? 'autofix' : meta.hasSuggestions ? 'suggestion' : null,
+    designSystem: docs.designSystem,
+  }
+}

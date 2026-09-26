@@ -47,6 +47,12 @@ point no importa, uno que tu app carga por separado. O no tiene CSS y es un ganc
 tests. Importa ese CSS desde el entry point, o avísale a la regla con
 [`allowlist` o `ignorePrefixes`](/es/rules/no-unknown-classes#opciones).
 
+## ¿Soporta plugins de Tailwind?
+
+Cualquier plugin que cargue tu entry point — con `@plugin` o `@import` — es parte del design system
+que leen las reglas, así que sus clases se conocen igual que las de Tailwind. La suite de tests
+corre con `@tailwindcss/typography`, `tailwindcss-animate` y `tw-animate-css`.
+
 ## ¿Cómo apago una regla para una línea?
 
 Con los comentarios de oxlint, nombrando la regla:

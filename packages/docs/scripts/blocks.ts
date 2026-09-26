@@ -13,6 +13,10 @@ export interface RuleForBlocks {
   category: Category
   recommended: 'error' | 'warn' | false
   experimental?: boolean
+  description?: string
+  /** What `--fix` / the editor offers: an autofix, a suggestion, or neither. */
+  fix?: 'autofix' | 'suggestion' | null
+  designSystem?: 'required' | 'optional' | 'none'
 }
 
 export const CATEGORY_ORDER: readonly Category[] = [
@@ -88,6 +92,23 @@ export function ruleList(rules: readonly RuleForBlocks[], locale: Locale): strin
         .map((r) => `\`${r.name}\`${r.experimental ? ' (experimental)' : ''}`)
         .join(' · ')}`,
   ).join('\n\n')
+}
+
+const DOCS_SITE = 'https://oxlint-tailwindcss.pages.dev'
+
+/** The package README's rule table: every rule, by category, linked to its page. */
+export function ruleTable(rules: readonly RuleForBlocks[]): string {
+  const rows = CATEGORY_ORDER.flatMap((category) =>
+    inCategory(rules, category).map((r) => [
+      `[\`${r.name}\`](${DOCS_SITE}/rules/${r.name})`,
+      `${CATEGORY_LABEL.en[category]}${r.experimental ? ' (experimental)' : ''}`,
+      r.description ?? '',
+      r.recommended ? `\`${r.recommended}\`` : 'off',
+      r.fix ?? '—',
+      r.designSystem === 'none' ? 'not used' : (r.designSystem ?? '—'),
+    ]),
+  )
+  return table(['Rule', 'Category', 'Checks', 'Recommended', 'Fix', 'Design system'], rows)
 }
 
 /** Replace the content between a block's markers; throws when they're missing. */
