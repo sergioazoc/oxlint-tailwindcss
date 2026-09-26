@@ -63,6 +63,9 @@ update(resolve(DOCS, 'setup.md'), {
 update(resolve(DOCS, 'es/setup.md'), {
   'recommended-config': recommendedConfig(rules, { locale: 'es', all: false, schema: true }),
 })
+update(resolve(REPO, 'skills/oxlint-tailwindcss/SKILL.md'), {
+  'recommended-config': recommendedConfig(rules, { locale: 'en', all: false, schema: true }),
+})
 const shadcn = JSON.parse(
   readFileSync(resolve(DOCS, 'data/shadcn-lint.json'), 'utf-8'),
 ) as ShadcnData
@@ -102,4 +105,4 @@ for (const locale of ['en', 'es'] as const) {
     'comparison-coverage': comparisonCoverage(bench, locale),
   })
 }
-console.log('[generate-blocks] wrote 12 files')
+console.log('[generate-blocks] wrote 13 files')

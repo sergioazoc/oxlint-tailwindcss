@@ -277,6 +277,10 @@ describe('the numbers the setup page quotes', () => {
       const n = Number(read(join(DOCS, dir, 'setup.md')).match(/~(\d+) callees/)?.[1])
       expect(n, `${dir}setup.md`).toBe(DEFAULT_EXTRACTOR_CONFIG.callees.length)
     }
+    for (const file of ['skills/oxlint-tailwindcss/SKILL.md']) {
+      const n = Number(read(join(REPO, file)).match(/~(\d+) callees/)?.[1])
+      expect(n, file).toBe(DEFAULT_EXTRACTOR_CONFIG.callees.length)
+    }
   })
 
   it('the runtime dependencies', () => {
@@ -306,7 +310,12 @@ describe('version floors match the code', () => {
     /oxlint (\d+\.\d+\.\d+) \(documented floor\)/,
   )?.[1]
   const pages = ['setup.md', 'es/setup.md'].map((p) => join(DOCS, p))
-  const readmes = ['README.md', 'packages/oxlint-tailwindcss/README.md'].map((p) => join(REPO, p))
+  // The agent skill states the requirements too, for an agent that reads nothing else.
+  const readmes = [
+    'README.md',
+    'packages/oxlint-tailwindcss/README.md',
+    'skills/oxlint-tailwindcss/SKILL.md',
+  ].map((p) => join(REPO, p))
 
   it('Tailwind', () => {
     for (const file of [...pages, ...readmes]) {

@@ -205,6 +205,11 @@
 
 ### Documentation
 
+- **An agent skill.** `npx skills add sergioazoc/oxlint-tailwindcss --skill oxlint-tailwindcss`
+  installs `skills/oxlint-tailwindcss/SKILL.md` into an AI coding agent: how to set the plugin up —
+  requirements, the entry point, the recommended config — and what to do about each diagnostic.
+  Tests keep it in line with the docs: its config runs with the real oxlint, its requirements and
+  rule names are the code's, and every page it links exists.
 - **New pages: [Benchmark](https://oxlint-tailwindcss.pages.dev/benchmark) and
   [Compared with other plugins](https://oxlint-tailwindcss.pages.dev/comparison) (EN and ES).**
   oxlint-tailwindcss, @shadcn/lint and eslint-plugin-better-tailwindcss are run over shadcn/ui's

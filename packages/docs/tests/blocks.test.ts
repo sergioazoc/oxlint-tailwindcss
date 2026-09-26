@@ -104,6 +104,7 @@ describe('the committed files hold the current blocks', () => {
     ['packages/oxlint-tailwindcss/README.md', 'full-config', true],
     ['packages/docs/setup.md', 'recommended-config', false],
     ['packages/docs/es/setup.md', 'recommended-config', false],
+    ['skills/oxlint-tailwindcss/SKILL.md', 'recommended-config', false],
   ] as const)('%s', (path, id, all) => {
     const block = between(path, id)
     const fence = block.slice(block.indexOf('```jsonc'), block.lastIndexOf('```') + 3)
