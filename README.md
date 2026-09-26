@@ -18,7 +18,7 @@ deterministic, with typo suggestions and autofixes.
 
 ---
 
-25 lint rules that catch invalid classes, conflicts, and deprecated utilities, and keep your class
+26 lint rules that catch invalid classes, conflicts, and deprecated utilities, and keep your class
 strings canonical and sorted — reading your real Tailwind v4 design system (`@theme` tokens, shadcn
 variables, typography plugin) for exact, machine-independent results.
 
@@ -84,7 +84,7 @@ recommended full rule set, monorepo patterns, and all `settings.tailwindcss` opt
 
 ## Rules
 
-25 rules across four categories. Every rule has a
+26 rules across four categories. Every rule has a
 [dedicated docs page](https://oxlint-tailwindcss.pages.dev/rules/) (EN/ES) with examples and
 options.
 
@@ -101,8 +101,8 @@ options.
 `enforce-consistent-line-wrapping` · `enforce-consistent-variable-syntax` · `enforce-logical` ·
 `enforce-physical` · `enforce-shorthand` · `enforce-sort-order` · `no-unnecessary-whitespace`
 
-**Design-system guardrails** — `max-class-count` · `no-arbitrary-value` · `no-hardcoded-colors` ·
-`no-restricted-classes`
+**Design-system guardrails** — `max-class-count` · `no-arbitrary-value` · `no-default-palette` ·
+`no-hardcoded-colors` · `no-restricted-classes`
 <!-- /generated:rule-list -->
 
 Classes are detected in `className`/`class` attributes, 14 utility helpers (`cn`, `clsx`, `cva`,

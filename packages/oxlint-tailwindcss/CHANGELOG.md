@@ -4,6 +4,15 @@
 
 ### Features
 
+- **New rule: `no-default-palette`.** In a project whose theme defines its own colors, a color from
+  Tailwind's default palette — `bg-red-500`, `text-gray-900`, `bg-white` — is usually a
+  design-system leak: it doesn't follow the theme, and `bg-white` stays white in dark mode. The rule
+  reports every class that reads a palette color (with variants, opacity modifiers, and arbitrary
+  values that read a palette variable), and names the project's colors in the message. A palette
+  color the theme redefines is the project's own; with no colors of its own, the rule reports
+  nothing. `allow` takes names or `*` prefixes (`["white", "gray-*"]`). DS-dependent, no autofix,
+  off in the recommended config. On shadcn/ui `apps/v4`: 144 reports, 18 of them `white` / `black`.
+
 - **A misspelt or mistyped setting is reported.** oxlint doesn't check `settings`, and the plugin
   read each key it knew and nothing else, so `rootfontsize`, `atributes` or
   `"attributes": "className"` (read letter by letter) changed nothing — or the wrong thing —

@@ -180,12 +180,22 @@ describe.each(LOCALES)('rules/_extras ($dir) document every option', ({ dir, opt
   })
 })
 
-describe('the home page', () => {
+describe('rule counts', () => {
+  // Every "N rules" in the pages that state how many rules the plugin has — not
+  // just the first: a count repeated in a later paragraph drifts on its own.
+  const EN = /\b(\d+) (?:lint |Tailwind CSS (?:v4 )?linting )?rules\b/g
+  const ES = /\b(\d+) reglas\b/g
   it.each([
-    ['index.md', /(\d+) rules/],
-    ['es/index.md', /(\d+) reglas/],
-  ])('%s states the real rule count', (page, count) => {
-    expect(Number(read(join(DOCS, page)).match(count)?.[1])).toBe(RULES.length)
+    ['packages/docs/index.md', EN],
+    ['packages/docs/es/index.md', ES],
+    ['packages/docs/rules/index.md', EN],
+    ['packages/docs/es/rules/index.md', ES],
+    ['README.md', EN],
+    ['packages/oxlint-tailwindcss/README.md', EN],
+  ])('every count in %s is the real one', (file, count) => {
+    const counts = [...read(join(REPO, file)).matchAll(count)].map((m) => Number(m[1]))
+    expect(counts.length).toBeGreaterThan(0)
+    expect(counts.filter((n) => n !== RULES.length)).toEqual([])
   })
 })
 

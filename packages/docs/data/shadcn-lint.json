@@ -29,7 +29,7 @@
       },
       "examples": ["<div className=\"bg-red-500\">Sale</div>"],
       "shadcn": ["no-raw-colors"],
-      "ours": [],
+      "ours": ["no-default-palette"],
       "use": "shadcn"
     },
     {

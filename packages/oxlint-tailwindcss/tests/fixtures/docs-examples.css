@@ -9,6 +9,7 @@
 
 @theme {
   --color-brand: #6d28d9;
+  --color-brand-light: #8b5cf6;
   --color-card: #ffffff;
   --color-card-foreground: #0a0a0a;
 }

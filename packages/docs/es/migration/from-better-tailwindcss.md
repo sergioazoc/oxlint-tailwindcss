@@ -113,6 +113,7 @@ Para revisar una vez hecho el cambio:
 [`no-arbitrary-value`](/es/rules/no-arbitrary-value) ·
 [`no-contradicting-variants`](/es/rules/no-contradicting-variants) ·
 [`no-dark-without-light`](/es/rules/no-dark-without-light) ·
+[`no-default-palette`](/es/rules/no-default-palette) ·
 [`no-hardcoded-colors`](/es/rules/no-hardcoded-colors) ·
 [`no-unnecessary-arbitrary-value`](/es/rules/no-unnecessary-arbitrary-value) ·
 [`prefer-scale-token`](/es/rules/prefer-scale-token) ·
