@@ -18,6 +18,7 @@ const COLD = resolve(__dirname, `../fixtures/.load-report-cold-${process.pid}.cs
 const PHASES = [
   'load',
   'validate',
+  'arbitrary',
   'expand',
   'markers',
   'canonical',
@@ -26,7 +27,6 @@ const PHASES = [
   'declarations',
   'variants',
   'components',
-  'arbitrary',
   'tokens',
 ]
 
