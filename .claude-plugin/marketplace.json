@@ -1,0 +1,12 @@
+{
+  "name": "oxlint-tailwindcss",
+  "owner": { "name": "Sergio Azocar", "url": "https://github.com/sergioazoc" },
+  "description": "The oxlint-tailwindcss plugin for Claude Code.",
+  "plugins": [
+    {
+      "name": "oxlint-tailwindcss",
+      "source": "./agent/claude-code",
+      "description": "Tailwind CSS v4 lint rules for oxlint, in Claude Code: diagnostics as Claude edits, a check of the files it edited before it finishes, and a skill for setting the plugin up."
+    }
+  ]
+}

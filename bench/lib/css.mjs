@@ -96,7 +96,7 @@ export function parseCss(text) {
   function decl(chunk) {
     const colon = chunk.indexOf(':')
     let value = chunk.slice(colon + 1).trim()
-    const important = /!important$/.test(value)
+    const important = value.endsWith('!important')
     if (important) value = value.replace(/\s*!important$/, '')
     return { type: 'decl', prop: chunk.slice(0, colon).trim(), value, important }
   }

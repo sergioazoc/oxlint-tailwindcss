@@ -1,0 +1,20 @@
+{
+  "oxlint": {
+    "command": "node",
+    "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/oxlint-lsp.mjs"],
+    "extensionToLanguage": {
+      ".js": "javascript",
+      ".jsx": "javascriptreact",
+      ".mjs": "javascript",
+      ".cjs": "javascript",
+      ".ts": "typescript",
+      ".tsx": "typescriptreact",
+      ".mts": "typescript",
+      ".cts": "typescript",
+      ".vue": "vue",
+      ".svelte": "svelte",
+      ".astro": "astro"
+    },
+    "startupTimeout": 60000
+  }
+}

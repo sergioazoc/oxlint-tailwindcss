@@ -1,0 +1,11 @@
+{
+  "name": "oxlint-tailwindcss",
+  "displayName": "oxlint-tailwindcss",
+  "version": "1.13.0",
+  "description": "Tailwind CSS v4 lint rules for oxlint, in Claude Code: diagnostics as Claude edits, a check of the files it edited before it finishes, and a skill for setting the plugin up.",
+  "author": { "name": "Sergio Azocar", "url": "https://github.com/sergioazoc" },
+  "homepage": "https://oxlint-tailwindcss.pages.dev/ai-agents",
+  "repository": "https://github.com/sergioazoc/oxlint-tailwindcss",
+  "license": "MIT",
+  "keywords": ["tailwindcss", "oxlint", "lint", "design-system"]
+}

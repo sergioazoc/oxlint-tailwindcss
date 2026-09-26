@@ -47,7 +47,7 @@ jobs:
       - name: Generated pages are committed
         run:
           git diff --exit-code -- packages/docs README.md packages/oxlint-tailwindcss/README.md
-          skills
+          skills agent
 
       - name: Build docs site
         run: pnpm -C packages/docs build

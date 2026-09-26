@@ -115,6 +115,7 @@ export default defineConfig({
                 { text: 'Running in CI', link: '/ci' },
                 { text: 'oxfmt & Prettier', link: '/interop' },
                 { text: 'shadcn/ui & @shadcn/lint', link: '/shadcn' },
+                { text: 'AI coding agents', link: '/ai-agents' },
               ],
             },
             {
@@ -203,6 +204,7 @@ export default defineConfig({
                 { text: 'En CI', link: '/es/ci' },
                 { text: 'oxfmt y Prettier', link: '/es/interop' },
                 { text: 'shadcn/ui y @shadcn/lint', link: '/es/shadcn' },
+                { text: 'Agentes de IA', link: '/es/ai-agents' },
               ],
             },
             {

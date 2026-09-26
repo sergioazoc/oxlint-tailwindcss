@@ -116,6 +116,17 @@ In `.vue`, `.svelte` and `.astro` files oxlint only passes plugins the `<script>
 Astro's frontmatter), so template and markup classes are not checked yet — see
 [Vue, Svelte & Astro](https://oxlint-tailwindcss.pages.dev/frameworks).
 
+## AI coding agents
+
+```bash
+npx skills add sergioazoc/oxlint-tailwindcss --skill oxlint-tailwindcss   # the skill, for any agent
+```
+
+In Claude Code, `/plugin marketplace add sergioazoc/oxlint-tailwindcss` and
+`/plugin install oxlint-tailwindcss@oxlint-tailwindcss` add the plugin: diagnostics as Claude edits,
+and a check of the files it edited before it finishes. See
+[AI coding agents](https://oxlint-tailwindcss.pages.dev/ai-agents).
+
 ## Requirements
 
 - Node.js `^20.19.0 || >=22.12.0` (the same range oxlint itself requires)
@@ -132,6 +143,11 @@ This is a pnpm monorepo:
 - **[`packages/docs`](./packages/docs)** — the VitePress documentation site at
   [oxlint-tailwindcss.pages.dev](https://oxlint-tailwindcss.pages.dev) (English at the root, Spanish
   at `/es`).
+- **[`skills/oxlint-tailwindcss`](./skills/oxlint-tailwindcss)** — the agent skill, and
+  **[`agent/claude-code`](./agent/claude-code)** — the Claude Code plugin, listed by
+  [`.claude-plugin/marketplace.json`](./.claude-plugin/marketplace.json).
+- **[`bench`](./bench)** — the benchmark behind
+  [/benchmark](https://oxlint-tailwindcss.pages.dev/benchmark), outside the workspace.
 
 ## Development
 

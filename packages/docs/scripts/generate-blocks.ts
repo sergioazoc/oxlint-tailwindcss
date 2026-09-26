@@ -4,7 +4,7 @@
  * the files afterwards; docs.yml fails when the result isn't committed.
  */
 
-import { readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -66,6 +66,12 @@ update(resolve(DOCS, 'es/setup.md'), {
 update(resolve(REPO, 'skills/oxlint-tailwindcss/SKILL.md'), {
   'recommended-config': recommendedConfig(rules, { locale: 'en', all: false, schema: true }),
 })
+// The Claude Code plugin ships the same skill; a plugin can't reach outside its directory.
+mkdirSync(resolve(REPO, 'agent/claude-code/skills/oxlint-tailwindcss'), { recursive: true })
+copyFileSync(
+  resolve(REPO, 'skills/oxlint-tailwindcss/SKILL.md'),
+  resolve(REPO, 'agent/claude-code/skills/oxlint-tailwindcss/SKILL.md'),
+)
 const shadcn = JSON.parse(
   readFileSync(resolve(DOCS, 'data/shadcn-lint.json'), 'utf-8'),
 ) as ShadcnData
@@ -105,4 +111,4 @@ for (const locale of ['en', 'es'] as const) {
     'comparison-coverage': comparisonCoverage(bench, locale),
   })
 }
-console.log('[generate-blocks] wrote 13 files')
+console.log('[generate-blocks] wrote 14 files')
