@@ -97,7 +97,7 @@ const MAX_WORKERS = 8
  * optional source prepended to the script (declaration-service injects the
  * shared `DECL_EXTRACTOR_SOURCE`).
  */
-export function makeWorkerScript(handlerExpr: string, preamble = ''): string {
+export function makeWorkerScript(handlerExpr: string, preamble = '', warmupExpr = ''): string {
   return `
 ${preamble}
 const { workerData } = require('worker_threads');
@@ -150,6 +150,14 @@ async function main() {
   Atomics.store(control, 2, 1);
   Atomics.notify(control, 2);
 
+  // A worker started ahead of its first request (\`prewarm\`) warms up after
+  // saying it's ready: a request that arrives meanwhile waits in control[0]
+  // and is picked up as soon as the loop starts.
+  const warmup = ${warmupExpr || 'null'};
+  if (warmup && workerData.warm !== undefined) {
+    try { await warmup(ds, workerData.warm, env); } catch {}
+  }
+
   const handler = ${handlerExpr};
 
   while (true) {
@@ -191,6 +199,8 @@ interface ReadyState {
   lengthView: DataView
   dataArea: Uint8Array
   cssPath: string
+  /** False while a prewarmed worker may still be loading its design system. */
+  ready: boolean
 }
 
 export interface DesignSystemWorkerOptions {
@@ -296,6 +306,13 @@ export class DesignSystemWorker<Req, Res> {
     }
 
     const existing = this.workers.get(cssPath)
+    if (existing && !existing.ready) {
+      // Prewarmed: wait for its init now (usually long done).
+      this.workers.delete(cssPath)
+      this.waitReady(existing)
+      this.workers.set(cssPath, existing)
+      return existing
+    }
     if (existing) {
       // Mark most-recently-used: delete + re-insert moves it to the tail so
       // the LRU eviction below always drops the coldest entry point.
@@ -304,6 +321,34 @@ export class DesignSystemWorker<Req, Res> {
       return existing
     }
 
+    const state = this.spawn(cssPath)
+    this.waitReady(state)
+    this.workers.set(cssPath, state)
+    this.evictIfNeeded()
+    return state
+  }
+
+  /**
+   * Start the worker for `cssPath` without waiting for it: it loads the design
+   * system and then runs the script's warm-up with `warm`, while the caller
+   * carries on. The first request waits for whatever is left. Never throws — a
+   * worker that can't start reports on its first request, as it would have. A
+   * no-op when the worker is already there, or known to fail.
+   */
+  prewarm(cssPath: string, warm: unknown): void {
+    if (this.workers.has(cssPath) || this.errors.has(cssPath) || this.requestStick.has(cssPath)) {
+      return
+    }
+    try {
+      this.workers.set(cssPath, this.spawn(cssPath, warm))
+      this.evictIfNeeded()
+    } catch {
+      // Remembered by `spawn`; the first request rethrows it.
+    }
+  }
+
+  /** Create the worker and its buffers; `ready` is false until `waitReady`. */
+  private spawn(cssPath: string, warm?: unknown): ReadyState {
     // Resolve the consumer's engine for this entry point (issue #114). The same
     // memoized pure resolver feeds the precompute and the disk-cache key, so all
     // layers load the identical @tailwindcss/node for a given cssPath.
@@ -327,7 +372,7 @@ export class DesignSystemWorker<Req, Res> {
     try {
       worker = new Worker(this.opts.workerScript, {
         eval: true,
-        workerData: { sharedBuffer, cssPath, tailwindNodePath },
+        workerData: { sharedBuffer, cssPath, tailwindNodePath, warm },
       })
     } catch (cause) {
       throw this.remember(
@@ -358,7 +403,12 @@ export class DesignSystemWorker<Req, Res> {
       if (current && current.worker === worker) this.workers.delete(cssPath)
     })
 
-    // Wait for DS to load
+    return { worker, controlArray, lengthView, dataArea, cssPath, ready: false }
+  }
+
+  /** Wait for a spawned worker's design system; throws (and remembers) on failure. */
+  private waitReady(state: ReadyState): void {
+    const { worker, controlArray, lengthView, dataArea, cssPath } = state
     const result = Atomics.wait(controlArray, 2, 0, INIT_TIMEOUT)
     if (result === 'timed-out') {
       this.terminateWorker(worker)
@@ -389,10 +439,7 @@ export class DesignSystemWorker<Req, Res> {
       )
     }
 
-    const state: ReadyState = { worker, controlArray, lengthView, dataArea, cssPath }
-    this.workers.set(cssPath, state)
-    this.evictIfNeeded()
-    return state
+    state.ready = true
   }
 
   /** Evict least-recently-used workers past the cap (#77). */

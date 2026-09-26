@@ -149,6 +149,11 @@
 
 ### Performance
 
+- **A cold start is about 1.5 s shorter.** When the design system has to be precomputed, the
+  `enforce-canonical` worker now starts alongside it and builds Tailwind's canonicalization tables
+  (~1 s, once per worker) in the meantime, instead of after it on the first class that needs it. On
+  shadcn/ui `apps/v4`: 10.8 s → 9.2 s cold on one thread, with identical diagnostics; warm runs are
+  unchanged.
 - **`debug` says where a cold start's time goes.** Each design-system load now logs whether it came
   from the disk cache or a fresh precompute, and how long hashing, the cache read, the precompute
   and building the in-memory cache took — for a precompute, phase by phase, timed by the precompute

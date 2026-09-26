@@ -155,7 +155,13 @@ export const CANONICALIZE_HANDLER = `async (ds, request, env) => {
   return results;
 }`
 
-const WORKER_SCRIPT = makeWorkerScript(CANONICALIZE_HANDLER)
+// Tailwind builds its canonicalization tables on the first call, once per \`rem\`
+// (~1 s on a real theme): a prewarmed worker pays it before any request comes.
+const CANONICALIZE_WARMUP = `(ds, warm) => {
+  ds.canonicalizeCandidates(['w-[1px]'], warm.rem ? { rem: warm.rem } : undefined);
+}`
+
+const WORKER_SCRIPT = makeWorkerScript(CANONICALIZE_HANDLER, '', CANONICALIZE_WARMUP)
 
 const canonWorker = new DesignSystemWorker<CanonicalizeRequest, CanonicalizeResult[]>({
   workerScript: WORKER_SCRIPT,
@@ -383,6 +389,16 @@ function flushPersist(cachePrefix: string, state: PersistState): void {
   } finally {
     tryUnlink(lockPath)
   }
+}
+
+/**
+ * Start the canonicalize worker for `cssPath` in the background, warmed for
+ * `rem` — what `canonicalizeClassesSync` will ask with. Called when a design
+ * system has to be precomputed, so the two run side by side instead of one
+ * after the other.
+ */
+export function prewarmCanonicalize(cssPath: string, rem?: number): void {
+  canonWorker.prewarm(cssPath, { rem })
 }
 
 /**
