@@ -25,9 +25,11 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  readdirSync,
   renameSync,
   statSync,
   unlinkSync,
+  utimesSync,
 } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { tmpdir, userInfo } from 'node:os'
@@ -1162,6 +1164,64 @@ function resolveCacheDir(): string {
 
 const CACHE_DIR = resolveCacheDir()
 
+/** The disk-cache directory this process uses. */
+export function getCacheDir(): string {
+  return CACHE_DIR
+}
+
+/** How long a cache file nobody uses is kept; a cache hit refreshes its mtime. */
+const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
+/** This plugin's cache files: a 32-hex content hash, then the kind (`.json`, `.lock`, `.canon-…`). */
+const CACHE_FILE = /^[0-9a-f]{32}\./
+
+/**
+ * Remove this plugin's cache files in `dir` unused for 30 days. Every change to
+ * a design system's CSS writes a new ~3 MB artifact, so without this the cache
+ * only grows — in a CI cache restored run after run, it piles up. Anything
+ * else in the directory (it can be `OXLINT_TAILWINDCSS_CACHE_DIR`) is left
+ * alone. Best-effort; returns how many files it removed.
+ */
+export function pruneCacheDir(dir: string = CACHE_DIR, now: number = Date.now()): number {
+  let names: string[]
+  try {
+    names = readdirSync(dir)
+  } catch {
+    return 0
+  }
+  let removed = 0
+  for (const name of names) {
+    if (!CACHE_FILE.test(name)) continue
+    const path = join(dir, name)
+    try {
+      if (now - statSync(path).mtimeMs > CACHE_MAX_AGE_MS) {
+        unlinkSync(path)
+        removed++
+      }
+    } catch {
+      // Gone already, or not ours to remove.
+    }
+  }
+  return removed
+}
+
+/** A used cache file's mtime is refreshed at most this often, so a warm run writes nothing. */
+const TOUCH_AFTER_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Mark a cache file as used, so `pruneCacheDir` keeps it — only when its mtime
+ * is over a day old: a run right after another still writes nothing (what /ci
+ * promises and `e2e/cache-dir` holds). Best-effort.
+ */
+export function touchCacheFile(path: string, now: number = Date.now()): void {
+  try {
+    if (now - statSync(path).mtimeMs < TOUCH_AFTER_MS) return
+    const date = new Date(now)
+    utimesSync(path, date, date)
+  } catch {
+    // A read-only cache (a restored CI cache) still works; it just isn't refreshed.
+  }
+}
+
 /**
  * Cache key derived from:
  *   - md5(PRECOMPUTE_SCRIPT): auto-invalidates when our precompute logic changes,
@@ -1724,6 +1784,7 @@ export function loadDesignSystemSync(
   const cached = tryReadCache(contentCachePath)
   const readMs = since(readStart)
   if (cached) {
+    touchCacheFile(contentCachePath)
     lastLoadReport = { source: 'cache', hashMs, readMs }
     return cached
   }
@@ -1760,6 +1821,9 @@ export function loadDesignSystemSync(
     computeMs: since(computeStart),
     phases: data.timings,
   }
+  // A new artifact is the moment the old ones may be stale: prune here, not on
+  // every run.
+  pruneCacheDir()
   return data
 }
 

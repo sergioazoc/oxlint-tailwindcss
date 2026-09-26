@@ -149,6 +149,11 @@
 
 ### Performance
 
+- **The disk cache no longer grows forever.** Every change to a design system's CSS writes a new ~3
+  MB precompute, and nothing removed the old ones — in a CI cache restored run after run they piled
+  up. After each precompute, the plugin's own cache files unused for 30 days are removed; a cache
+  hit refreshes a file's date — at most once a day, so a warm run still writes nothing — and what's
+  in use never expires. Other files in the directory are left alone.
 - **The precompute is about 1 s faster.** It builds the map of arbitrary values to named classes
   (`h-[auto]` → `h-auto`) first thing instead of late: the same Tailwind call costs about five times
   as much once the canonical-forms phase has run (1.6 s instead of ~0.5 s on shadcn/ui's theme). The

@@ -42,7 +42,9 @@ arranque en frío. Pon la caché en un directorio que conserves entre jobs, con 
   por eso el paso usa `$HOME`.
 - Una corrida que encuentra su design system en la caché no lo vuelve a calcular. El directorio
   también guarda la forma canónica de cada clase con valor arbitrario que encuentran las reglas
-  (`p-[2px]`), así que crece un poco a medida que crece tu código; esa parte solo ahorra tiempo.
+  (`p-[2px]`), así que crece un poco a medida que crece tu código; esa parte solo ahorra tiempo. Los
+  archivos que el plugin no usó en 30 días se borran cada vez que calcula un design system nuevo,
+  así que una caché restaurada corrida tras corrida no acumula los viejos.
 - La key de arriba cambia con el lockfile (que fija la versión de Tailwind y de sus plugins) y con
   tu CSS. Ajusta el glob de CSS a donde viven tus hojas de estilo.
 
