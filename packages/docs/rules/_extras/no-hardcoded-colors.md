@@ -33,7 +33,16 @@ Values that reference a CSS variable are treated as design-system indirection an
 non-recursive `var()` check is shallow — `bg-[linear-gradient(hsl(var(--a)),#fff)]` is _not_ flagged
 because at least one `var()` is present. This is documented behavior and tested.
 
-DS-independent — no design system is loaded. No autofix: picking the right token is a human
+DS-optional — it works with nothing configured. With `settings.tailwindcss.entryPoint`, the message
+also names your theme's colors, so the replacement is in front of you:
+
+```text
+"bg-[#ff6600]" uses a hardcoded color value. Use one of your theme colors instead: brand,
+brand-light.
+```
+
+The design system is loaded only once there is a color to report, and a project with no colors of
+its own — stock Tailwind — keeps the plain message. No autofix: picking the right token is a human
 decision.
 
 ## Options
@@ -54,6 +63,11 @@ hex in a single brand-asset component.
 }
 ```
 
+### `entryPoint`
+
+`string`, optional. Per-rule override of `settings.tailwindcss.entryPoint`, read only to name your
+theme's colors in the message.
+
 ## Examples
 
 ### ✗ Incorrect
@@ -61,6 +75,7 @@ hex in a single brand-asset component.
 ```tsx
 // Hex literals on color utilities
 <div className="bg-[#ff5733] text-[#000]" />
+// reports: Use one of your theme colors instead
 
 // rgb/rgba/hsl/oklch are all the same answer
 <div className="border-[rgba(0,0,0,0.5)] text-[hsl(120,100%,50%)]" />
@@ -82,8 +97,8 @@ hex in a single brand-asset component.
 ### ✓ Correct
 
 ```tsx
-// Named theme colors
-<div className="bg-blue-500 text-white" />
+// Theme colors
+<div className="bg-brand text-brand-light" />
 
 // CSS variable indirection passes
 <div className="bg-[var(--primary)] border-[hsl(var(--border))]" />
@@ -107,6 +122,9 @@ hex in a single brand-asset component.
 - **`no-arbitrary-value`**: superset. If you enable that rule, every hardcoded color is already
   flagged. Use `no-hardcoded-colors` alone when you want the specific color message and tolerate
   other arbitrary values; use both for a clearer diagnostic on color drift.
+- **`no-default-palette`**: the other half. It reports Tailwind's default palette colors
+  (`bg-red-500`); this rule reports color literals (`bg-[#f00]`). Together they leave only your
+  theme's colors.
 - **`prefer-theme-tokens`**: complementary. `prefer-theme-tokens` asks the design system if a
   matching `@theme` color exists and suggests it; this rule fires regardless of whether a token
   exists, so it catches drift earlier (before you've defined the token).

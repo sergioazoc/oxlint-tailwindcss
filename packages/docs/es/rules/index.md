@@ -112,6 +112,7 @@ además un `entryPoint` propio que pisa el ajuste compartido.
 | `no-dark-without-light`            | `{ variants: ['dark'] }`                | Distingue los colores del resto y agrupa la base por propiedad CSS declarada                      |
 | `no-deprecated-classes`            | `{}`                                    | Deriva la lista de renombres en vez de usar la tabla interna                                      |
 | `no-dynamic-classes`               | `{}`                                    | Las utilidades y variantes propias de tu proyecto cuentan como de Tailwind                        |
+| `no-hardcoded-colors`              | `{ allow: [] }`                         | Nombra los colores de tu theme en el mensaje                                                      |
 
 ### Reglas DS-independientes
 
@@ -122,6 +123,5 @@ además un `entryPoint` propio que pisa el ajuste compartido.
 | `enforce-negative-arbitrary-values`     | (sin opciones)                  |
 | `max-class-count`                       | `{ max: 20 }`                   |
 | `no-duplicate-classes`                  | (sin opciones)                  |
-| `no-hardcoded-colors`                   | `{ allow: [] }`                 |
 | `no-restricted-classes`                 | `{ classes: [], patterns: [] }` |
 | `no-unnecessary-whitespace`             | (sin opciones)                  |

@@ -173,7 +173,7 @@ project's own, a redefined palette color included), reports a class whose declar
 palette variable, and stays silent when the project declares no color of its own. The
 **DS-optional** rules use `softGetDS` instead — they consult the DS when an entryPoint is configured
 but fall back to a deterministic static path when it isn't, so a missing entryPoint is tolerated
-silently and none may ever emit `designSystemUnavailable`. There are 10: `consistent-variant-order`,
+silently and none may ever emit `designSystemUnavailable`. There are 11: `consistent-variant-order`,
 `no-contradicting-variants`, `enforce-consistent-line-wrapping`, `no-dark-without-light`,
 `enforce-shorthand`, `enforce-logical`, `enforce-physical` (these last two reach `softGetDS` through
 the shared directional mapper in `enforce-logical.ts`), `no-deprecated-classes`, and
@@ -181,7 +181,10 @@ the shared directional mapper in `enforce-logical.ts`), `no-deprecated-classes`,
 first pure `var()` reference (`definesVar` tells a runtime variable from one the stylesheet defines;
 without a DS the reference is reported, the safe side for a restriction rule), and
 `no-dynamic-classes` — the project's utilities and variants join Tailwind's as roots with a DS;
-without one, `STATIC_UTILITY_ROOTS` / `STATIC_VARIANTS`, which a test pins to Tailwind's own lists.
+without one, `STATIC_UTILITY_ROOTS` / `STATIC_VARIANTS`, which a test pins to Tailwind's own lists,
+and `no-hardcoded-colors` — which loads the DS lazily, on its first report, only to name the
+project's colors (`themeColorList` in `utils/theme-colors.ts`, shared with `no-default-palette`) in
+`noHardcodedTokens`; without a DS, or with no colors of its own, the message is `noHardcoded`.
 `no-dark-without-light` checks only variant classes that set a **colour** (R3): with the DS,
 `colorPropertyOf` reads the class's declarations (a `*-color` / `fill` / `stroke` /
 `--tw-gradient-*` property, a `--color-*` read, or a colour literal outside `var()` fallbacks — so
@@ -406,7 +409,7 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `tests/e2e/cache-dir.test.ts` holds what `/ci` promises about `OXLINT_TAILWINDCSS_CACHE_DIR`.
 - **Fail-loud (v1)**: If the DS can't load, DS-dependent rules emit a single
   `designSystemUnavailable` diagnostic via the shared `safeGetDS` helper in `src/utils/fatal.ts`.
-  There is no silent fallback; the exceptions are the 10 DS-optional rules listed under
+  There is no silent fallback; the exceptions are the 11 DS-optional rules listed under
   Architecture, which go through `softGetDS`, fall back to a deterministic static path, and never
   emit `designSystemUnavailable`. The dedicated error types — `MissingEntryPointError`,
   `DeprecatedEntryPointShapeError`, `DesignSystemLoadError`, `SortServiceError`,
