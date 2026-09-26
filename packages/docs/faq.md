@@ -38,10 +38,10 @@ those parts of the file. [Vue, Svelte & Astro](/frameworks) shows what is and is
 ## Why is a class that works reported as unknown?
 
 `no-unknown-classes` knows Tailwind's classes and the ones your CSS defines — in the entry point and
-the stylesheets it imports directly. A class it reports that still works in the browser usually
-comes from CSS the entry point doesn't reach: a stylesheet imported by another imported stylesheet,
-or one your app loads separately. Or it has no CSS at all and is a hook for JavaScript or tests.
-Import that CSS from the entry point, or tell the rule about the class with
+the stylesheets of yours it imports, up to four `@import`s down, and a package's stylesheet it
+imports. A class it reports that still works in the browser usually comes from CSS the entry point
+doesn't import, one your app loads separately. Or it has no CSS at all and is a hook for JavaScript
+or tests. Import that CSS from the entry point, or tell the rule about the class with
 [`allowlist` or `ignorePrefixes`](/rules/no-unknown-classes#options).
 
 ## How do I turn a rule off for one line?
