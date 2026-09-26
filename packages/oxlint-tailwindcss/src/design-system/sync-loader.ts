@@ -552,6 +552,55 @@ async function main() {
 
   phase('validate');
 
+  // Right after validation, before anything else runs on the design system:
+  // the same candidatesToCss call costs ~5x as much once the canonical phase
+  // has filled Tailwind's caches (1.6 s instead of ~0.3 s, measured). Only
+  // getClassList() classes have CSS in cssResults, so the classes the expand
+  // phase adds later can't contribute, and the result is the same.
+  // Arbitrary equivalents: map arbitrary forms to named equivalents.
+  // Enumerate every dash split point so multi-segment utilities (e.g.
+  // bg-card-foreground) emit candidates for every prefix; lastIndexOf
+  // alone drops the shorter prefix and misses multi-segment mappings.
+  // Start at indexOf('-', 1) so negative utilities (e.g. -translate-x-1)
+  // keep their leading '-' in every prefix instead of producing '' + '-[…]'.
+  const arbitraryEquivalents = {};
+  const candidates = [];
+  for (const cls of validClasses) {
+    if (cls.includes('[') || cls.includes('/')) continue;
+    const idx = classNameIndex.get(cls);
+    if (idx === undefined) continue;
+    const cssText = cssResults[idx];
+    if (!cssText) continue;
+    const pvMatch = cssText.match(/^\\s+([\\w-]+)\\s*:\\s*(.+?)\\s*;?\\s*$/m);
+    if (!pvMatch) continue;
+    const value = pvMatch[2].trim().replace(/;$/, '');
+    for (let dashPos = cls.indexOf('-', 1); dashPos > 0; dashPos = cls.indexOf('-', dashPos + 1)) {
+      const prefix = cls.slice(0, dashPos);
+      candidates.push({ arbitraryForm: prefix + '-[' + value + ']', namedCls: cls, namedCss: cssText });
+    }
+  }
+  function extractDeclarations(css) {
+    const openBrace = css.indexOf('{');
+    const closeBrace = css.lastIndexOf('}');
+    if (openBrace === -1 || closeBrace === -1) return css;
+    return css.slice(openBrace + 1, closeBrace).replace(/\\s+/g, ' ').trim();
+  }
+  if (candidates.length > 0) {
+    const arbForms = candidates.map(c => c.arbitraryForm);
+    // Prefix only the validation; keys/values stored stay prefix-free. The
+    // declaration block extractDeclarations compares is identical with or
+    // without the prefix (the prefix only affects the selector).
+    const arbResults = ds.candidatesToCss(arbForms.map(pfx));
+    for (let i = 0; i < candidates.length; i++) {
+      if (!arbResults[i]) continue;
+      if (extractDeclarations(arbResults[i]) === extractDeclarations(candidates[i].namedCss)) {
+        arbitraryEquivalents[candidates[i].arbitraryForm] = candidates[i].namedCls;
+      }
+    }
+  }
+
+  phase('arbitrary');
+
   // Expand: validate extra candidates not in getClassList() but valid in v4
   const validSet = new Set(validClasses);
   const knownPrefixes = new Set();
@@ -657,8 +706,11 @@ async function main() {
 
   // Canonical forms (only store diffs)
   // NOTE: canonicalizeCandidates deduplicates, so we must call it one class at a time
+  // An engine without it (before 4.1.15, only with allowUntestedEngine) leaves
+  // the canonical and rename maps empty instead of failing the whole precompute.
+  const canCanonicalize = typeof ds.canonicalizeCandidates === 'function';
   const canonical = {};
-  for (const cls of classNames) {
+  for (const cls of canCanonicalize ? classNames : []) {
     const result = ds.canonicalizeCandidates([pfx(cls)]);
     const canon = result[0] ? unpfx(result[0]) : null;
     // Compare unprefixed-vs-unprefixed so the prefix itself never reads as a change.
@@ -708,7 +760,7 @@ async function main() {
     else if (cls.startsWith('-inset-e-')) legacyCandidates.push('-end-' + cls.slice(9));
   }
   const deprecated = {};
-  const legacyToProcess = legacyCandidates.filter(cls => !validSet.has(cls));
+  const legacyToProcess = canCanonicalize ? legacyCandidates.filter(cls => !validSet.has(cls)) : [];
   if (legacyToProcess.length > 0) {
     const legacyCssResults = ds.candidatesToCss(legacyToProcess.map(pfx));
     for (let i = 0; i < legacyToProcess.length; i++) {
@@ -948,49 +1000,6 @@ async function main() {
 
   phase('components');
 
-  // Arbitrary equivalents: map arbitrary forms to named equivalents.
-  // Enumerate every dash split point so multi-segment utilities (e.g.
-  // bg-card-foreground) emit candidates for every prefix; lastIndexOf
-  // alone drops the shorter prefix and misses multi-segment mappings.
-  // Start at indexOf('-', 1) so negative utilities (e.g. -translate-x-1)
-  // keep their leading '-' in every prefix instead of producing '' + '-[…]'.
-  const arbitraryEquivalents = {};
-  const candidates = [];
-  for (const cls of validClasses) {
-    if (cls.includes('[') || cls.includes('/')) continue;
-    const idx = classNameIndex.get(cls);
-    if (idx === undefined) continue;
-    const cssText = cssResults[idx];
-    if (!cssText) continue;
-    const pvMatch = cssText.match(/^\\s+([\\w-]+)\\s*:\\s*(.+?)\\s*;?\\s*$/m);
-    if (!pvMatch) continue;
-    const value = pvMatch[2].trim().replace(/;$/, '');
-    for (let dashPos = cls.indexOf('-', 1); dashPos > 0; dashPos = cls.indexOf('-', dashPos + 1)) {
-      const prefix = cls.slice(0, dashPos);
-      candidates.push({ arbitraryForm: prefix + '-[' + value + ']', namedCls: cls, namedCss: cssText });
-    }
-  }
-  function extractDeclarations(css) {
-    const openBrace = css.indexOf('{');
-    const closeBrace = css.lastIndexOf('}');
-    if (openBrace === -1 || closeBrace === -1) return css;
-    return css.slice(openBrace + 1, closeBrace).replace(/\\s+/g, ' ').trim();
-  }
-  if (candidates.length > 0) {
-    const arbForms = candidates.map(c => c.arbitraryForm);
-    // Prefix only the validation; keys/values stored stay prefix-free. The
-    // declaration block extractDeclarations compares is identical with or
-    // without the prefix (the prefix only affects the selector).
-    const arbResults = ds.candidatesToCss(arbForms.map(pfx));
-    for (let i = 0; i < candidates.length; i++) {
-      if (!arbResults[i]) continue;
-      if (extractDeclarations(arbResults[i]) === extractDeclarations(candidates[i].namedCss)) {
-        arbitraryEquivalents[candidates[i].arbitraryForm] = candidates[i].namedCls;
-      }
-    }
-  }
-
-  phase('arbitrary');
 
   // Custom properties the project defines, across the entry AND its resolved
   // @imports — splitting the theme across files is the normal shadcn/ui layout,

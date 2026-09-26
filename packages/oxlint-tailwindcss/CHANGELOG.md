@@ -149,6 +149,14 @@
 
 ### Performance
 
+- **The precompute is about 1 s faster.** It builds the map of arbitrary values to named classes
+  (`h-[auto]` → `h-auto`) first thing instead of late: the same Tailwind call costs about five times
+  as much once the canonical-forms phase has run (1.6 s instead of ~0.5 s on shadcn/ui's theme). The
+  result is byte for byte the same on every test theme. With the change below, a cold start on
+  shadcn/ui `apps/v4` goes from 10.8 s to 7.9 s on one thread.
+- **An engine without `canonicalizeCandidates`** (Tailwind before 4.1.15, reachable only with
+  `allowUntestedEngine`) no longer fails the whole precompute: the canonical and v3-rename maps stay
+  empty and every other rule works.
 - **A cold start is about 1.5 s shorter.** When the design system has to be precomputed, the
   `enforce-canonical` worker now starts alongside it and builds Tailwind's canonicalization tables
   (~1 s, once per worker) in the meantime, instead of after it on the first class that needs it. On
