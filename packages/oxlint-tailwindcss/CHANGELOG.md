@@ -236,6 +236,12 @@
   their options, the switch step by step with a before-and-after config, and the rules it doesn't
   have. Every row's example is reported by both of its rules, checked weekly against
   better-tailwindcss's latest release.
+- **New [FAQ](https://oxlint-tailwindcss.pages.dev/faq) (EN and ES)**, every answer checked against
+  oxlint: ESLint and Tailwind v3, which rules run (oxlint's `categories` don't turn on a JS plugin's
+  rules), the entry point, Vue and Svelte, why a class that works can be reported as unknown,
+  turning a rule off for a line, `--fix`, formatters, @shadcn/lint, better-tailwindcss, CI and
+  monorepos. The home page now says what the plugin is and what it catches, with a quick start; the
+  sidebar groups the guides; and the docs build fails on a link to a heading that doesn't exist.
 - Every "Tailwind v4.1+" requirement now reads v4.1.15+.
 - **The Node.js requirement matches oxlint's own range, `^20.19.0 || >=22.12.0`**, and `engines`
   says so: oxlint itself does not run on older Node 20 releases. CI now smoke-tests the documented
