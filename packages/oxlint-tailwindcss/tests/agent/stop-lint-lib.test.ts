@@ -38,8 +38,8 @@ describe('findOxlint', () => {
     // resolve(): on Windows, '/repo' is on the current drive.
     const bin = join(resolve('/repo'), 'node_modules', '.bin', 'oxlint')
     const exists = (p: string) => p === bin
-    expect(findOxlint('/repo/packages/web/src', { exists })).toBe(bin)
-    expect(findOxlint('/elsewhere', { exists })).toBeNull()
+    expect(findOxlint('/repo/packages/web/src', { platform: 'linux', exists })).toBe(bin)
+    expect(findOxlint('/elsewhere', { platform: 'linux', exists })).toBeNull()
     const cmd = join(resolve('/repo'), 'node_modules', '.bin', 'oxlint.cmd')
     expect(findOxlint('/repo', { platform: 'win32', exists: (p: string) => p === cmd })).toBe(cmd)
   })
