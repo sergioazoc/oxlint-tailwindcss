@@ -12,6 +12,7 @@ export interface RuleForBlocks {
   name: string
   category: Category
   recommended: 'error' | 'warn' | false
+  experimental?: boolean
 }
 
 export const CATEGORY_ORDER: readonly Category[] = [
@@ -84,7 +85,7 @@ export function ruleList(rules: readonly RuleForBlocks[], locale: Locale): strin
   return CATEGORY_ORDER.map(
     (category) =>
       `**${CATEGORY_LABEL[locale][category]}** — ${inCategory(rules, category)
-        .map((r) => `\`${r.name}\``)
+        .map((r) => `\`${r.name}\`${r.experimental ? ' (experimental)' : ''}`)
         .join(' · ')}`,
   ).join('\n\n')
 }

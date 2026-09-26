@@ -110,6 +110,7 @@ Worth a look once you've switched:
 [`enforce-negative-arbitrary-values`](/rules/enforce-negative-arbitrary-values) ·
 [`enforce-physical`](/rules/enforce-physical) · [`max-class-count`](/rules/max-class-count) ·
 [`no-arbitrary-value`](/rules/no-arbitrary-value) ·
+[`no-borrowed-component-styles`](/rules/no-borrowed-component-styles) ·
 [`no-contradicting-variants`](/rules/no-contradicting-variants) ·
 [`no-dark-without-light`](/rules/no-dark-without-light) ·
 [`no-default-palette`](/rules/no-default-palette) ·

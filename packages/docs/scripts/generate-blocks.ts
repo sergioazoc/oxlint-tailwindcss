@@ -27,7 +27,12 @@ const REPO = resolve(DOCS, '../..')
 
 const rules: RuleForBlocks[] = RULE_NAMES.map((name) => {
   const docs = oxlintPlugin.rules[name].meta?.docs as Omit<RuleForBlocks, 'name'>
-  return { name, category: docs.category, recommended: docs.recommended }
+  return {
+    name,
+    category: docs.category,
+    recommended: docs.recommended,
+    experimental: docs.experimental,
+  }
 })
 
 function update(path: string, blocks: Record<string, string>): void {

@@ -97,9 +97,9 @@ That's it — the push fast-forwards `release` to `main` and `release.yml` takes
 
 ## Architecture
 
-oxlint plugin with 26 Tailwind CSS v4 linting rules. Uses `@oxlint/plugins`' `createOnce` API (runs
+oxlint plugin with 27 Tailwind CSS v4 linting rules. Uses `@oxlint/plugins`' `createOnce` API (runs
 once per lint session; returned visitors run on every matching AST node). This document covers the
-error-prone subsystems, not every rule; the canonical per-rule reference (all 26, with options and
+error-prone subsystems, not every rule; the canonical per-rule reference (all 27, with options and
 defaults) is `packages/docs/rules/index.md`.
 
 **Design principle — deterministic, explicit, fail-loud.** `settings.tailwindcss.entryPoint` is
@@ -164,9 +164,10 @@ Core sync/async bridge: `@tailwindcss/node`'s `__unstable__loadDesignSystem` is 
    threading. In a monorepo, packages pinned to different Tailwind versions each get their own
    engine.
 
-DS-dependent rules (the 8 users of `safeGetDS`, which reports `designSystemUnavailable`):
+DS-dependent rules (the 9 users of `safeGetDS`, which reports `designSystemUnavailable`):
 `no-unknown-classes`, `no-conflicting-classes`, `enforce-canonical`, `enforce-sort-order`,
-`no-unnecessary-arbitrary-value`, `prefer-scale-token`, `prefer-theme-tokens`, and
+`no-unnecessary-arbitrary-value`, `prefer-scale-token`, `prefer-theme-tokens`,
+`no-borrowed-component-styles` (experimental; see "Component signatures" under Shared helpers), and
 `no-default-palette` — which reads the precompute's `paletteVars` / `projectColorVars` (the theme's
 `--color-*` split by the `DEFAULT` theme option: Tailwind's `@theme default` palette vs the
 project's own, a redefined palette color included), reports a class whose declarations read a
@@ -317,17 +318,37 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `enforce-canonical` / `prefer-scale-token`). Both are per file; see "Per-file options and
   settings". Lives in `utils/`, not `types.ts` (which is import-type-only).
 - **`utils/rule-docs.ts`** —
-  `ruleDocs(name, { description, category, recommended, designSystem, formatterOverlap? })` is every
-  rule's `meta.docs` (it adds the docs `url`). It is the single source of the rule list by category
-  (root README), both recommended configs (package README: every rule, `"off"` when not recommended;
-  `/setup`: only the recommended ones) — written between `<!-- generated:… -->` markers by
-  `pnpm -C packages/docs generate` — and of the groups on `rules/index.md`.
-  `tests/docs/docs-sync.test.ts` checks `designSystem` against what the rule does (declares
-  `designSystemUnavailable` → `required`; reaches `createLazyLoader` → `optional`).
+  `ruleDocs(name, { description, category, recommended, designSystem, formatterOverlap?, experimental? })`
+  is every rule's `meta.docs` (it adds the docs `url`). `experimental: true` (only
+  `no-borrowed-component-styles`) puts a warning container under the rule page's description and
+  `(experimental)` after its name in the generated rule list; such a rule is never recommended. It
+  is the single source of the rule list by category (root README), both recommended configs (package
+  README: every rule, `"off"` when not recommended; `/setup`: only the recommended ones) — written
+  between `<!-- generated:… -->` markers by `pnpm -C packages/docs generate` — and of the groups on
+  `rules/index.md`. `tests/docs/docs-sync.test.ts` checks `designSystem` against what the rule does
+  (declares `designSystemUnavailable` → `required`; reaches `createLazyLoader` → `optional`).
 - **`utils/measure.ts`** — lengths against the scale: `measure` / `sameMeasure` / `isOnStep` /
   `formatStep` (`prefer-scale-token`: is this value EQUAL to a step or token?) and `closestOnScale`
   (`no-arbitrary-value`'s message: the exact match alone, else the nearest candidate below and above
   among the prefix's tokens and the two surrounding scale steps).
+- **Component signatures** (`no-borrowed-component-styles`, experimental) —
+  `utils/component-scanner.ts`' `scanComponentStyles(source)` reads a component file WITHOUT a
+  parser (a small lexer — strings, templates, comments, identifiers, punctuation — and a
+  recursive-descent reader of literals): each `cva()` / `tv()` as the base plus every group's
+  default (named after the component whose root calls it, else `buttonVariants` → `Button`) and one
+  style per other value of its first group, and each capitalized component's first `className` (its
+  root) when it is a string or a `cn()`-style call. `utils/style-signature.ts`' `signatureOf` turns
+  classes into property → value, from `getCssDeclarations` (resolving what the precompute lacks):
+  variant classes, custom properties and layout (`LAYOUT` / `LAYOUT_PREFIXES`) are dropped, a value
+  reading a `--tw-*` the same class sets becomes that value (which shadow `box-shadow` is), and
+  padding / border sides and radius corners are expanded to physical keys and collapsed back (`px-4`
+  ≡ `pl-4 pr-4`). The rule compares a native element's classes (its own `JSXAttribute` visitor — the
+  attribute's literal plus the `cn()` call in it, read whole — beside the shared `Program` visitor)
+  with the components indexed by color declaration, and reports the best match with ≥ 4 shared
+  declarations, Jaccard ≥ 0.6, a shared box key (background, border, radius, shadow) and no
+  conflicting color. Signatures are memoized per design system and file set; `bench/r8/gate.mjs` is
+  the gate that let it in (copy-paste 4/4, paraphrased ≥ 3/4, no false positive on the corpus, ≤ 5%
+  warm overhead).
 - **`utils/class-parser.ts`** — `splitImportant(utility) → { bare, position }` +
   `reattachImportant(bare, position) → string` are the canonical homes for the `!`
   strip-and-reattach invariant. Every rule that does class lookups MUST round-trip through them; the

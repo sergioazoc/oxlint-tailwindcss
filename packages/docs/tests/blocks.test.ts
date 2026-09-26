@@ -18,7 +18,12 @@ import { RULE_NAMES, oxlintPlugin } from '../scripts/rules.ts'
 
 const RULES: RuleForBlocks[] = RULE_NAMES.map((name) => {
   const docs = oxlintPlugin.rules[name].meta?.docs as Omit<RuleForBlocks, 'name'>
-  return { name, category: docs.category, recommended: docs.recommended }
+  return {
+    name,
+    category: docs.category,
+    recommended: docs.recommended,
+    experimental: docs.experimental,
+  }
 })
 
 /** The jsonc fence → the parsed config (comments stripped). */
@@ -60,6 +65,15 @@ describe('ruleList', () => {
     const list = ruleList(RULES, 'en')
     for (const r of RULES) expect(list.split(`\`${r.name}\``).length - 1, r.name).toBe(1)
     expect(list.split('\n\n')).toHaveLength(4)
+  })
+
+  it('marks an experimental rule', () => {
+    const rules: RuleForBlocks[] = [
+      { name: 'a', category: 'design-system', recommended: false, experimental: true },
+      { name: 'b', category: 'design-system', recommended: false },
+    ]
+    expect(ruleList(rules, 'en')).toContain('`a` (experimental) · `b`')
+    expect(ruleList(rules, 'es')).toContain('`a` (experimental) · `b`')
   })
 })
 

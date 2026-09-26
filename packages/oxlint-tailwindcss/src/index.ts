@@ -25,6 +25,7 @@ import { preferThemeTokens } from './rules/prefer-theme-tokens'
 import { preferScaleToken } from './rules/prefer-scale-token'
 import { noDynamicClasses } from './rules/no-dynamic-classes'
 import { noDefaultPalette } from './rules/no-default-palette'
+import { noBorrowedComponentStyles } from './rules/no-borrowed-component-styles'
 
 const plugin = definePlugin({
   meta: { name: 'tailwindcss' },
@@ -55,6 +56,7 @@ const plugin = definePlugin({
     'prefer-scale-token': preferScaleToken,
     'no-dynamic-classes': noDynamicClasses,
     'no-default-palette': noDefaultPalette,
+    'no-borrowed-component-styles': noBorrowedComponentStyles,
   },
 })
 

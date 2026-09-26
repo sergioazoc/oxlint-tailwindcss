@@ -5,7 +5,7 @@ description: "Todas las reglas de lint para Tailwind CSS de oxlint-tailwindcss, 
 
 # Reglas
 
-Las 26 reglas de `oxlint-tailwindcss`, agrupadas por lo que hacen cumplir. Haz clic en cualquier
+Las 27 reglas de `oxlint-tailwindcss`, agrupadas por lo que hacen cumplir. Haz clic en cualquier
 regla para ver ejemplos y referencia de opciones.
 
 ## Corrección
@@ -55,6 +55,8 @@ Reglas que atrapan problemas que generarían CSS inválido o inesperado.
 ## Protección del design system
 
 - [no-arbitrary-value](./no-arbitrary-value) — prohíbe `w-[3.14rem]` y amigos.
+- [no-borrowed-component-styles](./no-borrowed-component-styles) — un elemento simple que rearma uno
+  de tus componentes con sus clases (experimental).
 - [no-default-palette](./no-default-palette) — prohíbe `bg-red-500` cuando tu theme tiene colores
   propios.
 - [no-hardcoded-colors](./no-hardcoded-colors) — prohíbe `bg-[#fff]`, prefiere theme tokens.
@@ -87,6 +89,7 @@ fatal `designSystemUnavailable` cuando falta.
 | -------------------------------- | --------------------------------------- |
 | `enforce-canonical`              | `{ reportNonEquivalent: false }`        |
 | `enforce-sort-order`             | `{ mode: 'default' }`                   |
+| `no-borrowed-component-styles`   | `{ components: [] }`                    |
 | `no-conflicting-classes`         | `{ reportRedundant: true }`             |
 | `no-default-palette`             | `{ allow: [] }`                         |
 | `no-unknown-classes`             | `{ allowlist: [], ignorePrefixes: [] }` |

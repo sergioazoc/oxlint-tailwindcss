@@ -148,6 +148,21 @@ describe('renderRulePage', () => {
     ).not.toThrow()
   })
 
+  it('warns that an experimental rule may still change, in each locale', () => {
+    const meta: RuleMeta = { ...PLAIN_RULE, docs: { experimental: true } }
+    const body = (locale: 'en' | 'es') =>
+      parseFrontmatter(renderRulePage({ name: 'a', meta, extras: extras('It does.'), locale })).body
+    expect(body('en')).toContain('::: warning Experimental\n\n')
+    expect(body('en')).toContain('\n\n:::\n')
+    expect(body('en')).toContain('minor release')
+    expect(body('es')).toContain('::: warning Experimental\n')
+    expect(body('es')).toContain('versión minor')
+    // Right under the description, before the glance table.
+    expect(body('en').indexOf('It does.')).toBeLessThan(body('en').indexOf('::: warning'))
+    expect(body('en').indexOf('::: warning')).toBeLessThan(body('en').indexOf('## At a glance'))
+    expect(page).not.toContain('Experimental')
+  })
+
   it('plainText drops inline-code marks only', () => {
     expect(plainText('like `flex flex` and `p-[2px]`')).toBe('like flex flex and p-[2px]')
   })
