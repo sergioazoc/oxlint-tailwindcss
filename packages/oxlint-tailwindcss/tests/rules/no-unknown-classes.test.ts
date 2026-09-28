@@ -918,3 +918,39 @@ describe('calleeExtractors — shared styling wrapper (#155)', () => {
     ],
   })
 })
+
+/**
+ * Custom-property keys in an object literal.
+ *
+ * An object's string keys are read as conditional classes (`cn({ "bg-red-500":
+ * isError })`), and a variable named `style` / `styles` is scanned by default.
+ * In React that name usually holds a `CSSProperties` object, whose custom
+ * properties must be written as quoted keys — so `'--pane-width'` reached the
+ * key branch and was reported as an unknown class. A key starting with `--` is
+ * a CSS custom property and can never be a Tailwind class.
+ */
+describe('custom-property object keys', () => {
+  runWithFixture(new RuleTester(), 'custom-property keys', noUnknownClasses, ENTRY_POINT, {
+    valid: [
+      { code: "const style = { '--pane-width': '240px' }", filename: 'test.tsx' },
+      {
+        code: "const styles = { '--accent-width': `${a}px`, '--neutral-width': `${b}px` }",
+        filename: 'test.tsx',
+      },
+      { code: "cn({ '--pane-width': isOpen })", filename: 'test.tsx' },
+    ],
+    invalid: [
+      // Every other key is still a class.
+      {
+        code: "const style = { 'itms-center': isOpen }",
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+      {
+        code: "cn({ 'itms-center': isOpen, '--pane-width': isOpen })",
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+    ],
+  })
+})

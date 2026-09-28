@@ -787,13 +787,16 @@ function extractFromExpression(node: ESTree.Node, out: ClassLocation[] = []): Cl
     return out
   }
 
-  // Objects: cn({ "bg-red-500": isError }) — extract the keys
+  // Objects: cn({ "bg-red-500": isError }) — extract the keys. A `--` key is a
+  // CSS custom property, never a class: `const style = { '--w': '2px' }` is a
+  // CSSProperties object that the default `^styles?$` variable pattern reaches.
   if (node.type === 'ObjectExpression') {
     for (const prop of (node as ESTree.ObjectExpression).properties) {
       if (
         prop.type === 'Property' &&
         prop.key.type === 'Literal' &&
-        typeof prop.key.value === 'string'
+        typeof prop.key.value === 'string' &&
+        !prop.key.value.startsWith('--')
       ) {
         out.push({
           value: prop.key.value,

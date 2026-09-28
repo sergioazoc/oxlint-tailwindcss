@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **Custom-property keys are no longer read as classes.** An object's string keys are read as
+  conditional classes (`cn({ "bg-red-500": isError })`), and the default `^styles?$` variable
+  pattern reaches React `CSSProperties` objects, whose custom properties are quoted keys — so
+  `const style = { '--pane-width': '240px' }` reported
+  `"--pane-width" is not a valid Tailwind class`. A key starting with `--` is now skipped; every
+  other key is still a class.
+
 ## 1.14.0
 
 This release checks classes against your design system as a whole. Two new rules report what no

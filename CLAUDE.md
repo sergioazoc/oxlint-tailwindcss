@@ -302,14 +302,16 @@ strings and cva-like config from remaining args.
   via `settings.tailwindcss.attributes` (it is not a default attribute). This is distinct from
   call-expression objects like `cn({ "bg-red-500": cond })` which extract keys.
 - **Expressions**: ternaries (`cond ? "a" : "b"`), logical (`flag && "a"`), object keys
-  (`cn({ "bg-red-500": cond })`), arrays (`cn(['a', 'b'])`, `tv({ base: ['a', 'b'] })` — the
-  idiomatic multi-line form; `extractFromExpression` recurses into elements, skipping holes and
-  spreads), template literals with leading/trailing space preservation across expressions, and `+`
-  concatenations (`appendFromConcatenation`): each string operand is read like a quasi, glued to a
-  neighbour unless the source puts whitespace between them (a neighbouring string ending or starting
-  with whitespace doesn't glue; an expression does), and a string whose last token is glued carries
-  `runtimeClass` — the class it builds, as a template (`bg-${color}-500`) — for
-  `no-dynamic-classes`. `tests/integration/concatenation.test.ts` holds the matrix.
+  (`cn({ "bg-red-500": cond })`; a `--` key is a CSS custom property and is skipped, since the
+  default `^styles?$` pattern reaches `CSSProperties` objects), arrays (`cn(['a', 'b'])`,
+  `tv({ base: ['a', 'b'] })` — the idiomatic multi-line form; `extractFromExpression` recurses into
+  elements, skipping holes and spreads), template literals with leading/trailing space preservation
+  across expressions, and `+` concatenations (`appendFromConcatenation`): each string operand is
+  read like a quasi, glued to a neighbour unless the source puts whitespace between them (a
+  neighbouring string ending or starting with whitespace doesn't glue; an expression does), and a
+  string whose last token is glued carries `runtimeClass` — the class it builds, as a template
+  (`bg-${color}-500`) — for `no-dynamic-classes`. `tests/integration/concatenation.test.ts` holds
+  the matrix.
 - **Glued template fragments are cut before rules see them.** In `` `bg-${c}-500 p-4` `` the text
   touching a `${}` (`bg-`, `-500`) is a fragment of one runtime class. `createExtractorVisitors`
   runs `narrowGluedFragments` on every batch: a quasi whose `preserveLeadingSpace` /
