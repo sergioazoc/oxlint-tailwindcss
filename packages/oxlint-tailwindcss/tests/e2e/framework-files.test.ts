@@ -8,7 +8,7 @@ import { assertFreshDist, DIST_CJS } from './helpers/dist'
 // What oxlint actually hands a JS plugin in Vue, Svelte and Astro files, locked
 // end to end with the real binary and the built plugin.
 //
-// Verified behavior (oxlint 1.85.0): oxlint's partial loaders pass JS plugins
+// Verified behavior (oxlint 1.87.0): oxlint's partial loaders pass JS plugins
 // the `<script>` blocks of `.vue` (incl. `lang="tsx"`), both scripts of
 // `.svelte` (`<script module>` + instance), and Astro's frontmatter and
 // `<script>` tags — each as its own program, with diagnostics and fixes mapped

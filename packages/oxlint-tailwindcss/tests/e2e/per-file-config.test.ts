@@ -8,7 +8,7 @@ import { assertFreshDist, DIST_CJS } from './helpers/dist'
 // Options and settings are per FILE, not per run.
 //
 // oxlint calls a rule's `createOnce` once per worker and then lints many files
-// with it. Two things vary between those files (oxlint 1.85, measured):
+// with it. Two things vary between those files (oxlint 1.87, measured):
 //   - `context.options` — `overrides` and nested `.oxlintrc.json` give a file its
 //     own rule options (the same array object for every file of one config);
 //   - `context.settings` — a nested `.oxlintrc.json` gives a file its own

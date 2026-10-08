@@ -118,6 +118,15 @@ rule of eslint-plugin-better-tailwindcss must have a row.
 Exits 1 on any disagreement. `.github/workflows/interop.yml` runs it weekly with the pinned versions
 and with the latest releases.
 
+```bash
+node vite-plus.mjs   # after `pnpm -C .. build`
+```
+
+For `/monorepo`'s Vite+ warning: a small project linted with `vp lint`, the plugin and its settings
+in the `lint` block of `vite.config.ts`. The plugin must load and report, a nested `.oxlintrc.json`
+must be ignored (the rule it turns off still reports), and Pattern A's `entryPoint` mapping must
+still give a package its own stylesheet. Same workflow, after `interop.mjs`.
+
 ## Files
 
 - `corpus.mjs` — fetches and verifies the pinned corpus.
@@ -131,6 +140,6 @@ and with the latest releases.
 - `lib/runner.mjs` (running oxlint over the corpus), `lib/config.mjs`, `lib/concerns.mjs`,
   `lib/oracle.mjs`, `lib/css.mjs`, `lib/strings.mjs` — each with its tests in `test/`.
 - `data/concerns.json` — the seeded files' concerns beyond /shadcn's.
-- `interop.mjs`, `interop/project/` — the checks above.
+- `interop.mjs`, `interop/project/`, `vite-plus.mjs` — the checks above.
 - `r8/` — `gate.mjs`, the gate `no-borrowed-component-styles` passed, with its fixtures; the regex
   prototype and the original head-to-head analysis script, kept as reference.

@@ -141,7 +141,7 @@ jobs:
             oxlint: '1.43.0'
           - name: Node 20.19.0 (engines floor)
             node: '20.19.0'
-            oxlint: '1.85.0'
+            oxlint: '1.87.0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

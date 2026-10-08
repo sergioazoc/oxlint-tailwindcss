@@ -10,7 +10,7 @@ description: "Which parts of .vue, .svelte and .astro files oxlint-tailwindcss c
 `<script>` blocks (and Astro's frontmatter) and never the markup. Classes written in a template are
 not checked yet.
 
-This is how oxlint 1.85 behaves, and the plugin's end-to-end suite locks it against the real binary.
+This is how oxlint 1.87 behaves, and the plugin's end-to-end suite locks it against the real binary.
 
 ## What gets linted
 
@@ -52,7 +52,7 @@ It depends on oxlint exposing SFC templates to JS plugins. That work is tracked 
 Language Plugins RFC ([oxc#21936](https://github.com/oxc-project/oxc/discussions/21936)), its
 umbrella issue ([oxc#23207](https://github.com/oxc-project/oxc/issues/23207)) and
 [oxc#20501](https://github.com/oxc-project/oxc/pull/20501) (reporting at real file positions). None
-of it has shipped as of oxlint 1.85.
+of it has shipped as of oxlint 1.87.
 
 The plugin's test suite includes canaries that fail the day oxlint changes what plugins can see.
 Template support follows once oxlint makes it possible.

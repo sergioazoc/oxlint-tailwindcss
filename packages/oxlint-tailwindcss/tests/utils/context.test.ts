@@ -4,7 +4,7 @@ import { createLazyOptions, createLazySettings } from '../../src/utils/context'
 /**
  * A rule's `createOnce` runs once per worker, and the SAME context object then
  * serves every file that worker lints. What it reads through that context is
- * per file (measured on oxlint 1.85):
+ * per file (measured on oxlint 1.87):
  *   - `options` is one array object per effective config — shared by every file
  *     of that config, different for an `overrides` block or a nested config;
  *   - `settings` is a fresh object for every file, even under one config.

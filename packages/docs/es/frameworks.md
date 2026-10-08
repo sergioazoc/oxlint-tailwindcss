@@ -10,7 +10,7 @@ plugin. En los archivos `.vue`, `.svelte` y `.astro` eso es el **script**, no el
 pasa a los plugins JS los bloques `<script>` (y el frontmatter de Astro) y nunca el markup. Las
 clases escritas en un template todavía no se revisan.
 
-Así se comporta oxlint 1.85, y la suite end-to-end del plugin lo fija contra el binario real.
+Así se comporta oxlint 1.87, y la suite end-to-end del plugin lo fija contra el binario real.
 
 ## Qué se lintea
 
@@ -56,7 +56,7 @@ upstream en el RFC de Language Plugins
 ([oxc#21936](https://github.com/oxc-project/oxc/discussions/21936)), su issue paraguas
 ([oxc#23207](https://github.com/oxc-project/oxc/issues/23207)) y
 [oxc#20501](https://github.com/oxc-project/oxc/pull/20501) (reportar en las posiciones reales del
-archivo). Nada de eso salió todavía en oxlint 1.85.
+archivo). Nada de eso salió todavía en oxlint 1.87.
 
 La suite de tests del plugin incluye canarios que fallan el día que oxlint cambie lo que los plugins
 pueden ver. El soporte de templates llega cuando oxlint lo haga posible.
