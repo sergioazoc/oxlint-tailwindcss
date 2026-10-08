@@ -2,12 +2,14 @@
 
 ## Unreleased
 
-- **Custom-property keys are no longer read as classes.** An object's string keys are read as
-  conditional classes (`cn({ "bg-red-500": isError })`), and the default `^styles?$` variable
-  pattern reaches React `CSSProperties` objects, whose custom properties are quoted keys — so
-  `const style = { '--pane-width': '240px' }` reported
-  `"--pane-width" is not a valid Tailwind class`. A key starting with `--` is now skipped; every
-  other key is still a class.
+- **Style objects are no longer read as classes.** An object's string keys are read as conditional
+  classes (`cn({ "bg-red-500": isError })`), and the default `^styles?$` variable pattern reaches
+  the style objects of every framework, so `const style = { '--pane-width': w }` reported
+  `"--pane-width" is not a valid Tailwind class`. A key is now skipped when it is a style
+  declaration: a custom property (React's `CSSProperties`), a CSS property name (the kebab-case keys
+  of Solid, Vue, Qwik and Lit's `styleMap`), a `-webkit-` / `-moz-` / `-ms-` property, or a key
+  whose value is a string, number or template literal (Angular's `'width.px': 240`), since a class
+  map's value is a condition. Every other key is still a class.
 
 ## 1.14.0
 

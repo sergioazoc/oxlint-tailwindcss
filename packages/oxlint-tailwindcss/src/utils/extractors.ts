@@ -2,6 +2,7 @@ import type { ESTree } from '@oxlint/plugins'
 import type { CalleeExtractorKind, PluginSettings } from '../types'
 import { compileRegexList } from './allowlist'
 import { settingsKey } from './context'
+import { CSS_PROPERTY_NAMES } from './css-properties'
 import { reportSettingsProblems } from './settings-check'
 
 /**
@@ -787,16 +788,15 @@ function extractFromExpression(node: ESTree.Node, out: ClassLocation[] = []): Cl
     return out
   }
 
-  // Objects: cn({ "bg-red-500": isError }) — extract the keys. A `--` key is a
-  // CSS custom property, never a class: `const style = { '--w': '2px' }` is a
-  // CSSProperties object that the default `^styles?$` variable pattern reaches.
+  // Objects: cn({ "bg-red-500": isError }) — extract the keys, except those of
+  // a style declaration (see isStyleDeclaration).
   if (node.type === 'ObjectExpression') {
     for (const prop of (node as ESTree.ObjectExpression).properties) {
       if (
         prop.type === 'Property' &&
         prop.key.type === 'Literal' &&
         typeof prop.key.value === 'string' &&
-        !prop.key.value.startsWith('--')
+        !isStyleDeclaration(prop.key.value, prop.value)
       ) {
         out.push({
           value: prop.key.value,
@@ -809,6 +809,31 @@ function extractFromExpression(node: ESTree.Node, out: ClassLocation[] = []): Cl
   }
 
   return out
+}
+
+// A custom property is one `--` token; `'--x flex'` is still read as classes.
+const CUSTOM_PROPERTY = /^--\S+$/
+const VENDOR_PROPERTY = /^-(?:webkit|moz)-[a-z-]+$/
+
+/**
+ * Whether an object entry is a style declaration rather than a conditional
+ * class. The default `^styles?$` variable pattern reaches style objects of
+ * every framework: React's `CSSProperties` (custom properties are quoted),
+ * Solid / Vue / Qwik / Lit's kebab-case keys, Angular's `'width.px': 100`.
+ *
+ * - The key is a custom property, a vendor-prefixed or a CSS property name.
+ * - Or the value is a string, number or template literal: in a class map the
+ *   value is a condition, and a constant one never is (`{ flex: '1 1 0%' }`).
+ */
+function isStyleDeclaration(key: string, value: ESTree.Node): boolean {
+  if (CUSTOM_PROPERTY.test(key) || VENDOR_PROPERTY.test(key) || CSS_PROPERTY_NAMES.has(key)) {
+    return true
+  }
+  return (
+    value.type === 'TemplateLiteral' ||
+    (value.type === 'Literal' &&
+      (typeof value.value === 'string' || typeof value.value === 'number'))
+  )
 }
 
 function appendFromTemplateLiteral(

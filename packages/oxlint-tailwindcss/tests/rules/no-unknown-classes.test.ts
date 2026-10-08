@@ -1,8 +1,9 @@
 import { resolve } from 'node:path'
-import { beforeAll, describe } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { RuleTester } from 'oxlint/plugins-dev'
 import { noUnknownClasses } from '../../src/rules/no-unknown-classes'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
+import { CSS_PROPERTY_NAMES } from '../../src/utils/css-properties'
 import { runWithFixture } from '../utils/with-fixture'
 
 const ENTRY_POINT = resolve(__dirname, '../fixtures/default.css')
@@ -920,16 +921,16 @@ describe('calleeExtractors — shared styling wrapper (#155)', () => {
 })
 
 /**
- * Custom-property keys in an object literal.
+ * Style declarations in an object literal.
  *
  * An object's string keys are read as conditional classes (`cn({ "bg-red-500":
  * isError })`), and a variable named `style` / `styles` is scanned by default.
- * In React that name usually holds a `CSSProperties` object, whose custom
- * properties must be written as quoted keys — so `'--pane-width'` reached the
- * key branch and was reported as an unknown class. A key starting with `--` is
- * a CSS custom property and can never be a Tailwind class.
+ * That name usually holds a style object: React's `CSSProperties` (custom
+ * properties quoted), kebab-case keys in Solid, Vue, Qwik and Lit, Angular's
+ * `'width.px'`. Their keys are CSS, never classes: a custom property, a
+ * vendor-prefixed or CSS property name, or a key whose value is a constant.
  */
-describe('custom-property object keys', () => {
+describe('style-declaration object keys', () => {
   runWithFixture(new RuleTester(), 'custom-property keys', noUnknownClasses, ENTRY_POINT, {
     valid: [
       { code: "const style = { '--pane-width': '240px' }", filename: 'test.tsx' },
@@ -938,6 +939,18 @@ describe('custom-property object keys', () => {
         filename: 'test.tsx',
       },
       { code: "cn({ '--pane-width': isOpen })", filename: 'test.tsx' },
+      // Solid, Vue, Qwik and Lit's styleMap take kebab-case keys.
+      { code: "const style = { 'background-color': color() }", filename: 'test.tsx' },
+      { code: "const style = { 'font-size': size, 'line-height': 1.5 }", filename: 'test.tsx' },
+      // A property that is also a class (`flex`) with a CSS value.
+      { code: "const style = { flex: '1 1 0%', 'flex-wrap': 'wrap' }", filename: 'test.tsx' },
+      // Vendor prefixes; `-ms-` by name only.
+      { code: "const style = { '-webkit-line-clamp': lines }", filename: 'test.tsx' },
+      { code: "const style = { '-moz-osx-font-smoothing': x }", filename: 'test.tsx' },
+      { code: "const style = { '-ms-overflow-style': x }", filename: 'test.tsx' },
+      // Angular's unit suffix, and any key with a constant value.
+      { code: "const styles = { 'width.px': 240, 'height.%': 50 }", filename: 'test.ts' },
+      { code: "const styles = { 'primary-button': 'bg-blue-500' }", filename: 'test.ts' },
     ],
     invalid: [
       // Every other key is still a class.
@@ -951,6 +964,26 @@ describe('custom-property object keys', () => {
         filename: 'test.tsx',
         errors: [{ messageId: 'unknownWithSuggestion' }],
       },
+      // A custom property is one token: `'--x flex'` is read as classes.
+      {
+        code: "cn({ '--x itms-center': isOpen })",
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknown' }, { messageId: 'unknownWithSuggestion' }],
+      },
+      // `-ms-4` is a negative margin, not a vendor property.
+      {
+        code: "cn({ '-ms-4 itms-center': isOpen })",
+        filename: 'test.tsx',
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
     ],
+  })
+})
+
+describe('CSS_PROPERTY_NAMES', () => {
+  // A name that is also a class would hide that class in `cn({ name: cond })`.
+  it('holds no Tailwind class', () => {
+    const { cache } = getLoadedDesignSystem(ENTRY_POINT)
+    expect([...CSS_PROPERTY_NAMES].filter((name) => cache.isValid(name))).toEqual([])
   })
 })
