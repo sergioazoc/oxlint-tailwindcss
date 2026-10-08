@@ -431,8 +431,8 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   dir so the `Could not stat` error names the package-local path (fail-loud, never silently reach
   past the nearest config into an unrelated ancestor — that masked-typo non-determinism is exactly
   why the legacy `string[]` heuristic was removed). Absolute entries pass through `resolve()`
-  untouched; mapping arrays stay CWD-relative. This makes editor (CWD = workspace root) and CLI (CWD
-  = package) runs agree in Pattern-B monorepos. Limitation: under `oxlint -c <config>` /
+  untouched; mapping arrays stay CWD-relative. This makes editor (CWD = workspace root) and CLI
+  (CWD = package) runs agree in Pattern-B monorepos. Limitation: under `oxlint -c <config>` /
   `--disable-nested-config` oxlint suppresses nested discovery but the plugin still walks the FS, so
   the nearest `.oxlintrc.json` may diverge from the config oxlint used — docs steer those setups to
   absolute paths.

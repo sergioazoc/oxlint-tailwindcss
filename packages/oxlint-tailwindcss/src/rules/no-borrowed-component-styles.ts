@@ -112,7 +112,7 @@ function componentSignatures(
       if (signature.size < MIN_SHARED || !keys.some(isColorKey) || !keys.some(isSurfaceKey)) {
         continue
       }
-      const id = JSON.stringify([...signature].sort())
+      const id = JSON.stringify([...signature].sort(([a], [b]) => (a < b ? -1 : 1)))
       if (seen.has(id)) continue
       seen.add(id)
       const file = relative(process.cwd(), path).split('\\').join('/')
