@@ -403,15 +403,16 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
 - **Per-file options and settings.** `createOnce` runs once per worker and its context then serves
   every file that worker lints, but options and settings belong to each file: `overrides` and nested
   `.oxlintrc.json` change options, nested configs change settings (`overrides` reject `settings`).
-  Measured on oxlint 1.85: every file of one effective config gets the SAME `context.options` array
-  object; `context.settings` is a FRESH object per file. So `createLazyOptions` memoizes by options
-  identity (a `WeakMap`, steady state = one `===`), and `createLazySettings` / `getExtractorConfig`
-  take the settings object as a per-file fast path plus a bounded memo by JSON content. **Never read
-  `safeOptions` / `safeSettings` / `context.options` / `context.settings` into a closure variable in
-  a rule** — the first file would win for the whole run (the old `_rem`). RuleTester can't catch it
-  (it re-runs `createOnce` per case); `tests/integration/per-file-config.test.ts` bans direct reads
-  in `src/rules/`, and `tests/e2e/per-file-config.test.ts` drives the real binary with `overrides`,
-  nested configs and `extends` under `--threads=1`. The debug flag is re-evaluated per file too.
+  Measured on oxlint 1.85 and 1.87: every file of one effective config gets the SAME
+  `context.options` array object; `context.settings` is a FRESH object per file. So
+  `createLazyOptions` memoizes by options identity (a `WeakMap`, steady state = one `===`), and
+  `createLazySettings` / `getExtractorConfig` take the settings object as a per-file fast path plus
+  a bounded memo by JSON content. **Never read `safeOptions` / `safeSettings` / `context.options` /
+  `context.settings` into a closure variable in a rule** — the first file would win for the whole
+  run (the old `_rem`). RuleTester can't catch it (it re-runs `createOnce` per case);
+  `tests/integration/per-file-config.test.ts` bans direct reads in `src/rules/`, and
+  `tests/e2e/per-file-config.test.ts` drives the real binary with `overrides`, nested configs and
+  `extends` under `--threads=1`. The debug flag is re-evaluated per file too.
 - **Entry point resolution** (v1, deterministic): rule option `entryPoint` (a string) >
   `settings.tailwindcss.entryPoint`. The settings value is either:
   - `string` — a single CSS path for the whole project, or
@@ -816,7 +817,7 @@ breaks one fails `pnpm test` (or CI) instead of shipping:
   `readme-hero.test.ts` the root README's hero; `skill.test.ts` the agent skill.
 - **What other tools do** — `shadcn-interop.test.ts` and `better-tailwindcss-map.test.ts` here, and
   `bench/interop.mjs` weekly (`interop.yml`) against @shadcn/lint and better-tailwindcss, pinned and
-  latest.
+  latest; `bench/vite-plus.mjs` in the same job holds `/monorepo`'s Vite+ warning against `vp lint`.
 - **What the benchmark measured** — `/benchmark` and `/comparison` are generated from
   `bench/results/latest.json`; `bench.yml` checks weekly that a fresh `score.mjs` run agrees.
 - **What the site serves** — `packages/docs/scripts/check-dist.ts` (in the docs build: titles,

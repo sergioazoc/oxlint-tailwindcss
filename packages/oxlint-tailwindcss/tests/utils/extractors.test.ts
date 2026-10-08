@@ -282,7 +282,7 @@ describe('calleeExtractors — structured routing for custom callees (#155)', ()
   describe('config resolution (getExtractorConfig)', () => {
     // One rule context serves every file of a worker, and a nested
     // .oxlintrc.json gives some files their own settings — a fresh settings
-    // object per file (oxlint 1.85). The config must follow the file.
+    // object per file (oxlint 1.87). The config must follow the file.
     it('follows the settings of the file being linted, not the first one', () => {
       const ctx: { settings?: Record<string, unknown> } = {
         settings: { tailwindcss: { attributes: ['tw'] } },

@@ -44,8 +44,14 @@ jobs:
       - name: Use their latest releases
         if: matrix.versions == 'latest'
         working-directory: bench
-        run: npm install --no-save @shadcn/lint@latest eslint-plugin-better-tailwindcss@latest
+        run:
+          npm install --no-save @shadcn/lint@latest eslint-plugin-better-tailwindcss@latest
+          vite-plus@latest
 
       - name: Check the pages against them
         working-directory: bench
         run: node interop.mjs
+
+      - name: Check /monorepo against Vite+
+        working-directory: bench
+        run: node vite-plus.mjs

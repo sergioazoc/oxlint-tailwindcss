@@ -7,7 +7,7 @@ description: "Pasa de eslint-plugin-better-tailwindcss a oxlint-tailwindcss: cad
 
 [eslint-plugin-better-tailwindcss](https://github.com/schoero/eslint-plugin-better-tailwindcss)
 corre en ESLint y, como JS plugin, en oxlint. oxlint-tailwindcss está hecho para oxlint y Tailwind
-v4. Cada una de las 15 reglas de better-tailwindcss 4.7.0 tiene su equivalente aquí, y cada par
+v4. Cada una de las 15 reglas de better-tailwindcss 4.9.0 tiene su equivalente aquí, y cada par
 reporta el mismo ejemplo — las tablas de abajo se verifican contra él cada semana, con su última
 versión.
 

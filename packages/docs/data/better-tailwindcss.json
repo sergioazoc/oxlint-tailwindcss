@@ -1,6 +1,6 @@
 {
   "$comment": "eslint-plugin-better-tailwindcss → oxlint-tailwindcss. Generates the tables on /migration/from-better-tailwindcss (scripts/blocks.ts). Every example is reported by both rules of its row, with default options: checked by bench/interop.mjs (weekly, with the latest release, in .github/workflows/interop.yml); that every rule of the pinned version has a row, and every rule named here exists, by tests/docs/better-tailwindcss-map.test.ts.",
-  "betterTailwindcss": "4.7.0",
+  "betterTailwindcss": "4.9.0",
   "rules": [
     {
       "theirs": "enforce-consistent-class-order",
