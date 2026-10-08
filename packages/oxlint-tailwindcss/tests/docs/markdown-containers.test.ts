@@ -4,7 +4,9 @@
  * `proseWrap: always` (.oxfmtrc.json), oxfmt reflows an opener that has text
  * right under it into one paragraph — the title swallows the first body line,
  * a literal `:::` is printed, and the unclosed container wraps the rest of the
- * page. That shipped once on /setup and /monorepo (EN and ES).
+ * page. That shipped once on /setup and /monorepo (EN and ES). oxfmt 0.72
+ * formats markdown natively (oxc#27256) and keeps a container whole, but the
+ * blank lines stay the house style and the guard stays for older formatters.
  *
  * This guards every markdown file the docs site or npm renders: each `:::`
  * line is a whole opener or closer, openers and closers sit between blank

@@ -1,9 +1,9 @@
 packages:
   - 'packages/*'
 catalog:
-  '@oxlint/plugins': ^1.85.0
-  oxfmt: ^0.70.0
-  oxlint: ^1.85.0
+  '@oxlint/plugins': ^1.87.0
+  oxfmt: ^0.72.0
+  oxlint: ^1.87.0
 allowBuilds:
   esbuild: true
   # wrangler-action runs `pnpm add wrangler` for the Cloudflare Pages deploy;

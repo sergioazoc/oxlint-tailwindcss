@@ -4,7 +4,7 @@
 // prints neither the summary nor the timings — pass `-f default` explicitly.
 //
 // The per-rule numbers cover rule creation, lifecycle hooks and visitor
-// callbacks. They do NOT cover plugin import, `createOnce` initialization or
+// callbacks, plus selector matching since oxlint 1.87 (oxc#27111). They do NOT cover plugin import, `createOnce` initialization or
 // Rust<>JS transfer (oxc#26415), so the design-system load is charged to
 // whichever rule's hook first touches it.
 
