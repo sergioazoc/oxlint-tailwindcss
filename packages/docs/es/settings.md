@@ -170,6 +170,12 @@ y su alcance difiere — fíjate cuál necesitas:
   escritura con el atributo `className`, pero son cosas distintas — una entrada de
   `variablePatterns` nunca afecta props JSX.
 
+En un objeto, las claves se leen como clases (`cn({ "bg-red-500": isError })`), salvo una
+declaración de estilo: una custom property, un nombre de propiedad CSS, una propiedad `-webkit-` /
+`-moz-` / `-ms-`, o una clave cuyo valor es un literal de string, número o template. Así, los
+objetos `style` de React, Solid, Vue, Qwik, Lit o Angular que alcanza `/^styles?$/` no reportan
+nada.
+
 Agrega más sin perder los defaults:
 
 ```jsonc

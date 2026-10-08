@@ -164,6 +164,11 @@ scope differs — mind which one you want:
   **not** JSX attributes. Its default `/^classNames?$/` overlaps in spelling with the `className`
   attribute, but the two are unrelated — a `variablePatterns` entry never affects JSX props.
 
+In an object, the keys are read as classes (`cn({ "bg-red-500": isError })`), except a style
+declaration: a custom property, a CSS property name, a `-webkit-` / `-moz-` / `-ms-` property, or a
+key whose value is a string, number or template literal. So the `style` objects of React, Solid,
+Vue, Qwik, Lit or Angular that `/^styles?$/` reaches report nothing.
+
 Add more without losing the defaults:
 
 ```jsonc
