@@ -1,15 +1,31 @@
 # Changelog
 
-## Unreleased
+## 1.15.1
 
-- **`enforce-canonical` finds a class wherever its selector puts it.** The rule rewrites a class
-  only when its canonical form prints the same CSS, and it compared the two with the class's own
-  name blanked out only where it opened the selector. `in-*` (`:where(:focus) .x`), `*:` and `**:`
-  (`:is(.x > *)`) and `divide-*` put it elsewhere, so `in-focus:z-[10]`, `*:z-[10]` or
-  `divide-x-[2px]` were never reported; and Tailwind's next release moves every `group-*` and
-  `peer-*` class inside its `:is()` (tailwindlabs/tailwindcss#20513), which would have silenced
-  `group-hover:z-[10]` and the rest the day it shipped. **Reports that can appear with the same
-  config:** the canonical forms of those classes, with their autofix.
+`enforce-canonical` rewrites a class only when its canonical form prints the same CSS, and it
+compared the two with the class's own name blanked out only where that name opened the selector.
+Several variants put it elsewhere, so their rewrites were never reported. Tailwind's next release
+moves every `group-*` and `peer-*` class inside its `:is()`
+([tailwindlabs/tailwindcss#20513](https://github.com/tailwindlabs/tailwindcss/pull/20513)), which
+would have silenced the rule under those variants the day it shipped, before you upgrade this
+plugin. This release finds the class wherever its selector puts it.
+
+### Before you upgrade
+
+- **Reports that can appear with the same config:** `enforce-canonical` on classes under `in-*`,
+  `*:` and `**:`, and on `divide-*` with an arbitrary value: `in-focus:z-[10]` → `in-focus:z-10`,
+  `*:z-[10]` → `*:z-10`, `divide-x-[2px]` → `divide-x-2`, with their autofix. On shadcn/ui's
+  `apps/v4` nothing changes.
+
+### Bug fixes
+
+- **`enforce-canonical` finds a class wherever its selector puts it (#228).** `in-*` prints
+  `:where(:focus) .x`, `*:` and `**:` print `:is(.x > *)`, `divide-*` prints
+  `:where(.x > :not(:last-child))`, and after Tailwind 4.3.3 every `group-*` and `peer-*` prints
+  `:is(:where(.group):hover .x)`. The rule now compares the two forms with the class's own name,
+  escaped the way Tailwind escapes it, blanked out wherever it appears, and every other class in the
+  selector as written, so a canonicalization that changes the selector (`has-[:checked]:` →
+  `has-checked:`) is still not made.
 
 ## 1.15.0
 
