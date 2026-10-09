@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **`enforce-canonical` finds a class wherever its selector puts it.** The rule rewrites a class
+  only when its canonical form prints the same CSS, and it compared the two with the class's own
+  name blanked out only where it opened the selector. `in-*` (`:where(:focus) .x`), `*:` and `**:`
+  (`:is(.x > *)`) and `divide-*` put it elsewhere, so `in-focus:z-[10]`, `*:z-[10]` or
+  `divide-x-[2px]` were never reported; and Tailwind's next release moves every `group-*` and
+  `peer-*` class inside its `:is()` (tailwindlabs/tailwindcss#20513), which would have silenced
+  `group-hover:z-[10]` and the rest the day it shipped. **Reports that can appear with the same
+  config:** the canonical forms of those classes, with their autofix.
+
 ## 1.15.0
 
 This release follows Tailwind 4.2's logical utilities and makes the plugin easy to share.

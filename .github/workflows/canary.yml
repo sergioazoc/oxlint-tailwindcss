@@ -65,11 +65,15 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # The suite lints with the plugin's own engine, so that is the one swapped.
+      # The suite lints with the plugin's own engine, so that is the one swapped,
+      # by exact version: given a dist-tag, pnpm saves `^0.0.0-insiders.<sha>`
+      # even with --save-exact, and that range resolves to whichever 0.0.0
+      # prerelease sorts highest (a 2023 `0.0.0-oxide-insiders.*` build).
       - name: Use tailwindcss@${{ matrix.tailwind }}
-        run: >-
-          pnpm -C packages/oxlint-tailwindcss add tailwindcss@${{ matrix.tailwind }}
-          @tailwindcss/node@${{ matrix.tailwind }}
+        run: |
+          version=$(npm view "tailwindcss@${{ matrix.tailwind }}" version)
+          echo "tailwindcss@${{ matrix.tailwind }} is $version"
+          pnpm -C packages/oxlint-tailwindcss add --save-exact "tailwindcss@$version" "@tailwindcss/node@$version"
 
       - name: Build
         run: pnpm build
