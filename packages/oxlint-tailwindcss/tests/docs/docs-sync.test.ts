@@ -333,4 +333,20 @@ describe('version floors match the code', () => {
     expect(oxlintFloor).toBeDefined()
     for (const file of [...pages, ...readmes]) expect(read(file), file).toContain(oxlintFloor!)
   })
+
+  // `oxlint-tailwindcss/config` in an `oxlint.config.ts` has floors of its own:
+  // the oxlint that first takes config objects in `extends`, on the first Node
+  // that strips types itself. The CI leg that smoke-tests exactly them:
+  it('oxlint.config.ts', () => {
+    const [, oxlint, node] =
+      read(join(REPO, '.github/workflows/ci.yml')).match(
+        /oxlint (\d+\.\d+\.\d+) on Node (\d+\.\d+\.\d+) \(oxlint\.config\.ts floor\)/,
+      ) ?? []
+    expect(oxlint).toBeDefined()
+    for (const file of pages) {
+      const md = read(file)
+      expect(md, file).toContain(`oxlint ${oxlint}`)
+      expect(md, file).toContain(`Node ${node}`)
+    }
+  })
 })

@@ -58,8 +58,9 @@ componentes que pasan `className` tal cual, o que arman sus clases en runtime.
 
 Los archivos y directorios con los componentes de tu design system. Un directorio se lee de forma
 recursiva, sin los archivos `*.test.*`, `*.spec.*`, `*.stories.*` ni `*.d.ts`. Las rutas relativas
-se resuelven como `entryPoint`: contra el directorio del `.oxlintrc.json` más cercano, y después
-contra el directorio de trabajo de oxlint. Sin componentes, la regla no reporta nada.
+se resuelven como `entryPoint`: contra el directorio de la config de oxlint más cercana
+(`.oxlintrc.json`, `oxlint.config.ts`, …), y después contra el directorio de trabajo de oxlint. Sin
+componentes, la regla no reporta nada.
 
 ```jsonc
 {

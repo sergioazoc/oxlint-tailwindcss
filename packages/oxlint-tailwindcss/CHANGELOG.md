@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- **`oxlint-tailwindcss/config`: the plugin for `extends`, in an `oxlint.config.ts` or a shared
+  config (#218).** `tailwindcss()` returns the plugin, registered by its absolute path, and the
+  recommended rules at their severities (`tailwindcss({ recommended: false })`: the plugin alone):
+
+  ```ts
+  export default defineConfig({
+    extends: [tailwindcss()],
+    settings: { tailwindcss: { entryPoint: 'src/styles.css' } },
+  })
+  ```
+
+  A preset published as a package can now bring the plugin as its own dependency: oxlint resolves a
+  plugin's bare name from where it runs, not from the config that lists it, so whether the preset's
+  dependency was found depended on the package manager and on how oxlint was started. The settings
+  stay in the project's config — oxlint never reads them from an extended config, so `tailwindcss()`
+  takes none and throws if given one. Needs oxlint 1.45.0+ on Node 22.18.0+, the floors of
+  `oxlint.config.ts` with object `extends`; the plugin itself keeps its floors.
+
+- **A relative `entryPoint` anchors to every config oxlint discovers.** It was resolved against the
+  nearest `.oxlintrc.json` only, so a `.oxlintrc.jsonc`, `oxlint.config.ts` or `oxlint.config.mts`
+  was skipped and the entry point resolved against an outer config or the working directory. The
+  same goes for `no-borrowed-component-styles`' `components` paths.
 - **`enforce-consistent-line-wrapping` can wrap a JSX attribute string in place (#216).** With the
   new `wrapStrings: "jsx"` (default `"never"`), `className="…"` — or any attribute the plugin reads
   — is wrapped into the same block as a template literal, the closing quote at the attribute line's

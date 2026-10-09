@@ -84,13 +84,14 @@ is what makes per-package configs behave the same in the terminal and the editor
 
 ::: tip Explicit `-c` configs
 
-Anchoring uses the nearest `.oxlintrc.json` because that's the config oxlint applies under its
-default nested-config discovery. If you instead pass `oxlint -c <config>` (or disable nested
-configs), oxlint uses only that one file — and the plugin can't see which config that was (oxlint
-exposes the file path and CWD to plugins, never the config path). The nearest-config + CWD fallback
-still resolves correctly for the usual layout, but if you mix an explicit `-c` config with an
-unrelated nested `.oxlintrc.json` below the linted file, prefer an **absolute** `entryPoint` (or the
-mapping shape) to remove all ambiguity.
+Anchoring uses the nearest oxlint config (`.oxlintrc.json`, `.oxlintrc.jsonc`, `oxlint.config.ts` or
+`oxlint.config.mts`) because that's the config oxlint applies under its default nested-config
+discovery. If you instead pass `oxlint -c <config>` (or disable nested configs), oxlint uses only
+that one file — and the plugin can't see which config that was (oxlint exposes the file path and CWD
+to plugins, never the config path). The nearest-config + CWD fallback still resolves correctly for
+the usual layout, but if you mix an explicit `-c` config with an unrelated nested `.oxlintrc.json`
+below the linted file, prefer an **absolute** `entryPoint` (or the mapping shape) to remove all
+ambiguity.
 
 :::
 
@@ -108,13 +109,16 @@ within one run, in the terminal and in the editor. Where you can set them:
 | Set in                                    | Rule options | `settings.tailwindcss` |
 | ----------------------------------------- | ------------ | ---------------------- |
 | An `overrides` block of the root config   | ✓            | ✗                      |
-| A nested `.oxlintrc.json` (Pattern B)     | ✓            | ✓                      |
+| A nested config (Pattern B)               | ✓            | ✓                      |
 | The root `entryPoint` mapping (Pattern A) | —            | `entryPoint` only      |
 
 oxlint rejects `settings` inside `overrides` (``unknown field `settings` ``), so a package that
 needs its own `attributes`, `callees`, `rootFontSize` or `debug` gets a nested config. A nested
 config stands alone unless it lists the root in `extends` — then it inherits `jsPlugins` and `rules`
-and only adds what differs, as in the Pattern B example.
+(never `settings`, which every config sets for itself) and only adds what differs, as in the Pattern
+B example. A config shared as a package brings the plugin through `oxlint-tailwindcss/config`
+instead: see
+[`oxlint.config.ts` and shared configs](/setup#with-oxlint-config-ts-or-in-a-shared-config).
 
 ::: warning Vite+ and editors
 

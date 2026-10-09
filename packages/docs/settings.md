@@ -53,9 +53,10 @@ Two shapes are supported:
 ```
 
 A **relative string** `entryPoint` (the single-project shape) is resolved against the directory of
-the nearest enclosing `.oxlintrc.json`, falling back to the oxlint working directory — so a
-per-package config resolves to the same CSS whether oxlint runs from the package (CLI) or the
-workspace root (editor). See [Monorepos](/monorepo).
+the nearest enclosing oxlint config (`.oxlintrc.json`, `.oxlintrc.jsonc`, `oxlint.config.ts` or
+`oxlint.config.mts`), falling back to the oxlint working directory — so a per-package config
+resolves to the same CSS whether oxlint runs from the package (CLI) or the workspace root (editor).
+See [Monorepos](/monorepo).
 
 Globs (the mapping shape) are evaluated against the linted file's path relative to the oxlint
 working directory. Supported syntax: `*` (any chars except `/`), `**` (any depth), literal segments.

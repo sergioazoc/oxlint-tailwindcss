@@ -281,3 +281,55 @@ describe('resolveStringEntryPoint — config-relative anchoring (#39)', () => {
     )
   })
 })
+
+// oxlint discovers four config names, not just `.oxlintrc.json`: an
+// `oxlint.config.ts` passing `entryPoint` through `oxlint-tailwindcss/config`
+// (#218), or a `.oxlintrc.jsonc`, anchors a relative entry point the same way.
+// `vite.config.*` does not: a package's own Vite config needn't hold lint config.
+describe('resolveStringEntryPoint — every config name oxlint discovers', () => {
+  let ROOT: string
+
+  function touch(path: string): void {
+    mkdirSync(resolve(path, '..'), { recursive: true })
+    writeFileSync(path, '')
+  }
+
+  beforeAll(() => {
+    ROOT = mkdtempSync(resolve(tmpdir(), 'oxtw-names-'))
+    touch(resolve(ROOT, '.oxlintrc.json'))
+    touch(resolve(ROOT, 'app.css'))
+    for (const name of [
+      '.oxlintrc.jsonc',
+      'oxlint.config.ts',
+      'oxlint.config.mts',
+      'vite.config.ts',
+    ]) {
+      touch(resolve(ROOT, 'packages', name, name))
+      touch(resolve(ROOT, 'packages', name, 'app.css'))
+      touch(resolve(ROOT, 'packages', name, 'src/a.tsx'))
+    }
+  })
+
+  afterAll(() => {
+    try {
+      rmSync(ROOT, { recursive: true, force: true })
+    } catch {}
+  })
+
+  beforeEach(() => resetDesignSystem())
+
+  it.each(['.oxlintrc.jsonc', 'oxlint.config.ts', 'oxlint.config.mts'])(
+    'anchors to the directory of a nested %s',
+    (name) => {
+      const file = resolve(ROOT, 'packages', name, 'src/a.tsx')
+      expect(resolveStringEntryPoint('./app.css', file, ROOT)).toBe(
+        resolve(ROOT, 'packages', name, 'app.css'),
+      )
+    },
+  )
+
+  it('not to a vite.config.ts: the nearest real lint config wins', () => {
+    const file = resolve(ROOT, 'packages/vite.config.ts/src/a.tsx')
+    expect(resolveStringEntryPoint('./app.css', file, ROOT)).toBe(resolve(ROOT, 'app.css'))
+  })
+})

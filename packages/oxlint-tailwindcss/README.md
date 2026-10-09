@@ -78,6 +78,10 @@ A missing or wrong entry point is reported once per file as `designSystemUnavail
 fix; a misspelt setting as `invalidSetting`. [Setup](https://oxlint-tailwindcss.pages.dev/setup) has
 the recommended set, and how to map each package of a monorepo to its own CSS.
 
+In an `oxlint.config.ts`, or in a shared config published as a package, `oxlint-tailwindcss/config`
+registers the plugin by its own path, with the recommended rules, for `extends`:
+[`oxlint.config.ts` and shared configs](https://oxlint-tailwindcss.pages.dev/setup#with-oxlint-config-ts-or-in-a-shared-config).
+
 ## Rules
 
 <!-- generated:rule-table -->

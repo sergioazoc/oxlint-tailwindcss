@@ -43,6 +43,14 @@
       },
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
+    },
+    "./config": {
+      "types": {
+        "import": "./dist/config.d.mts",
+        "require": "./dist/config.d.cts"
+      },
+      "import": "./dist/config.mjs",
+      "require": "./dist/config.cjs"
     }
   },
   "publishConfig": {
