@@ -19,15 +19,15 @@ como `mt-2 mr-2 mb-2 ml-2` → `m-2` o `w-4 h-4` → `size-4`.
 Combina utilities por-eje de Tailwind en sus equivalentes shorthand cuando todos los ejes llevan el
 mismo valor. El caso más común: `mt-2 mr-2 mb-2 ml-2` colapsa a `m-2`. Familias cubiertas:
 
-| Familia                 | Colapsa                                                                                                                                       |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| margin / padding        | cuatro lados → `m-*`, ejes → `my-*`/`mx-*`, `mx-*`+`my-*` → `m-*`, `ms-*`+`me-*` → `mx-*`                                                     |
-| `scroll-m*`/`scroll-p*` | las mismas formas                                                                                                                             |
-| sizing                  | `w-*`+`h-*` → `size-*`                                                                                                                        |
-| radios                  | esquinas → bordes → `rounded-*`, incluidas las esquinas lógicas (`rounded-ss-*`+`rounded-es-*` → `rounded-s-*`)                               |
-| borders                 | lados → `border-*`, ejes → `border-x-*`/`border-y-*` — anchos **y** colores                                                                   |
-| inset                   | `top`/`right`/`bottom`/`left` → `inset-*`, ejes → `inset-x-*`/`inset-y-*`, `start-*`+`end-*` → `inset-x-*`                                    |
-| pares de una propiedad  | `gap-x`+`gap-y`, `overflow-x`+`overflow-y`, `overscroll-x`+`overscroll-y`, `border-spacing-x`+`border-spacing-y`, `translate-x`+`translate-y` |
+| Familia                 | Colapsa                                                                                                                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| margin / padding        | cuatro lados → `m-*`, ejes → `my-*`/`mx-*`, `mx-*`+`my-*` → `m-*`, y los lados lógicos: `ms-*`+`me-*` → `mx-*`, `mbs-*`+`mbe-*` → `my-*`, los cuatro → `m-*`                  |
+| `scroll-m*`/`scroll-p*` | las mismas formas                                                                                                                                                             |
+| sizing                  | `w-*`+`h-*` → `size-*`                                                                                                                                                        |
+| radios                  | esquinas → bordes → `rounded-*`, incluidas las esquinas lógicas (`rounded-ss-*`+`rounded-es-*` → `rounded-s-*`)                                                               |
+| borders                 | lados → `border-*`, ejes → `border-x-*`/`border-y-*` — anchos **y** colores, lados lógicos (`border-bs-*`+`border-be-*` → `border-y-*`) incluidos                             |
+| inset                   | `top`/`right`/`bottom`/`left` → `inset-*`, ejes → `inset-x-*`/`inset-y-*`, `start-*`+`end-*` e `inset-s-*`+`inset-e-*` → `inset-x-*`, `inset-bs-*`+`inset-be-*` → `inset-y-*` |
+| pares de una propiedad  | `gap-x`+`gap-y`, `overflow-x`+`overflow-y`, `overscroll-x`+`overscroll-y`, `border-spacing-x`+`border-spacing-y`, `translate-x`+`translate-y`                                 |
 
 Un diagnóstico por grupo colapsable: los cuatro lados reportan `m-2` una vez, no `m-2` más las
 mitades `my-2`/`mx-2`.
@@ -137,10 +137,12 @@ emitido; la regla funciona sin él.
 - **`enforce-sort-order`**: ejecuta shorthand primero así el shorthand participa del sort con su
   propia prioridad. Si no, el sort ubica `mt-2 mr-2 mb-2 ml-2` en posiciones separadas y el fix del
   shorthand las colapsa después.
-- **`enforce-logical` / `enforce-physical`**: la mayoría de las familias de aquí son
-  direction-neutral. Los pares lógicos que sí colapsan (`ms-*`+`me-*` → `mx-*`,
-  `border-s-*`+`border-e-*` → `border-x-*`, `start-*`+`end-*` → `inset-x-*`) caen en utilities de
-  eje que ninguna regla direccional convierte, así que las dos nunca se pelean.
+- **`enforce-logical` / `enforce-physical`**: reescriben los mismos lados. `mt-2 mb-2` es `my-2`
+  aquí y un par del eje block (`mbs-2 mbe-2`) para `enforce-logical`; esta regla también pliega los
+  pares lógicos, y cae en utilities de eje (`my-*`, `inset-x-*`, `border-y-*`) que ninguna regla
+  direccional convierte, así que aplique primero el fix que sea, el string termina igual. Nunca
+  pliega `inline-*` + `block-*` en `size-*`: `size-*` es un ancho y un alto, y el `sizing` de
+  `enforce-logical` lo volvería a separar.
 - **`enforce-consistent-important-position`**: el shorthand respeta la convención de posición del
   `!` de las clases fusionadas. Si las cuatro usan prefijo, el shorthand queda con prefijo; lo mismo
   para sufijo.

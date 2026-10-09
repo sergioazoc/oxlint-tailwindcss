@@ -2,13 +2,14 @@ import { defineRule } from '@oxlint/plugins'
 import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors } from '../utils/extractors'
 import {
-  LOGICAL_INSET_ALIASES,
   LOGICAL_PHYSICAL_SCHEMA,
   PHYSICAL_TO_LOGICAL_MAPPINGS,
   createDirectionalMapper,
   invertAxisMappings,
 } from './enforce-logical'
 import { SETTINGS_MESSAGE } from '../utils/settings-check'
+
+const PHYSICAL_MAPPINGS = invertAxisMappings(PHYSICAL_TO_LOGICAL_MAPPINGS)
 
 export const enforcePhysical = defineRule({
   meta: {
@@ -23,7 +24,7 @@ export const enforcePhysical = defineRule({
     fixable: 'code',
     schema: [LOGICAL_PHYSICAL_SCHEMA],
     hasSuggestions: true,
-    defaultOptions: [{ allowlist: [], direction: 'both' }],
+    defaultOptions: [{ allowlist: [], direction: 'both', sizing: false }],
     messages: {
       ...SETTINGS_MESSAGE,
       usePhysical:
@@ -33,10 +34,10 @@ export const enforcePhysical = defineRule({
   },
   createOnce(context) {
     const { check } = createDirectionalMapper(context, {
-      // Both spellings of the logical insets convert back: `start-2` (what
-      // enforce-logical suggests) and `inset-s-2` (what enforce-canonical
-      // rewrites that into).
-      mappings: [...invertAxisMappings(PHYSICAL_TO_LOGICAL_MAPPINGS), ...LOGICAL_INSET_ALIASES],
+      // Both spellings of the logical insets convert back: `inset-s-2` (what
+      // enforce-logical and enforce-canonical write on Tailwind 4.2+) and
+      // `start-2` (their fallback, and the older spelling).
+      mappings: PHYSICAL_MAPPINGS,
       messageId: 'usePhysical',
     })
     return createExtractorVisitors(context, check)

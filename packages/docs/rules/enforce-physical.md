@@ -10,30 +10,32 @@ like `ms-4` → `ml-4` — the mirror of `enforce-logical`.
 
 ## At a glance
 
-| Autofix | Editor suggestions | Design system                            | Options                                |
-| ------- | ------------------ | ---------------------------------------- | -------------------------------------- |
-| Yes     | Yes                | Optional — used when `entryPoint` is set | `allowlist`, `direction`, `entryPoint` |
+| Autofix | Editor suggestions | Design system                            | Options                                          |
+| ------- | ------------------ | ---------------------------------------- | ------------------------------------------------ |
+| Yes     | Yes                | Optional — used when `entryPoint` is set | `allowlist`, `direction`, `sizing`, `entryPoint` |
 
 ## What this rule does
 
 The mirror of `enforce-logical`. Rewrites logical, writing-direction aware utilities (`ms-4`,
-`pe-2`, `start-0`, `rounded-ss-md`, …) into their physical equivalents (`ml-4`, `pr-2`, `left-0`,
-`rounded-tl-md`, …). Use this in LTR-only codebases where logical utilities add cognitive overhead
+`pe-2`, `inset-s-0`, `rounded-ss-md`, and on the block axis `mbs-4`, `inset-bs-0`, `border-be`, …)
+into their physical equivalents (`ml-4`, `pr-2`, `left-0`, `rounded-tl-md`, `mt-4`, `top-0`,
+`border-b`, …). Use this in LTR-only codebases where logical utilities add cognitive overhead
 without a payoff — `ml-4` is more direct than `ms-4` when there's no RTL story. Autofix on the first
-offender per location, editor suggestion on subsequent ones.
+offender per location, editor suggestion on subsequent ones. The mapping is `enforce-logical`'s
+table, inverted.
 
-It converts **both** spellings of the logical insets: `start-2` (what `enforce-logical` suggests,
-and what Tailwind's docs use) and `inset-s-2` (what `enforce-canonical` rewrites that into, because
-the design system calls it canonical). A codebase that ran logical + canonical ends up with
-`inset-s-*`, and this rule used to have no way back — its table only knew `start`.
+It converts **both** spellings of the logical insets: `inset-s-2` (what `enforce-logical` and
+`enforce-canonical` write on Tailwind 4.2+, the spelling the design system calls canonical) and
+`start-2` (the older spelling, which Tailwind's docs used and `enforce-logical` still writes without
+a design system).
 
 It also mirrors the three utilities where the direction is the VALUE: `float-start` → `float-left`,
 `clear-start` → `clear-left`, `text-start` → `text-left`.
 
 DS-independent in the sense that matters: it shares the static mapping table with `enforce-logical`
-and inverts it, so it works without `settings.tailwindcss.entryPoint`. When one IS configured, the
-rule additionally checks that the class it suggests exists, so a rewrite can never introduce a class
-that emits nothing.
+and inverts it, so it works without `settings.tailwindcss.entryPoint` — every physical class it
+writes exists in every Tailwind v4. When an entry point IS configured, the rule additionally checks
+that the class it suggests exists, so a rewrite can never introduce a class that emits nothing.
 
 `enforce-physical` and `enforce-logical` are sibling rules. Enable **only one at a time** — running
 both produces an autofix loop.
@@ -44,11 +46,23 @@ both produces an autofix loop.
 
 `'inline' | 'block' | 'both'`, default `'both'`.
 
-Restricts conversion to one axis. Today every mapping is inline-axis, so `'block'` effectively
-disables the rule. Future-proofing for when Tailwind ships block-axis logical utilities.
+Restricts conversion to one axis: `'inline'` converts the start/end utilities (`ms-*`, `inset-s-*`,
+`border-e`, …), `'block'` the block-start/end ones (`mbs-*`, `inset-bs-*`, `border-be`, …).
 
 ```jsonc
 { "tailwindcss/enforce-physical": ["error", { "direction": "inline" }] }
+```
+
+### `sizing`
+
+`boolean`, default `false`.
+
+Also converts logical sizes back: `inline-*` → `w-*`, `block-*` → `h-*`, and their `min-` / `max-`
+forms, one axis at a time (`inline-4 block-4` → `w-4 h-4`). `inline`, `block` and
+`inline-{block,flex,grid,table}` are display utilities and are never touched.
+
+```jsonc
+{ "tailwindcss/enforce-physical": ["error", { "sizing": true }] }
 ```
 
 ### `allowlist`
@@ -87,12 +101,21 @@ works without it.
 //              ~~~~ ~~~~  → ml-4 pr-2
 
 // Logical positioning
-<div className="start-0 end-0" />
-//              ~~~~~~~ ~~~~~  → left-0 right-0
+<div className="inset-s-0 inset-e-0" />
+//              ~~~~~~~~~ ~~~~~~~~~  → left-0 right-0
 
 // Logical borders and radii
 <div className="border-s rounded-ss-md" />
 //              ~~~~~~~~ ~~~~~~~~~~~~~  → border-l rounded-tl-md
+
+// The block axis
+<div className="mbs-4 inset-bs-0 border-be" />
+//              ~~~~~ ~~~~~~~~~~ ~~~~~~~~~  → mt-4 top-0 border-b
+
+// options: { "sizing": true }
+// Logical sizes
+<div className="inline-full block-screen" />
+//              ~~~~~~~~~~~ ~~~~~~~~~~~~  → w-full h-screen
 ```
 
 ### ✓ Correct
@@ -102,6 +125,11 @@ works without it.
 <div className="ml-4 pr-2" />
 <div className="left-0 right-0" />
 <div className="border-l rounded-tl-md" />
+<div className="mt-4 top-0 border-b" />
+
+// options: { "sizing": true }
+// Display utilities are not sizes
+<div className="inline-flex block" />
 
 // Already physical — variants and important round-trip cleanly
 <div className="hover:ml-4 pl-(--gutter) mr-4!" />
@@ -112,7 +140,9 @@ works without it.
 - **`enforce-logical`**: the inverse. Pick **one**. Running both simultaneously rewrites in a loop.
 - **`enforce-canonical`**: it rewrites `start-2` → `inset-s-2`. Harmless here: this rule converts
   both spellings to `left-2`.
-- **`enforce-shorthand`**: runs on direction-neutral `m-*` / `p-*` shorthands, so no overlap.
+- **`enforce-shorthand`**: both rewrite pairs of sides. `mbs-2 mbe-2` is two block-axis classes to
+  this rule and `my-2` to that one, and `enforce-shorthand` folds the physical pair this rule writes
+  (`mt-2 mb-2`) the same way, so whichever fix lands first the string ends as `my-2`.
 
 ## When to disable it
 

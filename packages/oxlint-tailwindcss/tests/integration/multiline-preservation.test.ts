@@ -116,6 +116,15 @@ describe('multiline preservation under default theme', () => {
         errors: [{ messageId: 'useLogical' }, { messageId: 'useLogical' }],
         output: `const className = \`flex ms-2${NL}pe-4\``,
       },
+      // One class into two (`size-4` → `inline-4 block-4`): the pair stays on
+      // the line the class was on.
+      {
+        code: `const className = \`flex size-4${NL}mt-2\``,
+        filename: 'a.tsx',
+        options: [{ sizing: true }],
+        errors: [{ messageId: 'useLogicalWritingMode' }, { messageId: 'useLogicalWritingMode' }],
+        output: `const className = \`flex inline-4 block-4${NL}mbs-2\``,
+      },
     ],
   })
 

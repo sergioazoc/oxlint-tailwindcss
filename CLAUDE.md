@@ -741,13 +741,39 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `enforce-canonical`'s `'variable'`) goes through `reportClassSuggestion` instead, which replaces
   that one class and never joins the shared autofix.
 - **Directional rules** (`enforce-logical` ↔ `enforce-physical`): both consume
-  `createDirectionalMapper(context, { mappings, messageId })` from `enforce-logical.ts`. The mapping
-  type is `AxisMapping { from, to, axis, exact? }` (`exact` for utilities whose value is the
-  direction, such as `float-left` / `clear-left` / `text-left`, which must match whole);
-  `enforce-physical` inverts via `invertAxisMappings()` and appends `LOGICAL_INSET_ALIASES`
-  (`inset-s` / `inset-e` → `left` / `right`). The shared schema lives in `LOGICAL_PHYSICAL_SCHEMA`.
-  `convertClass` strips a leading `-` before matching the mapping keys and re-prepends it on the
-  replacement, so negative utilities convert too (`-ml-2` → `-ms-2`, `-left-4` → `-start-4`).
+  `createDirectionalMapper(context, { mappings, messageId, writingModeMessageId? })` from
+  `enforce-logical.ts`; one class goes through the pure
+  `convertDirectional(cls, mappings, options, cache)`. The mapping type is
+  `AxisMapping { from, to, axis, exact?, since?, fallback?, sizing?, skipValues? }`:
+  - `exact` for utilities whose value is the direction (`float-left` / `clear-left` / `text-left`),
+    which must match whole;
+  - `since` for a target Tailwind 4.2 shipped (the block axis `mbs`/`pbs`/`inset-bs`/`border-bs`/
+    `scroll-mbs`…, logical sizing, `inset-s`/`inset-e`). With a DS it applies only when
+    `cache.isKnownClass('<to>-0')` — every 4.2 root lists its `-0` and 4.1 doesn't; never `isValid`
+    (accepts an arbitrary value on any prefix) nor the known-prefix set (`inline-flex` makes
+    `inline` a prefix on 4.1). Without a DS: `fallback` with an autofix (`left` → `start`, every v4
+    has it), else `suggestOnly` through `reportClassSuggestion`, never the shared autofix;
+  - `sizing` (`w`/`h`/`min-`/`max-`/`size`, only with the `sizing` option): never the bare class nor
+    a display (`inline`, `block`, `inline-{block,flex,grid,table}`), and with a DS a named value
+    must declare the same values under both prefixes (`utils/declared-values.ts`, shared with
+    `enforce-shorthand`: `w-xs` reads `--width-xs`, `inline-xs` only `--container-xs`);
+  - `to` as a pair (`size` → `['inline', 'block']`, axis `'both'`): variant and `!` on both halves;
+  - `skipValues`: values with no counterpart (`w-dvh`, `h-dvw`, `max-w-prose`, `max-w-screen-*`),
+    skipped with or without a DS.
+
+  `invertAxisMappings()` drops pairs, `since`, `fallback` and `skipValues`, keeps `sizing`, and
+  inverts both spellings of an entry with a `fallback` (`inset-s-2` and `start-2` → `left-2`).
+  Messages: `useLogical` ("for LTR/RTL support") on the inline axis, `useLogicalWritingMode` on the
+  block axis and sizes (where they differ only in a vertical writing mode); `ReplacementEntry`
+  carries a per-entry `messageId` so one string can mix them under one autofix. The shared schema
+  (with `sizing`) lives in `LOGICAL_PHYSICAL_SCHEMA`. A leading `-` is stripped before matching and
+  re-prepended, so negative utilities convert too (`-ml-2` → `-ms-2`, `-top-2` → `-inset-bs-2`).
+  `enforce-shorthand` folds the logical pairs (`mbs`+`mbe` → `my`, `inset-s`+ `inset-e` → `inset-x`,
+  …) so logical + shorthand converge whichever fix lands first
+  (`tests/e2e/logical-shorthand-convergence.test.ts`); it never folds `inline`+`block` into `size`,
+  which `sizing` would split back. `scripts/engine-smoke.mjs` holds the 4.1 behaviour on the real
+  engine (`left-[3px]` → `start-[3px]`, no `mbs-`).
+
 - **`defaultOptions`**: every rule with options declares `meta.defaultOptions`. Rules with
   `schema: []` (no options) deliberately do NOT declare it — oxlint's schema validator rejects `{}`
   against an empty schema. `consistent-variant-order` declares `defaultOptions: [{}]` (no `order`)

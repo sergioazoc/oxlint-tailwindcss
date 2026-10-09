@@ -25,6 +25,12 @@ import { preserveSpaces, type ClassLocation } from './extractors'
 export interface ReplacementEntry {
   cls: string
   replacement: string
+  /**
+   * This entry's diagnostic messageId, when it differs from the call's (one
+   * string can mix them: `ml-2 mt-2` is an RTL and a writing-mode rewrite).
+   * The shared autofix still covers every entry.
+   */
+  messageId?: string
 }
 
 interface Fixer {
@@ -82,19 +88,20 @@ export function reportClassReplacements(
 
   for (let i = 0; i < offending.length; i++) {
     const { cls, replacement } = offending[i]
+    const messageId = offending[i].messageId ?? options.messageId
     const primaryData: Record<string, string> = { className: cls, [replacementKey]: replacement }
 
     if (i === 0) {
       report({
         node: loc.node,
-        messageId: options.messageId,
+        messageId,
         data: primaryData,
         fix: applyFix,
       })
     } else {
       report({
         node: loc.node,
-        messageId: options.messageId,
+        messageId,
         data: primaryData,
         suggest: [
           {

@@ -20,6 +20,7 @@
 
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, describe } from 'vitest'
+import { RuleTester } from 'oxlint/plugins-dev'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
 import { makeFixtureRunner } from '../utils/with-fixture'
 import { consistentVariantOrder } from '../../src/rules/consistent-variant-order'
@@ -82,6 +83,12 @@ describe('template fragments glued to ${} are left intact', () => {
         filename: 'a.tsx',
         errors: 1,
         output: tpl('ms-2 text-${c}'),
+      },
+      {
+        code: tpl('mt-2 text-${c}'),
+        filename: 'a.tsx',
+        errors: 1,
+        output: tpl('mbs-2 text-${c}'),
       },
     ],
   })
@@ -295,4 +302,22 @@ describe('template fragments under a theme with named tokens', () => {
       },
     ],
   })
+})
+
+// Without a design system enforce-logical only SUGGESTS a Tailwind 4.2 target:
+// the suggester sees the same narrowed view as the fixers.
+new RuleTester().run('enforce-logical suggestion (no design system)', enforceLogical, {
+  valid: [],
+  invalid: [
+    {
+      code: tpl('mt-2 text-${c}'),
+      filename: 'a.tsx',
+      errors: [
+        {
+          messageId: 'useLogicalWritingMode',
+          suggestions: [{ messageId: 'suggestReplace', output: tpl('mbs-2 text-${c}') }],
+        },
+      ],
+    },
+  ],
 })

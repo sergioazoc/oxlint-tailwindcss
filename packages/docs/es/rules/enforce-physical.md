@@ -10,30 +10,33 @@ como `ms-4` → `ml-4` — el espejo de `enforce-logical`.
 
 ## De un vistazo
 
-| Autofix | Sugerencias en el editor | Design system                         | Opciones                               |
-| ------- | ------------------------ | ------------------------------------- | -------------------------------------- |
-| Sí      | Sí                       | Opcional — se usa si hay `entryPoint` | `allowlist`, `direction`, `entryPoint` |
+| Autofix | Sugerencias en el editor | Design system                         | Opciones                                         |
+| ------- | ------------------------ | ------------------------------------- | ------------------------------------------------ |
+| Sí      | Sí                       | Opcional — se usa si hay `entryPoint` | `allowlist`, `direction`, `sizing`, `entryPoint` |
 
 ## Qué hace esta regla
 
 El espejo de `enforce-logical`. Reescribe utilities lógicas conscientes del writing direction
-(`ms-4`, `pe-2`, `start-0`, `rounded-ss-md`, …) a sus equivalentes físicas (`ml-4`, `pr-2`,
-`left-0`, `rounded-tl-md`, …). Úsala en codebases LTR-only donde las utilities lógicas agregan carga
-cognitiva sin payoff — `ml-4` es más directo que `ms-4` cuando no hay historia de RTL. Autofix sobre
-el primer ofensor por location, sugerencia de editor sobre los siguientes.
+(`ms-4`, `pe-2`, `inset-s-0`, `rounded-ss-md`, y en el eje block `mbs-4`, `inset-bs-0`, `border-be`,
+…) a sus equivalentes físicas (`ml-4`, `pr-2`, `left-0`, `rounded-tl-md`, `mt-4`, `top-0`,
+`border-b`, …). Úsala en codebases LTR-only donde las utilities lógicas agregan carga cognitiva sin
+payoff — `ml-4` es más directo que `ms-4` cuando no hay historia de RTL. Autofix sobre el primer
+ofensor por location, sugerencia de editor sobre los siguientes. El mapeo es la tabla de
+`enforce-logical`, invertida.
 
-Convierte **las dos** formas de los insets lógicos: `start-2` (la que sugiere `enforce-logical`, y
-la que usan los docs de Tailwind) e `inset-s-2` (en la que `enforce-canonical` reescribe esa, porque
-el design system la considera canónica). Un codebase que corrió logical + canonical termina con
-`inset-s-*`, y esta regla antes no tenía vuelta — su tabla solo conocía `start`.
+Convierte **las dos** formas de los insets lógicos: `inset-s-2` (la que escriben `enforce-logical` y
+`enforce-canonical` en Tailwind 4.2+, la grafía que el design system considera canónica) y `start-2`
+(la forma anterior, la que usaban los docs de Tailwind y la que `enforce-logical` sigue escribiendo
+sin design system).
 
 También refleja las tres utilities donde la dirección es el VALOR: `float-start` → `float-left`,
 `clear-start` → `clear-left`, `text-start` → `text-left`.
 
 DS-independiente en lo que importa: comparte la tabla estática de mapeo con `enforce-logical` y la
-invierte, así que funciona sin `settings.tailwindcss.entryPoint`. Cuando SÍ hay uno configurado, la
-regla además comprueba que la clase que sugiere exista, así que una reescritura nunca puede
-introducir una clase que no emita nada.
+invierte, así que funciona sin `settings.tailwindcss.entryPoint` — cada clase física que escribe
+existe en todo Tailwind v4. Cuando SÍ hay un entry point configurado, la regla además comprueba que
+la clase que sugiere exista, así que una reescritura nunca puede introducir una clase que no emita
+nada.
 
 `enforce-physical` y `enforce-logical` son reglas hermanas. Activa **solo una a la vez** — correr
 las dos produce un loop de autofix.
@@ -44,12 +47,24 @@ las dos produce un loop de autofix.
 
 `'inline' | 'block' | 'both'`, default `'both'`.
 
-Restringe la conversión a un eje. Hoy todos los mapeos son del eje inline, así que `'block'`
-desactiva la regla efectivamente. Future-proofing para cuando Tailwind incluya utilities lógicas del
-eje block.
+Restringe la conversión a un eje: `'inline'` convierte las utilities de start/end (`ms-*`,
+`inset-s-*`, `border-e`, …), `'block'` las de block-start/end (`mbs-*`, `inset-bs-*`, `border-be`,
+…).
 
 ```jsonc
 { "tailwindcss/enforce-physical": ["error", { "direction": "inline" }] }
+```
+
+### `sizing`
+
+`boolean`, default `false`.
+
+Convierte también los tamaños lógicos de vuelta: `inline-*` → `w-*`, `block-*` → `h-*`, y sus formas
+`min-` / `max-`, un eje a la vez (`inline-4 block-4` → `w-4 h-4`). `inline`, `block` e
+`inline-{block,flex,grid,table}` son utilities de display y nunca se tocan.
+
+```jsonc
+{ "tailwindcss/enforce-physical": ["error", { "sizing": true }] }
 ```
 
 ### `allowlist`
@@ -89,12 +104,21 @@ regla funciona sin él.
 //              ~~~~ ~~~~  → ml-4 pr-2
 
 // Posicionamiento lógico
-<div className="start-0 end-0" />
-//              ~~~~~~~ ~~~~~  → left-0 right-0
+<div className="inset-s-0 inset-e-0" />
+//              ~~~~~~~~~ ~~~~~~~~~  → left-0 right-0
 
 // Borders y radii lógicos
 <div className="border-s rounded-ss-md" />
 //              ~~~~~~~~ ~~~~~~~~~~~~~  → border-l rounded-tl-md
+
+// El eje block
+<div className="mbs-4 inset-bs-0 border-be" />
+//              ~~~~~ ~~~~~~~~~~ ~~~~~~~~~  → mt-4 top-0 border-b
+
+// options: { "sizing": true }
+// Tamaños lógicos
+<div className="inline-full block-screen" />
+//              ~~~~~~~~~~~ ~~~~~~~~~~~~  → w-full h-screen
 ```
 
 ### ✓ Correcto
@@ -104,6 +128,11 @@ regla funciona sin él.
 <div className="ml-4 pr-2" />
 <div className="left-0 right-0" />
 <div className="border-l rounded-tl-md" />
+<div className="mt-4 top-0 border-b" />
+
+// options: { "sizing": true }
+// Las utilities de display no son tamaños
+<div className="inline-flex block" />
 
 // Ya físico — variants e important hacen round-trip limpio
 <div className="hover:ml-4 pl-(--gutter) mr-4!" />
@@ -115,8 +144,10 @@ regla funciona sin él.
   loop.
 - **`enforce-canonical`**: reescribe `start-2` → `inset-s-2`. Inofensivo aquí: esta regla convierte
   las dos formas a `left-2`.
-- **`enforce-shorthand`**: corre sobre shorthands `m-*` / `p-*` direction-neutral, así que no se
-  solapan.
+- **`enforce-shorthand`**: las dos reescriben pares de lados. `mbs-2 mbe-2` son dos clases del eje
+  block para esta regla y `my-2` para aquella, y `enforce-shorthand` pliega igual el par físico que
+  escribe esta regla (`mt-2 mb-2`), así que aplique primero el fix que sea, el string termina en
+  `my-2`.
 
 ## Cuándo desactivarla
 

@@ -89,7 +89,7 @@ try {
   )
   writeFileSync(
     join(dir, 'src/app.tsx'),
-    'export const c = <div className="flex bg-notacolor-99999 bg-red-500 text-brand p-4 px-2 hover:underline" />\n',
+    'export const c = <div className="flex bg-notacolor-99999 bg-red-500 text-brand p-4 px-2 hover:underline mt-[3px] left-[3px]" />\n',
   )
 
   const pkgs = ['tailwindcss', '@tailwindcss/node'].map((p) => `${p}@${version}`)
@@ -159,6 +159,25 @@ try {
         palette[0].message.includes('"bg-red-500"') &&
         palette[0].message.includes(': brand.'),
       "the palette color was flagged, and the project's own color was not",
+    )
+    // The block axis and `inset-s` shipped in Tailwind 4.2. An arbitrary value
+    // passes any validity check, so only probing the utility itself keeps 4.1
+    // from getting `mbs-[3px]`, a class that emits nothing.
+    const [major, minor] = installed.split('.').map(Number)
+    const has42 = installed.startsWith('0.0.0-insiders') || major > 4 || minor >= 2
+    const logical = diagnostics
+      .filter((d) => d.code === 'tailwindcss(enforce-logical)')
+      .map((d) => d.message)
+      .join('\n')
+    check(
+      has42
+        ? logical.includes('"mbs-[3px]"') && logical.includes('"inset-s-[3px]"')
+        : logical.includes('"start-[3px]"') &&
+            !logical.includes('mbs-') &&
+            !logical.includes('inset-s-'),
+      has42
+        ? 'enforce-logical writes the 4.2 block axis and inset-s'
+        : 'enforce-logical keeps to what this Tailwind has: start-[3px], no mbs-/inset-s-',
     )
   }
 } finally {
