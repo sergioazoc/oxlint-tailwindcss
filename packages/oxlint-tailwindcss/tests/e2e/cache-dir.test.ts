@@ -167,6 +167,8 @@ describe('E2E: editing a local @plugin invalidates the cached design system', ()
     if (PLUGIN_DIR) rmSync(PLUGIN_DIR, { recursive: true, force: true })
   })
 
+  // Two cold precomputes, each allowed the 120 s `run` gives oxlint: vitest's
+  // default 60 s for the whole test ran out inside a loaded full suite.
   it('reports the class the edited plugin no longer defines', () => {
     const cache = join(PLUGIN_DIR, '.cache')
     expect(diagnostics(run(cache))).toEqual([])
@@ -174,5 +176,5 @@ describe('E2E: editing a local @plugin invalidates the cached design system', ()
     expect(diagnostics(run(cache))).toEqual([
       'tailwindcss(no-unknown-classes) "foo-bar" is not a valid Tailwind class. Did you mean "foo-baz"?',
     ])
-  })
+  }, 240_000)
 })

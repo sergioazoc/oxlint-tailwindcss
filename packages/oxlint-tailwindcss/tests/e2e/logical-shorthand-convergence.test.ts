@@ -66,6 +66,11 @@ function fixInOrder(classes: string, ...stages: Rules[]): string {
 
 const SHORTHAND: Rules = { 'tailwindcss/enforce-shorthand': 'warn' }
 
+// An allOrders() is 15 `oxlint --fix` runs in a row, and a test makes up to
+// three: about 5 s alone, but well past vitest's default 60 s inside a loaded
+// full suite, where each run can take seconds.
+const RUNS_TIMEOUT = 180_000
+
 /** Every order the two fixes can land in: together, either one first. */
 function allOrders(classes: string, directional: Rules): string[] {
   const both = { ...directional, ...SHORTHAND }
@@ -77,29 +82,41 @@ function allOrders(classes: string, directional: Rules): string[] {
 }
 
 describe('E2E: directional rules and enforce-shorthand converge', () => {
-  it('enforce-logical: a block-axis pair ends as the shorthand', () => {
-    const logical = { 'tailwindcss/enforce-logical': 'warn' }
-    expect(allOrders('mt-2 mb-2', logical)).toEqual(['my-2', 'my-2', 'my-2'])
-    expect(allOrders('top-0 bottom-0', logical)).toEqual(['inset-y-0', 'inset-y-0', 'inset-y-0'])
-    expect(allOrders('left-0 right-0', logical)).toEqual(['inset-x-0', 'inset-x-0', 'inset-x-0'])
-  })
+  it(
+    'enforce-logical: a block-axis pair ends as the shorthand',
+    () => {
+      const logical = { 'tailwindcss/enforce-logical': 'warn' }
+      expect(allOrders('mt-2 mb-2', logical)).toEqual(['my-2', 'my-2', 'my-2'])
+      expect(allOrders('top-0 bottom-0', logical)).toEqual(['inset-y-0', 'inset-y-0', 'inset-y-0'])
+      expect(allOrders('left-0 right-0', logical)).toEqual(['inset-x-0', 'inset-x-0', 'inset-x-0'])
+    },
+    RUNS_TIMEOUT,
+  )
 
-  it('enforce-logical with sizing: a width and a height end as the logical pair', () => {
-    const sizing = { 'tailwindcss/enforce-logical': ['warn', { sizing: true }] }
-    expect(allOrders('w-4 h-4', sizing)).toEqual([
-      'inline-4 block-4',
-      'inline-4 block-4',
-      'inline-4 block-4',
-    ])
-  })
+  it(
+    'enforce-logical with sizing: a width and a height end as the logical pair',
+    () => {
+      const sizing = { 'tailwindcss/enforce-logical': ['warn', { sizing: true }] }
+      expect(allOrders('w-4 h-4', sizing)).toEqual([
+        'inline-4 block-4',
+        'inline-4 block-4',
+        'inline-4 block-4',
+      ])
+    },
+    RUNS_TIMEOUT,
+  )
 
-  it('enforce-physical: a logical block pair ends as the shorthand', () => {
-    const physical = { 'tailwindcss/enforce-physical': 'warn' }
-    expect(allOrders('mbs-2 mbe-2', physical)).toEqual(['my-2', 'my-2', 'my-2'])
-    expect(allOrders('inset-s-0 inset-e-0', physical)).toEqual([
-      'inset-x-0',
-      'inset-x-0',
-      'inset-x-0',
-    ])
-  })
+  it(
+    'enforce-physical: a logical block pair ends as the shorthand',
+    () => {
+      const physical = { 'tailwindcss/enforce-physical': 'warn' }
+      expect(allOrders('mbs-2 mbe-2', physical)).toEqual(['my-2', 'my-2', 'my-2'])
+      expect(allOrders('inset-s-0 inset-e-0', physical)).toEqual([
+        'inset-x-0',
+        'inset-x-0',
+        'inset-x-0',
+      ])
+    },
+    RUNS_TIMEOUT,
+  )
 })
