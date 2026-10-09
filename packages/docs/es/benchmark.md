@@ -37,11 +37,11 @@ las otras dos.
 
 | Herramienta                      | Reglas       | En caliente | En frío | Diagnósticos |
 | -------------------------------- | ------------ | ----------- | ------- | ------------ |
-| oxlint-tailwindcss               | todas        | 1,3 s       | 9,5 s   | 2704         |
-| oxlint-tailwindcss               | recomendadas | 1,2 s       | 10,2 s  | 352          |
-| @shadcn/lint                     | todas        | 1,0 s       | —       | 2578         |
-| eslint-plugin-better-tailwindcss | todas        | 25,4 s      | —       | 6284         |
-| eslint-plugin-better-tailwindcss | recomendadas | 24,9 s      | —       | 705          |
+| oxlint-tailwindcss               | todas        | 1,4 s       | 10,4 s  | 3264         |
+| oxlint-tailwindcss               | recomendadas | 1,3 s       | 9,8 s   | 352          |
+| @shadcn/lint                     | todas        | 1,1 s       | —       | 2578         |
+| eslint-plugin-better-tailwindcss | todas        | 29,5 s      | —       | 6284         |
+| eslint-plugin-better-tailwindcss | recomendadas | 27,2 s      | —       | 705          |
 
 <!-- /generated:bench-speed -->
 
@@ -193,8 +193,8 @@ lógicas y físicas se leen de izquierda a derecha, los valores del theme se sus
 
 | Herramienta                      | Corrida                   | Strings de clases cambiados | Mismo estilo | Typo corregido | Estilo cambiado |
 | -------------------------------- | ------------------------- | --------------------------- | ------------ | -------------- | --------------- |
-| oxlint-tailwindcss               | `--fix`                   | 670                         | 670          | 0              | 0               |
-| oxlint-tailwindcss               | `--fix --fix-suggestions` | 866                         | 861          | 4              | **1**           |
+| oxlint-tailwindcss               | `--fix`                   | 1028                        | 1028         | 0              | 0               |
+| oxlint-tailwindcss               | `--fix --fix-suggestions` | 1191                        | 1187         | 4              | 0               |
 | @shadcn/lint                     | `--fix`                   | sin autofix                 | —            | —              | —               |
 | @shadcn/lint                     | `--fix --fix-suggestions` | 249                         | 212          | 3              | **34**          |
 | eslint-plugin-better-tailwindcss | `--fix`                   | 2865                        | 2864         | 0              | **1**           |
@@ -203,21 +203,6 @@ lógicas y físicas se leen de izquierda a derecha, los valores del theme se sus
 <!-- /generated:bench-fixes -->
 
 <!-- generated:bench-fix-changes -->
-
-::: details oxlint-tailwindcss: 1 string cuyo estilo `--fix --fix-suggestions` cambió
-
-- `components/block-viewer.tsx`
-
-  ```diff
-  - relative hidden w-3 bg-transparent p-0 after:absolute after:top-1/2 after:right-0 after:h-8 after:w-[6px] after:translate-x-[-1px] after:-translate-y-1/2 after:rounded-full after:bg-border after:transition-all after:hover:h-10 md:block
-  + relative hidden w-3 bg-transparent p-0 after:absolute after:top-1/2 after:right-0 after:h-8 after:w-[6px] after:translate-x-[-1px] after:-translate-y-1/2 after:rounded-full after:bg-border after:transition-all hover:after:h-10 md:block
-  ```
-
-  `&::after > &:hover > @media (hover: hover) | height`: `40px` → ninguno  
-  `@media (hover: hover) > &:hover::after | content`: ninguno → `var(--tw-content)`  
-  `@media (hover: hover) > &:hover::after | height`: ninguno → `40px`
-
-:::
 
 ::: details @shadcn/lint: 34 strings cuyo estilo `--fix --fix-suggestions` cambió
 

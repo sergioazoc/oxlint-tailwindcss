@@ -56,8 +56,7 @@ ruleTester.run('enforce-physical (allowlist)', enforcePhysical, {
 
 ruleTester.run('enforce-physical (direction)', enforcePhysical, {
   valid: [
-    // Every current mapping is inline-axis, so `direction: 'block'` keeps the
-    // rule silent on every class it would otherwise flag.
+    // `direction: 'block'` leaves the inline axis alone, and `'inline'` the block one.
     { code: '<div className="ms-4" />', filename: 'test.tsx', options: [{ direction: 'block' }] },
     { code: '<div className="pe-2" />', filename: 'test.tsx', options: [{ direction: 'block' }] },
     {
@@ -65,8 +64,16 @@ ruleTester.run('enforce-physical (direction)', enforcePhysical, {
       filename: 'test.tsx',
       options: [{ direction: 'block' }],
     },
+    { code: '<div className="mbs-4" />', filename: 'test.tsx', options: [{ direction: 'inline' }] },
   ],
   invalid: [
+    {
+      code: '<div className="mbs-4 ms-4" />',
+      filename: 'test.tsx',
+      options: [{ direction: 'block' }],
+      errors: [{ messageId: 'usePhysical' }],
+      output: '<div className="mt-4 ms-4" />',
+    },
     // Explicit `direction: 'inline'` matches the current default mappings.
     {
       code: '<div className="ms-4" />',

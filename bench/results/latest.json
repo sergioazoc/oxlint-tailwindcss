@@ -1548,10 +1548,10 @@
         "config": "otw-all",
         "files": 880,
         "threads": 12,
-        "diagnostics": 2704,
+        "diagnostics": 3264,
         "byRule": {
+          "tailwindcss/enforce-logical": 1160,
           "tailwindcss/no-arbitrary-value": 752,
-          "tailwindcss/enforce-logical": 600,
           "tailwindcss/enforce-consistent-line-wrapping": 572,
           "tailwindcss/prefer-scale-token": 241,
           "tailwindcss/enforce-shorthand": 156,
@@ -1570,8 +1570,8 @@
           "tailwindcss/no-borrowed-component-styles": 1,
           "tailwindcss/no-dark-without-light": 1
         },
-        "warmMs": 1286,
-        "coldMs": 9549
+        "warmMs": 1420,
+        "coldMs": 10354
       },
       "recommended": {
         "config": "otw-recommended",
@@ -1592,8 +1592,8 @@
           "tailwindcss/enforce-negative-arbitrary-values": 1,
           "tailwindcss/no-dark-without-light": 1
         },
-        "warmMs": 1200,
-        "coldMs": 10160
+        "warmMs": 1328,
+        "coldMs": 9751
       }
     },
     "shadcn": {
@@ -1610,7 +1610,7 @@
           "shadcn/no-inline-styles": 33,
           "shadcn/require-static-classes": 3
         },
-        "warmMs": 988
+        "warmMs": 1051
       }
     },
     "better-tailwindcss": {
@@ -1630,7 +1630,7 @@
           "better-tailwindcss/enforce-consistent-variable-syntax": 4,
           "better-tailwindcss/no-concatenated-classes": 1
         },
-        "warmMs": 25408
+        "warmMs": 29467
       },
       "recommended": {
         "config": "btw-recommended",
@@ -1643,7 +1643,7 @@
           "better-tailwindcss/no-deprecated-classes": 11,
           "better-tailwindcss/no-concatenated-classes": 1
         },
-        "warmMs": 24897
+        "warmMs": 27158
       }
     }
   },
@@ -1751,17 +1751,17 @@
       },
       "fixes": {
         "autofix": {
-          "files": 298,
-          "strings": 670,
-          "equivalent": 670,
+          "files": 379,
+          "strings": 1028,
+          "equivalent": 1028,
           "typos": [],
           "changed": [],
           "unpaired": []
         },
         "suggestions": {
-          "files": 373,
-          "strings": 866,
-          "equivalent": 861,
+          "files": 417,
+          "strings": 1191,
+          "equivalent": 1187,
           "typos": [
             {
               "file": "app/(app)/(root)/cards/contribution-history.tsx",
@@ -1833,34 +1833,7 @@
               }
             }
           ],
-          "changed": [
-            {
-              "file": "components/block-viewer.tsx",
-              "before": "relative hidden w-3 bg-transparent p-0 after:absolute after:top-1/2 after:right-0 after:h-8 after:w-[6px] after:translate-x-[-1px] after:-translate-y-1/2 after:rounded-full after:bg-border after:transition-all after:hover:h-10 md:block",
-              "after": "relative hidden w-3 bg-transparent p-0 after:absolute after:top-1/2 after:right-0 after:h-8 after:w-[6px] after:translate-x-[-1px] after:-translate-y-1/2 after:rounded-full after:bg-border after:transition-all hover:after:h-10 md:block",
-              "diff": {
-                "changed": [
-                  {
-                    "key": "&::after > &:hover > @media (hover: hover) | height",
-                    "before": "40px",
-                    "after": null
-                  },
-                  {
-                    "key": "@media (hover: hover) > &:hover::after | content",
-                    "before": null,
-                    "after": "var(--tw-content)"
-                  },
-                  {
-                    "key": "@media (hover: hover) > &:hover::after | height",
-                    "before": null,
-                    "after": "40px"
-                  }
-                ],
-                "removedUnknown": [],
-                "addedUnknown": []
-              }
-            }
-          ],
+          "changed": [],
           "unpaired": []
         }
       }

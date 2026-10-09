@@ -11,6 +11,12 @@ import {
 import { createLazyLoader } from '../design-system/loader'
 import { softGetDS } from '../utils/fatal'
 import type { DesignSystemCache } from '../design-system/cache'
+import {
+  NUMERIC_VALUE_RE,
+  declaredValues,
+  isWrittenValue,
+  sameValues,
+} from '../utils/declared-values'
 import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 /**
@@ -44,14 +50,18 @@ export interface ShorthandFamily {
 
 /**
  * The `m`/`p` shape, shared by `margin`, `padding`, `scroll-margin` and
- * `scroll-padding`: four sides, each axis, and the logical inline pair (`ms`+`me`
- * IS `margin-inline`, so that one is property-identical rather than merely
- * equivalent).
+ * `scroll-padding`: four sides, each axis, and the logical pairs (`ms`+`me` IS
+ * `margin-inline`, `mbs`+`mbe` IS `margin-block`, so those are
+ * property-identical rather than merely equivalent). The logical ones are what
+ * `enforce-logical` writes, so `mt-2 mb-2` ends as `my-2` whichever of the two
+ * rules fixes it first.
  */
 function boxFamilies(p: string): ShorthandFamily[] {
   return [
     { parts: [`${p}t`, `${p}r`, `${p}b`, `${p}l`], to: p },
+    { parts: [`${p}s`, `${p}e`, `${p}bs`, `${p}be`], to: p },
     { parts: [`${p}t`, `${p}b`], to: `${p}y` },
+    { parts: [`${p}bs`, `${p}be`], to: `${p}y` },
     { parts: [`${p}l`, `${p}r`], to: `${p}x` },
     { parts: [`${p}s`, `${p}e`], to: `${p}x` },
     { parts: [`${p}x`, `${p}y`], to: p },
@@ -87,16 +97,23 @@ export const SHORTHAND_FAMILIES: ShorthandFamily[] = [
   // than the shape of the token: `border-t-2 border-r-2 …` and
   // `border-t-red-500 border-r-red-500 …` collapse through the same entry.
   { parts: ['border-t', 'border-r', 'border-b', 'border-l'], to: 'border' },
+  { parts: ['border-s', 'border-e', 'border-bs', 'border-be'], to: 'border' },
   { parts: ['border-t', 'border-b'], to: 'border-y' },
+  { parts: ['border-bs', 'border-be'], to: 'border-y' },
   { parts: ['border-l', 'border-r'], to: 'border-x' },
   { parts: ['border-s', 'border-e'], to: 'border-x' },
   { parts: ['border-x', 'border-y'], to: 'border' },
 
   { parts: ['top', 'right', 'bottom', 'left'], to: 'inset' },
+  { parts: ['inset-s', 'inset-e', 'inset-bs', 'inset-be'], to: 'inset' },
   { parts: ['top', 'bottom'], to: 'inset-y' },
+  { parts: ['inset-bs', 'inset-be'], to: 'inset-y' },
   { parts: ['left', 'right'], to: 'inset-x' },
   { parts: ['start', 'end'], to: 'inset-x' },
+  { parts: ['inset-s', 'inset-e'], to: 'inset-x' },
   { parts: ['inset-x', 'inset-y'], to: 'inset' },
+  // Never `inline` + `block` → `size`: `size-*` writes `width`/`height`, so
+  // enforce-logical would split it right back.
 
   { parts: ['gap-x', 'gap-y'], to: 'gap' },
   { parts: ['overflow-x', 'overflow-y'], to: 'overflow' },
@@ -127,9 +144,6 @@ const VALUE_RE = (() => {
   return new RegExp(`^(${prefixes.join('|')})-(.+)$`)
 })()
 
-/** A plain number or fraction: always the shared numeric/`--spacing` scale. */
-const NUMERIC_VALUE_RE = /^\d+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?$/
-
 /**
  * Core keywords whose per-axis forms are known to agree, for when no design
  * system is available to check. Deliberately excludes `screen` (`w-screen` is
@@ -150,30 +164,6 @@ const AXIS_SAFE_KEYWORDS = new Set([
   'svw',
   'svh',
 ])
-
-/** The value is a literal the user wrote, injected verbatim into every part. */
-function isWrittenValue(value: string): boolean {
-  return value.startsWith('[') || value.startsWith('(')
-}
-
-/**
- * Values the class declares on its own box, unconditionally. `null` when the
- * class produces nothing — which for a named token means it does not exist.
- */
-function declaredValues(cache: DesignSystemCache, cls: string): Set<string> | null {
-  const values = new Set<string>()
-  for (const decl of cache.getCssDeclarations(cls)) {
-    if (decl.conditional) continue
-    values.add(decl.value)
-  }
-  return values.size > 0 ? values : null
-}
-
-function sameValues(a: Set<string>, b: Set<string>): boolean {
-  if (a.size !== b.size) return false
-  for (const value of a) if (!b.has(value)) return false
-  return true
-}
 
 /**
  * Would collapsing this family at this value keep the CSS identical?

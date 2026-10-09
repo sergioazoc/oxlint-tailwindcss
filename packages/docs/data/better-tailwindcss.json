@@ -57,8 +57,8 @@
       "ours": "enforce-logical",
       "example": "<div className=\"ml-4\">x</div>",
       "notes": {
-        "en": "`ignore` → `allowlist` (regular expressions, too). `direction` limits it to inline or block utilities; `enforce-physical` is the reverse rule.",
-        "es": "`ignore` → `allowlist` (también expresiones regulares). `direction` la limita a las utilities inline o block; `enforce-physical` es la regla inversa."
+        "en": "`ignore` → `allowlist` (regular expressions, too). The block axis (`mt-*` → `mbs-*`, `top-*` → `inset-bs-*`) is on by default; widths and heights (`w-*` → `inline-*`, `size-*` → `inline-* block-*`) need `sizing: true`. `direction` limits it to inline or block utilities; `enforce-physical` is the reverse rule.",
+        "es": "`ignore` → `allowlist` (también expresiones regulares). El eje block (`mt-*` → `mbs-*`, `top-*` → `inset-bs-*`) viene activo; anchos y altos (`w-*` → `inline-*`, `size-*` → `inline-* block-*`) necesitan `sizing: true`. `direction` la limita a las utilities inline o block; `enforce-physical` es la regla inversa."
       }
     },
     {

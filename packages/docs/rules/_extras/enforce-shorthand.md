@@ -7,15 +7,15 @@ description: "oxlint rule that merges Tailwind CSS utilities with the same value
 Combines per-axis Tailwind utilities into their shorthand equivalents when every axis carries the
 same value. The most common case: `mt-2 mr-2 mb-2 ml-2` collapses to `m-2`. Covered families:
 
-| Family                  | Collapses                                                                                                                                     |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| margin / padding        | four sides → `m-*`, axes → `my-*`/`mx-*`, `mx-*`+`my-*` → `m-*`, `ms-*`+`me-*` → `mx-*`                                                       |
-| `scroll-m*`/`scroll-p*` | the same shapes                                                                                                                               |
-| sizing                  | `w-*`+`h-*` → `size-*`                                                                                                                        |
-| radii                   | corners → edges → `rounded-*`, including the logical corners (`rounded-ss-*`+`rounded-es-*` → `rounded-s-*`)                                  |
-| borders                 | sides → `border-*`, axes → `border-x-*`/`border-y-*` — widths **and** colours                                                                 |
-| inset                   | `top`/`right`/`bottom`/`left` → `inset-*`, axes → `inset-x-*`/`inset-y-*`, `start-*`+`end-*` → `inset-x-*`                                    |
-| single-property pairs   | `gap-x`+`gap-y`, `overflow-x`+`overflow-y`, `overscroll-x`+`overscroll-y`, `border-spacing-x`+`border-spacing-y`, `translate-x`+`translate-y` |
+| Family                  | Collapses                                                                                                                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| margin / padding        | four sides → `m-*`, axes → `my-*`/`mx-*`, `mx-*`+`my-*` → `m-*`, and the logical sides: `ms-*`+`me-*` → `mx-*`, `mbs-*`+`mbe-*` → `my-*`, all four → `m-*`                      |
+| `scroll-m*`/`scroll-p*` | the same shapes                                                                                                                                                                 |
+| sizing                  | `w-*`+`h-*` → `size-*`                                                                                                                                                          |
+| radii                   | corners → edges → `rounded-*`, including the logical corners (`rounded-ss-*`+`rounded-es-*` → `rounded-s-*`)                                                                    |
+| borders                 | sides → `border-*`, axes → `border-x-*`/`border-y-*` — widths **and** colours, logical sides (`border-bs-*`+`border-be-*` → `border-y-*`) included                              |
+| inset                   | `top`/`right`/`bottom`/`left` → `inset-*`, axes → `inset-x-*`/`inset-y-*`, `start-*`+`end-*` and `inset-s-*`+`inset-e-*` → `inset-x-*`, `inset-bs-*`+`inset-be-*` → `inset-y-*` |
+| single-property pairs   | `gap-x`+`gap-y`, `overflow-x`+`overflow-y`, `overscroll-x`+`overscroll-y`, `border-spacing-x`+`border-spacing-y`, `translate-x`+`translate-y`                                   |
 
 One diagnostic per collapsible group: four sides report `m-2` once, not `m-2` plus the `my-2`/`mx-2`
 halves.
@@ -123,10 +123,12 @@ works without it.
 - **`enforce-sort-order`**: run shorthand first so the shorthand participates in sort with its own
   priority. Otherwise sort places `mt-2 mr-2 mb-2 ml-2` in spaced positions and the shorthand fix
   collapses them later.
-- **`enforce-logical` / `enforce-physical`**: most families here are direction-neutral. The logical
-  pairs that do collapse (`ms-*`+`me-*` → `mx-*`, `border-s-*`+`border-e-*` → `border-x-*`,
-  `start-*`+`end-*` → `inset-x-*`) land on axis utilities neither directional rule converts, so the
-  two never fight.
+- **`enforce-logical` / `enforce-physical`**: they rewrite the same sides. `mt-2 mb-2` is `my-2`
+  here and a block-axis pair (`mbs-2 mbe-2`) to `enforce-logical`; this rule folds the logical pairs
+  too, and lands on axis utilities (`my-*`, `inset-x-*`, `border-y-*`) neither directional rule
+  converts, so whichever fix lands first the string ends the same. It never folds `inline-*` +
+  `block-*` into `size-*`: `size-*` is a width and a height, and `enforce-logical`'s `sizing` would
+  split it right back.
 - **`enforce-consistent-important-position`**: shorthand respects the `!` placement convention of
   the merged classes. If all four use prefix, the shorthand is prefix; same for suffix.
 

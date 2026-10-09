@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- **`enforce-logical` converts the block axis, and sizes on request (#215).** Tailwind 4.2 shipped
+  logical utilities for the block axis, and the rule now maps them: `mt`/`mb` → `mbs`/`mbe`,
+  `pt`/`pb` → `pbs`/`pbe`, `scroll-mt`… → `scroll-mbs`…, `top`/`bottom` → `inset-bs`/`inset-be`,
+  `border-t`/`border-b` → `border-bs`/`border-be`. They follow `direction`, whose default `'both'`
+  always meant both axes; until 4.2 there was no block-axis pair to map. **Reports that can appear
+  with the same config:** every top/bottom utility in a project that runs `enforce-logical` (on
+  shadcn/ui's `apps/v4`, 600 → 1 160 reports); `direction: 'inline'` keeps the previous behaviour.
+  The new `sizing: true` also converts widths and heights (`w-*` → `inline-*`, `h-*` → `block-*`,
+  their `min-`/`max-` forms, `size-*` → `inline-* block-*`), off by default. These diagnostics read
+  `… so it follows the writing mode` (new messageId `useLogicalWritingMode`), since top and bottom
+  differ from their logical forms only in vertical text, not in RTL.
+  - **On Tailwind 4.2+, `left`/`right` become `inset-s`/`inset-e`** — the spelling the design system
+    calls canonical, so `enforce-canonical` no longer rewrites the rule's own output in a second
+    pass. On 4.1, or without an entry point, it is still `start`/`end`.
+  - **Never a dead class.** With a design system the rule probes that your Tailwind has each 4.2
+    utility (an arbitrary value passes every validity check, so `mt-[3px]` used to be good enough to
+    become `mbs-[3px]`, which emits nothing on 4.1); without one it only suggests the block axis and
+    sizes. A size converts only when both classes declare the same value: `w-*` reads `--width-*`
+    first and `inline-*` only `--container-*`, so `w-xs` stays when your theme defines `--width-xs`.
+    Classes with no logical counterpart are left alone (`w-dvh`, `h-dvw`, `max-w-prose`,
+    `max-w-screen-*`, `rounded-t-*`).
+  - **`enforce-physical`** converts the block axis back, sizes with `sizing: true`, and never
+    touches a display utility (`inline-flex` is not an inline size).
+  - **`enforce-shorthand`** folds the logical pairs: `mbs-*`+`mbe-*` → `my-*`, `inset-s-*`+
+    `inset-e-*` → `inset-x-*`, `border-bs-*`+`border-be-*` → `border-y-*`, and the four logical
+    sides. Combined with `enforce-logical`, `mt-2 mb-2` ends as `my-2` whichever fix lands first.
 - **`enforce-canonical` can report a canonical form that also sets a variable other utilities read
   (#217).** Tailwind rewrites `[line-height:var(--x)]` to `leading-(--x)`, but `leading-(--x)` also
   sets `--tw-leading`, which every `text-*` size reads for its line height, so next to one the two

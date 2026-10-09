@@ -35,11 +35,11 @@ them, like the other two.
 
 | Tool                             | Rules       | Warm run | Cold run | Diagnostics |
 | -------------------------------- | ----------- | -------- | -------- | ----------- |
-| oxlint-tailwindcss               | all         | 1.3 s    | 9.5 s    | 2,704       |
-| oxlint-tailwindcss               | recommended | 1.2 s    | 10.2 s   | 352         |
-| @shadcn/lint                     | all         | 1.0 s    | —        | 2,578       |
-| eslint-plugin-better-tailwindcss | all         | 25.4 s   | —        | 6,284       |
-| eslint-plugin-better-tailwindcss | recommended | 24.9 s   | —        | 705         |
+| oxlint-tailwindcss               | all         | 1.4 s    | 10.4 s   | 3,264       |
+| oxlint-tailwindcss               | recommended | 1.3 s    | 9.8 s    | 352         |
+| @shadcn/lint                     | all         | 1.1 s    | —        | 2,578       |
+| eslint-plugin-better-tailwindcss | all         | 29.5 s   | —        | 6,284       |
+| eslint-plugin-better-tailwindcss | recommended | 27.2 s   | —        | 705         |
 
 <!-- /generated:bench-speed -->
 
@@ -187,8 +187,8 @@ substituted, and `@supports` blocks apply, as they do in the browsers Tailwind v
 
 | Tool                             | Run                       | Class strings changed | Same style | Typo fixed | Style changed |
 | -------------------------------- | ------------------------- | --------------------- | ---------- | ---------- | ------------- |
-| oxlint-tailwindcss               | `--fix`                   | 670                   | 670        | 0          | 0             |
-| oxlint-tailwindcss               | `--fix --fix-suggestions` | 866                   | 861        | 4          | **1**         |
+| oxlint-tailwindcss               | `--fix`                   | 1,028                 | 1,028      | 0          | 0             |
+| oxlint-tailwindcss               | `--fix --fix-suggestions` | 1,191                 | 1,187      | 4          | 0             |
 | @shadcn/lint                     | `--fix`                   | no autofix            | —          | —          | —             |
 | @shadcn/lint                     | `--fix --fix-suggestions` | 249                   | 212        | 3          | **34**        |
 | eslint-plugin-better-tailwindcss | `--fix`                   | 2,865                 | 2,864      | 0          | **1**         |
@@ -197,21 +197,6 @@ substituted, and `@supports` blocks apply, as they do in the browsers Tailwind v
 <!-- /generated:bench-fixes -->
 
 <!-- generated:bench-fix-changes -->
-
-::: details oxlint-tailwindcss: 1 string whose style `--fix --fix-suggestions` changed
-
-- `components/block-viewer.tsx`
-
-  ```diff
-  - relative hidden w-3 bg-transparent p-0 after:absolute after:top-1/2 after:right-0 after:h-8 after:w-[6px] after:translate-x-[-1px] after:-translate-y-1/2 after:rounded-full after:bg-border after:transition-all after:hover:h-10 md:block
-  + relative hidden w-3 bg-transparent p-0 after:absolute after:top-1/2 after:right-0 after:h-8 after:w-[6px] after:translate-x-[-1px] after:-translate-y-1/2 after:rounded-full after:bg-border after:transition-all hover:after:h-10 md:block
-  ```
-
-  `&::after > &:hover > @media (hover: hover) | height`: `40px` → none  
-  `@media (hover: hover) > &:hover::after | content`: none → `var(--tw-content)`  
-  `@media (hover: hover) > &:hover::after | height`: none → `40px`
-
-:::
 
 ::: details @shadcn/lint: 34 strings whose style `--fix --fix-suggestions` changed
 

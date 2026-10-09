@@ -215,10 +215,26 @@ describe('families beyond margin/padding/size', () => {
     ['ps-4 pe-4', 'px-4'],
     ['scroll-mt-4 scroll-mb-4', 'scroll-my-4'],
     ['scroll-ps-4 scroll-pe-4', 'scroll-px-4'],
+    // logical block pairs (Tailwind 4.2), what enforce-logical writes
+    ['mbs-4 mbe-4', 'my-4'],
+    ['pbs-4 pbe-4', 'py-4'],
+    ['scroll-mbs-4 scroll-mbe-4', 'scroll-my-4'],
+    ['scroll-pbs-4 scroll-pbe-4', 'scroll-py-4'],
+    ['ms-4 me-4 mbs-4 mbe-4', 'm-4'],
+    ['border-bs-2 border-be-2', 'border-y-2'],
+    ['border-s-2 border-e-2 border-bs-2 border-be-2', 'border-2'],
+    ['inset-bs-0 inset-be-0', 'inset-y-0'],
+    ['inset-s-4 inset-e-4', 'inset-x-4'],
+    ['inset-s-0 inset-e-0 inset-bs-0 inset-be-0', 'inset-0'],
   ]
 
   new RuleTester().run('enforce-shorthand (new families)', enforceShorthand, {
-    valid: [],
+    valid: [
+      // `inset-shadow-sm` is not a side of `inset-s`.
+      { code: '<div className="inset-s-4 inset-shadow-sm" />', filename: 'test.tsx' },
+      // Never `inline` + `block` → `size`: enforce-logical would split it back.
+      { code: '<div className="inline-4 block-4" />', filename: 'test.tsx' },
+    ],
     invalid: cases.map(([code, replacement]) => ({
       code: `<div className="${code}" />`,
       filename: 'test.tsx',
@@ -255,6 +271,11 @@ describe('families with a design system', () => {
     ['ms-4 me-4', 'mx-4'],
     ['scroll-mt-4 scroll-mb-4', 'scroll-my-4'],
     ['mt-px mb-px', 'my-px'],
+    ['mbs-px mbe-px', 'my-px'],
+    ['pbs-4 pbe-4', 'py-4'],
+    ['border-bs-red-500 border-be-red-500', 'border-y-red-500'],
+    ['inset-bs-full inset-be-full', 'inset-y-full'],
+    ['inset-s-4 inset-e-4', 'inset-x-4'],
   ]
 
   run('enforce-shorthand (families, DS path)', enforceShorthand, {
