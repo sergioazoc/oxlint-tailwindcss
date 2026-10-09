@@ -2,7 +2,7 @@ import { defineRule } from '@oxlint/plugins'
 import { ruleDocs } from '../utils/rule-docs'
 import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
 import { splitClassesWithSeparators } from '../utils/class-splitter'
-import { reportClassReplacements } from '../utils/report'
+import { reportClassReplacements, reportClassSuggestion } from '../utils/report'
 import {
   extractVariants,
   convertVarSyntax,
@@ -78,6 +78,8 @@ export const enforceCanonical = defineRule({
       nonCanonical: '"{{className}}" can be written as "{{canonical}}". Use the canonical form.',
       nonEquivalentVariant:
         '"{{className}}" is not the same CSS as its canonical form "{{canonical}}" in this project: "{{variant}}:" is defined differently from "{{written}}:" (a custom variant in your CSS), so the two match different elements. It is left as written; switch to "{{variant}}:" only if that is what you mean.',
+      nonEquivalentVariable:
+        '"{{className}}" is not the same CSS as its canonical form "{{canonical}}": "{{canonical}}" also sets {{variables}}, which other utilities read, so next to them the two can render differently. It is left as written; switch to "{{canonical}}" if that is what you mean.',
       suggestReplace: 'Replace "{{className}}" with "{{replacement}}".',
       ...DS_UNAVAILABLE_MESSAGE,
     },
@@ -117,6 +119,7 @@ export const enforceCanonical = defineRule({
         // preserveImportantPosition step is needed on that path.
         const canonicals: string[] = Array.from({ length: classes.length })
         const nonEquivalent: { cls: string; canonical: string }[] = []
+        const addsVariables: { cls: string; canonical: string; variables: string[] }[] = []
         const arbitraryIdx: number[] = []
         const arbitrary: string[] = []
 
@@ -152,13 +155,23 @@ export const enforceCanonical = defineRule({
           if (!dynamic) return // worker fatal already reported; stop the check
           const reportNonEquivalent = getReportNonEquivalent()
           for (let k = 0; k < arbitrary.length; k++) {
-            const { canonical, safe, reason } = dynamic[k]
+            const { canonical, safe, reason, variables } = dynamic[k]
             const idx = arbitraryIdx[k]
             // R5: a rewrite that only changes the SELECTOR — the project defines
             // the canonical variant differently (shadcn's `data-disabled:` is
             // `:where(…)`) — is reported on request, never fixed.
             if (!safe && reason === 'variant' && reportNonEquivalent) {
               nonEquivalent.push({ cls: arbitrary[k], canonical })
+            }
+            // #217: the canonical form is the same CSS plus `--tw-*` variables
+            // other utilities read (`font-(--x)` sets `--tw-font-weight`). On
+            // request it is reported with a suggestion, never fixed.
+            if (!safe && reason === 'variable' && variables && reportNonEquivalent) {
+              addsVariables.push({
+                cls: arbitrary[k],
+                canonical: preserveImportantPosition(arbitrary[k], canonical),
+                variables,
+              })
             }
             // #78: only rewrite when the canonical form is CSS-value-equivalent.
             // `canonicalizeCandidates` matches an arbitrary literal (e.g.
@@ -201,6 +214,19 @@ export const enforceCanonical = defineRule({
             messageId: 'nonEquivalentVariant',
             data: { className: cls, canonical, written, variant },
           })
+        }
+        for (const { cls, canonical, variables } of addsVariables) {
+          reportClassSuggestion(
+            context,
+            loc,
+            split,
+            classes,
+            { cls, replacement: canonical },
+            {
+              messageId: 'nonEquivalentVariable',
+              data: { className: cls, canonical, variables: variables.join(', ') },
+            },
+          )
         }
       }
     }

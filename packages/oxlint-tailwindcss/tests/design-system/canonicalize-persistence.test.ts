@@ -37,8 +37,8 @@ const BATCH = 20
 
 const cachePath = (rem?: number) => persistFileFor(ENTRY_POINT, rem) as string
 
-/** Persisted shape: Record<class, [canonical, safe, reason?]>. */
-type Persisted = Record<string, [string, boolean, string?]>
+/** Persisted shape: Record<class, [canonical, safe, reason?, variables?]>. */
+type Persisted = Record<string, [string, boolean, string?, string[]?]>
 const readPersisted = (rem?: number) =>
   JSON.parse(readFileSync(cachePath(rem), 'utf-8')) as Persisted
 
@@ -114,6 +114,55 @@ describe('canonicalize cache disk persistence', () => {
 
     resetCanonicalizeService()
     expect(canonicalizeClassesSync(ENTRY_POINT, ['p-[2px]'], 16)[0]).toEqual(first)
+  })
+
+  it('persists the variables a canonical form adds, and reads them back', () => {
+    const [first] = canonicalizeClassesSync(ENTRY_POINT, ['[font-weight:var(--x)]'])
+    expect(first).toEqual({
+      canonical: 'font-(--x)',
+      safe: false,
+      reason: 'variable',
+      variables: ['--tw-font-weight'],
+    })
+    expect(readPersisted()['[font-weight:var(--x)]']).toEqual([
+      'font-(--x)',
+      false,
+      'variable',
+      ['--tw-font-weight'],
+    ])
+
+    resetCanonicalizeService()
+    expect(canonicalizeClassesSync(ENTRY_POINT, ['[font-weight:var(--x)]'])[0]).toEqual(first)
+  })
+
+  it('skips a variable entry without the variables, and anything after another reason', () => {
+    // Never trusted: the message would name nothing, or the shape is unknown.
+    // The class is canonicalized again instead.
+    writeFileSync(
+      cachePath(),
+      JSON.stringify({
+        '[font-weight:var(--x)]': ['SENTINEL', false, 'variable'],
+        '[border-style:dashed]': ['SENTINEL', false, 'variable', []],
+        'p-[16px]': ['SENTINEL', false, 'value', ['--tw-x']],
+      }),
+    )
+    resetCanonicalizeService()
+    const results = canonicalizeClassesSync(ENTRY_POINT, [
+      '[font-weight:var(--x)]',
+      '[border-style:dashed]',
+      'p-[16px]',
+    ])
+    expect(results.map((r) => r.canonical)).toEqual(['font-(--x)', 'border-dashed', 'p-[16px]'])
+  })
+
+  it('still reads a three-element entry (a reason, no variables)', () => {
+    writeFileSync(cachePath(), JSON.stringify({ 'p-[2px]': ['SENTINEL', false, 'value'] }))
+    resetCanonicalizeService()
+    expect(canonicalizeClassesSync(ENTRY_POINT, ['p-[2px]'], undefined)[0]).toEqual({
+      canonical: 'SENTINEL',
+      safe: false,
+      reason: 'value',
+    })
   })
 
   it('still reads a two-element entry (no reason)', () => {

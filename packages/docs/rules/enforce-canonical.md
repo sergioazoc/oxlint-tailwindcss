@@ -42,16 +42,24 @@ emits a single fatal `designSystemUnavailable` diagnostic per file instead of si
 `boolean`, default `false`.
 
 Some canonical forms are **not the same CSS in your project**, and the rule leaves those classes as
-written. With this option on, it also tells you about one kind of them, without a fix: a variant
-your CSS defines differently from stock Tailwind. shadcn/ui, for instance, ships `data-disabled:` as
-a custom variant built on `:where([data-disabled="true"]), …`, so `data-[disabled]:opacity-50` —
-which stock Tailwind rewrites to `data-disabled:opacity-50` — matches different elements here. The
-report names both variants, and switching is your call.
+written. With this option on, it also tells you about two kinds of them, never with an autofix:
+
+- **A variant your CSS defines differently from stock Tailwind.** shadcn/ui, for instance, ships
+  `data-disabled:` as a custom variant built on `:where([data-disabled="true"]), …`, so
+  `data-[disabled]:opacity-50` — which stock Tailwind rewrites to `data-disabled:opacity-50` —
+  matches different elements here. The report names both variants, and switching is your call.
+- **A canonical form that also sets a variable other utilities read.** Tailwind rewrites
+  `[line-height:var(--x)]` to `leading-(--x)`, but `leading-(--x)` also sets `--tw-leading`, which
+  every `text-*` size reads for its line height, so next to one the two can render differently. The
+  same goes for `[border-style:dashed]` → `border-dashed` (`--tw-border-style`, read by `border-2`),
+  `[transition-duration:300ms]` → `duration-300` (`--tw-duration`, read by `transition`), and the
+  `font-*`, `tracking-*`, `ease-*`, `outline-*` and `content-none` forms. The report names the
+  variable and carries a suggestion your editor can apply.
 
 A difference stock Tailwind has too (`has-[[data-slot=x]]:` vs `has-data-[slot=x]:` emit different
 selectors anywhere) isn't reported, and neither is a value that reads the theme (`p-[2px]` vs
 `p-0.5`, see [`prefer-scale-token`](./prefer-scale-token)). On shadcn/ui's `apps/v4` the option adds
-23 reports, all `data-[disabled]:`.
+23 reports, all `data-[disabled]:`, and none of the second kind.
 
 ```jsonc
 { "tailwindcss/enforce-canonical": ["warn", { "reportNonEquivalent": true }] }
@@ -86,6 +94,12 @@ point in `settings.tailwindcss.entryPoint` for the whole project instead wheneve
 // Opacity modifiers and arbitrary variants, with or without other variants
 <div className="dark:bg-white/[.08] data-[open]:flex min-[40rem]:flex" />
 // → <div className="dark:bg-white/8 data-open:flex sm:flex" />
+
+// options: { "reportNonEquivalent": true }
+// Not the same CSS: leading-(--x) also sets --tw-leading, which text-* sizes read.
+// Reported with a suggestion, never fixed
+<div className="[line-height:var(--x)]" />
+// → <div className="leading-(--x)" />
 ```
 
 ### ✓ Correct
@@ -100,6 +114,8 @@ point in `settings.tailwindcss.entryPoint` for the whole project instead wheneve
 <div className="hover:!grow-2" />
 
 <div className="dark:bg-white/8 data-open:flex sm:flex" />
+
+<div className="leading-(--x)" />
 ```
 
 ## Interactions with other rules

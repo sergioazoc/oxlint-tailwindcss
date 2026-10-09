@@ -228,6 +228,29 @@ describe('template fragments glued to ${} are left intact', () => {
     ],
   })
 
+  run('enforce-canonical suggestion (#217)', enforceCanonical, {
+    valid: [],
+    invalid: [
+      {
+        code: tpl('[font-weight:var(--x)] text-${c}'),
+        filename: 'a.tsx',
+        options: [{ reportNonEquivalent: true }],
+        errors: [
+          {
+            messageId: 'nonEquivalentVariable',
+            suggestions: [
+              {
+                messageId: 'suggestReplace',
+                data: { className: '[font-weight:var(--x)]', replacement: 'font-(--x)' },
+                output: tpl('font-(--x) text-${c}'),
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  })
+
   run('prefer-scale-token suggestion', preferScaleToken, {
     valid: [],
     invalid: [

@@ -1,7 +1,8 @@
 import { defineRule } from '@oxlint/plugins'
 import { ruleDocs } from '../utils/rule-docs'
-import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
-import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
+import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { splitClassesWithSeparators } from '../utils/class-splitter'
+import { reportClassSuggestion } from '../utils/report'
 import { findBestSuggestion, suggestionDistance } from '../utils/levenshtein'
 import {
   extractVariants,
@@ -138,24 +139,7 @@ export const noUnknownClasses = defineRule({
       data: Record<string, string>,
       split: ReturnType<typeof splitClassesWithSeparators>,
     ): void {
-      const fixedValue = rebuildClassString(
-        split,
-        classes.map((c) => (c === cls ? replacement : c)),
-      )
-      context.report({
-        node: loc.node,
-        messageId,
-        data,
-        suggest: [
-          {
-            messageId: 'suggestReplace',
-            data: { className: cls, replacement },
-            fix(fixer) {
-              return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-            },
-          },
-        ],
-      })
+      reportClassSuggestion(context, loc, split, classes, { cls, replacement }, { messageId, data })
     }
 
     function check(locations: ClassLocation[]) {
