@@ -56,6 +56,11 @@ El formateador además elimina clases duplicadas y colapsa espacios en los strin
 que ahí se solapa con `no-duplicate-classes` y `no-unnecessary-whitespace`; las reglas de lint
 siguen cubriendo todo lo demás.
 
+Eso incluye los saltos de línea de un atributo de clases que `enforce-consistent-line-wrapping`
+envolvió en un bloque (`wrapStrings: "jsx"`): el formateador lo vuelve a dejar en una línea, y cada
+uno deshace lo del otro. Pon `preserveWhitespace: true` en `sortTailwindcss` para conservar el
+bloque.
+
 ::: tip `--fix` más de una vez
 
 Cuando varias reglas corrigen el mismo string de clases (un duplicado, espacios de más y el orden),

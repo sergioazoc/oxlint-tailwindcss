@@ -10,16 +10,17 @@ and can wrap them onto several lines.
 
 ## At a glance
 
-| Autofix | Editor suggestions | Design system                            | Options                                                            |
-| ------- | ------------------ | ---------------------------------------- | ------------------------------------------------------------------ |
-| Yes     | No                 | Optional — used when `entryPoint` is set | `entryPoint`, `printWidth`, `classesPerLine`, `wrapLines`, `group` |
+| Autofix | Editor suggestions | Design system                            | Options                                                                           |
+| ------- | ------------------ | ---------------------------------------- | --------------------------------------------------------------------------------- |
+| Yes     | No                 | Optional — used when `entryPoint` is set | `entryPoint`, `printWidth`, `classesPerLine`, `wrapLines`, `group`, `wrapStrings` |
 
 ## What this rule does
 
 Flags long class strings so they don't sprawl past a sensible line length and, when you opt in,
 wraps them into multiple lines. Two independent formatting modes: a width-based re-wrap (opt-in via
 `wrapLines`) and a class-count budget per line (`classesPerLine`), both autofixing template literals
-(string literals only report — they can't safely span lines).
+and, with `wrapStrings: "jsx"`, a JSX attribute's own string (other string literals only report — a
+JS string can't span lines).
 
 DS-optional — works without `settings.tailwindcss.entryPoint`. The rule operates on the raw class
 string and doesn't care what the classes mean, with one exception: when a design system **is**
@@ -30,14 +31,14 @@ treating the prefix as part of the variant chain (it never reports a missing des
 
 Both fixers wrap template literals into the **block convention**: the content starts on its own
 line, each wrapped line is indented one level below the statement's own indentation, and the closing
-backtick sits on its own line. The base indentation is read from the source line (not the backtick
-column), so the block nests correctly even inside deeply-indented JSX. The `classesPerLine` fix and
-the `"overWidth"` width fix are **non-destructive** — a template that is already wrapped only has
-its over-budget lines re-wrapped; conforming lines are left untouched. The `"all"` width fix is a
-**full re-layout**: it lays the whole template out in the canonical variant-grouped form, replacing
-any hand layout (which is why it's a separate, explicit mode). Other rules
-(`no-unnecessary-whitespace`, `enforce-sort-order`, …) are aware of this multiline shape and won't
-collapse it back.
+backtick (or quote, for a JSX attribute string) sits on its own line. The base indentation is read
+from the source line (not the backtick column), so the block nests correctly even inside
+deeply-indented JSX. The `classesPerLine` fix and the `"overWidth"` width fix are
+**non-destructive** — a template that is already wrapped only has its over-budget lines re-wrapped;
+conforming lines are left untouched. The `"all"` width fix is a **full re-layout**: it lays the
+whole template out in the canonical variant-grouped form, replacing any hand layout (which is why
+it's a separate, explicit mode). Other rules (`no-unnecessary-whitespace`, `enforce-sort-order`, …)
+are aware of this multiline shape and won't collapse it back.
 
 ## Options
 
@@ -77,11 +78,13 @@ layout:
   is controlled by `group` (below). Within-budget templates that don't match that layout report
   `inconsistentWrapping`.
 
-In string literals the rule reports `tooLong` without a fix regardless of `wrapLines` — splitting a
-string literal into a multiline template is a judgment call (extract a component vs. just wrap it),
-so the rule surfaces the warning and lets you decide. A template fragment **glued** to a `${}` with
-no whitespace (`` `${a}flex …` `` — one runtime class) is also never autofixed: any whitespace
-introduced at the boundary would split that class in two.
+In a JS string literal (`cn("…")`, `className={"…"}`, a variable) the rule reports `tooLong` without
+a fix regardless of `wrapLines`: a JS string can't hold a raw newline, and turning it into a
+multiline template is a judgment call (extract a component vs. just wrap it), so the rule surfaces
+the warning and lets you decide. A JSX attribute's own string can be wrapped as it is — see
+`wrapStrings`. A template fragment **glued** to a `${}` with no whitespace (`` `${a}flex …` `` — one
+runtime class) is also never autofixed: any whitespace introduced at the boundary would split that
+class in two.
 
 Around an interpolation, the `"all"` layout puts the class run bordering a `${}` on its **own fresh
 line** (never hanging inline after the expression), so every rewritten line stays within
@@ -133,8 +136,8 @@ over-budget lines), and the `classesPerLine` fixer chunks by count, so both igno
 
 Maximum number of classes on a single line. When exceeded inside a template literal (`` `…` ``), the
 rule autofixes by wrapping the classes into the block convention, chunks of `classesPerLine` per
-line. Inside string literals (`"…"`) the rule reports `tooManyPerLine` but doesn't autofix — string
-literals can't safely span lines without manual intervention.
+line. Inside a JS string literal the rule reports `tooManyPerLine` but doesn't autofix; a JSX
+attribute string is wrapped too with `wrapStrings: "jsx"`.
 
 Setting `classesPerLine` switches the template-literal fixer to this chunk-based mode and turns the
 width-based (variant-grouped) fixer off — `printWidth` then only reports, and `wrapLines` is
@@ -142,6 +145,41 @@ ignored.
 
 ```jsonc
 { "tailwindcss/enforce-consistent-line-wrapping": ["error", { "classesPerLine": 5 }] }
+```
+
+### `wrapStrings`
+
+`"never" | "jsx"`, default `"never"`.
+
+Which string literals the fixers may wrap, besides template literals. With `"jsx"`, a JSX
+attribute's own string — `className="…"`, or any attribute the plugin reads — is wrapped in place
+into the block convention, the closing quote at the attribute line's indentation:
+
+```tsx
+<div
+  className="
+    flex items-center justify-between rounded-md px-3 py-1
+    text-sm shadow-md
+  "
+/>
+```
+
+That is valid JSX as written: in a class attribute the newlines are plain whitespace, so nothing is
+converted — it's the layout `eslint-plugin-better-tailwindcss` writes. Both `wrapLines` and
+`classesPerLine` apply. Never a JS string: `className={"…"}`, `cn("…")` and variables can't hold a
+raw newline, so they keep reporting without a fix. A file with CRLF line endings gets CRLF breaks.
+
+If oxfmt formats your files with `sortTailwindcss`, set its `preserveWhitespace: true`: by default
+it collapses the whitespace in class attributes, the block's line breaks included, and the two undo
+each other (see [/interop](/interop)).
+
+```jsonc
+{
+  "tailwindcss/enforce-consistent-line-wrapping": [
+    "error",
+    { "printWidth": 100, "wrapLines": "overWidth", "wrapStrings": "jsx" },
+  ],
+}
 ```
 
 ### `entryPoint`
@@ -169,9 +207,17 @@ const className = `flex items-center justify-between p-4 m-2 bg-white`
 //     p-4 m-2 bg-white
 //   `
 
-// Same count, string literal — reports but no autofix
+// Same count in a JSX string — reports; without wrapStrings: "jsx" there is no autofix
 // options: { "classesPerLine": 3 }
 <div className="flex items-center justify-between p-4 m-2 bg-white" />
+
+// The same JSX string with wrapStrings: "jsx" — wrapped in place, between the quotes
+// options: { "classesPerLine": 3, "wrapStrings": "jsx" }
+<div className="flex items-center justify-between p-4 m-2 bg-white" />
+// → <div className="
+//     flex items-center justify-between
+//     p-4 m-2 bg-white
+//   " />
 
 // printWidth: 40 with wrapLines: "overWidth" — ONLY the over-budget
 // line is re-wrapped; the conforming lines around it stay exactly as written
@@ -216,6 +262,13 @@ const className = `
   flex hover:underline
   items-center
 `
+
+// A JSX string already in the block convention
+// options: { "classesPerLine": 3, "wrapStrings": "jsx" }
+<div className="
+  flex items-center p-4
+  bg-white text-black
+" />
 ```
 
 ## Interactions with other rules

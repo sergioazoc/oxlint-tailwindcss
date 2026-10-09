@@ -51,16 +51,35 @@ type WrapLinesMode = 'overWidth' | 'all'
  */
 type GroupMode = 'newLine' | 'emptyLine' | 'never'
 
+/**
+ * Which string literals the fixers may wrap, besides template literals (#216):
+ *  - 'never' — none. The default: a JS string can't hold a raw newline, and
+ *              turning it into a template is a call the rule doesn't make.
+ *  - 'jsx'   — a JSX attribute's own string, `className="…"`, which CAN span
+ *              lines as written: in a class attribute the newlines are plain
+ *              whitespace, so nothing is converted. Never `className={"…"}`,
+ *              `cn("…")` or a variable, which are JS strings.
+ */
+type WrapStringsMode = 'never' | 'jsx'
+
 interface Options {
   entryPoint?: string
   printWidth?: number
   classesPerLine?: number
   wrapLines?: WrapLinesMode
   group?: GroupMode
+  wrapStrings?: WrapStringsMode
 }
 
 const DEFAULT_PRINT_WIDTH = 80
 const DEFAULT_GROUP: GroupMode = 'newLine'
+const DEFAULT_WRAP_STRINGS: WrapStringsMode = 'never'
+
+/** A JSX attribute's own string: `className="…"`, not `className={"…"}` (#216). */
+function isJsxAttributeString(loc: ClassLocation): boolean {
+  const node = loc.node as { type: string; parent?: { type?: string } }
+  return node.type === 'Literal' && node.parent?.type === 'JSXAttribute'
+}
 
 /** One indentation level added below the statement's base indent for wrapped lines. */
 const INDENT_UNIT = '  '
@@ -172,13 +191,16 @@ export const enforceConsistentLineWrapping = defineRule({
           classesPerLine: { type: 'number' },
           wrapLines: { type: 'string', enum: ['overWidth', 'all'] },
           group: { type: 'string', enum: ['newLine', 'emptyLine', 'never'] },
+          wrapStrings: { type: 'string', enum: ['never', 'jsx'] },
         },
         additionalProperties: false,
       },
     ],
     // `wrapLines` and `classesPerLine` deliberately have no default:
     // leaving either unset turns its fixer off.
-    defaultOptions: [{ printWidth: DEFAULT_PRINT_WIDTH, group: DEFAULT_GROUP }],
+    defaultOptions: [
+      { printWidth: DEFAULT_PRINT_WIDTH, group: DEFAULT_GROUP, wrapStrings: DEFAULT_WRAP_STRINGS },
+    ],
     messages: {
       ...SETTINGS_MESSAGE,
       tooLong:
@@ -206,6 +228,10 @@ export const enforceConsistentLineWrapping = defineRule({
       context,
       (o) => o?.group ?? DEFAULT_GROUP,
     )
+    const getWrapStrings = createLazyOptions<Options, WrapStringsMode>(
+      context,
+      (o) => o?.wrapStrings ?? DEFAULT_WRAP_STRINGS,
+    )
     const getDS = createLazyLoader(context)
 
     /**
@@ -227,6 +253,20 @@ export const enforceConsistentLineWrapping = defineRule({
         return m ? m[0] : ''
       }
       return ''
+    }
+
+    /**
+     * The line ending a JSX string's fix writes. A JSX attribute keeps the
+     * file's `\r\n` in its value (a template's is LF already), so a CRLF file
+     * gets CRLF breaks: from the value when it has any, else from the line the
+     * string ends on.
+     */
+    function lineEndingOf(loc: ClassLocation): string {
+      if (loc.value.includes('\r\n')) return '\r\n'
+      const text = safeSourceCode(context)?.text
+      if (typeof text !== 'string') return '\n'
+      const nl = text.indexOf('\n', loc.range[1])
+      return nl > 0 && text[nl - 1] === '\r' ? '\r\n' : '\n'
     }
 
     /**
@@ -360,7 +400,18 @@ export const enforceConsistentLineWrapping = defineRule({
           ? (softGetDS(getDS)?.cache.prefix ?? '')
           : ''
 
-      for (const loc of locations) {
+      const wrapStrings = getWrapStrings()
+
+      for (const written of locations) {
+        // A template's quasis, and with `wrapStrings: 'jsx'` a JSX attribute's
+        // own string (#216); every other string literal only reports.
+        const wrapsString = wrapStrings === 'jsx' && isJsxAttributeString(written)
+        const fixable = written.node.type === 'TemplateElement' || wrapsString
+        // Measured and wrapped in LF, written back in the file's line ending.
+        const eol = wrapsString ? lineEndingOf(written) : '\n'
+        const loc: ClassLocation =
+          eol === '\n' ? written : { ...written, value: written.value.replace(/\r\n/g, '\n') }
+        const toSource = (value: string) => (eol === '\n' ? value : value.replace(/\n/g, eol))
         // #110: measure the LONGEST INDIVIDUAL LINE, not the raw total. The raw
         // value of a multiline template includes every `\n` and indent, so
         // comparing its total length made wrapping impossible to satisfy.
@@ -384,7 +435,7 @@ export const enforceConsistentLineWrapping = defineRule({
         if (
           wrapLines !== undefined &&
           classesPerLine === undefined &&
-          loc.node.type === 'TemplateElement' &&
+          fixable &&
           !glued &&
           (maxLine > printWidth || (wrapLines === 'all' && isMultiline))
         ) {
@@ -404,7 +455,7 @@ export const enforceConsistentLineWrapping = defineRule({
               messageId: maxLine > printWidth ? 'tooLong' : 'inconsistentWrapping',
               data,
               fix(fixer) {
-                return fixer.replaceTextRange(loc.range, fixedValue)
+                return fixer.replaceTextRange(loc.range, toSource(fixedValue))
               },
             })
           }
@@ -427,14 +478,17 @@ export const enforceConsistentLineWrapping = defineRule({
             // Warn-only for a glued quasi (`${a}flex`): `preserveSpaces` would
             // inject a boundary space and split the one runtime class in two,
             // the same corruption the width fixer's `!glued` guard prevents.
-            if (loc.node.type === 'TemplateElement' && !glued) {
+            if (fixable && !glued) {
               const fixedValue = rewrapTemplate(loc, lines, classesPerLine)
               context.report({
                 node: loc.node,
                 messageId: 'tooManyPerLine',
                 data,
                 fix(fixer) {
-                  return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
+                  return fixer.replaceTextRange(
+                    loc.range,
+                    toSource(preserveSpaces(loc, fixedValue)),
+                  )
                 },
               })
             } else {

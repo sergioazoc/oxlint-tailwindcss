@@ -7,8 +7,8 @@ description: "Regla de oxlint que reporta strings de clases de Tailwind CSS que 
 Marca strings de clases largos para que no se desparramen más allá de un largo de línea razonable y,
 cuando lo activas, los envuelve en varias líneas. Dos modos de formateo independientes: un re-wrap
 basado en el width (opt-in vía `wrapLines`) y un budget de clases por línea (`classesPerLine`),
-ambos con autofix en template literals (los string literals solo reportan — no pueden cruzar líneas
-con seguridad).
+ambos con autofix en template literals y, con `wrapStrings: "jsx"`, en el string propio de un
+atributo JSX (los demás string literals solo reportan — un string de JS no puede cruzar líneas).
 
 DS-opcional — funciona sin `settings.tailwindcss.entryPoint`. La regla opera sobre el string crudo
 de clases y no le importa qué significan, con una excepción: cuando **sí** hay un design system
@@ -19,14 +19,15 @@ a tratar el prefix como parte de la cadena de variantes (nunca reporta un design
 
 Ambos fixers envuelven los template literals en la **convención bloque**: el contenido empieza en su
 propia línea, cada línea envuelta se indenta un nivel por debajo de la indentación del statement, y
-el backtick de cierre queda en su propia línea. La indentación base se lee de la línea de código (no
-de la columna del backtick), así que el bloque anida bien incluso dentro de JSX muy indentado. El
-fix de `classesPerLine` y el fix de width en modo `"overWidth"` son **no destructivos** — un
-template que ya está envuelto solo re-envuelve sus líneas que exceden el budget; las líneas
-conformes quedan intactas. El fix de width en modo `"all"` es un **re-layout completo**: reacomoda
-el template entero en la forma canónica agrupada por variantes, reemplazando cualquier layout hecho
-a mano (por eso es un modo aparte y explícito). Las otras reglas (`no-unnecessary-whitespace`,
-`enforce-sort-order`, …) están al tanto de esta forma multilínea y no la colapsan de vuelta.
+el backtick de cierre (o la comilla, en un string de atributo JSX) queda en su propia línea. La
+indentación base se lee de la línea de código (no de la columna del backtick), así que el bloque
+anida bien incluso dentro de JSX muy indentado. El fix de `classesPerLine` y el fix de width en modo
+`"overWidth"` son **no destructivos** — un template que ya está envuelto solo re-envuelve sus líneas
+que exceden el budget; las líneas conformes quedan intactas. El fix de width en modo `"all"` es un
+**re-layout completo**: reacomoda el template entero en la forma canónica agrupada por variantes,
+reemplazando cualquier layout hecho a mano (por eso es un modo aparte y explícito). Las otras reglas
+(`no-unnecessary-whitespace`, `enforce-sort-order`, …) están al tanto de esta forma multilínea y no
+la colapsan de vuelta.
 
 ## Opciones
 
@@ -67,11 +68,13 @@ alcance como en layout:
   (indentación incluida). Cómo se separan los runs lo controla `group` (abajo). Los templates dentro
   del budget que no siguen ese layout reportan `inconsistentWrapping`.
 
-En string literals la regla reporta `tooLong` sin fix sin importar `wrapLines` — partir un string
-literal en un template multilínea es una decisión de criterio (extraer un componente vs. solo
-wrappearlo), así que la regla saca el warning y te deja decidir. Un fragmento de template **pegado**
-a un `${}` sin whitespace (`` `${a}flex …` `` — una sola clase en runtime) tampoco se autofixea
-nunca: cualquier whitespace introducido en ese borde partiría esa clase en dos.
+En un string literal de JS (`cn("…")`, `className={"…"}`, una variable) la regla reporta `tooLong`
+sin fix sin importar `wrapLines`: un string de JS no puede contener un salto de línea real, y
+convertirlo en un template multilínea es una decisión de criterio (extraer un componente vs. solo
+wrappearlo), así que la regla saca el warning y te deja decidir. El string propio de un atributo JSX
+sí se puede envolver tal cual — mira `wrapStrings`. Un fragmento de template **pegado** a un `${}`
+sin whitespace (`` `${a}flex …` `` — una sola clase en runtime) tampoco se autofixea nunca:
+cualquier whitespace introducido en ese borde partiría esa clase en dos.
 
 Alrededor de una interpolación, el layout `"all"` pone el run de clases que bordea un `${}` en su
 **propia línea nueva** (nunca colgando inline después de la expresión), así que toda línea reescrita
@@ -124,8 +127,8 @@ líneas que exceden), y el fixer de `classesPerLine` corta por conteo, así que 
 
 Cantidad máxima de clases en una sola línea. Cuando se excede dentro de un template literal
 (`` `…` ``), la regla autofixea envolviendo las clases en la convención bloque, en chunks de
-`classesPerLine` por línea. Dentro de string literals (`"…"`) la regla reporta `tooManyPerLine` pero
-no autofixea — los string literals no pueden cruzar líneas con seguridad sin intervención manual.
+`classesPerLine` por línea. Dentro de un string literal de JS la regla reporta `tooManyPerLine` pero
+no autofixea; un string de atributo JSX también se envuelve con `wrapStrings: "jsx"`.
 
 Establecer `classesPerLine` cambia el fixer de template literals a este modo por chunks y apaga el
 fixer basado en el width (agrupado por variantes) — `printWidth` entonces solo reporta, y
@@ -133,6 +136,43 @@ fixer basado en el width (agrupado por variantes) — `printWidth` entonces solo
 
 ```jsonc
 { "tailwindcss/enforce-consistent-line-wrapping": ["error", { "classesPerLine": 5 }] }
+```
+
+### `wrapStrings`
+
+`"never" | "jsx"`, default `"never"`.
+
+Qué string literals pueden envolver los fixers, además de los template literals. Con `"jsx"`, el
+string propio de un atributo JSX — `className="…"`, o cualquier atributo que el plugin lee — se
+envuelve en su lugar en la convención bloque, con la comilla de cierre en la indentación de la línea
+del atributo:
+
+```tsx
+<div
+  className="
+    flex items-center justify-between rounded-md px-3 py-1
+    text-sm shadow-md
+  "
+/>
+```
+
+Eso es JSX válido tal cual: en un atributo de clases los saltos de línea son espacio en blanco
+común, así que no se convierte nada — es el layout que escribe `eslint-plugin-better-tailwindcss`.
+Aplican tanto `wrapLines` como `classesPerLine`. Nunca un string de JS: `className={"…"}`, `cn("…")`
+y las variables no pueden contener un salto de línea real, así que siguen reportando sin fix. Un
+archivo con finales de línea CRLF recibe saltos CRLF.
+
+Si oxfmt formatea tus archivos con `sortTailwindcss`, pon su `preserveWhitespace: true`: por default
+colapsa el espacio en blanco de los atributos de clases, saltos de línea del bloque incluidos, y
+cada uno deshace lo del otro (mira [/interop](/interop)).
+
+```jsonc
+{
+  "tailwindcss/enforce-consistent-line-wrapping": [
+    "error",
+    { "printWidth": 100, "wrapLines": "overWidth", "wrapStrings": "jsx" },
+  ],
+}
 ```
 
 ### `entryPoint`
@@ -160,9 +200,17 @@ const className = `flex items-center justify-between p-4 m-2 bg-white`
 //     p-4 m-2 bg-white
 //   `
 
-// Mismo conteo, string literal — reporta pero no autofixea
+// Mismo conteo en un string JSX — reporta; sin wrapStrings: "jsx" no hay autofix
 // options: { "classesPerLine": 3 }
 <div className="flex items-center justify-between p-4 m-2 bg-white" />
+
+// El mismo string JSX con wrapStrings: "jsx" — se envuelve en su lugar, entre las comillas
+// options: { "classesPerLine": 3, "wrapStrings": "jsx" }
+<div className="flex items-center justify-between p-4 m-2 bg-white" />
+// → <div className="
+//     flex items-center justify-between
+//     p-4 m-2 bg-white
+//   " />
 
 // printWidth: 40 con wrapLines: "overWidth" — SOLO se re-envuelve la
 // línea que excede; las líneas conformes alrededor quedan tal como estaban
@@ -207,6 +255,13 @@ const className = `
   flex hover:underline
   items-center
 `
+
+// Un string JSX que ya está en la convención bloque
+// options: { "classesPerLine": 3, "wrapStrings": "jsx" }
+<div className="
+  flex items-center p-4
+  bg-white text-black
+" />
 ```
 
 ## Interacciones con otras reglas

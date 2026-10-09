@@ -689,3 +689,143 @@ ruleTester.run(
     ],
   },
 )
+
+/**
+ * #216: `wrapStrings: 'jsx'` lets the fixers wrap a JSX attribute's own string,
+ * `className="…"`, in place. Such a string can span lines as written — in a
+ * class attribute the newlines are plain whitespace — so nothing is converted:
+ * the block lands between the quotes, the closing quote at the attribute line's
+ * indent. A JS string (`cn("…")`, `className={"…"}`, a variable) can't hold a
+ * raw newline, so it still only reports.
+ */
+ruleTester.run(
+  'enforce-consistent-line-wrapping (wrapStrings: jsx)',
+  enforceConsistentLineWrapping,
+  {
+    valid: [
+      // Already a block within the width: nothing to do.
+      {
+        code: '<div\n  className="\n    flex items-center\n    p-4\n  "\n/>',
+        filename: 'test.tsx',
+        options: [{ printWidth: 40, wrapLines: 'overWidth', wrapStrings: 'jsx' }],
+      },
+    ],
+    invalid: [
+      // Default 'never': reports, no fix (unchanged).
+      {
+        code: '<div className="flex items-center justify-between p-4 m-2" />',
+        filename: 'test.tsx',
+        options: [{ printWidth: 40, wrapLines: 'overWidth' }],
+        errors: [{ messageId: 'tooLong' }],
+      },
+      // 'overWidth', one line → block.
+      {
+        code: '<div className="flex items-center justify-between p-4 m-2" />',
+        filename: 'test.tsx',
+        options: [{ printWidth: 40, wrapLines: 'overWidth', wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooLong' }],
+        output: '<div className="\n  flex items-center justify-between p-4\n  m-2\n" />',
+      },
+      // The attribute on its own line, the issue's layout: the closing quote
+      // lines up with `className`.
+      {
+        code: '<div\n  className="flex items-center justify-between rounded-md px-3 py-1 text-sm shadow-md"\n/>',
+        filename: 'test.tsx',
+        options: [{ printWidth: 50, wrapLines: 'overWidth', wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooLong' }],
+        output:
+          '<div\n  className="\n    flex items-center justify-between rounded-md\n    px-3 py-1 text-sm shadow-md\n  "\n/>',
+      },
+      // Already multiline: only the over-budget line is re-packed.
+      {
+        code: '<div\n  className="\n    flex\n    items-center justify-between rounded-md px-3\n  "\n/>',
+        filename: 'test.tsx',
+        options: [{ printWidth: 30, wrapLines: 'overWidth', wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooLong' }],
+        output:
+          '<div\n  className="\n    flex\n    items-center\n    justify-between rounded-md\n    px-3\n  "\n/>',
+      },
+      // 'all' groups by variant.
+      {
+        code: "<div className='flex gap-2 hover:underline hover:bg-red-500' />",
+        filename: 'test.tsx',
+        options: [{ printWidth: 40, wrapLines: 'all', wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooLong' }],
+        output: "<div className='\n  flex gap-2\n  hover:underline hover:bg-red-500\n' />",
+      },
+      // classesPerLine follows the same switch.
+      {
+        code: '<div className="a b c d e" />',
+        filename: 'test.tsx',
+        options: [{ classesPerLine: 2, wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooManyPerLine' }],
+        output: '<div className="\n  a b\n  c d\n  e\n" />',
+      },
+      // Nested JSX and tabs: the base indent is the attribute line's own.
+      {
+        code: 'function C() {\n\treturn <div className="a b c d" />\n}',
+        filename: 'test.tsx',
+        options: [{ classesPerLine: 2, wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooManyPerLine' }],
+        output: 'function C() {\n\treturn <div className="\n\t  a b\n\t  c d\n\t" />\n}',
+      },
+      // A CRLF file gets CRLF breaks, and `\r` doesn't count toward the width.
+      {
+        code: '<div className="a b c d" />\r\n',
+        filename: 'test.tsx',
+        options: [{ classesPerLine: 2, wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooManyPerLine' }],
+        output: '<div className="\r\n  a b\r\n  c d\r\n" />\r\n',
+      },
+      {
+        code: '<div className="\r\n  a b c\r\n  d\r\n" />\r\n',
+        filename: 'test.tsx',
+        options: [{ classesPerLine: 2, wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooManyPerLine' }],
+        output: '<div className="\r\n  a b\r\n  c\r\n  d\r\n" />\r\n',
+      },
+      // An attribute the extractor is configured to read.
+      {
+        code: '<Button iconClassName="a b c d" />',
+        filename: 'test.tsx',
+        options: [{ classesPerLine: 2, wrapStrings: 'jsx' }],
+        settings: { tailwindcss: { attributes: ['iconClassName'] } },
+        errors: [{ messageId: 'tooManyPerLine' }],
+        output: '<Button iconClassName="\n  a b\n  c d\n" />',
+      },
+      // JS strings still only report: in a call, in braces, in a variable, in a
+      // ternary, as an object value.
+      {
+        code: 'cn("a b c d")',
+        filename: 'test.tsx',
+        options: [{ classesPerLine: 2, wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooManyPerLine' }],
+      },
+      {
+        code: '<div className={"a b c d"} />',
+        filename: 'test.tsx',
+        options: [{ classesPerLine: 2, wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooManyPerLine' }],
+      },
+      {
+        code: 'const className = "a b c d"',
+        filename: 'test.tsx',
+        options: [{ classesPerLine: 2, wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooManyPerLine' }],
+      },
+      {
+        code: '<div className={on ? "a b c d" : "e"} />',
+        filename: 'test.tsx',
+        options: [{ classesPerLine: 2, wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooManyPerLine' }],
+      },
+      {
+        code: '<div classNames={{ root: "a b c d" }} />',
+        filename: 'test.tsx',
+        options: [{ classesPerLine: 2, wrapStrings: 'jsx' }],
+        settings: { tailwindcss: { attributes: ['classNames'] } },
+        errors: [{ messageId: 'tooManyPerLine' }],
+      },
+    ],
+  },
+)
