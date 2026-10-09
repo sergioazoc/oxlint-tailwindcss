@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **`enforce-consistent-line-wrapping` can wrap a JSX attribute string in place (#216).** With the
+  new `wrapStrings: "jsx"` (default `"never"`), `className="…"` — or any attribute the plugin reads
+  — is wrapped into the same block as a template literal, the closing quote at the attribute line's
+  indentation. That is valid JSX as written: in a class attribute the newlines are plain whitespace,
+  so nothing is converted, and it's the layout `eslint-plugin-better-tailwindcss` writes, so a
+  migrated codebase's multiline `className` strings get fixed again instead of only reported. Both
+  `wrapLines` and `classesPerLine` apply; JS strings (`className={"…"}`, `cn("…")`, variables) still
+  only report, since they can't hold a raw newline. A CRLF file gets CRLF breaks. If oxfmt formats
+  with `sortTailwindcss`, set its `preserveWhitespace: true`, or it collapses the block back.
 - **`enforce-logical` converts the block axis, and sizes on request (#215).** Tailwind 4.2 shipped
   logical utilities for the block axis, and the rule now maps them: `mt`/`mb` → `mbs`/`mbe`,
   `pt`/`pb` → `pbs`/`pbe`, `scroll-mt`… → `scroll-mbs`…, `top`/`bottom` → `inset-bs`/`inset-be`,

@@ -163,4 +163,46 @@ describe('issue #14 — whitespace × line-wrapping no longer cycle', () => {
       invalid: [],
     },
   )
+
+  // Step 9: a JSX attribute string wrapped in place (#216, `wrapStrings: 'jsx'`):
+  // the block lands between the quotes, the closing quote on its indented line.
+  new RuleTester().run('step 9: JSX string line-wrapping autofix', enforceConsistentLineWrapping, {
+    valid: [],
+    invalid: [
+      {
+        code: 'function C() {\n  return <div className="bg-red-500 text-white hover:bg-red-600 focus:ring-2" />\n}',
+        filename: 'a.tsx',
+        options: [{ printWidth: 200, classesPerLine: 3, wrapStrings: 'jsx' }],
+        errors: [{ messageId: 'tooManyPerLine' }],
+        output:
+          'function C() {\n  return <div className="\n    bg-red-500 text-white hover:bg-red-600\n    focus:ring-2\n  " />\n}',
+      },
+    ],
+  })
+
+  // Step 10: whitespace stays silent on it, and so does line-wrapping itself.
+  const jsxBlock =
+    'function C() {\n  return <div className="\n    bg-red-500 text-white hover:bg-red-600\n    focus:ring-2\n  " />\n}'
+  new RuleTester().run(
+    'step 10: whitespace stays silent on the JSX block',
+    noUnnecessaryWhitespace,
+    {
+      valid: [{ code: jsxBlock, filename: 'a.tsx' }],
+      invalid: [],
+    },
+  )
+  new RuleTester().run(
+    'step 10: line-wrapping stays silent on the JSX block',
+    enforceConsistentLineWrapping,
+    {
+      valid: [
+        {
+          code: jsxBlock,
+          filename: 'a.tsx',
+          options: [{ printWidth: 200, classesPerLine: 3, wrapStrings: 'jsx' }],
+        },
+      ],
+      invalid: [],
+    },
+  )
 })

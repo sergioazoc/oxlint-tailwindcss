@@ -720,7 +720,14 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   base indent is derived from the source line via `safeSourceCode(context)` (`utils/context.ts`) —
   the first rule to read `context.sourceCode`; `node.loc.start.column` is the backtick column, NOT
   the base indent. `no-unnecessary-whitespace` must preserve the block's indented closing backtick
-  (`\n` + whitespace-only last line) or the two rules re-enter the #14 cycle.
+  (`\n` + whitespace-only last line) or the two rules re-enter the #14 cycle. With
+  `wrapStrings: 'jsx'` (#216) both fixers also take a JSX attribute's OWN string — a `Literal` whose
+  parent is a `JSXAttribute`, never `className={"…"}`, a call argument, a variable, a ternary or an
+  object value — and write the same block between the quotes: a JSX string may span lines as
+  written, a JS string can't. Its value keeps the file's `\r\n` (a template's is LF), so it is
+  measured and wrapped in LF and written back with the file's line ending (`lineEndingOf`).
+  `multiline-preservation.test.ts` runs every fixer over both shapes; oxfmt's `sortTailwindcss`
+  collapses the block unless `preserveWhitespace: true` (`oxfmt-interop.test.ts`).
 - **Worker services lifecycle**: `sort-service.ts`, `canonicalize-service.ts` and
   `declaration-service.ts` are thin wrappers around `DesignSystemWorker<Req, Res>` (in
   `design-system/ds-worker.ts`). The class owns the SharedArrayBuffer + Atomics protocol and the

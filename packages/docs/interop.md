@@ -55,6 +55,10 @@ The formatter also drops duplicate classes and collapses whitespace in the strin
 overlaps with `no-duplicate-classes` and `no-unnecessary-whitespace` there; the lint rules keep
 covering everything else.
 
+That includes the line breaks of a class attribute that `enforce-consistent-line-wrapping` wrapped
+into a block (`wrapStrings: "jsx"`): the formatter puts it back on one line, and each undoes the
+other. Set `preserveWhitespace: true` in `sortTailwindcss` to keep the block.
+
 ::: tip `--fix` more than once
 
 When several rules fix the same class string (a duplicate, extra whitespace and the order), oxlint

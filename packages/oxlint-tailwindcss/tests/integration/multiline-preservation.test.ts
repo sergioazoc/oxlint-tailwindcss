@@ -14,6 +14,10 @@
  * grouping instead of reflowing to one class per line. This test pins down that
  * property for every migrated rule: given a multiline input, the autofix MUST
  * keep the `\n` + indent intact and NOT collapse the block.
+ *
+ * Every case runs twice: as the template literal it is written as, and as the
+ * same classes in a JSX attribute string (`<div className="…" />`), the other
+ * shape the line-wrapping fixer writes blocks into (`wrapStrings: 'jsx'`, #216).
  */
 
 import { resolve } from 'node:path'
@@ -43,8 +47,50 @@ const SHADCN_FIXTURE = resolve(__dirname, '../fixtures/shadcn.css')
 // opening backtick column.
 const NL = '\n                  '
 
+type Run = ReturnType<typeof makeFixtureRunner>
+type Cases = Parameters<Run>[2]
+
+/** `const className = \`…\`` → the same classes in a JSX attribute string. */
+function asJsxString(code: string): string {
+  const m = /^const className = `([^`$"]*)`$/.exec(code)
+  return m ? `<div className="${m[1]}" />` : code
+}
+
+function asJsxCases(cases: Cases): Cases {
+  return {
+    valid: cases.valid.map((c) =>
+      typeof c === 'string' ? asJsxString(c) : { ...c, code: asJsxString(c.code) },
+    ),
+    invalid: cases.invalid.map((c) => ({
+      ...c,
+      code: asJsxString(c.code),
+      ...(typeof c.output === 'string' && { output: asJsxString(c.output) }),
+      ...(Array.isArray(c.errors) && {
+        errors: c.errors.map((e) =>
+          typeof e === 'object' && e !== null && 'suggestions' in e && Array.isArray(e.suggestions)
+            ? {
+                ...e,
+                suggestions: e.suggestions.map((sg) =>
+                  typeof sg.output === 'string' ? { ...sg, output: asJsxString(sg.output) } : sg,
+                ),
+              }
+            : e,
+        ),
+      }),
+    })),
+  }
+}
+
+/** Run each case as written, then as a JSX attribute string. */
+function bothShapes(run: Run): Run {
+  return (name, rule, cases) => {
+    run(name, rule, cases)
+    run(`${name} (JSX attribute string)`, rule, asJsxCases(cases))
+  }
+}
+
 describe('multiline preservation under default theme', () => {
-  const run = makeFixtureRunner(DEFAULT_FIXTURE)
+  const run = bothShapes(makeFixtureRunner(DEFAULT_FIXTURE))
   beforeAll(() => {
     resetDesignSystem()
     getLoadedDesignSystem(DEFAULT_FIXTURE)
@@ -277,7 +323,7 @@ describe('multiline preservation under default theme', () => {
 })
 
 describe('multiline preservation under shadcn-style theme', () => {
-  const run = makeFixtureRunner(SHADCN_FIXTURE)
+  const run = bothShapes(makeFixtureRunner(SHADCN_FIXTURE))
   beforeAll(() => {
     resetDesignSystem()
     getLoadedDesignSystem(SHADCN_FIXTURE)

@@ -17,6 +17,9 @@ import { assertFreshDist, DIST_CJS } from './helpers/dist'
 //   - without `functions`, `cn(…)` arguments are left unsorted by oxfmt;
 //   - without `stylesheet`, oxfmt doesn't know the project's tokens and orders
 //     them differently;
+//   - a JSX class string wrapped into a block (`enforce-consistent-line-wrapping`
+//     with `wrapStrings: 'jsx'`) is collapsed back to one line by oxfmt unless
+//     `preserveWhitespace: true`;
 //   - oxfmt leaves the variant chain inside a class as written, so
 //     `consistent-variant-order` has no formatter counterpart (its rule page
 //     says so).
@@ -43,7 +46,7 @@ afterEach(() => {
   dirs = []
 })
 
-function project(sortTailwindcss: Record<string, unknown>): string {
+function project(sortTailwindcss: Record<string, unknown>, source = SOURCE): string {
   const dir = mkdtempSync(resolve(tmpdir(), 'oxtw-oxfmt-'))
   dirs.push(dir)
   mkdirSync(resolve(dir, 'src'))
@@ -51,7 +54,7 @@ function project(sortTailwindcss: Record<string, unknown>): string {
     resolve(dir, 'src/app.css'),
     `@import '${TAILWIND}';\n@theme { --color-brand: #f00; }\n`,
   )
-  writeFileSync(resolve(dir, 'src/a.tsx'), SOURCE)
+  writeFileSync(resolve(dir, 'src/a.tsx'), source)
   writeFileSync(resolve(dir, '.oxfmtrc.json'), JSON.stringify({ sortTailwindcss }))
   writeFileSync(
     resolve(dir, '.oxlintrc.json'),
@@ -111,6 +114,20 @@ describe('E2E: oxfmt sortTailwindcss and oxlint-tailwindcss agree', () => {
     expect(read(dir)).toContain('cn("flex p-4")')
     // Only the variable is left: oxfmt doesn't format class strings in variables.
     expect(lint(dir)).toEqual(['5 enforce-sort-order'])
+  })
+
+  it('a JSX string wrapped into a block survives oxfmt only with preserveWhitespace', () => {
+    // What `enforce-consistent-line-wrapping` writes with `wrapStrings: 'jsx'`,
+    // already in oxfmt's style apart from the class string.
+    const block =
+      'export const A = () => (\n  <div\n    className="\n      flex items-center justify-between\n      p-4 text-sm\n    "\n  />\n);\n'
+    const collapsed = project({ stylesheet: './src/app.css' }, block)
+    run(OXFMT, ['--write', 'src/a.tsx'], collapsed)
+    expect(read(collapsed)).toContain('className="flex items-center justify-between p-4 text-sm"')
+
+    const kept = project({ stylesheet: './src/app.css', preserveWhitespace: true }, block)
+    run(OXFMT, ['--write', 'src/a.tsx'], kept)
+    expect(read(kept)).toBe(block)
   })
 
   it('CANARY: oxlint applies one fix per class string per run', () => {

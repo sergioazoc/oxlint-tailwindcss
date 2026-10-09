@@ -25,8 +25,8 @@
       "ours": "enforce-consistent-line-wrapping",
       "example": "<div className=\"flex items-center justify-between gap-4 rounded-lg border bg-background p-6 text-sm shadow-sm\">x</div>",
       "notes": {
-        "en": "`printWidth`, `classesPerLine` and `group` mean the same. The autofix only rewrites template literals — a string attribute is reported, not rewritten — and a line over `printWidth` is rewrapped only with `wrapLines`. `indent`, `tabWidth`, `lineBreakStyle`, `preferSingleLine`, `strictness` and `vueConvertToBinding` have no equivalent: the indentation comes from the source.",
-        "es": "`printWidth`, `classesPerLine` y `group` significan lo mismo. El autofix solo reescribe template literals — un atributo string se reporta, no se reescribe — y una línea que pasa el `printWidth` se vuelve a envolver solo con `wrapLines`. `indent`, `tabWidth`, `lineBreakStyle`, `preferSingleLine`, `strictness` y `vueConvertToBinding` no tienen equivalente: la indentación sale del código."
+        "en": "`printWidth`, `classesPerLine` and `group` mean the same. The autofix rewrites template literals, and a JSX string attribute only with `wrapStrings: \"jsx\"` (otherwise it is reported, not rewritten); a line over `printWidth` is rewrapped only with `wrapLines`. `indent`, `tabWidth`, `lineBreakStyle`, `preferSingleLine`, `strictness` and `vueConvertToBinding` have no equivalent: the indentation and line endings come from the source.",
+        "es": "`printWidth`, `classesPerLine` y `group` significan lo mismo. El autofix reescribe template literals, y un atributo string de JSX solo con `wrapStrings: \"jsx\"` (si no, se reporta y no se reescribe); una línea que pasa el `printWidth` se vuelve a envolver solo con `wrapLines`. `indent`, `tabWidth`, `lineBreakStyle`, `preferSingleLine`, `strictness` y `vueConvertToBinding` no tienen equivalente: la indentación y los finales de línea salen del código."
       }
     },
     {
