@@ -1,45 +1,42 @@
 # Changelog
 
-## Unreleased
+## 1.15.0
 
-- **`oxlint-tailwindcss/config`: the plugin for `extends`, in an `oxlint.config.ts` or a shared
-  config (#218).** `tailwindcss()` returns the plugin, registered by its absolute path, and the
-  recommended rules at their severities (`tailwindcss({ recommended: false })`: the plugin alone):
+This release follows Tailwind 4.2's logical utilities and makes the plugin easy to share.
+`enforce-logical` now converts the block axis — `mt-4` → `mbs-4`, `top-0` → `inset-bs-0` — and, on
+request, widths and heights; `enforce-physical` and `enforce-shorthand` follow it, and none of them
+ever writes a class your Tailwind doesn't have. `enforce-consistent-line-wrapping` can wrap a JSX
+`className="…"` in place, the layout eslint-plugin-better-tailwindcss writes. `enforce-canonical`
+can report the canonical forms that also set a variable other utilities read. And
+`oxlint-tailwindcss/config` brings the plugin to an `oxlint.config.ts` and to shared configs
+published as packages.
 
-  ```ts
-  export default defineConfig({
-    extends: [tailwindcss()],
-    settings: { tailwindcss: { entryPoint: 'src/styles.css' } },
-  })
-  ```
+### Before you upgrade
 
-  A preset published as a package can now bring the plugin as its own dependency: oxlint resolves a
-  plugin's bare name from where it runs, not from the config that lists it, so whether the preset's
-  dependency was found depended on the package manager and on how oxlint was started. The settings
-  stay in the project's config — oxlint never reads them from an extended config, so `tailwindcss()`
-  takes none and throws if given one. Needs oxlint 1.45.0+ on Node 22.18.0+, the floors of
-  `oxlint.config.ts` with object `extends`; the plugin itself keeps its floors.
+- **Reports that can appear with the same config:**
+  - `enforce-logical` on top/bottom utilities (`mt-*`, `pt-*`, `top-*`, `border-b`, `scroll-mt-*`,
+    …): its default `direction: 'both'` now has a block axis to cover. On shadcn/ui's `apps/v4` it
+    goes from 600 to 1 160 reports. `direction: 'inline'` keeps the previous behaviour, and without
+    an entry point the new ones are only suggested, never autofixed;
+  - `enforce-physical` on the logical block-axis utilities (`mbs-*`, `inset-bs-*`, `border-be`, …);
+  - `enforce-shorthand` on logical pairs (`mbs-2 mbe-2` → `my-2`, `inset-s-0 inset-e-0` →
+    `inset-x-0`).
+- **New fix output:** with an entry point on Tailwind 4.2+, `enforce-logical` writes `inset-s-*` /
+  `inset-e-*` for `left-*` / `right-*`. It wrote `start-*` / `end-*`, which `enforce-canonical` then
+  rewrote to the same.
+- **New messages:** `enforce-logical`'s block-axis and size rewrites use `useLogicalWritingMode` ("…
+  so it follows the writing mode"); `enforce-canonical` with `reportNonEquivalent` adds
+  `nonEquivalentVariable`.
+- **A relative `entryPoint` in a `.oxlintrc.jsonc`, `oxlint.config.ts` or `oxlint.config.mts`** now
+  resolves against that config's directory, not an outer config's or the working directory.
 
-- **A relative `entryPoint` anchors to every config oxlint discovers.** It was resolved against the
-  nearest `.oxlintrc.json` only, so a `.oxlintrc.jsonc`, `oxlint.config.ts` or `oxlint.config.mts`
-  was skipped and the entry point resolved against an outer config or the working directory. The
-  same goes for `no-borrowed-component-styles`' `components` paths.
-- **`enforce-consistent-line-wrapping` can wrap a JSX attribute string in place (#216).** With the
-  new `wrapStrings: "jsx"` (default `"never"`), `className="…"` — or any attribute the plugin reads
-  — is wrapped into the same block as a template literal, the closing quote at the attribute line's
-  indentation. That is valid JSX as written: in a class attribute the newlines are plain whitespace,
-  so nothing is converted, and it's the layout `eslint-plugin-better-tailwindcss` writes, so a
-  migrated codebase's multiline `className` strings get fixed again instead of only reported. Both
-  `wrapLines` and `classesPerLine` apply; JS strings (`className={"…"}`, `cn("…")`, variables) still
-  only report, since they can't hold a raw newline. A CRLF file gets CRLF breaks. If oxfmt formats
-  with `sortTailwindcss`, set its `preserveWhitespace: true`, or it collapses the block back.
+### Features
+
 - **`enforce-logical` converts the block axis, and sizes on request (#215).** Tailwind 4.2 shipped
   logical utilities for the block axis, and the rule now maps them: `mt`/`mb` → `mbs`/`mbe`,
   `pt`/`pb` → `pbs`/`pbe`, `scroll-mt`… → `scroll-mbs`…, `top`/`bottom` → `inset-bs`/`inset-be`,
   `border-t`/`border-b` → `border-bs`/`border-be`. They follow `direction`, whose default `'both'`
-  always meant both axes; until 4.2 there was no block-axis pair to map. **Reports that can appear
-  with the same config:** every top/bottom utility in a project that runs `enforce-logical` (on
-  shadcn/ui's `apps/v4`, 600 → 1 160 reports); `direction: 'inline'` keeps the previous behaviour.
+  always meant both axes; until 4.2 there was no block-axis pair to map (see Before you upgrade).
   The new `sizing: true` also converts widths and heights (`w-*` → `inline-*`, `h-*` → `block-*`,
   their `min-`/`max-` forms, `size-*` → `inline-* block-*`), off by default. These diagnostics read
   `… so it follows the writing mode` (new messageId `useLogicalWritingMode`), since top and bottom
@@ -59,6 +56,15 @@
   - **`enforce-shorthand`** folds the logical pairs: `mbs-*`+`mbe-*` → `my-*`, `inset-s-*`+
     `inset-e-*` → `inset-x-*`, `border-bs-*`+`border-be-*` → `border-y-*`, and the four logical
     sides. Combined with `enforce-logical`, `mt-2 mb-2` ends as `my-2` whichever fix lands first.
+- **`enforce-consistent-line-wrapping` can wrap a JSX attribute string in place (#216).** With the
+  new `wrapStrings: "jsx"` (default `"never"`), `className="…"` — or any attribute the plugin reads
+  — is wrapped into the same block as a template literal, the closing quote at the attribute line's
+  indentation. That is valid JSX as written: in a class attribute the newlines are plain whitespace,
+  so nothing is converted, and it's the layout `eslint-plugin-better-tailwindcss` writes, so a
+  migrated codebase's multiline `className` strings get fixed again instead of only reported. Both
+  `wrapLines` and `classesPerLine` apply; JS strings (`className={"…"}`, `cn("…")`, variables) still
+  only report, since they can't hold a raw newline. A CRLF file gets CRLF breaks. If oxfmt formats
+  with `sortTailwindcss`, set its `preserveWhitespace: true`, or it collapses the block back.
 - **`enforce-canonical` can report a canonical form that also sets a variable other utilities read
   (#217).** Tailwind rewrites `[line-height:var(--x)]` to `leading-(--x)`, but `leading-(--x)` also
   sets `--tw-leading`, which every `text-*` size reads for its line height, so next to one the two
@@ -70,6 +76,30 @@
   `font-*`, `tracking-*`, `ease-*`, `outline-*` and `content-none` ones. A project variant that also
   adds such a variable is still reported as a variant. The option stays off by default, so nothing
   changes without it.
+- **`oxlint-tailwindcss/config`: the plugin for `extends`, in an `oxlint.config.ts` or a shared
+  config (#218).** `tailwindcss()` returns the plugin, registered by its absolute path, and the
+  recommended rules at their severities (`tailwindcss({ recommended: false })`: the plugin alone):
+
+  ```ts
+  export default defineConfig({
+    extends: [tailwindcss()],
+    settings: { tailwindcss: { entryPoint: 'src/styles.css' } },
+  })
+  ```
+
+  A preset published as a package can now bring the plugin as its own dependency: oxlint resolves a
+  plugin's bare name from where it runs, not from the config that lists it, so whether the preset's
+  dependency was found depended on the package manager and on how oxlint was started. The settings
+  stay in the project's config — oxlint never reads them from an extended config, so `tailwindcss()`
+  takes none and throws if given one. Needs oxlint 1.45.0+ on Node 22.18.0+, the floors of
+  `oxlint.config.ts` with object `extends`; the plugin itself keeps its floors.
+
+### Bug fixes
+
+- **A relative `entryPoint` anchors to every config oxlint discovers.** It was resolved against the
+  nearest `.oxlintrc.json` only, so a `.oxlintrc.jsonc`, `oxlint.config.ts` or `oxlint.config.mts`
+  was skipped and the entry point resolved against an outer config or the working directory. The
+  same goes for `no-borrowed-component-styles`' `components` paths.
 - **Style objects are no longer read as classes.** An object's string keys are read as conditional
   classes (`cn({ "bg-red-500": isError })`), and the default `^styles?$` variable pattern reaches
   the style objects of every framework, so `const style = { '--pane-width': w }` reported
@@ -78,6 +108,21 @@
   of Solid, Vue, Qwik and Lit's `styleMap`), a `-webkit-` / `-moz-` / `-ms-` property, or a key
   whose value is a string, number or template literal (Angular's `'width.px': 240`), since a class
   map's value is a condition. Every other key is still a class.
+
+### Documentation
+
+- **`/monorepo`'s Vite+ warning is checked against `vp lint`** every week, with the pinned and the
+  latest vite-plus: the plugin loads from `vite.config.ts`, a nested `.oxlintrc.json` is ignored,
+  and the `entryPoint` mapping still gives each package its own CSS (#221).
+- **`/setup` documents `oxlint.config.ts` and shared configs**, and every page that explains how a
+  relative `entryPoint` resolves names all four config files.
+- `/migration/from-better-tailwindcss` names better-tailwindcss 4.9.0, and the pages that describe
+  what oxlint does were checked again on oxlint 1.87.
+
+### Dependencies
+
+- Development only: oxlint and `@oxlint/plugins` 1.87, oxfmt 0.72 (which now formats Markdown
+  itself), vitest 5.0.3, pnpm 12.10.1 (#220). The runtime dependencies are unchanged.
 
 ## 1.14.0
 
