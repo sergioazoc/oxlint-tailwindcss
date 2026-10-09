@@ -70,7 +70,20 @@ runWithFixture(ruleTester, 'enforce-canonical', enforceCanonical, ENTRY_POINT, {
         ['md:!z-[10]', 'md:!z-10'],
         ['md:z-[10]!', 'md:z-10!'],
         ['[&>svg]:z-[10]', '[&>svg]:z-10'],
+        ['-z-[10]', '-z-10'],
+        ['@md:z-[10]', '@md:z-10'],
+        // The class's own name doesn't have to open the selector: `in-*` writes
+        // `:where(:focus) .x`, `*:` and `**:` `:is(.x > *)`, `divide-*`
+        // `:where(.x > :not(:last-child))`, and after Tailwind 4.3.3 (#20513)
+        // `group-*` and `peer-*` write `:is(:where(.group):hover .x)`. None of
+        // these was reported while only a name opening the selector was matched.
         ['group-hover/item:z-[10]', 'group-hover/item:z-10'],
+        ['peer-checked:z-[10]', 'peer-checked:z-10'],
+        ['in-focus:z-[10]', 'in-focus:z-10'],
+        ['in-data-[open]:z-[10]', 'in-data-open:z-10'],
+        ['*:z-[10]', '*:z-10'],
+        ['**:z-[10]', '**:z-10'],
+        ['divide-x-[2px]', 'divide-x-2'],
         // Arbitrary VARIANTS Tailwind canonicalizes — never reached the worker
         // before, since only the utility was checked for brackets.
         ['data-[open]:flex', 'data-open:flex'],

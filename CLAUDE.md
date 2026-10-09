@@ -815,15 +815,20 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   utility (`prefer-scale-token` suggestion-only, because its equivalence is numeric), each owning a
   distinct case so they don't double-fire on the same input. Coexistence matrix, including
   `prefer-scale-token`, locked down in `tests/integration/prefer-theme-tokens-coexistence.test.ts`.
-- **`enforce-canonical` safe gate (#78, #156)**: `declsOf` in `CANONICALIZE_HANDLER` compares the
-  FULL `candidatesToCss` output with only the class token that opens a selector neutralized (strings
-  stepped over, at-rule preludes and declaration values untouched). Never go back to slicing
-  `{`…`}`: under a variant the rule is wrapped in an at-rule, the escaped class name lands inside
-  the slice, and every variant-prefixed rewrite reads as unsafe (#156). Classes whose VARIANT is
-  arbitrary (`data-[open]:`, `min-[40rem]:`, via `variantHasArbitraryValue`) also go to the worker —
-  the precomputed `canonicalMap` knows utilities only. Beware: Tailwind's DS is stateful here —
-  `candidatesToCss` for a token can change after other `canonicalizeCandidates` calls (seen on
-  shadcn's `rounded-sm`), so don't write tests that depend on call order.
+- **`enforce-canonical` safe gate (#78, #156)**: `own()` in `CANONICALIZE_HANDLER` compares the FULL
+  `candidatesToCss` output with each form's OWN class name neutralized wherever its selector puts
+  it: the token Tailwind prints, `.` + the class serialized like CSS.escape (`escapeClass`;
+  Tailwind's `escape()` is that algorithm), matched whole, never inside a string. Every other class
+  in the selector (`.group\/item`, `.peer`) is compared as written. Never go back to slicing `{`…`}`
+  (under a variant the rule is wrapped in an at-rule, and every variant-prefixed rewrite read as
+  unsafe, #156), nor to matching only a name that OPENS a statement: `in-*` (`:where(:focus) .x`),
+  `*:` / `**:` (`:is(.x > *)`), `divide-*` and, after Tailwind 4.3.3
+  (tailwindlabs/tailwindcss#20513), every `group-*` / `peer-*` (`:is(:where(.group):hover .x)`) put
+  it elsewhere, and their rewrites read as selector changes, never reported. Classes whose VARIANT
+  is arbitrary (`data-[open]:`, `min-[40rem]:`, via `variantHasArbitraryValue`) also go to the
+  worker — the precomputed `canonicalMap` knows utilities only. Beware: Tailwind's DS is stateful
+  here — `candidatesToCss` for a token can change after other `canonicalizeCandidates` calls (seen
+  on shadcn's `rounded-sm`), so don't write tests that depend on call order.
 - **`arbitraryEquivalents` precompute**: for each named utility, the precompute step enumerates
   every dash split point and emits one candidate per prefix (e.g. `bg-card-foreground` produces both
   `bg-[<value>]` and `bg-card-[<value>]`). Loop starts at `cls.indexOf('-', 1)` so negative
@@ -848,6 +853,15 @@ shared in-memory fallback the suite can rely on accidentally.
 because a bare `pnpm test` (the Stop hook, an editor runner) never rebuilds — run `pnpm build`
 first. `tests/docs/*` guard the markdown itself (e.g. `markdown-containers.test.ts`: VitePress `:::`
 containers must survive oxfmt's `proseWrap`).
+
+**The suite also runs on Tailwind latest and insiders.** `canary.yml`'s weekly `suite` job installs
+`tailwindcss` / `@tailwindcss/node` at the dist-tag's EXACT version in place of the plugin's own
+(given a tag, pnpm saves `^0.0.0-insiders.<sha>` even with `--save-exact`, and that range resolves
+to a 2023 `0.0.0-oxide-insiders.*` build), then runs the package's tests. It is what sees a change
+in the CSS Tailwind prints; `engine-smoke.mjs` is coarse on purpose and didn't see #20513. A test
+that asserts on the installed engine must hold on an insiders build too: `engine-guard-emission` and
+`e2e/engine-guard` branch on `isInsidersVersion(TAILWIND_NODE_VERSION)` (one notice, no drift
+check).
 
 **The run's cache dir is shared by every test file**, and a precompute prunes the plugin's files
 unused for 30 days (`pruneCacheDir`): a test that ages an artifact must keep it under 30 days, or

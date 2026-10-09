@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { resolve } from 'node:path'
-import { guardEngine, resetEngineGuard } from '../../src/design-system/engine-guard'
+import {
+  guardEngine,
+  isInsidersVersion,
+  resetEngineGuard,
+} from '../../src/design-system/engine-guard'
 import { getLoadedDesignSystem, resetDesignSystem } from '../../src/design-system/loader'
+import { TAILWIND_NODE_VERSION } from '../../src/design-system/tailwind-node'
 import { safeGetDS, UnsupportedEngineError } from '../../src/utils/fatal'
 
 // The design-system load runs for real (default.css is pre-warmed by the global
@@ -122,6 +127,13 @@ describe('getLoadedDesignSystem — version guard integration', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const res = getLoadedDesignSystem(DEFAULT, {}) // no override → real resolver
     expect(res.cache.isValid('flex')).toBe(true)
-    expect(warn).not.toHaveBeenCalled()
+    // The canary runs this suite on tailwindcss@insiders too, which the guard
+    // announces once by design; any released engine it was built with is silent.
+    if (isInsidersVersion(TAILWIND_NODE_VERSION)) {
+      expect(warn).toHaveBeenCalledOnce()
+      expect(warn.mock.calls[0][0]).toContain(`insiders build ${TAILWIND_NODE_VERSION}`)
+    } else {
+      expect(warn).not.toHaveBeenCalled()
+    }
   })
 })

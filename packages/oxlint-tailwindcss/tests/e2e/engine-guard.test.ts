@@ -4,6 +4,8 @@ import { join, resolve } from 'node:path'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { assertFreshDist, DIST_CJS } from './helpers/dist'
+import { isInsidersVersion } from '../../src/design-system/engine-guard'
+import { TAILWIND_NODE_VERSION } from '../../src/design-system/tailwind-node'
 
 // End-to-end for the version guard + consumer-engine resolution (issue #114).
 //
@@ -88,6 +90,13 @@ describe('E2E #114: build/engine major drift fails loud', () => {
 
   it('surfaces designSystemUnavailable naming the build version', () => {
     const { stdout } = runOxlint(ROOT_FATAL, 'src/app.tsx')
+    // The canary runs this suite on tailwindcss@insiders too. An insiders engine
+    // is ahead of every release, so the guard skips the drift checks against it
+    // by design: it warns, runs, and `flex` lints clean.
+    if (isInsidersVersion(TAILWIND_NODE_VERSION)) {
+      expect(stdout).not.toContain('designSystemUnavailable')
+      return
+    }
     expect(stdout).toContain('no-unknown-classes')
     expect(stdout).toContain('5.0.0')
   })
