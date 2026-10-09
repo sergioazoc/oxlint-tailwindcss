@@ -190,7 +190,7 @@ export const noBorrowedComponentStyles = defineRule({
     const getDS = createLazyLoader(context)
     const getPaths = createLazyOptions<Options, string[]>(context, (o) => o?.components ?? [])
     // Per file: a relative path is resolved like `entryPoint`, against the
-    // nearest .oxlintrc.json, and a nested config can name other components.
+    // nearest oxlint config, and a nested config can name other components.
     let lastFile: string | undefined
     let files = new Set<string>()
 

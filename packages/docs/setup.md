@@ -69,6 +69,40 @@ That's it. Run `oxlint` and the plugin checks every file oxlint lints — `.js`,
 frontmatter), so classes written in the template or markup are **not** checked yet. See
 [Vue, Svelte & Astro](/frameworks).
 
+### With `oxlint.config.ts`, or in a shared config
+
+oxlint also reads its config from an `oxlint.config.ts` — experimental in oxlint, which imports it
+through Node's own type stripping, so it needs oxlint 1.45.0 or later on Node 22.18.0 or later.
+There, `oxlint-tailwindcss/config` gives you the plugin and the recommended rules at their
+severities, for `extends`:
+
+```ts
+// oxlint.config.ts
+import { defineConfig } from 'oxlint'
+import tailwindcss from 'oxlint-tailwindcss/config'
+
+export default defineConfig({
+  extends: [tailwindcss()],
+  settings: {
+    tailwindcss: { entryPoint: 'src/styles.css' },
+  },
+})
+```
+
+Your own `rules` override the recommended ones, and `tailwindcss({ recommended: false })` registers
+the plugin alone. The `settings` stay in your config, as above: oxlint never reads them from an
+extended config, so `tailwindcss()` takes none. A relative `entryPoint` resolves against the
+directory of the config that declares it.
+
+This is also how a **shared config** — a preset published as a package — brings the plugin along. It
+can't rely on `"oxlint-tailwindcss"` in `jsPlugins`: oxlint resolves that name from where it runs,
+not from the preset that lists it, so whether the preset's own dependency is found depends on the
+package manager and on how oxlint is started (under pnpm, often it isn't), and oxlint rejects a
+relative path in an extended config. `tailwindcss()` registers the plugin by its absolute path, so
+the preset puts it in its own `extends`, and the project needs no dependency of its own — only its
+`settings.tailwindcss`. Publish the preset as JavaScript: Node doesn't strip types in
+`node_modules`.
+
 ## 3. Recommended starter rule set
 
 If you want a "blessed" set that catches problems without being noisy, turn these on. It is
@@ -138,8 +172,9 @@ suggestions should appear in your editor.
 If you see a `designSystemUnavailable` diagnostic instead, the `entryPoint` setting is missing or
 points at a file the plugin can't read. The diagnostic message tells you exactly which path it tried
 — copy that into your `entryPoint` setting. A relative `entryPoint` is resolved against the
-directory of the nearest enclosing `.oxlintrc.json` (the config that declares it), falling back to
-the directory where you run `oxlint`.
+directory of the nearest enclosing oxlint config (`.oxlintrc.json`, `.oxlintrc.jsonc`,
+`oxlint.config.ts` or `oxlint.config.mts` — the config that declares it), falling back to the
+directory where you run `oxlint`.
 
 ## 5. Monorepo setups
 

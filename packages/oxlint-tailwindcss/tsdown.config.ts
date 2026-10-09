@@ -1,7 +1,10 @@
 import { defineConfig } from 'tsdown'
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  // `config` is `oxlint-tailwindcss/config` (#218). It imports nothing at
+  // runtime from `index`, so no chunk is shared and `dist/index.cjs` stays the
+  // single `module.exports = plugin` the docs scripts and the smokes require.
+  entry: ['src/index.ts', 'src/config.ts'],
   format: ['esm', 'cjs'],
   // Bundle `@oxlint/plugins` into the dist instead of leaving it external.
   // We only consume `definePlugin`/`defineRule` (identity no-ops) and the

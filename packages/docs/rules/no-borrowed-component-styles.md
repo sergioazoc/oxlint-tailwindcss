@@ -75,8 +75,9 @@ pass `className` through untouched, or build their classes at runtime, are skipp
 
 The files and directories that hold your design system's components. A directory is read
 recursively, skipping `*.test.*`, `*.spec.*`, `*.stories.*` and `*.d.ts` files. Relative paths are
-resolved like `entryPoint`: against the directory of the nearest `.oxlintrc.json`, then oxlint's
-working directory. With no components, the rule reports nothing.
+resolved like `entryPoint`: against the directory of the nearest oxlint config (`.oxlintrc.json`,
+`oxlint.config.ts`, …), then oxlint's working directory. With no components, the rule reports
+nothing.
 
 ```jsonc
 {

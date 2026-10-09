@@ -56,9 +56,10 @@ Acepta dos formas:
 ```
 
 Un `entryPoint` **string relativo** (la forma de proyecto simple) se resuelve respecto al directorio
-del `.oxlintrc.json` más cercano que lo contiene, cayendo de vuelta al directorio donde corre oxlint
-— así un config por package resuelve al mismo CSS ya sea que oxlint corra desde el package (CLI) o
-desde la raíz del workspace (editor). Ver [Monorepos](/es/monorepo).
+de la config de oxlint más cercana que lo contiene (`.oxlintrc.json`, `.oxlintrc.jsonc`,
+`oxlint.config.ts` u `oxlint.config.mts`), cayendo de vuelta al directorio donde corre oxlint — así
+un config por package resuelve al mismo CSS ya sea que oxlint corra desde el package (CLI) o desde
+la raíz del workspace (editor). Ver [Monorepos](/es/monorepo).
 
 Los globs (la forma de mapping) se evalúan contra el path del archivo lintado relativo al directorio
 donde corre oxlint. Sintaxis soportada: `*` (cualquier caracter excepto `/`), `**` (cualquier

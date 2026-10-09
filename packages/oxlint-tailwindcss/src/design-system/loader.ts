@@ -153,10 +153,19 @@ export function resolveByGlobMapping(
 
 /**
  * oxlint discovers nested configuration by walking up from each linted file
- * looking for files with these names. We mirror that walk to find the config
- * directory a relative `entryPoint` should be anchored to.
+ * looking for files with these names (oxlint 1.87: JSON, JSONC, and the JS
+ * configs it loads through Node). We mirror that walk to find the config
+ * directory a relative `entryPoint` should be anchored to — which is also
+ * where an `oxlint.config.ts` passes it through `oxlint-tailwindcss/config`.
+ * Not `vite.config.*`: under Vite+ a package's own Vite config needn't hold
+ * any lint config, and nested configs aren't discovered there anyway.
  */
-const OXLINT_CONFIG_NAMES = ['.oxlintrc.json'] as const
+const OXLINT_CONFIG_NAMES = [
+  '.oxlintrc.json',
+  '.oxlintrc.jsonc',
+  'oxlint.config.ts',
+  'oxlint.config.mts',
+] as const
 
 /** Memoizes the nearest-config walk per starting directory (cleared in tests). */
 const nearestConfigDirCache = new Map<string, string | null>()
@@ -198,8 +207,10 @@ function nearestConfigDir(filePath: string): string | undefined {
  * absolute path.
  *
  * Absolute paths are returned normalized and untouched. A **relative** path is
- * anchored to the directory of the nearest enclosing `.oxlintrc.json` (the
- * config oxlint applies to the file), with the CWD as a single fallback:
+ * anchored to the directory of the nearest enclosing oxlint config
+ * (`.oxlintrc.json`, `.oxlintrc.jsonc`, `oxlint.config.ts` or
+ * `oxlint.config.mts` — the config oxlint applies to the file), with the CWD
+ * as a single fallback:
  *
  *   1. nearest config dir — if its candidate file exists, use it;
  *   2. CWD — if its candidate file exists, use it;
@@ -282,7 +293,7 @@ export function getLoadedDesignSystem(
   } catch (cause) {
     throw new DesignSystemLoadError(
       `Could not stat CSS entry point: ${resolvedPath}`,
-      'Check that the file exists and is readable. A relative `entryPoint` is resolved against the nearest `.oxlintrc.json` directory, falling back to the oxlint working directory.',
+      'Check that the file exists and is readable. A relative `entryPoint` is resolved against the directory of the nearest oxlint config (`.oxlintrc.json`, `.oxlintrc.jsonc`, `oxlint.config.ts` or `oxlint.config.mts`), falling back to the oxlint working directory.',
       { cause: cause instanceof Error ? cause : undefined },
     )
   }

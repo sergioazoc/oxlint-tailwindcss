@@ -85,7 +85,8 @@ comporten igual en la terminal y en el editor (issue #39).
 
 ::: tip Configs explícitos con `-c`
 
-El anclaje usa el `.oxlintrc.json` más cercano porque ese es el config que oxlint aplica bajo su
+El anclaje usa la config de oxlint más cercana (`.oxlintrc.json`, `.oxlintrc.jsonc`,
+`oxlint.config.ts` u `oxlint.config.mts`) porque ese es el config que oxlint aplica bajo su
 descubrimiento de configs anidados por defecto. Si en cambio pasas `oxlint -c <config>` (o
 deshabilitas los configs anidados), oxlint usa solo ese archivo — y el plugin no puede saber cuál
 config fue (oxlint le expone la ruta del archivo y el CWD, nunca la ruta del config). El fallback
@@ -110,13 +111,16 @@ puedes definirlos:
 | Definido en                                | Opciones de reglas | `settings.tailwindcss` |
 | ------------------------------------------ | ------------------ | ---------------------- |
 | Un bloque `overrides` del config raíz      | ✓                  | ✗                      |
-| Un `.oxlintrc.json` anidado (Patrón B)     | ✓                  | ✓                      |
+| Un config anidado (Patrón B)               | ✓                  | ✓                      |
 | El mapping de `entryPoint` raíz (Patrón A) | —                  | solo `entryPoint`      |
 
 oxlint rechaza `settings` dentro de `overrides` (``unknown field `settings` ``), así que un package
 que necesita sus propios `attributes`, `callees`, `rootFontSize` o `debug` lleva un config anidado.
 Un config anidado es independiente salvo que liste el raíz en `extends` — entonces hereda
-`jsPlugins` y `rules` y solo agrega lo que cambia, como en el ejemplo del Patrón B.
+`jsPlugins` y `rules` (nunca `settings`, que cada config pone por su cuenta) y solo agrega lo que
+cambia, como en el ejemplo del Patrón B. Una config compartida como paquete trae el plugin con
+`oxlint-tailwindcss/config`: mira
+[`oxlint.config.ts` y configs compartidas](/es/setup#con-oxlint-config-ts-o-en-una-config-compartida).
 
 ::: warning Vite+ y editores
 

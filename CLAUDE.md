@@ -425,15 +425,17 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
 - **Relative string `entryPoint` anchoring (#39)**: a relative **string** entry (rule option or
   settings string — NOT the mapping shape) is resolved by `resolveStringEntryPoint` in `loader.ts`,
   NOT against `process.cwd()`. oxlint doesn't expose the config path to plugins, so the loader walks
-  up from the linted file to the nearest enclosing `.oxlintrc.json` (`nearestConfigDir`, early-exit,
-  memoized in `nearestConfigDirCache`) — the config oxlint applies under nested discovery — and
-  anchors there. Deterministic **two-step** `[nearest config dir → CWD]`: use the config-dir
-  candidate if it exists on disk, else the CWD candidate, else resolve against the nearest config
-  dir so the `Could not stat` error names the package-local path (fail-loud, never silently reach
-  past the nearest config into an unrelated ancestor — that masked-typo non-determinism is exactly
-  why the legacy `string[]` heuristic was removed). Absolute entries pass through `resolve()`
-  untouched; mapping arrays stay CWD-relative. This makes editor (CWD = workspace root) and CLI
-  (CWD = package) runs agree in Pattern-B monorepos. Limitation: under `oxlint -c <config>` /
+  up from the linted file to the nearest enclosing oxlint config — `OXLINT_CONFIG_NAMES`: the four
+  names oxlint discovers, `.oxlintrc.json`, `.oxlintrc.jsonc`, `oxlint.config.ts`,
+  `oxlint.config.mts`, never `vite.config.*` (`nearestConfigDir`, early-exit, memoized in
+  `nearestConfigDirCache`) — the config oxlint applies under nested discovery — and anchors there.
+  Deterministic **two-step** `[nearest config dir → CWD]`: use the config-dir candidate if it exists
+  on disk, else the CWD candidate, else resolve against the nearest config dir so the
+  `Could not stat` error names the package-local path (fail-loud, never silently reach past the
+  nearest config into an unrelated ancestor — that masked-typo non-determinism is exactly why the
+  legacy `string[]` heuristic was removed). Absolute entries pass through `resolve()` untouched;
+  mapping arrays stay CWD-relative. This makes editor (CWD = workspace root) and CLI (CWD = package)
+  runs agree in Pattern-B monorepos. Limitation: under `oxlint -c <config>` /
   `--disable-nested-config` oxlint suppresses nested discovery but the plugin still walks the FS, so
   the nearest `.oxlintrc.json` may diverge from the config oxlint used — docs steer those setups to
   absolute paths.
@@ -785,6 +787,26 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   `schema: []` (no options) deliberately do NOT declare it — oxlint's schema validator rejects `{}`
   against an empty schema. `consistent-variant-order` declares `defaultOptions: [{}]` (no `order`)
   so that leaving `order` undefined selects the built-in `CANONICAL_ORDER`.
+- **`oxlint-tailwindcss/config` (#218)**: a second build entry, `src/config.ts` →
+  `dist/config.{cjs,mjs}` (+ types) behind `exports["./config"]`. `tailwindcss({ recommended? })`
+  returns `{ jsPlugins: [<absolute dist/index.mjs>], rules }` for `extends` in an `oxlint.config.ts`
+  and in shared configs: an extended config can't rely on the bare name (oxlint resolves it from
+  where it runs; a pnpm bin shim's `NODE_PATH` reaches a hoisted copy, a plain `node …/bin/oxlint`
+  doesn't), and oxlint rejects a relative specifier there. It takes NO settings and throws on any
+  key but `recommended`: oxlint never reads `settings` from an extended config (JSON or TS), so an
+  `entryPoint` passed through it would vanish — the project sets `settings.tailwindcss` itself.
+  `index.mjs` because the bare name resolves there (listing both registers one plugin). It imports
+  nothing at runtime from `index` (no shared chunk; `dist/index.cjs` stays
+  `module.exports = plugin`, which `packages/docs/scripts/rules.ts` and the smokes require) — the
+  recommended rules are the static `src/recommended.ts`, held to the rules' `meta.docs.recommended`
+  by `tests/config/recommended.test.ts`; the function is exported by name AND default so the
+  `.d.cts` matches the CJS shape. Floors: oxlint 1.45.0 (1.43 rejects object `extends`; 1.44 was
+  never published) on Node 22.18.0 (oxlint imports the TS config through Node's type stripping) —
+  the CI leg `oxlint 1.45.0 on Node 22.18.0 (oxlint.config.ts floor)` runs
+  `oxlint-floor-smoke.mjs`'s second phase, and docs-sync holds `/setup` to it.
+  `tests/e2e/config-helper.test.ts` runs oxlint WITHOUT `NODE_PATH` (else the shim finds the plugin
+  by accident), extracts and type-checks `/setup`'s snippet, and pins both oxlint behaviours as
+  canaries.
 - **Runtime deps**: only `@tailwindcss/node` and `tailwindcss`. No synckit, no external workers, and
   no `semver` — the engine guard's version comparator (`parseVersion`/`compareVersions` in
   `engine-guard.ts`) is a hand-rolled subset to keep the runtime dependency set at two.
