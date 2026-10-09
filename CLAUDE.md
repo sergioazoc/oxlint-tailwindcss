@@ -591,10 +591,20 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   Tailwind (`env.loadStock()` in `makeWorkerScript`: `@import "tailwindcss"` from the same base,
   same engine, loaded lazily on the first such case). Equal there → `'variant'` (the project
   redefines the variant, e.g. shadcn's `data-disabled:`); different there too → `'selector'` (a
-  spelling, `has-[[…]]:` vs `has-data-[…]:`); declarations differ → `'value'` (#78). Only
-  `'variant'` is reported, and only with `enforce-canonical`'s `reportNonEquivalent`. The reason is
-  persisted as the tuple's third element (`[canonical, safe, reason?]`); two-element entries still
-  read.
+  spelling, `has-[[…]]:` vs `has-data-[…]:`); declarations differ → `'value'` (#78). Before any of
+  that, `stripMirrors` drops the MIRRORS from both (#217): a `--tw-*` declaration repeating,
+  verbatim with its `!important`, the value of a sibling real property in the same block, plus the
+  `@property` of each dropped variable — what Tailwind's own signature drops, and why it proposes
+  `[line-height:var(--x)]` → `leading-(--x)`. Equal once stripped, with the canonical form ADDING
+  mirrors and dropping none → `'variable'`, which carries `variables` (`--tw-leading`: `text-*`
+  sizes read it, so the two can render differently). It walks the printed CSS line by line (one
+  declaration per line), so a value holding a `;` stays whole; the variant/selector check compares
+  stripped CSS too, so a project variant that also adds a mirror stays `'variant'`. With
+  `enforce-canonical`'s `reportNonEquivalent`, `'variant'` is reported bare and `'variable'` with a
+  suggestion (`reportClassSuggestion`, never the shared autofix); `'value'`/`'selector'` never.
+  Persisted as `[canonical, safe, reason?, variables?]` — the variables with `'variable'` and only
+  with it; two- and three-element entries still read. The logic lives in `CANONICALIZE_HANDLER`
+  only, so changing it renames the canon cache (`CANON_LOGIC_HASH`), never the precompute.
 - **The canonicalize worker starts beside the precompute** (`prewarm` in `ds-worker.ts`,
   `prewarmCanonicalize`): Tailwind builds its canonicalization tables on the first
   `canonicalizeCandidates` call, once per `rem` (~1 s on a real theme), so a cold service's first
@@ -726,7 +736,10 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   precomputed canonicalize.
 - **Suggestions API**: 12 rules provide `suggest` in `context.report()` for IDE quick-fixes (the 12
   with `hasSuggestions: true` in meta). All use `messageId: 'suggestReplace'`. The 9 rules that emit
-  autofix-then-suggestions delegate the loop to `reportClassReplacements` in `utils/report.ts`.
+  autofix-then-suggestions delegate the loop to `reportClassReplacements` in `utils/report.ts`; a
+  rewrite that must only be SUGGESTED (`prefer-scale-token`, `no-unknown-classes`' typo fixes,
+  `enforce-canonical`'s `'variable'`) goes through `reportClassSuggestion` instead, which replaces
+  that one class and never joins the shared autofix.
 - **Directional rules** (`enforce-logical` ↔ `enforce-physical`): both consume
   `createDirectionalMapper(context, { mappings, messageId })` from `enforce-logical.ts`. The mapping
   type is `AxisMapping { from, to, axis, exact? }` (`exact` for utilities whose value is the

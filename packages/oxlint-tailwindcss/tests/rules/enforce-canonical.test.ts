@@ -342,3 +342,90 @@ runWithFixture(
     ],
   },
 )
+
+/**
+ * #217: a canonical form that is the same CSS plus `--tw-*` variables other
+ * utilities read. Tailwind proposes `[font-weight:var(--x)]` → `font-(--x)`,
+ * but `font-(--x)` also sets `--tw-font-weight`, which a `text-*` size reads,
+ * so the two can render differently next to it. Never fixed; with
+ * `reportNonEquivalent` it is reported with a suggestion.
+ */
+runWithFixture(
+  ruleTester,
+  'enforce-canonical (canonical forms that add --tw-* variables)',
+  enforceCanonical,
+  ENTRY_POINT,
+  {
+    valid: [
+      // Default: left as written, nothing reported.
+      { code: '<div className="[font-weight:var(--x)]" />', filename: 'test.tsx' },
+      // A different value is not this case: font-bold reads var(--font-weight-bold).
+      {
+        code: '<div className="[font-weight:700]" />',
+        filename: 'test.tsx',
+        options: [{ reportNonEquivalent: true }],
+      },
+    ],
+    invalid: [
+      {
+        code: '<div className="[font-weight:var(--x)] flex" />',
+        filename: 'test.tsx',
+        options: [{ reportNonEquivalent: true }],
+        errors: [
+          {
+            messageId: 'nonEquivalentVariable',
+            data: {
+              className: '[font-weight:var(--x)]',
+              canonical: 'font-(--x)',
+              variables: '--tw-font-weight',
+            },
+            suggestions: [
+              {
+                messageId: 'suggestReplace',
+                data: { className: '[font-weight:var(--x)]', replacement: 'font-(--x)' },
+                output: '<div className="font-(--x) flex" />',
+              },
+            ],
+          },
+        ],
+      },
+      // The `!` stays where it was written.
+      {
+        code: '<div className="![border-style:dashed]" />',
+        filename: 'test.tsx',
+        options: [{ reportNonEquivalent: true }],
+        errors: [
+          {
+            messageId: 'nonEquivalentVariable',
+            suggestions: [
+              {
+                messageId: 'suggestReplace',
+                output: '<div className="!border-dashed" />',
+              },
+            ],
+          },
+        ],
+      },
+      // Next to an equivalent rewrite: the autofix carries that one only, and
+      // the suggestion replaces its own class only.
+      {
+        code: '<div className="z-[10] [transition-duration:300ms]" />',
+        filename: 'test.tsx',
+        options: [{ reportNonEquivalent: true }],
+        errors: [
+          { messageId: 'nonCanonical' },
+          {
+            messageId: 'nonEquivalentVariable',
+            suggestions: [
+              {
+                messageId: 'suggestReplace',
+                output: '<div className="z-[10] duration-300" />',
+              },
+            ],
+          },
+        ],
+        output: '<div className="z-10 [transition-duration:300ms]" />',
+      },
+    ],
+  },
+)

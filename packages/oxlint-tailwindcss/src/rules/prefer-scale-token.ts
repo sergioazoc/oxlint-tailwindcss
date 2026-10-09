@@ -1,7 +1,8 @@
 import { defineRule } from '@oxlint/plugins'
 import { ruleDocs } from '../utils/rule-docs'
-import { createExtractorVisitors, preserveSpaces, type ClassLocation } from '../utils/extractors'
-import { rebuildClassString, splitClassesWithSeparators } from '../utils/class-splitter'
+import { createExtractorVisitors, type ClassLocation } from '../utils/extractors'
+import { splitClassesWithSeparators } from '../utils/class-splitter'
+import { reportClassSuggestion } from '../utils/report'
 import {
   getArbitraryValue,
   reattachImportant,
@@ -133,27 +134,14 @@ export const preferScaleToken = defineRule({
           if (!equivalent) continue
 
           const replacement = variant + reattachImportant(equivalent, position)
-          // Rebuilt through the splitter so the `\n` + indent
-          // `enforce-consistent-line-wrapping` introduces survives the suggestion.
-          const fixedValue = rebuildClassString(
+          reportClassSuggestion(
+            context,
+            loc,
             split,
-            split.classes.map((c) => (c === cls ? replacement : c)),
+            split.classes,
+            { cls, replacement },
+            { messageId: 'preferToken', data: { className: cls, replacement } },
           )
-
-          context.report({
-            node: loc.node,
-            messageId: 'preferToken',
-            data: { className: cls, replacement },
-            suggest: [
-              {
-                messageId: 'suggestReplace',
-                data: { className: cls, replacement },
-                fix(fixer) {
-                  return fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue))
-                },
-              },
-            ],
-          })
         }
       }
     }

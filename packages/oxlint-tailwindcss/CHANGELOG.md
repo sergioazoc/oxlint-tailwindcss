@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **`enforce-canonical` can report a canonical form that also sets a variable other utilities read
+  (#217).** Tailwind rewrites `[line-height:var(--x)]` to `leading-(--x)`, but `leading-(--x)` also
+  sets `--tw-leading`, which every `text-*` size reads for its line height, so next to one the two
+  can render differently. The rule left these as written and said nothing, so a CI lint never caught
+  them. With `reportNonEquivalent: true` they are now reported with the variable named and a
+  suggestion your editor can apply — never an autofix. 86 forms of the stock theme are of this kind:
+  `[border-style:dashed]` → `border-dashed` (`--tw-border-style`, read by `border-2`),
+  `[transition-duration:300ms]` → `duration-300` (`--tw-duration`, read by `transition`), and the
+  `font-*`, `tracking-*`, `ease-*`, `outline-*` and `content-none` ones. A project variant that also
+  adds such a variable is still reported as a variant. The option stays off by default, so nothing
+  changes without it.
 - **Style objects are no longer read as classes.** An object's string keys are read as conditional
   classes (`cn({ "bg-red-500": isError })`), and the default `^styles?$` variable pattern reaches
   the style objects of every framework, so `const style = { '--pane-width': w }` reported

@@ -1,5 +1,6 @@
 /**
- * Shared reporter for the "first-as-fix, rest-as-suggestion" pattern.
+ * Shared reporters: `reportClassReplacements` for the "first-as-fix,
+ * rest-as-suggestion" pattern, `reportClassSuggestion` for a suggestion alone.
  *
  * Nine rules (enforce-canonical, enforce-logical, enforce-physical,
  * enforce-consistent-variable-syntax, enforce-consistent-important-position,
@@ -105,4 +106,51 @@ export function reportClassReplacements(
       })
     }
   }
+}
+
+export interface SuggestionOptions {
+  /** messageId of the diagnostic. */
+  messageId: string
+  /** The diagnostic's data. */
+  data: Record<string, string>
+  /** messageId of the suggest entry. Defaults to `'suggestReplace'`. */
+  suggestMessageId?: string
+}
+
+/**
+ * Report ONE class with a quick-fix suggestion and no autofix: for rewrites the
+ * rule can name but must not apply on its own (`prefer-scale-token`'s numeric
+ * equivalence, a typo's closest class, a canonical form that is not the same
+ * CSS).
+ *
+ * The suggestion replaces only `cls`, never the other offenders of the string,
+ * and it is rebuilt through the splitter, so the `\n` + indent that
+ * `enforce-consistent-line-wrapping` introduces survives it. It never reaches
+ * `reportClassReplacements`' shared autofix.
+ */
+export function reportClassSuggestion(
+  context: Reporter,
+  loc: ClassLocation,
+  split: ClassSplit,
+  classes: string[],
+  { cls, replacement }: ReplacementEntry,
+  options: SuggestionOptions,
+): void {
+  const fixedValue = rebuildClassString(
+    split,
+    classes.map((c) => (c === cls ? replacement : c)),
+  )
+  const report = (context as { report: (d: unknown) => void }).report
+  report({
+    node: loc.node,
+    messageId: options.messageId,
+    data: options.data,
+    suggest: [
+      {
+        messageId: options.suggestMessageId ?? 'suggestReplace',
+        data: { className: cls, replacement },
+        fix: (fixer: Fixer) => fixer.replaceTextRange(loc.range, preserveSpaces(loc, fixedValue)),
+      },
+    ],
+  })
 }

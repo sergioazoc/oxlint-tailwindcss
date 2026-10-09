@@ -60,30 +60,47 @@ export interface CanonicalizeResult {
    * - `'selector'` — same declarations, different selector in stock Tailwind
    *   too (`has-[[data-slot=x]]:` vs `has-data-[slot=x]:`): a spelling
    *   difference, nothing the project defined;
-   * - `'value'` — the declarations differ (a theme-backed token, #78).
+   * - `'value'` — the declarations differ (a theme-backed token, #78);
+   * - `'variable'` — the canonical form is the same CSS plus mirror `--tw-*`
+   *   declarations that other utilities read (#217): `[font-weight:var(--x)]`
+   *   → `font-(--x)` also sets `--tw-font-weight`, which a `text-*` size reads.
    * Absent when `safe`, or when either form doesn't compile.
    */
   reason?: NonEquivalentReason
+  /** The `--tw-*` variables the canonical form adds. Only with `'variable'`. */
+  variables?: string[]
 }
 
-export type NonEquivalentReason = 'variant' | 'selector' | 'value'
+export type NonEquivalentReason = 'variant' | 'selector' | 'value' | 'variable'
 
 const isReason = (x: unknown): x is NonEquivalentReason =>
-  x === 'variant' || x === 'selector' || x === 'value'
+  x === 'variant' || x === 'selector' || x === 'value' || x === 'variable'
 
-/** A persisted `[canonical, safe, reason?]` entry, or null when it isn't one. */
+const isVariableList = (x: unknown): x is string[] =>
+  Array.isArray(x) && x.length > 0 && x.every((v) => typeof v === 'string' && v.startsWith('--'))
+
+/**
+ * A persisted `[canonical, safe, reason?, variables?]` entry, or null when it
+ * isn't one. The variables come with `'variable'` and only with it: a
+ * `'variable'` entry without them would render a message naming nothing.
+ */
 function fromPersisted(entry: unknown): CanonicalizeResult | null {
   if (!Array.isArray(entry) || typeof entry[0] !== 'string' || typeof entry[1] !== 'boolean') {
     return null
   }
-  if (entry.length > 2 && !isReason(entry[2])) return null
-  return entry.length > 2
-    ? { canonical: entry[0], safe: entry[1], reason: entry[2] as NonEquivalentReason }
-    : { canonical: entry[0], safe: entry[1] }
+  if (entry.length === 2) return { canonical: entry[0], safe: entry[1] }
+  if (!isReason(entry[2])) return null
+  if (entry[2] !== 'variable') {
+    return entry.length === 3 ? { canonical: entry[0], safe: entry[1], reason: entry[2] } : null
+  }
+  if (entry.length !== 4 || !isVariableList(entry[3])) return null
+  return { canonical: entry[0], safe: entry[1], reason: entry[2], variables: entry[3] }
 }
 
-const toPersisted = (r: CanonicalizeResult) =>
-  r.reason ? [r.canonical, r.safe, r.reason] : [r.canonical, r.safe]
+function toPersisted(r: CanonicalizeResult): unknown[] {
+  if (r.reason === 'variable') return [r.canonical, r.safe, r.reason, r.variables]
+  return r.reason ? [r.canonical, r.safe, r.reason] : [r.canonical, r.safe]
+}
 
 // Handler: canonicalize each class. canonicalizeCandidates deduplicates its
 // input, so we call it one class at a time to preserve order/length (see
@@ -110,18 +127,63 @@ export const CANONICALIZE_HANDLER = `async (ds, request, env) => {
   const { classes, rem } = request;
   const options = rem ? { rem } : undefined;
   const OWN_CLASS = /("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(^|[{};])(\\s*)\\.(?:\\\\[0-9a-fA-F]{1,6}\\s?|\\\\[^0-9a-fA-F\\s]|[\\w-])+/g;
-  const declsOf = (d, cls) => {
+  const rawOf = (d, cls) => {
     let out;
     try { out = d.candidatesToCss([cls]); } catch (e) { return null; }
-    if (!out || !out[0]) return null;
-    return out[0]
-      .replace(OWN_CLASS, (m, str, start, ws) => (str !== undefined ? str : start + ws + '.__c'))
-      .replace(/\\s+/g, ' ')
-      .trim();
+    return out && out[0] ? out[0] : null;
   };
+  const own = (css) => css
+    .replace(OWN_CLASS, (m, str, start, ws) => (str !== undefined ? str : start + ws + '.__c'))
+    .replace(/\\s+/g, ' ')
+    .trim();
   // Declarations only, selectors and at-rule preludes dropped: equal for two
   // rules that set the same things on different selectors.
   const declarationsOf = (css) => css.replace(/[^{};]+\\{/g, '').replace(/\\}/g, '').replace(/\\s+/g, ' ').trim();
+  // A mirror (#217) is a --tw-* declaration that repeats, verbatim, the value of
+  // a sibling real property in the same block: "--tw-font-weight: var(--x)" next
+  // to "font-weight: var(--x)". Tailwind drops exactly these (and their
+  // @property rules) when it signs a class to canonicalize it, which is why it
+  // proposes "[font-weight:var(--x)]" -> "font-(--x)". Other utilities read
+  // those variables (a text-* size reads --tw-font-weight), so the two forms are
+  // not the same CSS. candidatesToCss prints one declaration per line, so this
+  // walks lines: a value holding a ";" (content: ';') stays whole.
+  const stripMirrors = (css) => {
+    const lines = css.split('\\n');
+    const removed = new Set();
+    const drop = new Set();
+    const blocks = [];
+    for (let i = 0; i < lines.length; i++) {
+      const t = lines[i].trim();
+      if (t.endsWith('{')) { blocks.push([]); continue; }
+      if (t === '}') {
+        const decls = blocks.pop() || [];
+        for (const d of decls) {
+          if (!d.prop.startsWith('--tw-')) continue;
+          if (decls.some((o) => !o.prop.startsWith('--') && o.value === d.value)) {
+            drop.add(d.line);
+            removed.add(d.prop);
+          }
+        }
+        continue;
+      }
+      const colon = t.indexOf(':');
+      if (blocks.length > 0 && colon > 0 && t.endsWith(';')) {
+        blocks[blocks.length - 1].push({ line: i, prop: t.slice(0, colon).trim(), value: t.slice(colon + 1, -1).trim() });
+      }
+    }
+    if (removed.size === 0) return { css, removed };
+    const kept = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (drop.has(i)) continue;
+      const t = lines[i].trim();
+      if (t.startsWith('@property ') && t.endsWith('{') && removed.has(t.slice(10, -1).trim())) {
+        while (i < lines.length && lines[i].trim() !== '}') i++;
+        continue;
+      }
+      kept.push(lines[i]);
+    }
+    return { css: kept.join('\\n'), removed };
+  };
   const results = [];
   for (const cls of classes) {
     // A malformed/mid-typing arbitrary value (e.g. \`px-[calc(var(--a)+)]\`) can
@@ -138,19 +200,37 @@ export const CANONICALIZE_HANDLER = `async (ds, request, env) => {
     }
     const canonical = r[0] ?? cls;
     if (canonical === cls) { results.push({ canonical: cls, safe: true }); continue; }
-    const a = declsOf(ds, cls);
-    const b = declsOf(ds, canonical);
+    const rawA = rawOf(ds, cls);
+    const rawB = rawOf(ds, canonical);
+    const a = rawA === null ? null : own(rawA);
+    const b = rawB === null ? null : own(rawB);
     if (a !== null && b !== null && a === b) { results.push({ canonical, safe: true }); continue; }
     if (a === null || b === null) { results.push({ canonical, safe: false }); continue; }
-    if (declarationsOf(a) !== declarationsOf(b)) { results.push({ canonical, safe: false, reason: 'value' }); continue; }
+    const ma = stripMirrors(rawA);
+    const mb = stripMirrors(rawB);
+    const sa = own(ma.css);
+    const sb = own(mb.css);
+    if (sa === sb) {
+      // The same CSS once the mirrors are gone. It is 'variable' only when the
+      // canonical form ADDS mirrors and drops none; any other way to get here
+      // differs in something else.
+      const added = [...mb.removed].filter((v) => !ma.removed.has(v)).sort();
+      const dropped = [...ma.removed].some((v) => !mb.removed.has(v));
+      results.push(added.length > 0 && !dropped
+        ? { canonical, safe: false, reason: 'variable', variables: added }
+        : { canonical, safe: false, reason: 'value' });
+      continue;
+    }
+    if (declarationsOf(sa) !== declarationsOf(sb)) { results.push({ canonical, safe: false, reason: 'value' }); continue; }
     // Only the selector differs. Whether the PROJECT made it differ is what
     // stock Tailwind answers: the same two classes, compiled without the
     // project's CSS. Equal there means a project-defined variant.
     let stock = null;
     try { stock = await env.loadStock(); } catch (e) {}
-    const sa = stock && declsOf(stock, cls);
-    const sb = stock && declsOf(stock, canonical);
-    results.push({ canonical, safe: false, reason: sa && sb && sa === sb ? 'variant' : 'selector' });
+    const xa = stock && rawOf(stock, cls);
+    const xb = stock && rawOf(stock, canonical);
+    const same = xa && xb && own(stripMirrors(xa).css) === own(stripMirrors(xb).css);
+    results.push({ canonical, safe: false, reason: same ? 'variant' : 'selector' });
   }
   return results;
 }`
@@ -314,7 +394,7 @@ function ensurePersistLoaded(cssPath: string, rem: number | undefined, cachePref
     touchCacheFile(file)
     if (typeof data === 'object' && data !== null) {
       for (const [cls, entry] of Object.entries(data)) {
-        // Persisted shape: [canonical, safe, reason?]. Validate strictly — a
+        // Persisted shape: [canonical, safe, reason?, variables?]. Validate strictly — a
         // corrupt/old-shape entry is skipped, never trusted into an autofix.
         const value = fromPersisted(entry)
         if (value) canonCache.set(cachePrefix + cls, value)
@@ -352,7 +432,7 @@ function flushPersist(cachePrefix: string, state: PersistState): void {
     // for a given DS + logic hash, so overlapping keys carry identical values.
     // Null-prototype target so a `__proto__` cache key is treated as plain data,
     // never the prototype setter (which would silently swallow the entry).
-    const merged: Record<string, (string | boolean)[]> = Object.create(null)
+    const merged: Record<string, unknown[]> = Object.create(null)
     try {
       const existing: unknown = JSON.parse(readFileSync(state.file, 'utf-8'))
       if (typeof existing === 'object' && existing !== null) {
@@ -464,7 +544,17 @@ export function canonicalizeClassesSync(
     // `2.4000000000000004rem`, which must never reach the user's source. The
     // `safe` flag is decided in the worker and carried through unchanged.
     const value: CanonicalizeResult = { canonical: roundRemValue(raw.canonical), safe: raw.safe }
-    if (raw.reason) value.reason = raw.reason
+    if (raw.reason === 'variable') {
+      // Never without the variables it names (see fromPersisted).
+      if (isVariableList(raw.variables)) {
+        value.reason = raw.reason
+        value.variables = raw.variables
+      } else {
+        value.reason = 'value'
+      }
+    } else if (raw.reason) {
+      value.reason = raw.reason
+    }
     canonCache.set(cachePrefix + cls, value)
     out[missingIdx[j]] = value
   }
