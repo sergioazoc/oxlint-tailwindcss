@@ -113,29 +113,69 @@ function toPersisted(r: CanonicalizeResult): unknown[] {
 // `:root` override can change, the declarations differ and the rewrite is
 // flagged unsafe.
 //
-// Only the class token that OPENS a selector is neutralized (#156). Slicing
-// between the first `{` and the last `}` — what this used to do — drops the
-// selector only when it comes first: a variant wraps the rule in an at-rule
-// (`@media (hover: hover) { .hover\:z-\[10\]:hover { … } }`), the escaped name
-// landed inside the slice, and every variant-prefixed rewrite read as unsafe.
-// A token at the start of a statement can never be a declaration (a property
-// doesn't start with `.`) nor an at-rule prelude (those start with `@`), and
-// strings are stepped over, so declaration values are compared untouched. The
-// rest of the selector is kept: a canonicalization that changes the variant's
-// selector (`[&>*]:` → `*:`) still differs, and stays unsafe.
+// The class's own name is neutralized wherever the selector puts it, and
+// nothing else is. Slicing between the first `{` and the last `}` kept the name
+// whenever a variant wrapped the rule in an at-rule (#156); neutralizing only a
+// name that OPENS a statement, the fix for that, missed every selector that
+// doesn't start with it: `in-*` (`:where(:focus) .in-focus\:x`), `*:` and `**:`
+// (`:is(.\*\:x > *)`), `divide-*` (`:where(.divide-x-2 > :not(:last-child))`)
+// and, after Tailwind 4.3.3 (tailwindlabs/tailwindcss#20513), every `group-*`
+// and `peer-*` (`:is(:where(.group):hover .group-hover\:x)`). Each of those
+// rewrites read as a selector change, and none was reported.
+//
+// The token is the one Tailwind prints: a `.` and the class serialized the way
+// CSS.escape does it (Tailwind's escape() is that algorithm), matched whole —
+// not as the start of a longer name, not after a `\`. Strings are stepped over,
+// so declaration values are compared untouched, and every other class in the
+// selector (`.group\/item`, `.peer`) stays as written: a canonicalization that
+// changes the variant's selector (`[&>*]:` → `*:`) still differs, and stays
+// unsafe.
 export const CANONICALIZE_HANDLER = `async (ds, request, env) => {
   const { classes, rem } = request;
   const options = rem ? { rem } : undefined;
-  const OWN_CLASS = /("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(^|[{};])(\\s*)\\.(?:\\\\[0-9a-fA-F]{1,6}\\s?|\\\\[^0-9a-fA-F\\s]|[\\w-])+/g;
+  const escapeClass = (s) => {
+    if (s === '-') return '\\\\-';
+    let out = '';
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      if (c === 0) out += '\\uFFFD';
+      else if ((c >= 1 && c <= 31) || c === 127 || (c >= 48 && c <= 57 && (i === 0 || (i === 1 && s[0] === '-')))) {
+        out += '\\\\' + c.toString(16) + ' ';
+      } else if (c >= 128 || c === 45 || c === 95 || (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122)) {
+        out += s[i];
+      } else {
+        out += '\\\\' + s[i];
+      }
+    }
+    return out;
+  };
+  const NAME_CHAR = /[\\w\\\\-]|[^\\x00-\\x7f]/;
   const rawOf = (d, cls) => {
     let out;
     try { out = d.candidatesToCss([cls]); } catch (e) { return null; }
     return out && out[0] ? out[0] : null;
   };
-  const own = (css) => css
-    .replace(OWN_CLASS, (m, str, start, ws) => (str !== undefined ? str : start + ws + '.__c'))
-    .replace(/\\s+/g, ' ')
-    .trim();
+  const own = (css, cls) => {
+    const token = '.' + escapeClass(cls);
+    let out = '';
+    let i = 0;
+    while (i < css.length) {
+      const ch = css[i];
+      if (ch === '"' || ch === "'") {
+        let j = i + 1;
+        while (j < css.length && css[j] !== ch) j += css[j] === '\\\\' ? 2 : 1;
+        out += css.slice(i, j + 1);
+        i = j + 1;
+      } else if (css.startsWith(token, i) && css[i - 1] !== '\\\\' && !NAME_CHAR.test(css[i + token.length] || ' ')) {
+        out += '.__c';
+        i += token.length;
+      } else {
+        out += ch;
+        i++;
+      }
+    }
+    return out.replace(/\\s+/g, ' ').trim();
+  };
   // Declarations only, selectors and at-rule preludes dropped: equal for two
   // rules that set the same things on different selectors.
   const declarationsOf = (css) => css.replace(/[^{};]+\\{/g, '').replace(/\\}/g, '').replace(/\\s+/g, ' ').trim();
@@ -202,14 +242,14 @@ export const CANONICALIZE_HANDLER = `async (ds, request, env) => {
     if (canonical === cls) { results.push({ canonical: cls, safe: true }); continue; }
     const rawA = rawOf(ds, cls);
     const rawB = rawOf(ds, canonical);
-    const a = rawA === null ? null : own(rawA);
-    const b = rawB === null ? null : own(rawB);
+    const a = rawA === null ? null : own(rawA, cls);
+    const b = rawB === null ? null : own(rawB, canonical);
     if (a !== null && b !== null && a === b) { results.push({ canonical, safe: true }); continue; }
     if (a === null || b === null) { results.push({ canonical, safe: false }); continue; }
     const ma = stripMirrors(rawA);
     const mb = stripMirrors(rawB);
-    const sa = own(ma.css);
-    const sb = own(mb.css);
+    const sa = own(ma.css, cls);
+    const sb = own(mb.css, canonical);
     if (sa === sb) {
       // The same CSS once the mirrors are gone. It is 'variable' only when the
       // canonical form ADDS mirrors and drops none; any other way to get here
@@ -229,7 +269,7 @@ export const CANONICALIZE_HANDLER = `async (ds, request, env) => {
     try { stock = await env.loadStock(); } catch (e) {}
     const xa = stock && rawOf(stock, cls);
     const xb = stock && rawOf(stock, canonical);
-    const same = xa && xb && own(stripMirrors(xa).css) === own(stripMirrors(xb).css);
+    const same = xa && xb && own(stripMirrors(xa).css, cls) === own(stripMirrors(xb).css, canonical);
     results.push({ canonical, safe: false, reason: same ? 'variant' : 'selector' });
   }
   return results;

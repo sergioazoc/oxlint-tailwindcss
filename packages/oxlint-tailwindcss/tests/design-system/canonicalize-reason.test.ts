@@ -27,6 +27,29 @@ import {
 const SHADCN_VARIANTS = resolve(__dirname, '../fixtures/with-shadcn-variants.css')
 const DEFAULT = resolve(__dirname, '../fixtures/default.css')
 
+type Result = { canonical: string; safe: boolean; reason?: string; variables?: string[] }
+
+/** The exact handler string that ships, to run against a fake design system. */
+const handler = new Function(`return (${CANONICALIZE_HANDLER})`)() as (
+  ds: unknown,
+  req: unknown,
+  env: unknown,
+) => Promise<Result[]>
+
+/** `written` canonicalizes to `canonical`; each prints the CSS `css` gives it. */
+async function classifyStub(
+  written: string,
+  canonical: string,
+  css: Record<string, string>,
+): Promise<Result> {
+  const ds = {
+    canonicalizeCandidates: () => [canonical],
+    candidatesToCss: ([cls]: string[]) => [css[cls] ?? null],
+  }
+  const env = { loadStock: () => Promise.resolve(ds) }
+  return (await handler(ds, { classes: [written] }, env))[0]
+}
+
 describe('canonicalize: why a rewrite is not equivalent', () => {
   beforeEach(() => resetCanonicalizeService())
 
@@ -133,23 +156,9 @@ describe('canonicalize: why a rewrite is not equivalent', () => {
  * these classes, so only a stub can pin it.
  */
 describe('canonicalize: what counts as a mirror', () => {
-  type Result = { canonical: string; safe: boolean; reason?: string; variables?: string[] }
-  const handler = new Function(`return (${CANONICALIZE_HANDLER})`)() as (
-    ds: unknown,
-    req: unknown,
-    env: unknown,
-  ) => Promise<Result[]>
-
   /** `[w]` canonicalizes to `c`; each prints the CSS given. */
-  async function classify(written: string, canonical: string): Promise<Result> {
-    const css: Record<string, string> = { '[w]': written, c: canonical }
-    const ds = {
-      canonicalizeCandidates: () => ['c'],
-      candidatesToCss: ([cls]: string[]) => [css[cls] ?? null],
-    }
-    const env = { loadStock: () => Promise.resolve(ds) }
-    return (await handler(ds, { classes: ['[w]'] }, env))[0]
-  }
+  const classify = (written: string, canonical: string) =>
+    classifyStub('[w]', 'c', { '[w]': written, c: canonical })
 
   const rule = (name: string, ...decls: string[]) =>
     `.${name} {\n${decls.map((d) => `  ${d};`).join('\n')}\n}\n`
@@ -218,5 +227,91 @@ describe('canonicalize: what counts as a mirror', () => {
       rule('c', 'line-height: 1', '--tw-font-weight: var(--x)', 'font-weight: var(--x)'),
     )
     expect(r.reason).toBe('value')
+  })
+})
+
+/**
+ * The two forms are compared with each one's own name neutralized wherever its
+ * selector puts it, and nothing else. Only a name OPENING a statement used to
+ * be, so every rewrite whose selector starts elsewhere read as a selector
+ * change and was never made.
+ */
+describe("canonicalize: the class's own name, wherever the selector puts it", () => {
+  beforeEach(() => resetCanonicalizeService())
+
+  it('after a combinator, or inside :is() / :where()', () => {
+    // `in-*` prints `:where(:focus) .x`, `*:` and `**:` `:is(.x > *)`,
+    // `divide-*` `:where(.x > :not(:last-child))`.
+    expect(
+      canonicalizeClassesSync(DEFAULT, [
+        'in-focus:z-[10]',
+        'in-data-[open]:z-[10]',
+        '*:z-[10]',
+        '**:z-[10]',
+        'divide-x-[2px]',
+      ]),
+    ).toEqual([
+      { canonical: 'in-focus:z-10', safe: true },
+      { canonical: 'in-data-open:z-10', safe: true },
+      { canonical: '*:z-10', safe: true },
+      { canonical: '**:z-10', safe: true },
+      { canonical: 'divide-x-2', safe: true },
+    ])
+  })
+
+  it('group-* and peer-* after Tailwind 4.3.3 (tailwindlabs/tailwindcss#20513)', async () => {
+    // Verbatim from 0.0.0-insiders.fa81d69: the class moved inside the :is().
+    const group = (name: string) =>
+      `@media (hover: hover) {\n  :is(:where(.group\\/item):hover .${name}) {\n    z-index: 10;\n  }\n}\n`
+    const peer = (name: string) =>
+      `@media (hover: hover) {\n  :is(:where(.peer):hover ~ .${name}) {\n    z-index: 10;\n  }\n}\n`
+    expect(
+      await classifyStub('group-hover/item:z-[10]', 'group-hover/item:z-10', {
+        'group-hover/item:z-[10]': group('group-hover\\/item\\:z-\\[10\\]'),
+        'group-hover/item:z-10': group('group-hover\\/item\\:z-10'),
+      }),
+    ).toEqual({ canonical: 'group-hover/item:z-10', safe: true })
+    expect(
+      await classifyStub('peer-hover:z-[10]', 'peer-hover:z-10', {
+        'peer-hover:z-[10]': peer('peer-hover\\:z-\\[10\\]'),
+        'peer-hover:z-10': peer('peer-hover\\:z-10'),
+      }),
+    ).toEqual({ canonical: 'peer-hover:z-10', safe: true })
+  })
+
+  it('every other class in the selector is compared as written', async () => {
+    expect(
+      await classifyStub('[w]', 'c', {
+        '[w]': ':is(:where(.group):hover .\\[w\\]) {\n  z-index: 10;\n}\n',
+        c: ':is(:where(.peer):hover .c) {\n  z-index: 10;\n}\n',
+      }),
+    ).toEqual({ canonical: 'c', safe: false, reason: 'selector' })
+  })
+
+  it('only the whole name: not the start of a longer one, not after a backslash', async () => {
+    // `.w1` / `.c1` are other classes, and `x\.w` / `x\.c` single classes whose
+    // names hold a dot: neutralizing a piece of them would make each pair equal.
+    for (const [w, c] of [
+      ['.w1', '.c1'],
+      ['.x\\.w', '.x\\.c'],
+    ]) {
+      expect(
+        await classifyStub('w', 'c', {
+          w: `${w} {\n  z-index: 10;\n}\n`,
+          c: `${c} {\n  z-index: 10;\n}\n`,
+        }),
+      ).toEqual({ canonical: 'c', safe: false, reason: 'selector' })
+    }
+  })
+
+  it('a string holding the name is compared as written', async () => {
+    // Only a selector names the class; neutralizing it inside the strings too
+    // would make these two `content` values equal.
+    expect(
+      await classifyStub('[w]', 'c', {
+        '[w]': '.\\[w\\] {\n  content: ".\\[w\\]";\n}\n',
+        c: '.c {\n  content: ".c";\n}\n',
+      }),
+    ).toEqual({ canonical: 'c', safe: false, reason: 'value' })
   })
 })
