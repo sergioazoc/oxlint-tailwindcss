@@ -4,6 +4,14 @@ name: Canary
 # release and the insiders build. Consumers float on `^4.x`, so they get a new
 # Tailwind before this repo's pinned dev dependency does — engine changes such as
 # new canonical rewrites or stricter modifier validation show up here first.
+#
+# Two jobs per engine. `engine` installs it in a fresh consumer project and checks
+# that every rule runs; its assertions are coarse on purpose. `suite` runs the
+# whole test suite with it in place of the plugin's own copy, which is what sees
+# a change in the CSS Tailwind prints: insiders moved the class of a `group-*` /
+# `peer-*` selector inside its `:is()` (tailwindlabs/tailwindcss#20513), the smoke
+# passed twice, and `enforce-canonical` had stopped reporting every rewrite
+# under those variants.
 on:
   schedule:
     - cron: '0 6 * * 1' # Mondays 06:00 UTC
@@ -37,3 +45,34 @@ jobs:
 
       - name: Smoke against tailwindcss@${{ matrix.tailwind }}
         run: node scripts/engine-smoke.mjs ${{ matrix.tailwind }}
+
+  suite:
+    name: Test suite on Tailwind ${{ matrix.tailwind }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tailwind: ['latest', 'insiders']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The suite lints with the plugin's own engine, so that is the one swapped.
+      - name: Use tailwindcss@${{ matrix.tailwind }}
+        run: >-
+          pnpm -C packages/oxlint-tailwindcss add tailwindcss@${{ matrix.tailwind }}
+          @tailwindcss/node@${{ matrix.tailwind }}
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test suite against tailwindcss@${{ matrix.tailwind }}
+        run: pnpm -C packages/oxlint-tailwindcss test
