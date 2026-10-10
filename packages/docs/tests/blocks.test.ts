@@ -5,6 +5,9 @@ import {
   btwExtraRules,
   btwRulesTable,
   btwSettingsTable,
+  eptwExtraRules,
+  eptwRulesTable,
+  eptwSettingsTable,
   recommendedConfig,
   replaceBlock,
   ruleList,
@@ -12,6 +15,7 @@ import {
   shadcnConfig,
   shadcnTable,
   type BtwData,
+  type EptwData,
   type RuleForBlocks,
   type ShadcnData,
 } from '../scripts/blocks.ts'
@@ -263,5 +267,36 @@ describe('/migration/from-better-tailwindcss blocks', () => {
     const mapped = new Set(DATA.rules.map((r) => r.ours))
     expect(listed).toEqual(RULE_NAMES.filter((r) => !mapped.has(r)).sort())
     expect(listed).toContain('enforce-physical')
+  })
+})
+
+describe('/migration/from-eslint-plugin-tailwindcss blocks', () => {
+  const DATA = JSON.parse(
+    readFileSync(resolve(__dirname, '../data/eslint-plugin-tailwindcss.json'), 'utf8'),
+  ) as EptwData
+
+  it('a row per rule, linked to the rule page of each locale', () => {
+    const en = eptwRulesTable(DATA, 'en').split('\n')
+    expect(en).toHaveLength(DATA.rules.length + 2)
+    expect(en[0]).toBe('| eslint-plugin-tailwindcss | oxlint-tailwindcss | Notes |')
+    expect(en[2]).toContain(`[\`${DATA.rules[0].ours}\`](/rules/${DATA.rules[0].ours})`)
+    expect(eptwRulesTable(DATA, 'es')).toContain(`(/es/rules/${DATA.rules[0].ours})`)
+  })
+
+  it('settings: both plugins read settings.tailwindcss, so the columns name the plugin', () => {
+    const table = eptwSettingsTable(DATA, 'en')
+    expect(table.split('\n')[0]).toBe('| eslint-plugin-tailwindcss | oxlint-tailwindcss | Notes |')
+    expect(table).toContain('| `cssConfigPath` | `entryPoint` |')
+    expect(table).toContain('| `functions` | `callees`, `tags` |')
+    expect(table).toContain('| `cacheMaxAge` | — |')
+  })
+
+  it('lists the rules no row maps to, and only those', () => {
+    const extra = eptwExtraRules(DATA, RULE_NAMES, 'en')
+    const listed = [...extra.matchAll(/\[`([^`]+)`\]/g)].map((m) => m[1])
+    const mapped = new Set(DATA.rules.map((r) => r.ours))
+    expect(listed).toEqual(RULE_NAMES.filter((r) => !mapped.has(r)).sort())
+    expect(listed).toContain('no-duplicate-classes')
+    expect(eptwExtraRules(DATA, RULE_NAMES, 'es')).toContain('(/es/rules/no-duplicate-classes)')
   })
 })

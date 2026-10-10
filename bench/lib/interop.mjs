@@ -97,14 +97,22 @@ export function generatedFence(markdown, id) {
 }
 
 /**
- * /migration/from-better-tailwindcss: a row whose example one of its two
- * rules doesn't report, and a rule of theirs with no row.
+ * A migration guide (/migration/from-better-tailwindcss,
+ * /migration/from-eslint-plugin-tailwindcss): a row whose example one of its
+ * two rules doesn't report, and a rule of theirs with no row. Row `i`'s example
+ * is linted in `<file>-<i>.tsx`; their diagnostics carry `<plugin>(<rule>)`.
  */
-export function mappingGaps(rows, theirRules, firedTheirs, firedOurs) {
+export function mappingGaps(
+  rows,
+  theirRules,
+  firedTheirs,
+  firedOurs,
+  { file: prefix = 'btw', plugin = 'better-tailwindcss' } = {},
+) {
   const out = []
   rows.forEach((row, i) => {
-    const file = `btw-${i}.tsx`
-    if (!firedTheirs.get(file)?.has(`better-tailwindcss/${row.theirs}`)) {
+    const file = `${prefix}-${i}.tsx`
+    if (!firedTheirs.get(file)?.has(`${plugin}/${row.theirs}`)) {
       out.push(`${row.theirs}: doesn't report ${row.example}`)
     }
     if (!firedOurs.get(file)?.has(`tailwindcss/${row.ours}`)) {

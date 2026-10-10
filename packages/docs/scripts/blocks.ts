@@ -254,10 +254,10 @@ export function shadcnConfig(
   ].join('\n')
 }
 
-// ── /migration/from-better-tailwindcss: data/better-tailwindcss.json ────────
+// ── /migration/from-*: data/better-tailwindcss.json, data/eslint-plugin-tailwindcss.json ──
 
-export interface BtwData {
-  betterTailwindcss: string
+/** A migration guide's data: each of their rules and settings, and what it maps to here. */
+export interface MigrationData {
   rules: {
     theirs: string
     ours: string
@@ -268,7 +268,17 @@ export interface BtwData {
   settings: { theirs: string; ours: string | null; notes?: Record<Locale, string> }[]
 }
 
-const BTW_HEAD: Record<Locale, { rules: string[]; settings: string[] }> = {
+export interface BtwData extends MigrationData {
+  betterTailwindcss: string
+}
+
+export interface EptwData extends MigrationData {
+  eslintPluginTailwindcss: string
+}
+
+type MigrationHead = Record<Locale, { rules: string[]; settings: string[] }>
+
+const BTW_HEAD: MigrationHead = {
   en: {
     rules: ['better-tailwindcss', 'oxlint-tailwindcss', 'Notes'],
     settings: ['`settings["better-tailwindcss"]`', '`settings.tailwindcss`', 'Notes'],
@@ -276,6 +286,18 @@ const BTW_HEAD: Record<Locale, { rules: string[]; settings: string[] }> = {
   es: {
     rules: ['better-tailwindcss', 'oxlint-tailwindcss', 'Notas'],
     settings: ['`settings["better-tailwindcss"]`', '`settings.tailwindcss`', 'Notas'],
+  },
+}
+
+// Both plugins read `settings.tailwindcss`, so the settings columns name the plugin.
+const EPTW_HEAD: MigrationHead = {
+  en: {
+    rules: ['eslint-plugin-tailwindcss', 'oxlint-tailwindcss', 'Notes'],
+    settings: ['eslint-plugin-tailwindcss', 'oxlint-tailwindcss', 'Notes'],
+  },
+  es: {
+    rules: ['eslint-plugin-tailwindcss', 'oxlint-tailwindcss', 'Notas'],
+    settings: ['eslint-plugin-tailwindcss', 'oxlint-tailwindcss', 'Notas'],
   },
 }
 
@@ -288,10 +310,10 @@ export function table(head: string[], rows: string[][]): string {
 }
 
 /** Each of their rules, the rule it maps to (linked), and what differs. */
-export function btwRulesTable(data: BtwData, locale: Locale): string {
+function migrationRulesTable(data: MigrationData, head: MigrationHead, locale: Locale): string {
   const base = locale === 'en' ? '/rules/' : '/es/rules/'
   return table(
-    BTW_HEAD[locale].rules,
+    head[locale].rules,
     data.rules.map((r) => [
       `\`${r.theirs}\``,
       `[\`${r.ours}\`](${base}${r.ours})`,
@@ -301,9 +323,9 @@ export function btwRulesTable(data: BtwData, locale: Locale): string {
 }
 
 /** Each of their settings, the setting(s) it maps to, and what differs. */
-export function btwSettingsTable(data: BtwData, locale: Locale): string {
+function migrationSettingsTable(data: MigrationData, head: MigrationHead, locale: Locale): string {
   return table(
-    BTW_HEAD[locale].settings,
+    head[locale].settings,
     data.settings.map((s) => [
       `\`${s.theirs}\``,
       s.ours === null
@@ -318,7 +340,11 @@ export function btwSettingsTable(data: BtwData, locale: Locale): string {
 }
 
 /** The rules no row maps to, linked: `[a](/rules/a) · [b](/rules/b)`. */
-export function btwExtraRules(data: BtwData, ruleNames: readonly string[], locale: Locale): string {
+function migrationExtraRules(
+  data: MigrationData,
+  ruleNames: readonly string[],
+  locale: Locale,
+): string {
   const mapped = new Set(data.rules.map((r) => r.ours))
   const base = locale === 'en' ? '/rules/' : '/es/rules/'
   return ruleNames
@@ -327,3 +353,23 @@ export function btwExtraRules(data: BtwData, ruleNames: readonly string[], local
     .map((name) => `[\`${name}\`](${base}${name})`)
     .join(' · ')
 }
+
+export const btwRulesTable = (data: BtwData, locale: Locale): string =>
+  migrationRulesTable(data, BTW_HEAD, locale)
+export const btwSettingsTable = (data: BtwData, locale: Locale): string =>
+  migrationSettingsTable(data, BTW_HEAD, locale)
+export const btwExtraRules = (
+  data: BtwData,
+  ruleNames: readonly string[],
+  locale: Locale,
+): string => migrationExtraRules(data, ruleNames, locale)
+
+export const eptwRulesTable = (data: EptwData, locale: Locale): string =>
+  migrationRulesTable(data, EPTW_HEAD, locale)
+export const eptwSettingsTable = (data: EptwData, locale: Locale): string =>
+  migrationSettingsTable(data, EPTW_HEAD, locale)
+export const eptwExtraRules = (
+  data: EptwData,
+  ruleNames: readonly string[],
+  locale: Locale,
+): string => migrationExtraRules(data, ruleNames, locale)

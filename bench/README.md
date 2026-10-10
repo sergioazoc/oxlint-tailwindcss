@@ -113,7 +113,10 @@ main test suite (`tests/docs/shadcn-interop.test.ts`).
 
 For `/migration/from-better-tailwindcss`: every row of `packages/docs/data/better-tailwindcss.json`
 — its example must be reported by their rule and by ours, each with the row's options — and every
-rule of eslint-plugin-better-tailwindcss must have a row.
+rule of eslint-plugin-better-tailwindcss must have a row. The same for
+`/migration/from-eslint-plugin-tailwindcss` and `packages/docs/data/eslint-plugin-tailwindcss.json`,
+with eslint-plugin-tailwindcss run as an oxlint JS plugin on its own: it registers as `tailwindcss`
+too, so oxlint won't load it beside this plugin.
 
 Exits 1 on any disagreement. `.github/workflows/interop.yml` runs it weekly with the pinned versions
 and with the latest releases.

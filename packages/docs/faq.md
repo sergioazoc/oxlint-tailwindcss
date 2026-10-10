@@ -87,6 +87,12 @@ each problem once.
 Each of its rules has a counterpart here; the [migration guide](/migration/from-better-tailwindcss)
 maps them and their settings, and walks through the switch.
 
+## I use eslint-plugin-tailwindcss. How do I switch?
+
+Each of its rules has a counterpart here too. The
+[migration guide](/migration/from-eslint-plugin-tailwindcss) maps them and their settings, and takes
+you from an ESLint config to an `.oxlintrc.json`.
+
 ## How do I make it fast in CI?
 
 The design system is precomputed once per entry point and cached on disk. Keep that cache between

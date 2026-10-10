@@ -9,6 +9,10 @@
   An object key, a `+` operand, and a string holding an escape sequence, a backtick or `${` keep
   reporting without a fix. It's opt-in because the string's value gains the newlines and the
   indentation; `"jsx"` and the default `"never"` are unchanged.
+- **Docs: migrating from eslint-plugin-tailwindcss.** A guide like the better-tailwindcss one:
+  eslint-plugin-tailwindcss 4.4.0's 9 rules and its settings mapped to this plugin's, what differs,
+  and the switch from an ESLint config to `.oxlintrc.json`. Every row's example is checked every
+  week, against the pinned version and the latest one.
 
 ## 1.15.1
 
