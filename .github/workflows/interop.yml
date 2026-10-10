@@ -3,8 +3,9 @@ name: Interop
 # Early warning, not a gate: checks the pages that name other plugins against
 # them (bench/interop.mjs) — /shadcn's table and combined config against
 # @shadcn/lint, /migration/from-better-tailwindcss's rule map against
-# eslint-plugin-better-tailwindcss — with the versions the pages name (pinned in
-# bench/package-lock.json) and with their latest releases. A red run means a
+# eslint-plugin-better-tailwindcss, /migration/from-eslint-plugin-tailwindcss's
+# against eslint-plugin-tailwindcss — with the versions the pages name (pinned
+# in bench/package-lock.json) and with their latest releases. A red run means a
 # page needs updating, or that one of them changed what it reports.
 on:
   schedule:
@@ -46,7 +47,7 @@ jobs:
         working-directory: bench
         run:
           npm install --no-save @shadcn/lint@latest eslint-plugin-better-tailwindcss@latest
-          vite-plus@latest
+          eslint-plugin-tailwindcss@latest vite-plus@latest
 
       - name: Check the pages against them
         working-directory: bench

@@ -904,9 +904,13 @@ breaks one fails `pnpm test` (or CI) instead of shipping:
 - **What the examples do** — `doc-examples.test.ts` runs every ✗ / ✓ example of every rule page
   (EN/ES) through the real oxlint; `doc-configs.test.ts` runs every `.oxlintrc.json` snippet;
   `readme-hero.test.ts` the root README's hero; `skill.test.ts` the agent skill.
-- **What other tools do** — `shadcn-interop.test.ts` and `better-tailwindcss-map.test.ts` here, and
-  `bench/interop.mjs` weekly (`interop.yml`) against @shadcn/lint and better-tailwindcss, pinned and
-  latest; `bench/vite-plus.mjs` in the same job holds `/monorepo`'s Vite+ warning against `vp lint`.
+- **What other tools do** — `shadcn-interop.test.ts`, `better-tailwindcss-map.test.ts` and
+  `eslint-plugin-tailwindcss-map.test.ts` here, and `bench/interop.mjs` weekly (`interop.yml`)
+  against @shadcn/lint, better-tailwindcss and eslint-plugin-tailwindcss, pinned and latest;
+  `bench/vite-plus.mjs` in the same job holds `/monorepo`'s Vite+ warning against `vp lint`.
+  eslint-plugin-tailwindcss registers as `tailwindcss` too (same rule prefix, same
+  `settings.tailwindcss` key, other keys), so oxlint refuses to load it beside this plugin:
+  `interop.mjs` lints it alone, with an absolute `cssConfigPath`.
 - **What the benchmark measured** — `/benchmark` and `/comparison` are generated from
   `bench/results/latest.json`; `bench.yml` checks weekly that a fresh `score.mjs` run agrees.
 - **What the site serves** — `packages/docs/scripts/check-dist.ts` (in the docs build: titles,

@@ -92,4 +92,16 @@ describe('mappingGaps', () => {
       'no-z: a rule of theirs with no row',
     ])
   })
+
+  it("takes another guide's file prefix and plugin name", () => {
+    // eslint-plugin-tailwindcss registers as `tailwindcss`, like this plugin.
+    const at = { file: 'eptw', plugin: 'tailwindcss' }
+    const theirs = firedRules({ diagnostics: [diag('eptw-0.tsx', 'tailwindcss(no-x)')] })
+    const ours = firedRules({ diagnostics: [diag('eptw-0.tsx', 'tailwindcss(no-y)')] })
+    assert.deepEqual(mappingGaps(rows, ['no-x'], theirs, ours, at), [])
+    assert.deepEqual(mappingGaps(rows, ['no-x'], ours, theirs, at), [
+      "no-x: doesn't report <a />",
+      "no-y (for no-x): doesn't report <a />",
+    ])
+  })
 })

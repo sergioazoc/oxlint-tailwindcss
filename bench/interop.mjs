@@ -9,6 +9,10 @@
 //   packages/docs/data/better-tailwindcss.json — its example must be reported
 //   by their rule and by ours, each with the row's options — and every rule of
 //   eslint-plugin-better-tailwindcss must have a row.
+// - /migration/from-eslint-plugin-tailwindcss: the same for
+//   packages/docs/data/eslint-plugin-tailwindcss.json, against
+//   eslint-plugin-tailwindcss run as an oxlint JS plugin. It registers as
+//   `tailwindcss` too, so it is linted on its own, never beside this plugin.
 //
 // Exits 1 on any disagreement.
 //
@@ -51,6 +55,9 @@ const data = JSON.parse(readFileSync(join(REPO, 'packages/docs/data/shadcn-lint.
 const btw = JSON.parse(
   readFileSync(join(REPO, 'packages/docs/data/better-tailwindcss.json'), 'utf8'),
 )
+const eptw = JSON.parse(
+  readFileSync(join(REPO, 'packages/docs/data/eslint-plugin-tailwindcss.json'), 'utf8'),
+)
 const page = readFileSync(join(REPO, 'packages/docs/shadcn.md'), 'utf8')
 const version = (pkg) =>
   JSON.parse(readFileSync(join(BENCH, 'node_modules', pkg, 'package.json'), 'utf8')).version
@@ -73,6 +80,9 @@ for (const { file, example } of exampleFiles(data.concerns)) {
 }
 btw.rules.forEach((row, i) =>
   writeFileSync(join(project, 'src', `btw-${i}.tsx`), exampleModule(row.example)),
+)
+eptw.rules.forEach((row, i) =>
+  writeFileSync(join(project, 'src', `eptw-${i}.tsx`), exampleModule(row.example)),
 )
 
 function lint(config) {
@@ -140,14 +150,41 @@ const mapping = mappingGaps(
   ours,
 )
 
+// 4. eslint-plugin-tailwindcss: each row's two rules, with default options. A
+// relative cssConfigPath resolves against the nearest eslint.config.* or
+// package.json above the linted file — bench/'s here — so it gets an absolute one.
+const eptwTheirs = lint({
+  categories: { correctness: 'off' },
+  jsPlugins: ['eslint-plugin-tailwindcss'],
+  settings: { tailwindcss: { cssConfigPath: join(project, 'app/globals.css') } },
+  rules: Object.fromEntries(eptw.rules.map((r) => [`tailwindcss/${r.theirs}`, 'warn'])),
+})
+const eptwOurs = lint({
+  categories: { correctness: 'off' },
+  jsPlugins: [values.plugin === 'local' ? LOCAL_DIST.replaceAll('\\', '/') : 'oxlint-tailwindcss'],
+  settings: { tailwindcss: { entryPoint: 'app/globals.css' } },
+  rules: Object.fromEntries(eptw.rules.map((r) => [`tailwindcss/${r.ours}`, 'warn'])),
+})
+const eptwPlugin = await import('eslint-plugin-tailwindcss')
+const eptwMapping = mappingGaps(
+  eptw.rules,
+  Object.keys((eptwPlugin.default ?? eptwPlugin).rules),
+  eptwTheirs,
+  eptwOurs,
+  { file: 'eptw', plugin: 'tailwindcss' },
+)
+
 console.log(
   `@shadcn/lint ${version('@shadcn/lint')} (the page says ${data.shadcnLint}), ` +
     `eslint-plugin-better-tailwindcss ${version('eslint-plugin-better-tailwindcss')} ` +
-    `(the page says ${btw.betterTailwindcss}), oxlint ${version('oxlint')}, ` +
+    `(the page says ${btw.betterTailwindcss}), ` +
+    `eslint-plugin-tailwindcss ${version('eslint-plugin-tailwindcss')} ` +
+    `(the page says ${eptw.eslintPluginTailwindcss}), oxlint ${version('oxlint')}, ` +
     `oxlint-tailwindcss ${values.plugin}`,
 )
-const problems = [...column, ...gaps, ...mapping]
+const problems = [...column, ...gaps, ...mapping, ...eptwMapping]
 for (const line of problems) console.log(`  ✗ ${line}`)
 if (problems.length > 0) process.exit(1)
 console.log(`  ✓ /shadcn: ${data.concerns.length} concerns, the table and the combined config hold`)
 console.log(`  ✓ /migration/from-better-tailwindcss: ${btw.rules.length} rules map`)
+console.log(`  ✓ /migration/from-eslint-plugin-tailwindcss: ${eptw.rules.length} rules map`)
