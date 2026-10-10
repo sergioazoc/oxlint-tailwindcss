@@ -1,15 +1,25 @@
 # Changelog
 
-## Unreleased
+## 1.16.0
 
-- **`enforce-consistent-line-wrapping` wraps JS strings too, with `wrapStrings: "all"` (#216).** A
-  class string that has to wrap in `cn("…")`, `className={"…"}`, an array, a `cva` / `tv` value, a
-  ternary or `&&` branch, or a variable's value becomes a template literal with the block layout, as
-  eslint-plugin-better-tailwindcss does, and a JSX attribute's own string is still wrapped in place.
-  An object key, a `+` operand, and a string holding an escape sequence, a backtick or `${` keep
-  reporting without a fix. It's opt-in because the string's value gains the newlines and the
-  indentation; `"jsx"` and the default `"never"` are unchanged.
-- **Docs: migrating from eslint-plugin-tailwindcss.** A guide like the better-tailwindcss one:
+`enforce-consistent-line-wrapping` can now wrap every class string the way
+eslint-plugin-better-tailwindcss does, JS strings included. The docs also gain a migration guide for
+eslint-plugin-tailwindcss, the most-used Tailwind lint plugin. Nothing changes with the same config.
+
+### Features
+
+- **`enforce-consistent-line-wrapping` wraps JS strings too, with `wrapStrings: "all"` (#216,
+  #232).** A class string that has to wrap in `cn("…")`, `className={"…"}`, an array, a `cva` / `tv`
+  value, a ternary or `&&` branch, or a variable's value becomes a template literal with the block
+  layout, as eslint-plugin-better-tailwindcss does, and a JSX attribute's own string is still
+  wrapped in place. An object key, a `+` operand, and a string holding an escape sequence, a
+  backtick or `${` keep reporting without a fix. It's opt-in because the string's value gains the
+  newlines and the indentation; `"jsx"` and the default `"never"` are unchanged. If oxfmt sorts your
+  classes, set its `preserveWhitespace: true`, or it puts the template back on one line.
+
+### Documentation
+
+- **Migrating from eslint-plugin-tailwindcss (#233).** A guide like the better-tailwindcss one:
   eslint-plugin-tailwindcss 4.4.0's 9 rules and its settings mapped to this plugin's, what differs,
   and the switch from an ESLint config to `.oxlintrc.json`. Every row's example is checked every
   week, against the pinned version and the latest one.
