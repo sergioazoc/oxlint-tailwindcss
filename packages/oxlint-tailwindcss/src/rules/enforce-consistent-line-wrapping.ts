@@ -54,13 +54,18 @@ type GroupMode = 'newLine' | 'emptyLine' | 'never'
 /**
  * Which string literals the fixers may wrap, besides template literals (#216):
  *  - 'never' — none. The default: a JS string can't hold a raw newline, and
- *              turning it into a template is a call the rule doesn't make.
+ *              turning it into a template changes its value.
  *  - 'jsx'   — a JSX attribute's own string, `className="…"`, which CAN span
  *              lines as written: in a class attribute the newlines are plain
  *              whitespace, so nothing is converted. Never `className={"…"}`,
  *              `cn("…")` or a variable, which are JS strings.
+ *  - 'all'   — that, and a JS string turned into a template literal, as
+ *              eslint-plugin-better-tailwindcss does (see
+ *              `isConvertibleJsString`). The string's value gains the newlines
+ *              and indentation: whitespace in a class list, but not where the
+ *              string is used as something else, hence opt-in.
  */
-type WrapStringsMode = 'never' | 'jsx'
+type WrapStringsMode = 'never' | 'jsx' | 'all'
 
 interface Options {
   entryPoint?: string
@@ -79,6 +84,46 @@ const DEFAULT_WRAP_STRINGS: WrapStringsMode = 'never'
 function isJsxAttributeString(loc: ClassLocation): boolean {
   const node = loc.node as { type: string; parent?: { type?: string } }
   return node.type === 'Literal' && node.parent?.type === 'JSXAttribute'
+}
+
+interface ParentNode {
+  type?: string
+  arguments?: unknown[]
+  value?: unknown
+  init?: unknown
+  test?: unknown
+}
+
+/**
+ * A JS string `wrapStrings: 'all'` turns into a template literal. Its place
+ * takes any expression — a call argument (`cn("…")`), `className={"…"}`, an
+ * array element, an object value, a ternary or `&&` branch, a variable's
+ * initializer — but never an object key or a `+` operand. And a template reads
+ * its text the same way: `raw` is the source between the quotes, so it must
+ * equal the value (no escape sequence, which a template can read differently)
+ * and hold no `` ` `` or `${`.
+ */
+function isConvertibleJsString(loc: ClassLocation, raw: string | undefined): boolean {
+  const node = loc.node as { type: string; parent?: ParentNode }
+  if (node.type !== 'Literal' || raw !== loc.value) return false
+  if (raw.includes('`') || raw.includes('${')) return false
+  const parent = node.parent
+  switch (parent?.type) {
+    case 'CallExpression':
+      return parent.arguments?.includes(node) === true
+    case 'Property':
+      return parent.value === node
+    case 'VariableDeclarator':
+      return parent.init === node
+    case 'ConditionalExpression':
+      return parent.test !== node
+    case 'ArrayExpression':
+    case 'LogicalExpression':
+    case 'JSXExpressionContainer':
+      return true
+    default:
+      return false
+  }
 }
 
 /** One indentation level added below the statement's base indent for wrapped lines. */
@@ -181,7 +226,9 @@ export const enforceConsistentLineWrapping = defineRule({
       recommended: false,
       designSystem: 'optional',
     }),
-    fixable: 'whitespace',
+    // 'code': with `wrapStrings: 'all'` a fix also swaps a string's quotes for
+    // backticks.
+    fixable: 'code',
     schema: [
       {
         type: 'object',
@@ -191,7 +238,7 @@ export const enforceConsistentLineWrapping = defineRule({
           classesPerLine: { type: 'number' },
           wrapLines: { type: 'string', enum: ['overWidth', 'all'] },
           group: { type: 'string', enum: ['newLine', 'emptyLine', 'never'] },
-          wrapStrings: { type: 'string', enum: ['never', 'jsx'] },
+          wrapStrings: { type: 'string', enum: ['never', 'jsx', 'all'] },
         },
         additionalProperties: false,
       },
@@ -256,10 +303,10 @@ export const enforceConsistentLineWrapping = defineRule({
     }
 
     /**
-     * The line ending a JSX string's fix writes. A JSX attribute keeps the
-     * file's `\r\n` in its value (a template's is LF already), so a CRLF file
-     * gets CRLF breaks: from the value when it has any, else from the line the
-     * string ends on.
+     * The line ending a string's fix writes. A JSX attribute keeps the file's
+     * `\r\n` in its value (a template's is LF already), so a CRLF file gets
+     * CRLF breaks: from the value when it has any, else from the line the
+     * string ends on — the only source for a JS string turned into a template.
      */
     function lineEndingOf(loc: ClassLocation): string {
       if (loc.value.includes('\r\n')) return '\r\n'
@@ -401,17 +448,27 @@ export const enforceConsistentLineWrapping = defineRule({
           : ''
 
       const wrapStrings = getWrapStrings()
+      const text = wrapStrings === 'all' ? safeSourceCode(context)?.text : undefined
 
       for (const written of locations) {
-        // A template's quasis, and with `wrapStrings: 'jsx'` a JSX attribute's
-        // own string (#216); every other string literal only reports.
-        const wrapsString = wrapStrings === 'jsx' && isJsxAttributeString(written)
-        const fixable = written.node.type === 'TemplateElement' || wrapsString
+        // A template's quasis; with `wrapStrings` 'jsx' or 'all' a JSX
+        // attribute's own string, wrapped in place (#216); with 'all' a JS
+        // string, turned into a template. Every other string only reports.
+        const wrapsString = wrapStrings !== 'never' && isJsxAttributeString(written)
+        const convertsString =
+          wrapStrings === 'all' &&
+          !wrapsString &&
+          isConvertibleJsString(written, text?.slice(written.range[0], written.range[1]))
+        const fixable = written.node.type === 'TemplateElement' || wrapsString || convertsString
         // Measured and wrapped in LF, written back in the file's line ending.
-        const eol = wrapsString ? lineEndingOf(written) : '\n'
+        const eol = wrapsString || convertsString ? lineEndingOf(written) : '\n'
         const loc: ClassLocation =
           eol === '\n' ? written : { ...written, value: written.value.replace(/\r\n/g, '\n') }
         const toSource = (value: string) => (eol === '\n' ? value : value.replace(/\n/g, eol))
+        // A converted string's fix replaces its quotes too, with backticks.
+        const fixRange: [number, number] = convertsString ? loc.node.range : loc.range
+        const toFix = (value: string) =>
+          convertsString ? '`' + toSource(value) + '`' : toSource(value)
         // #110: measure the LONGEST INDIVIDUAL LINE, not the raw total. The raw
         // value of a multiline template includes every `\n` and indent, so
         // comparing its total length made wrapping impossible to satisfy.
@@ -455,7 +512,7 @@ export const enforceConsistentLineWrapping = defineRule({
               messageId: maxLine > printWidth ? 'tooLong' : 'inconsistentWrapping',
               data,
               fix(fixer) {
-                return fixer.replaceTextRange(loc.range, toSource(fixedValue))
+                return fixer.replaceTextRange(fixRange, toFix(fixedValue))
               },
             })
           }
@@ -485,10 +542,7 @@ export const enforceConsistentLineWrapping = defineRule({
                 messageId: 'tooManyPerLine',
                 data,
                 fix(fixer) {
-                  return fixer.replaceTextRange(
-                    loc.range,
-                    toSource(preserveSpaces(loc, fixedValue)),
-                  )
+                  return fixer.replaceTextRange(fixRange, toFix(preserveSpaces(loc, fixedValue)))
                 },
               })
             } else {

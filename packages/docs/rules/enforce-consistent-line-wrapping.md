@@ -19,8 +19,9 @@ and can wrap them onto several lines.
 Flags long class strings so they don't sprawl past a sensible line length and, when you opt in,
 wraps them into multiple lines. Two independent formatting modes: a width-based re-wrap (opt-in via
 `wrapLines`) and a class-count budget per line (`classesPerLine`), both autofixing template literals
-and, with `wrapStrings: "jsx"`, a JSX attribute's own string (other string literals only report — a
-JS string can't span lines).
+and, with `wrapStrings`, string literals too: a JSX attribute's own string in place (`"jsx"`), and a
+JS string turned into a template (`"all"`). Otherwise string literals only report — a JS string
+can't span lines.
 
 DS-optional — works without `settings.tailwindcss.entryPoint`. The rule operates on the raw class
 string and doesn't care what the classes mean, with one exception: when a design system **is**
@@ -79,12 +80,11 @@ layout:
   `inconsistentWrapping`.
 
 In a JS string literal (`cn("…")`, `className={"…"}`, a variable) the rule reports `tooLong` without
-a fix regardless of `wrapLines`: a JS string can't hold a raw newline, and turning it into a
-multiline template is a judgment call (extract a component vs. just wrap it), so the rule surfaces
-the warning and lets you decide. A JSX attribute's own string can be wrapped as it is — see
-`wrapStrings`. A template fragment **glued** to a `${}` with no whitespace (`` `${a}flex …` `` — one
-runtime class) is also never autofixed: any whitespace introduced at the boundary would split that
-class in two.
+a fix by default: a JS string can't hold a raw newline, and turning it into a multiline template
+changes the string's value, so that is opt-in — see `wrapStrings`, which can also wrap a JSX
+attribute's own string as it is. A template fragment **glued** to a `${}` with no whitespace
+(`` `${a}flex …` `` — one runtime class) is never autofixed: any whitespace introduced at the
+boundary would split that class in two.
 
 Around an interpolation, the `"all"` layout puts the class run bordering a `${}` on its **own fresh
 line** (never hanging inline after the expression), so every rewritten line stays within
@@ -136,8 +136,8 @@ over-budget lines), and the `classesPerLine` fixer chunks by count, so both igno
 
 Maximum number of classes on a single line. When exceeded inside a template literal (`` `…` ``), the
 rule autofixes by wrapping the classes into the block convention, chunks of `classesPerLine` per
-line. Inside a JS string literal the rule reports `tooManyPerLine` but doesn't autofix; a JSX
-attribute string is wrapped too with `wrapStrings: "jsx"`.
+line. Inside a string literal the rule reports `tooManyPerLine` without a fix, unless `wrapStrings`
+covers it.
 
 Setting `classesPerLine` switches the template-literal fixer to this chunk-based mode and turns the
 width-based (variant-grouped) fixer off — `printWidth` then only reports, and `wrapLines` is
@@ -149,11 +149,13 @@ ignored.
 
 ### `wrapStrings`
 
-`"never" | "jsx"`, default `"never"`.
+`"never" | "jsx" | "all"`, default `"never"`.
 
-Which string literals the fixers may wrap, besides template literals. With `"jsx"`, a JSX
-attribute's own string — `className="…"`, or any attribute the plugin reads — is wrapped in place
-into the block convention, the closing quote at the attribute line's indentation:
+Which string literals the fixers may wrap, besides template literals. Both `wrapLines` and
+`classesPerLine` apply, and a file with CRLF line endings gets CRLF breaks.
+
+With `"jsx"`, a JSX attribute's own string — `className="…"`, or any attribute the plugin reads — is
+wrapped in place into the block convention, the closing quote at the attribute line's indentation:
 
 ```tsx
 <div
@@ -165,19 +167,37 @@ into the block convention, the closing quote at the attribute line's indentation
 ```
 
 That is valid JSX as written: in a class attribute the newlines are plain whitespace, so nothing is
-converted — it's the layout `eslint-plugin-better-tailwindcss` writes. Both `wrapLines` and
-`classesPerLine` apply. Never a JS string: `className={"…"}`, `cn("…")` and variables can't hold a
-raw newline, so they keep reporting without a fix. A file with CRLF line endings gets CRLF breaks.
+converted — it's the layout `eslint-plugin-better-tailwindcss` writes. A JS string —
+`className={"…"}`, `cn("…")`, a variable — can't hold a raw newline, so with `"jsx"` it keeps
+reporting without a fix.
+
+With `"all"`, the JSX string is wrapped the same way, and a JS string is turned into a template
+literal with the block layout, as `eslint-plugin-better-tailwindcss` does: in a call (`cn("…")`), in
+`className={"…"}`, in an array, as an object value (`cva`, `tv`), in a ternary or `&&` branch, and
+as a variable's value.
+
+```tsx
+const card = cn(`
+  flex items-center justify-between rounded-md px-3 py-1
+  text-sm shadow-md
+`)
+```
+
+An object key (`cn({ "…": isActive })`) and a `+` operand are never turned into a template, and
+neither is a string holding an escape sequence, a backtick or `${`, which a template reads
+differently: those keep reporting without a fix. The string's value gains the newlines and the
+indentation. In a class list that is whitespace, but if your code uses a class string as something
+else — splits or compares a variable that `variablePatterns` matches — stay on `"jsx"`.
 
 If oxfmt formats your files with `sortTailwindcss`, set its `preserveWhitespace: true`: by default
-it collapses the whitespace in class attributes, the block's line breaks included, and the two undo
-each other (see [/interop](/interop)).
+it collapses the whitespace in class strings, a JSX attribute's and a helper's template alike, the
+block's line breaks included, and the two undo each other (see [/interop](/interop)).
 
 ```jsonc
 {
   "tailwindcss/enforce-consistent-line-wrapping": [
     "error",
-    { "printWidth": 100, "wrapLines": "overWidth", "wrapStrings": "jsx" },
+    { "printWidth": 100, "wrapLines": "overWidth", "wrapStrings": "all" },
   ],
 }
 ```
@@ -218,6 +238,14 @@ const className = `flex items-center justify-between p-4 m-2 bg-white`
 //     flex items-center justify-between
 //     p-4 m-2 bg-white
 //   " />
+
+// A JS string with wrapStrings: "all" — turned into a template literal
+// options: { "classesPerLine": 3, "wrapStrings": "all" }
+const card = cn("flex items-center justify-between p-4 m-2 bg-white")
+// → const card = cn(`
+//     flex items-center justify-between
+//     p-4 m-2 bg-white
+//   `)
 
 // printWidth: 40 with wrapLines: "overWidth" — ONLY the over-budget
 // line is re-wrapped; the conforming lines around it stay exactly as written
