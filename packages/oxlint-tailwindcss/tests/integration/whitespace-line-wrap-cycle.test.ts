@@ -205,4 +205,47 @@ describe('issue #14 — whitespace × line-wrapping no longer cycle', () => {
       invalid: [],
     },
   )
+
+  // Step 11: a JS string turned into a template (`wrapStrings: 'all'`): the
+  // block lands between backticks, the closing one on its indented line.
+  const jsString =
+    'function C() {\n  return cn("bg-red-500 text-white hover:bg-red-600 focus:ring-2")\n}'
+  const jsBlock =
+    'function C() {\n  return cn(`\n    bg-red-500 text-white hover:bg-red-600\n    focus:ring-2\n  `)\n}'
+  new RuleTester().run('step 11: JS string line-wrapping autofix', enforceConsistentLineWrapping, {
+    valid: [],
+    invalid: [
+      {
+        code: jsString,
+        filename: 'a.tsx',
+        options: [{ printWidth: 200, classesPerLine: 3, wrapStrings: 'all' }],
+        errors: [{ messageId: 'tooManyPerLine' }],
+        output: jsBlock,
+      },
+    ],
+  })
+
+  // Step 12: whitespace stays silent on it, and so does line-wrapping itself.
+  new RuleTester().run(
+    'step 12: whitespace stays silent on the converted block',
+    noUnnecessaryWhitespace,
+    {
+      valid: [{ code: jsBlock, filename: 'a.tsx' }],
+      invalid: [],
+    },
+  )
+  new RuleTester().run(
+    'step 12: line-wrapping stays silent on the converted block',
+    enforceConsistentLineWrapping,
+    {
+      valid: [
+        {
+          code: jsBlock,
+          filename: 'a.tsx',
+          options: [{ printWidth: 200, classesPerLine: 3, wrapStrings: 'all' }],
+        },
+      ],
+      invalid: [],
+    },
+  )
 })

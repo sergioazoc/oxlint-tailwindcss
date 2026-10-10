@@ -18,8 +18,9 @@ import { assertFreshDist, DIST_CJS } from './helpers/dist'
 //   - without `stylesheet`, oxfmt doesn't know the project's tokens and orders
 //     them differently;
 //   - a JSX class string wrapped into a block (`enforce-consistent-line-wrapping`
-//     with `wrapStrings: 'jsx'`) is collapsed back to one line by oxfmt unless
-//     `preserveWhitespace: true`;
+//     with `wrapStrings: 'jsx'`), and a template block in a helper (what
+//     `wrapStrings: 'all'` turns a JS string into), are collapsed back to one
+//     line by oxfmt unless `preserveWhitespace: true`;
 //   - oxfmt leaves the variant chain inside a class as written, so
 //     `consistent-variant-order` has no formatter counterpart (its rule page
 //     says so).
@@ -126,6 +127,22 @@ describe('E2E: oxfmt sortTailwindcss and oxlint-tailwindcss agree', () => {
     expect(read(collapsed)).toContain('className="flex items-center justify-between p-4 text-sm"')
 
     const kept = project({ stylesheet: './src/app.css', preserveWhitespace: true }, block)
+    run(OXFMT, ['--write', 'src/a.tsx'], kept)
+    expect(read(kept)).toBe(block)
+  })
+
+  it('a template block in a helper survives oxfmt only with preserveWhitespace', () => {
+    // What `wrapStrings: 'all'` turns `cn("…")` into.
+    const block =
+      'import { cn } from "./cn";\n\nexport const b = cn(`\n  flex items-center justify-between\n  p-4 text-sm\n`);\n'
+    const collapsed = project({ stylesheet: './src/app.css', functions: ['cn'] }, block)
+    run(OXFMT, ['--write', 'src/a.tsx'], collapsed)
+    expect(read(collapsed)).toContain('cn(`flex items-center justify-between p-4 text-sm`)')
+
+    const kept = project(
+      { stylesheet: './src/app.css', functions: ['cn'], preserveWhitespace: true },
+      block,
+    )
     run(OXFMT, ['--write', 'src/a.tsx'], kept)
     expect(read(kept)).toBe(block)
   })

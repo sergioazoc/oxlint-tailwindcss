@@ -728,8 +728,15 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   object value — and write the same block between the quotes: a JSX string may span lines as
   written, a JS string can't. Its value keeps the file's `\r\n` (a template's is LF), so it is
   measured and wrapped in LF and written back with the file's line ending (`lineEndingOf`).
-  `multiline-preservation.test.ts` runs every fixer over both shapes; oxfmt's `sortTailwindcss`
-  collapses the block unless `preserveWhitespace: true` (`oxfmt-interop.test.ts`).
+  `wrapStrings: 'all'` adds JS strings, turned into a template literal as better-tailwindcss does:
+  the fix replaces the whole `Literal` (`node.range`, quotes included) with backticks around the
+  block, which is why `meta.fixable` is `'code'`. `isConvertibleJsString` takes only a string whose
+  parent accepts any expression (a call argument, `JSXExpressionContainer`, array element, object
+  VALUE, ternary branch, `&&`/`||` operand, variable init) — never an object key or a `+` operand —
+  and whose source between the quotes equals its value and holds no `` ` `` or `${`, so a template
+  reads it the same. `multiline-preservation.test.ts` runs every fixer over both shapes (a converted
+  string IS a template afterwards); oxfmt's `sortTailwindcss` collapses either block, a helper's
+  template included, unless `preserveWhitespace: true` (`oxfmt-interop.test.ts`).
 - **Worker services lifecycle**: `sort-service.ts`, `canonicalize-service.ts` and
   `declaration-service.ts` are thin wrappers around `DesignSystemWorker<Req, Res>` (in
   `design-system/ds-worker.ts`). The class owns the SharedArrayBuffer + Atomics protocol and the

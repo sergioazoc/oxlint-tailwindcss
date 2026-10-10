@@ -829,3 +829,95 @@ ruleTester.run(
     ],
   },
 )
+
+/**
+ * `wrapStrings: 'all'`: a JS string is turned into a template literal with the
+ * block layout, as eslint-plugin-better-tailwindcss does — wherever its place
+ * takes any expression. Never an object key, a `+` operand, or a string a
+ * template would read differently (an escape sequence, a backtick, `${`). A
+ * JSX attribute's own string is still wrapped in place.
+ */
+const ALL = { classesPerLine: 2, wrapStrings: 'all' as const }
+const converted = (code: string, output: string) => ({
+  code,
+  filename: 'test.tsx',
+  options: [ALL],
+  errors: [{ messageId: 'tooManyPerLine' as const }],
+  output,
+})
+const reportedOnly = (code: string) => ({
+  code,
+  filename: 'test.tsx',
+  options: [ALL],
+  errors: [{ messageId: 'tooManyPerLine' as const }],
+})
+
+ruleTester.run(
+  'enforce-consistent-line-wrapping (wrapStrings: all)',
+  enforceConsistentLineWrapping,
+  {
+    valid: [
+      // What the fix writes: within the budget, nothing to do.
+      { code: 'cn(`\n  a b\n  c d\n`)', filename: 'test.tsx', options: [ALL] },
+      // Short enough: never converted.
+      { code: 'cn("a b")', filename: 'test.tsx', options: [ALL] },
+    ],
+    invalid: [
+      // Every place that takes any expression.
+      converted('cn("a b c d")', 'cn(`\n  a b\n  c d\n`)'),
+      converted("cn('a b c d')", 'cn(`\n  a b\n  c d\n`)'),
+      converted('<div className={"a b c d"} />', '<div className={`\n  a b\n  c d\n`} />'),
+      converted('const className = "a b c d"', 'const className = `\n  a b\n  c d\n`'),
+      converted(
+        '<div className={on ? "a b c d" : "e"} />',
+        '<div className={on ? `\n  a b\n  c d\n` : "e"} />',
+      ),
+      converted('cn(on && "a b c d")', 'cn(on && `\n  a b\n  c d\n`)'),
+      converted('cn(["a b c d"])', 'cn([`\n  a b\n  c d\n`])'),
+      {
+        ...converted(
+          'cva("a b c d", { variants: { size: { sm: "e f g h" } } })',
+          'cva(`\n  a b\n  c d\n`, { variants: { size: { sm: `\n  e f\n  g h\n` } } })',
+        ),
+        errors: [{ messageId: 'tooManyPerLine' }, { messageId: 'tooManyPerLine' }],
+      },
+      {
+        ...converted(
+          '<div classNames={{ root: "a b c d" }} />',
+          '<div classNames={{ root: `\n  a b\n  c d\n` }} />',
+        ),
+        settings: { tailwindcss: { attributes: ['classNames'] } },
+      },
+      // A JSX attribute's own string is still wrapped in place.
+      converted('<div className="a b c d" />', '<div className="\n  a b\n  c d\n" />'),
+      // The base indent is the string's line, and a CRLF file gets CRLF breaks.
+      converted(
+        'function C() {\n  return cn("a b c d")\n}',
+        'function C() {\n  return cn(`\n    a b\n    c d\n  `)\n}',
+      ),
+      converted('cn("a b c d")\r\n', 'cn(`\r\n  a b\r\n  c d\r\n`)\r\n'),
+      // The width fixers convert too.
+      {
+        code: 'cn("flex items-center justify-between p-4 m-2")',
+        filename: 'test.tsx',
+        options: [{ printWidth: 40, wrapLines: 'overWidth', wrapStrings: 'all' }],
+        errors: [{ messageId: 'tooLong' }],
+        output: 'cn(`\n  flex items-center justify-between p-4\n  m-2\n`)',
+      },
+      {
+        code: 'cn("flex gap-2 hover:underline hover:bg-red-500")',
+        filename: 'test.tsx',
+        options: [{ printWidth: 40, wrapLines: 'all', wrapStrings: 'all' }],
+        errors: [{ messageId: 'tooLong' }],
+        output: 'cn(`\n  flex gap-2\n  hover:underline hover:bg-red-500\n`)',
+      },
+      // Report only: an object key, a `+` operand, and strings a template would
+      // read differently.
+      reportedOnly('cn({ "a b c d": on })'),
+      reportedOnly('cn("a b c d " + x)'),
+      reportedOnly('cn("a b c \\u0064")'),
+      reportedOnly('cn("a b c content-[\'`\']")'),
+      reportedOnly('cn("a b c ${d}")'),
+    ],
+  },
+)

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **`enforce-consistent-line-wrapping` wraps JS strings too, with `wrapStrings: "all"` (#216).** A
+  class string that has to wrap in `cn("…")`, `className={"…"}`, an array, a `cva` / `tv` value, a
+  ternary or `&&` branch, or a variable's value becomes a template literal with the block layout, as
+  eslint-plugin-better-tailwindcss does, and a JSX attribute's own string is still wrapped in place.
+  An object key, a `+` operand, and a string holding an escape sequence, a backtick or `${` keep
+  reporting without a fix. It's opt-in because the string's value gains the newlines and the
+  indentation; `"jsx"` and the default `"never"` are unchanged.
+
 ## 1.15.1
 
 `enforce-canonical` rewrites a class only when its canonical form prints the same CSS, and it
