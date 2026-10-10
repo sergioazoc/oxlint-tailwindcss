@@ -11,6 +11,9 @@ import {
   btwExtraRules,
   btwRulesTable,
   btwSettingsTable,
+  eptwExtraRules,
+  eptwRulesTable,
+  eptwSettingsTable,
   recommendedConfig,
   replaceBlock,
   ruleList,
@@ -18,6 +21,7 @@ import {
   shadcnConfig,
   shadcnTable,
   type BtwData,
+  type EptwData,
   type RuleForBlocks,
   type ShadcnData,
 } from './blocks.ts'
@@ -86,6 +90,17 @@ for (const locale of ['en', 'es'] as const) {
     'btw-extra': btwExtraRules(btw, RULE_NAMES, locale),
   })
 }
+const eptw = JSON.parse(
+  readFileSync(resolve(DOCS, 'data/eslint-plugin-tailwindcss.json'), 'utf-8'),
+) as EptwData
+for (const locale of ['en', 'es'] as const) {
+  const dir = locale === 'en' ? DOCS : resolve(DOCS, 'es')
+  update(resolve(dir, 'migration/from-eslint-plugin-tailwindcss.md'), {
+    'eptw-rules': eptwRulesTable(eptw, locale),
+    'eptw-settings': eptwSettingsTable(eptw, locale),
+    'eptw-extra': eptwExtraRules(eptw, RULE_NAMES, locale),
+  })
+}
 const bench = JSON.parse(
   readFileSync(resolve(REPO, 'bench/results/latest.json'), 'utf-8'),
 ) as BenchResults
@@ -105,4 +120,4 @@ for (const locale of ['en', 'es'] as const) {
     'comparison-coverage': comparisonCoverage(bench, locale),
   })
 }
-console.log('[generate-blocks] wrote 14 files')
+console.log('[generate-blocks] wrote 16 files')

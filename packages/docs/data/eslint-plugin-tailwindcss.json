@@ -1,0 +1,141 @@
+{
+  "$comment": "eslint-plugin-tailwindcss (francoismassart) → oxlint-tailwindcss. Generates the tables on /migration/from-eslint-plugin-tailwindcss (scripts/blocks.ts). Every example is reported by both rules of its row, with default options: checked by bench/interop.mjs (weekly, with the latest release, in .github/workflows/interop.yml), which also checks that every rule of the pinned version has a row; that every rule and setting named here exists, by tests/docs/eslint-plugin-tailwindcss-map.test.ts.",
+  "eslintPluginTailwindcss": "4.4.0",
+  "rules": [
+    {
+      "theirs": "classnames-order",
+      "ours": "enforce-sort-order",
+      "example": "<div className=\"p-4 flex\">x</div>",
+      "notes": {
+        "en": "Both sort by Tailwind's own class order, the one prettier-plugin-tailwindcss uses. `mode: \"strict\"` also groups classes by variant chain.",
+        "es": "Las dos ordenan con el orden de clases de Tailwind, el que usa prettier-plugin-tailwindcss. `mode: \"strict\"` además agrupa las clases por cadena de variants."
+      }
+    },
+    {
+      "theirs": "enforces-canonical-classname",
+      "ours": "enforce-canonical",
+      "example": "<div className=\"-m-0\">x</div>",
+      "notes": {
+        "en": "Both ask Tailwind for the canonical form, but this rule rewrites a class only when the two print the same CSS: `[&>*]:flex-1` → `*:flex-1` (another selector) and `aspect-[16/9]` → `aspect-video` (a theme variable) stay as written. The rest of what theirs folds in has its own rule here: v3 renames (`bg-gradient-to-r`) are `no-deprecated-classes`, `bg-[var(--x)]` → `bg-(--x)` is `enforce-consistent-variable-syntax`, `!p-4` → `p-4!` is `enforce-consistent-important-position`, and `-m-[5px]` → `m-[-5px]` is `enforce-negative-arbitrary-values`.",
+        "es": "Las dos le piden a Tailwind la forma canónica, pero esta regla solo reescribe una clase cuando las dos imprimen el mismo CSS: `[&>*]:flex-1` → `*:flex-1` (otro selector) y `aspect-[16/9]` → `aspect-video` (una variable del tema) se quedan como están. Lo demás que la suya incluye tiene aquí su propia regla: los renombres de v3 (`bg-gradient-to-r`) son de `no-deprecated-classes`, `bg-[var(--x)]` → `bg-(--x)` de `enforce-consistent-variable-syntax`, `!p-4` → `p-4!` de `enforce-consistent-important-position` y `-m-[5px]` → `m-[-5px]` de `enforce-negative-arbitrary-values`."
+      }
+    },
+    {
+      "theirs": "enforces-negative-arbitrary-values",
+      "ours": "enforce-negative-arbitrary-values",
+      "example": "<div className=\"-m-[5px]\">x</div>"
+    },
+    {
+      "theirs": "enforces-shorthand",
+      "ours": "enforce-shorthand",
+      "example": "<div className=\"mt-2 mb-2\">x</div>",
+      "notes": {
+        "en": "Their `overflow-hidden text-ellipsis whitespace-nowrap` → `truncate` has no equivalent here. Four corners or sides become one class at once (`rounded-tl-md rounded-tr-md rounded-br-md rounded-bl-md` → `rounded-md`), where theirs merges them two by two.",
+        "es": "Su `overflow-hidden text-ellipsis whitespace-nowrap` → `truncate` no tiene equivalente aquí. Cuatro esquinas o lados se vuelven una sola clase de una vez (`rounded-tl-md rounded-tr-md rounded-br-md rounded-bl-md` → `rounded-md`), donde la suya los une de dos en dos."
+      }
+    },
+    {
+      "theirs": "important-modifier-suffix",
+      "ours": "enforce-consistent-important-position",
+      "example": "<div className=\"!p-4\">x</div>",
+      "notes": {
+        "en": "The suffix (`p-4!`) is the default here too; `position: \"prefix\"` asks for `!p-4` instead.",
+        "es": "Aquí el sufijo (`p-4!`) también es el default; `position: \"prefix\"` pide `!p-4`."
+      }
+    },
+    {
+      "theirs": "no-arbitrary-value",
+      "ours": "no-arbitrary-value",
+      "example": "<div className=\"w-[20rem]\">x</div>",
+      "notes": {
+        "en": "Off in both recommended configs. Here `allow` tolerates arbitrary values under the prefixes you list (`grid-cols-`), `allowVariables` a value that is only a CSS variable, and the message names the closest values in your theme.",
+        "es": "Apagada en los dos configs recomendados. Aquí `allow` tolera valores arbitrarios bajo los prefijos que listes (`grid-cols-`), `allowVariables` un valor que es solo una variable CSS, y el mensaje nombra los valores más cercanos de tu tema."
+      }
+    },
+    {
+      "theirs": "no-contradicting-classname",
+      "ours": "no-conflicting-classes",
+      "example": "<div className=\"w-full w-1/2\">x</div>",
+      "notes": {
+        "en": "Decided from the CSS each class prints, and the message names the class that wins. It also reports a class another one makes redundant (`reportRedundant`), and `allow` exempts pairs. A variant that repeats its base class (`flex hover:flex`) is `no-contradicting-variants`.",
+        "es": "Se decide con el CSS que imprime cada clase, y el mensaje nombra la que gana. También reporta una clase que otra vuelve redundante (`reportRedundant`), y `allow` exime pares. Una variant que repite su clase base (`flex hover:flex`) es cosa de `no-contradicting-variants`."
+      }
+    },
+    {
+      "theirs": "no-custom-classname",
+      "ours": "no-unknown-classes",
+      "example": "<div className=\"my-custom\">x</div>",
+      "notes": {
+        "en": "`whitelist` → `allowlist` for exact names and `ignorePrefixes` for families (`custom-`); a regular expression that is neither has no counterpart. The classes your CSS defines (`@layer components`, `@utility`) are always known, and a typo gets the closest class as a suggestion.",
+        "es": "`whitelist` → `allowlist` para nombres exactos e `ignorePrefixes` para familias (`custom-`); una expresión regular que no sea ninguna de las dos no tiene equivalente. Las clases que define tu CSS (`@layer components`, `@utility`) siempre se conocen, y un typo recibe como sugerencia la clase más cercana."
+      }
+    },
+    {
+      "theirs": "no-unnecessary-arbitrary-value",
+      "ours": "no-unnecessary-arbitrary-value",
+      "example": "<div className=\"inset-[1px]\">x</div>",
+      "notes": {
+        "en": "This rule rewrites only when the named class prints the same CSS. Theirs also turns a value equal to a scale step or a theme value into its token (`m-[8px]` → `m-2`, `w-[20rem]` → `w-xs`): here that is `prefer-scale-token`, as a suggestion, since the token reads a variable your theme can change. `z-[123]` → `z-123` is `enforce-canonical`.",
+        "es": "Esta regla solo reescribe cuando la clase con nombre imprime el mismo CSS. La suya además convierte en su token un valor igual a un paso de la escala o a un valor del tema (`m-[8px]` → `m-2`, `w-[20rem]` → `w-xs`): aquí eso es `prefer-scale-token`, como sugerencia, porque el token lee una variable que tu tema puede cambiar. `z-[123]` → `z-123` es de `enforce-canonical`."
+      }
+    }
+  ],
+  "settings": [
+    {
+      "theirs": "cssConfigPath",
+      "ours": "entryPoint",
+      "notes": {
+        "en": "Required in both. A relative path resolves against the nearest oxlint config here, and against the nearest `eslint.config.*` or `package.json` in theirs. A glob → CSS mapping covers a monorepo.",
+        "es": "Obligatorio en los dos. Una ruta relativa se resuelve aquí contra el config de oxlint más cercano, y en el suyo contra el `eslint.config.*` o `package.json` más cercano. Un mapeo glob → CSS cubre un monorepo."
+      }
+    },
+    {
+      "theirs": "attributes",
+      "ours": "attributes, attributePatterns",
+      "notes": {
+        "en": "Setting theirs replaces its defaults (`class`, `className`, `ngClass`, `@apply`); here `attributes` adds to `class` and `className`, and `attributePatterns` matches names with regular expressions. `ngClass` and `@apply` have nothing to match: oxlint hands JS plugins neither Angular templates nor CSS.",
+        "es": "Fijar el suyo reemplaza sus defaults (`class`, `className`, `ngClass`, `@apply`); aquí `attributes` se suma a `class` y `className`, y `attributePatterns` encuentra nombres con expresiones regulares. `ngClass` y `@apply` no tienen nada que encontrar: oxlint no les pasa a los JS plugins ni templates de Angular ni CSS."
+      }
+    },
+    {
+      "theirs": "functions",
+      "ours": "callees, tags",
+      "notes": {
+        "en": "Theirs is one list for calls and tagged templates, and setting it replaces the defaults; `callees` and `tags` add to this plugin's. Of their defaults, `classNames(…)` and `tw(…)` as a call aren't read here: add them to `callees` if you use them.",
+        "es": "El suyo es una sola lista para llamadas y tagged templates, y fijarla reemplaza los defaults; `callees` y `tags` se suman a los de este plugin. De sus defaults, `classNames(…)` y `tw(…)` como llamada no se leen aquí: agrégalos a `callees` si los usas."
+      }
+    },
+    {
+      "theirs": "parseKeyFunctions",
+      "ours": null,
+      "notes": {
+        "en": "The keys of an object passed to any callee are read as classes (`cn({ \"p-4\": isOpen })`), and its values aren't. Theirs reads the keys only in these functions (by default `classnames`, `classNames`, `clsx`) and the values elsewhere.",
+        "es": "Las claves de un objeto que recibe cualquier callee se leen como clases (`cn({ \"p-4\": isOpen })`), y sus valores no. El suyo lee las claves solo en estas funciones (por defecto `classnames`, `classNames`, `clsx`) y los valores en las demás."
+      }
+    },
+    {
+      "theirs": "ignoredKeys",
+      "ours": null,
+      "notes": {
+        "en": "`cva` and `tv` configs are read by their structure: `defaultVariants` is skipped, `compoundVariants` and `compoundSlots` are read.",
+        "es": "Los configs de `cva` y `tv` se leen por su estructura: `defaultVariants` se salta, `compoundVariants` y `compoundSlots` se leen."
+      }
+    },
+    {
+      "theirs": "cacheMaxSize",
+      "ours": null,
+      "notes": {
+        "en": "The design system is cached on disk, keyed by the content of your CSS, and rebuilt when it changes: there is nothing to tune.",
+        "es": "El design system se guarda en caché en disco, indexado por el contenido de tu CSS, y se reconstruye cuando cambia: no hay nada que ajustar."
+      }
+    },
+    {
+      "theirs": "cacheMaxAge",
+      "ours": null,
+      "notes": {
+        "en": "Same as `cacheMaxSize`.",
+        "es": "Igual que `cacheMaxSize`."
+      }
+    }
+  ]
+}

@@ -106,7 +106,11 @@ rule on); its @shadcn/lint column and the combined config by `bench/interop.mjs`
 `interop.yml`. When @shadcn/lint changes what it reports, update the data, not the page. The same
 goes for `/migration/from-better-tailwindcss` and `data/better-tailwindcss.json`: every row's
 example is reported by both of its rules (`bench/interop.mjs`), and the rules and settings it names
-exist here (`tests/docs/better-tailwindcss-map.test.ts`).
+exist here (`tests/docs/better-tailwindcss-map.test.ts`). And for
+`/migration/from-eslint-plugin-tailwindcss` and `data/eslint-plugin-tailwindcss.json`, checked the
+same way (`tests/docs/eslint-plugin-tailwindcss-map.test.ts` also holds the version and rule count
+the page's prose names). Both guides render through the same `migration*` functions in
+`scripts/blocks.ts`.
 
 `/benchmark` and `/comparison` hold no hand-typed number: their tables come from
 `bench/results/latest.json` (`scripts/bench-blocks.ts`), which `bench/score.mjs` writes and

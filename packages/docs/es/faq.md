@@ -91,6 +91,12 @@ Cada una de sus reglas tiene su equivalente aquí; la
 [guía de migración](/es/migration/from-better-tailwindcss) mapea las reglas y sus settings, y
 recorre el cambio.
 
+## Uso eslint-plugin-tailwindcss. ¿Cómo me cambio?
+
+Cada una de sus reglas también tiene su equivalente aquí. La
+[guía de migración](/es/migration/from-eslint-plugin-tailwindcss) mapea las reglas y sus settings, y
+te lleva de un config de ESLint a un `.oxlintrc.json`.
+
 ## ¿Cómo lo hago rápido en CI?
 
 El design system se precalcula una vez por entry point y se guarda en caché en disco. Conserva esa

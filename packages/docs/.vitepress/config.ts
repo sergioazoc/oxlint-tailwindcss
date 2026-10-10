@@ -139,6 +139,10 @@ export default defineConfig({
               items: [
                 { text: 'v0 → v1', link: '/migration/v0-to-v1' },
                 { text: 'From better-tailwindcss', link: '/migration/from-better-tailwindcss' },
+                {
+                  text: 'From eslint-plugin-tailwindcss',
+                  link: '/migration/from-eslint-plugin-tailwindcss',
+                },
               ],
             },
           ],
@@ -228,6 +232,10 @@ export default defineConfig({
               items: [
                 { text: 'v0 → v1', link: '/es/migration/v0-to-v1' },
                 { text: 'Desde better-tailwindcss', link: '/es/migration/from-better-tailwindcss' },
+                {
+                  text: 'Desde eslint-plugin-tailwindcss',
+                  link: '/es/migration/from-eslint-plugin-tailwindcss',
+                },
               ],
             },
           ],
