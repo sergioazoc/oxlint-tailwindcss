@@ -236,6 +236,58 @@ describe('theme tokens whose name contains a dash', () => {
   })
 })
 
+describe('sameUnit', () => {
+  // `w-lg` is `--container-lg: 32rem`, the spacing scale is `0.25rem`: equal to
+  // `512px` only while the root font size is 16px. With `sameUnit`, a value is
+  // only matched against a token or scale written in its own unit.
+  run('prefer-scale-token (sameUnit)', preferScaleToken, {
+    valid: [
+      {
+        code: '<div className="w-[512px]" />',
+        filename: 'test.tsx',
+        options: [{ sameUnit: true }],
+      },
+      { code: '<div className="p-[10px]" />', filename: 'test.tsx', options: [{ sameUnit: true }] },
+    ],
+    invalid: [
+      // Off by default: the same px value is reported against the rem token.
+      {
+        code: '<div className="w-[512px]" />',
+        filename: 'test.tsx',
+        errors: [
+          { messageId: 'preferToken', data: { className: 'w-[512px]', replacement: 'w-lg' } },
+        ],
+      },
+      // Same unit on both sides: still reported, token and scale alike.
+      {
+        code: '<div className="w-[32rem]" />',
+        filename: 'test.tsx',
+        options: [{ sameUnit: true }],
+        errors: [
+          { messageId: 'preferToken', data: { className: 'w-[32rem]', replacement: 'w-lg' } },
+        ],
+      },
+      {
+        code: '<div className="h-[2rem]" />',
+        filename: 'test.tsx',
+        options: [{ sameUnit: true }],
+        errors: [{ messageId: 'preferToken', data: { className: 'h-[2rem]', replacement: 'h-8' } }],
+      },
+      {
+        code: '<div className="perspective-[100px]" />',
+        filename: 'test.tsx',
+        options: [{ sameUnit: true }],
+        errors: [
+          {
+            messageId: 'preferToken',
+            data: { className: 'perspective-[100px]', replacement: 'perspective-dramatic' },
+          },
+        ],
+      },
+    ],
+  })
+})
+
 describe('without an entry point', () => {
   // DS-dependent: the equivalences come entirely from the design system, so
   // there is no static fallback to degrade to.

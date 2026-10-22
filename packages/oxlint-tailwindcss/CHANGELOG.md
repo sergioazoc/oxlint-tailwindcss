@@ -11,6 +11,10 @@
 - **`no-arbitrary-value` names a negative utility for a negative value.** `bottom-[-5px]` said
   "Closest in your theme: bottom-1 (4px)", a class that moves the other way; it now says
   `-bottom-1.5 (-6px) or -bottom-1 (-4px)`, and nothing for a prefix with no negative form.
+- **`prefer-scale-token` takes `sameUnit`.** With `sameUnit: true`, a value only matches a token or
+  scale step written in its own unit, so `w-[512px]` is no longer suggested as `w-lg`
+  (`--container-lg: 32rem`): the two differ once the root font size changes. Off by default, so
+  nothing changes without it.
 
 ## 1.16.0
 
