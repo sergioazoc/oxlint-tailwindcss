@@ -980,6 +980,46 @@ describe('style-declaration object keys', () => {
   })
 })
 
+/**
+ * Lookup tables: an object whose VALUES are classes, keyed by a name the
+ * component looks up (`TONE_CLASSES[tone]`). `variablePatterns` reads an
+ * object's keys, and skips a key with a string value as a style declaration,
+ * so a table's classes are only read through `lookupTablePatterns`.
+ */
+describe('lookup tables', () => {
+  const settings = { tailwindcss: { lookupTablePatterns: ['_CLASS(ES)?$'] } }
+  runWithFixture(new RuleTester(), 'lookupTablePatterns', noUnknownClasses, ENTRY_POINT, {
+    valid: [
+      { code: "const TONE_CLASSES = { ok: 'text-green-700' }", filename: 'test.ts', settings },
+      // Without the setting, a table is not read at all.
+      { code: "const TONE_CLASSES = { ok: 'text-grean-700' }", filename: 'test.ts' },
+      // The keys are names, never classes.
+      { code: "const TONE_CLASSES = { 'itms-center': 'flex' }", filename: 'test.ts', settings },
+    ],
+    invalid: [
+      {
+        code: "const TONE_CLASSES = { ok: 'text-green-700', warning: 'text-amber-70' }",
+        filename: 'test.ts',
+        settings,
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+      // `as const` / `satisfies`, nested tables, and a conditional value.
+      {
+        code: "const SIZE_CLASSES = { sm: { root: 'p-2', label: 'itms-center' } } as const",
+        filename: 'test.ts',
+        settings,
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+      {
+        code: "const TONE_CLASS = { ok: on ? 'flex' : 'itms-center' } satisfies Record<string, string>",
+        filename: 'test.ts',
+        settings,
+        errors: [{ messageId: 'unknownWithSuggestion' }],
+      },
+    ],
+  })
+})
+
 describe('CSS_PROPERTY_NAMES', () => {
   // A name that is also a class would hide that class in `cn({ name: cond })`.
   it('holds no Tailwind class', () => {

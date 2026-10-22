@@ -269,6 +269,10 @@ oxc#24597/#23207/#20501; multi-line `<script`, oxc#26289); update `packages/docs
 - `tags: string[]` — additional tagged template tags
 - `variablePatterns: string[]` — additional regex patterns for variable names (as strings, compiled
   to RegExp)
+- `lookupTablePatterns: string[]` — regex patterns for variables holding a lookup table: an object
+  initializer (through `as` / `satisfies`) has its VALUES read, nested tables value by value, where
+  `variablePatterns` reads an object's keys. A non-object initializer falls through to
+  `variablePatterns`. Empty by default; not covered by `exclude`.
 - `attributePatterns: string[]` — regex patterns matched against JSX attribute NAMES (as strings,
   compiled to RegExp; default `[]`, #134). Distinct from `variablePatterns`, which matches variable
   names. Additive; not covered by `exclude`.

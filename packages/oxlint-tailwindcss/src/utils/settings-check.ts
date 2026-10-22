@@ -36,6 +36,7 @@ const CHECKS: { [K in keyof Required<PluginSettings>]: Check } = {
   calleeExtractors: 'extractors',
   tags: 'strings',
   variablePatterns: 'regexes',
+  lookupTablePatterns: 'regexes',
   exclude: 'exclude',
 }
 

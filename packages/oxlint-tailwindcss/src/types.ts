@@ -88,6 +88,15 @@ export interface PluginSettings {
   tags?: string[]
   /** Additional regex patterns (as strings) for variable names to scan (added to defaults) */
   variablePatterns?: string[]
+  /**
+   * Regex patterns (as strings) for variables that hold a lookup table: an
+   * object literal whose VALUES are class strings, e.g.
+   * `const TONE_CLASSES = { warning: "text-amber-700", ok: "text-green-700" }`.
+   * `variablePatterns` reads an object's KEYS as conditional classes
+   * (`{ "bg-red-500": isError }`), so it can't read these. Nested tables are
+   * read value by value. Empty by default.
+   */
+  lookupTablePatterns?: string[]
   /** Remove specific items from the built-in defaults */
   exclude?: ExtractorExclusions
 }

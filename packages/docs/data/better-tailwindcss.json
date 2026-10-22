@@ -153,10 +153,10 @@
     },
     {
       "theirs": "selectors",
-      "ours": "attributes, attributePatterns, callees, calleeExtractors, tags, variablePatterns",
+      "ours": "attributes, attributePatterns, callees, calleeExtractors, tags, variablePatterns, lookupTablePatterns",
       "notes": {
-        "en": "Both read `class` / `className`, the same variable names and most helpers by default. Add what yours lists that this one doesn't: the `dcnb` helper to `callees`, the `twc` / `twx` tags to `tags`.",
-        "es": "Los dos leen `class` / `className`, los mismos nombres de variables y la mayoría de los helpers por defecto. Agrega lo que liste el tuyo y este no: el helper `dcnb` a `callees`, los tags `twc` / `twx` a `tags`."
+        "en": "Both read `class` / `className`, the same variable names and most helpers by default. Add what yours lists that this one doesn't: the `dcnb` helper to `callees`, the `twc` / `twx` tags to `tags`. A `variable` selector matching `objectValues` is `lookupTablePatterns`.",
+        "es": "Los dos leen `class` / `className`, los mismos nombres de variables y la mayoría de los helpers por defecto. Agrega lo que liste el tuyo y este no: el helper `dcnb` a `callees`, los tags `twc` / `twx` a `tags`. Un selector `variable` con match `objectValues` es `lookupTablePatterns`."
       }
     },
     {
