@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **`prefer-scale-token` matches theme tokens whose name contains a dash.** The precompute filed a
+  token class under the class cut at its last dash, so `p-brand-md` (reading `--spacing-brand-md`)
+  sat under `p-brand` and `p-[16px]` never matched it; it now sits under `p`. The scale steps that
+  read the bare `--spacing` (`mt-1`) are no longer filed as named tokens either, so a project token
+  of the same value wins over them, as the rule documents. `no-arbitrary-value`'s nearest-token
+  message reads the same table and names these tokens too.
+
 ## 1.16.0
 
 `enforce-consistent-line-wrapping` can now wrap every class string the way

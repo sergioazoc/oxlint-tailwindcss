@@ -202,6 +202,40 @@ describe('options', () => {
   })
 })
 
+describe('theme tokens whose name contains a dash', () => {
+  // `p-brand-md` reads `--spacing-brand-md`: its utility is `p`, not `p-brand`.
+  // Filed under `p-brand`, the token was never compared, and the scale step was
+  // suggested in its place (or nothing, for a value off the scale).
+  const DASHED = resolve(__dirname, '../fixtures/dashed-tokens.css')
+  beforeAll(() => {
+    getLoadedDesignSystem(DASHED)
+  })
+
+  makeFixtureRunner(DASHED)('prefer-scale-token (dashed token names)', preferScaleToken, {
+    valid: [{ code: '<div className="p-brand-md rounded-card-lg" />', filename: 'test.tsx' }],
+    invalid: (
+      [
+        // The token wins over the scale step of the same value (`p-4`, `mt-1`).
+        ['p-[16px]', 'p-brand-md'],
+        ['mt-[4px]', 'mt-brand-xs'],
+        ['inset-x-[16px]', 'inset-x-brand-md'],
+        ['rounded-[0.625rem]', 'rounded-card-lg'],
+        // A one-word token name still matches.
+        ['rounded-[0.5rem]', 'rounded-lg'],
+      ] as const
+    ).map(([written, suggested]) => ({
+      code: `<div className="${written}" />`,
+      filename: 'test.tsx',
+      errors: [
+        {
+          messageId: 'preferToken' as const,
+          data: { className: written, replacement: suggested },
+        },
+      ],
+    })),
+  })
+})
+
 describe('without an entry point', () => {
   // DS-dependent: the equivalences come entirely from the design system, so
   // there is no static fallback to degrade to.

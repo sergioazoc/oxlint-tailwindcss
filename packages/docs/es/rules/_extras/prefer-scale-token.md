@@ -60,6 +60,10 @@ Dos familias, las dos derivadas de tu design system — en esta regla no hay nin
   - un token de color nunca puede coincidir con un valor que escribió una persona, así que las ~7
     000 clases de color simplemente no son candidatas.
 
+Cuando las dos familias coinciden, gana el token con nombre: con `--spacing-brand-md: 16px` en tu
+tema, `p-[16px]` sugiere `p-brand-md`, no `p-4`. El nombre de un token puede tener guiones; la
+utility es la clase menos el nombre del token (`p-brand-md` → `p`).
+
 ### Por qué hay una granularidad
 
 Tailwind v4 compila _cualquier_ número: `w-8.425` es una clase válida. Así que toda longitud son N

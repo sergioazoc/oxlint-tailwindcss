@@ -1059,6 +1059,18 @@ async function main() {
   // SINGLE because a class that declares more than the original is not an
   // equivalent: \`text-sm\` sets \`line-height\` too, so \`text-[14px]\` is not it.
   const NUMERIC_LITERAL = /^-?\\d*\\.?\\d+(rem|px|em|%|s|ms|deg)?$/;
+  // The utility a token class belongs to is the class minus the token's own
+  // name: \`p-brand-md\` reads \`--spacing-brand-md\`, so its utility is \`p\`, not
+  // \`p-brand\`. Cutting at the last dash only works for one-word token names.
+  // A class whose variable shares no suffix with it keeps that last-dash cut.
+  function tokenPrefix(cls, variable) {
+    const name = variable.slice(2);
+    for (let dash = cls.indexOf('-'); dash > 0; dash = cls.indexOf('-', dash + 1)) {
+      if (name.endsWith(cls.slice(dash))) return cls.slice(0, dash);
+    }
+    const last = cls.lastIndexOf('-');
+    return last > 0 ? cls.slice(0, last) : '';
+  }
   const tokenValues = {};
   for (const cls of validClasses) {
     if (cls.includes('[') || cls.includes('/')) continue;
@@ -1070,11 +1082,13 @@ async function main() {
     const body = css.slice(open + 1, close).replace(/\\s+/g, ' ').replace(/;\\s*$/, '').trim();
     const m = /^([a-z-]+):\\s*var\\((--[\\w-]+)\\)$/.exec(body);
     if (!m) continue;
+    // \`mt-1\` reads the bare \`--spacing\`: it is a step of the scale, the second
+    // family, not a named token. Filed here it would tie with a project token
+    // of the same value and win on name order.
+    if (m[2] === '--spacing') continue;
     const value = themeValues.get(m[2]);
     if (!value || !NUMERIC_LITERAL.test(value)) continue;
-    const dash = cls.lastIndexOf('-');
-    if (dash <= 0) continue;
-    const prefix = unpfx(cls).slice(0, unpfx(cls).lastIndexOf('-'));
+    const prefix = tokenPrefix(unpfx(cls), m[2]);
     if (!prefix) continue;
     if (!tokenValues[prefix]) tokenValues[prefix] = [];
     tokenValues[prefix].push([value, unpfx(cls)]);
