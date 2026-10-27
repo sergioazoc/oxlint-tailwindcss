@@ -54,6 +54,7 @@ const FIXTURES = [
   'with-prefix-utility.css',
   'with-imported-theme.css',
   'docs-examples.css',
+  'dashed-tokens.css',
 ]
 
 /**

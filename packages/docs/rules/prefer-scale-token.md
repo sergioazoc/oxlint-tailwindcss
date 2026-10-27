@@ -73,6 +73,10 @@ Two families, both derived from your design system — there is no name table in
   - a colour token can never match a value a human typed, so the ~7 000 colour classes are simply
     not candidates.
 
+When both families match, the named token wins: with `--spacing-brand-md: 16px` in your theme,
+`p-[16px]` suggests `p-brand-md`, not `p-4`. A token's name can contain dashes; the utility is the
+class minus the token's name (`p-brand-md` → `p`).
+
 ### Why there is a granularity at all
 
 Tailwind v4 compiles _any_ number: `w-8.425` is a valid class. So every length is N spacing units

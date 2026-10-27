@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+
+/* Theme tokens whose names contain a dash, as a design system's own scale does. */
+@theme {
+  --spacing-brand-md: 16px;
+  --spacing-brand-xs: 4px;
+  --radius-card-lg: 0.625rem;
+}

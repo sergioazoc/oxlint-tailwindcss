@@ -112,21 +112,28 @@ export function closestOnScale(
     if (!found.has(className)) found.set(className, { px, distance: Math.abs(px - written.px) })
   }
 
+  // A negative value is a negative utility's: `bottom-[-4px]` is near
+  // `-bottom-1`, never `bottom-1`, which points the other way.
+  const sign = written.px < 0 ? -1 : 1
+  const named = (className: string) => (sign < 0 ? `-${className}` : className)
+
   for (const [literal, className] of cache.tokenValuesFor(prefix)) {
     const token = measure(literal, rootFontSize)
-    if (token !== null && !token.unitless) add(className, token.px)
+    if (token === null || token.unitless) continue
+    if (sign > 0 || cache.isValid(named(className))) add(named(className), sign * token.px)
   }
 
   const scale = cache.scale
   if (scale && cache.readsScale(prefix)) {
     const unit = measure(scale.unit, rootFontSize)
     if (unit !== null && !unit.unitless && unit.px > 0) {
-      const steps = written.px / unit.px / scale.step
+      const steps = (sign * written.px) / unit.px / scale.step
       for (const n of new Set([Math.floor(steps + 1e-9), Math.ceil(steps - 1e-9)])) {
         const count = n * scale.step
-        if (count < 0) continue
-        const className = `${prefix}-${formatStep(count)}`
-        if (cache.isValid(className)) add(className, count * unit.px)
+        // `-m-0` is `m-0`: a negative value's zero is not a negative utility.
+        if (count < 0 || (sign < 0 && count === 0)) continue
+        const className = named(`${prefix}-${formatStep(count)}`)
+        if (cache.isValid(className)) add(className, sign * count * unit.px)
       }
     }
   }
