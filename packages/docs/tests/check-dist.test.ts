@@ -142,6 +142,11 @@ describe('checkDist', () => {
       /no WebSite JSON-LD/,
     ],
     [
+      'no Search Console verification on the home page',
+      (f) => edit(f, 'index.html', /<meta name="google-site-verification"[^>]*>/, ''),
+      /no google-site-verification/,
+    ],
+    [
       'a WebSite name that disagrees with og:site_name',
       (f) =>
         edit(

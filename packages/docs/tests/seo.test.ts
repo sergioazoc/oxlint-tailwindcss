@@ -121,6 +121,13 @@ describe('siteHead', () => {
     expect(find(head, 'meta', { property: 'og:image:width' })[0][1].content).toBe('1200')
     expect(find(head, 'link', { rel: 'icon', type: 'image/svg+xml' })).toHaveLength(1)
   })
+
+  it('carries the Search Console verification token (#212)', () => {
+    const head = siteHead() as Entry[]
+    expect(find(head, 'meta', { name: 'google-site-verification' })[0][1].content).toBe(
+      'dG1TW9g79qv52FU9Q0UqAA0rG2rJ7kQxqdo7tgxPM_g',
+    )
+  })
 })
 
 describe('one site URL everywhere', () => {

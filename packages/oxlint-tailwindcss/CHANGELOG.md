@@ -1,34 +1,59 @@
 # Changelog
 
-## Unreleased
+## 1.17.0
 
-- **`prefer-scale-token` matches theme tokens whose name contains a dash.** The precompute filed a
-  token class under the class cut at its last dash, so `p-brand-md` (reading `--spacing-brand-md`)
-  sat under `p-brand` and `p-[16px]` never matched it; it now sits under `p`. The scale steps that
-  read the bare `--spacing` (`mt-1`) are no longer filed as named tokens either, so a project token
-  of the same value wins over them, as the rule documents. `no-arbitrary-value`'s nearest-token
-  message reads the same table and names these tokens too.
-- **`no-arbitrary-value` names a negative utility for a negative value.** `bottom-[-5px]` said
-  "Closest in your theme: bottom-1 (4px)", a class that moves the other way; it now says
-  `-bottom-1.5 (-6px) or -bottom-1 (-4px)`, and nothing for a prefix with no negative form.
-- **`prefer-scale-token` takes `sameUnit`.** With `sameUnit: true`, a value only matches a token or
-  scale step written in its own unit, so `w-[512px]` is no longer suggested as `w-lg`
-  (`--container-lg: 32rem`): the two differ once the root font size changes. Off by default, so
-  nothing changes without it.
-- **`prefer-scale-token` no longer equates `em` with `rem` or `px`.** `p-[1em]` was reported as
-  `p-4`, but an `em` follows the element's font size, so the two are equal only in 16px text. An
-  `em` value now only matches an `em` token.
-- **`lookupTablePatterns` setting: the class values of a lookup table.** A variable whose name
-  matches one of its regexes and whose initializer is an object literal has its values read as
+Two opt-ins from a design system with its own px tokens: `prefer-scale-token`'s `sameUnit`, and the
+`lookupTablePatterns` setting for class lookup tables. With the same config, classes in an object or
+array indexed where it's used are now checked, and `prefer-scale-token` finds theme tokens whose
+name has a dash.
+
+### Before you upgrade
+
+- **Reports that can appear with the same config:** any rule on the classes of a literal indexed in
+  place (`{ ok: "…", error: "…" }[status]`, `["…", "…"][i]`) and on the left side of `??` / `||`;
+  `prefer-scale-token` on values equal to a theme token whose name has a dash (`p-[16px]` →
+  `p-brand-md`), and that token in place of the scale step it used to suggest.
+- **Reports that go away:** `prefer-scale-token` no longer matches an `em` value against a `rem` or
+  `px` token (`p-[1em]` → `p-4`).
+- **Messages that change:** `no-arbitrary-value`'s "Closest in your theme" for a negative value
+  names the negative utility. On shadcn/ui's `apps/v4` that is 8 messages; nothing else moves.
+
+### Features
+
+- **`prefer-scale-token` takes `sameUnit` (#238).** With `sameUnit: true`, a value only matches a
+  token or scale step written in its own unit, so `w-[512px]` is no longer suggested as `w-lg`
+  (`--container-lg: 32rem`): the two differ once the root font size changes. Off by default.
+- **`lookupTablePatterns` setting: the class values of a lookup table (#237).** A variable whose
+  name matches one of its regexes and whose initializer is an object literal has its values read as
   classes, nested tables included, through `as const` and `satisfies`:
   `const TONE_CLASSES = { warning: "text-amber-700" }`. `variablePatterns` reads an object's keys,
   so it can't check these. It is what eslint-plugin-better-tailwindcss's `variable` selector with an
-  `objectValues` match does. Empty by default, so nothing changes without it.
+  `objectValues` match does. Empty by default.
 
+### Bug fixes
+
+- **Classes in a literal indexed where it's used are checked (#239, #241).**
   `cn("size-2", { ok: "bg-green-500", error: "bg-red-50O" }[status])` and
   `className={{ … }[status]}` hid their classes from every rule; the object's values are read now,
   never its keys, through `as const`, and so are an indexed array's elements. The left side of `??`
   and `||` is read too (`{ … }[status] ?? "bg-gray-500"`); `&&` still reads only its right.
+- **`prefer-scale-token` matches theme tokens whose name contains a dash (#236).** The precompute
+  filed a token class under the class cut at its last dash, so `p-brand-md` (reading
+  `--spacing-brand-md`) sat under `p-brand` and `p-[16px]` never matched it; it now sits under `p`.
+  The scale steps that read the bare `--spacing` (`mt-1`) are no longer filed as named tokens
+  either, so a project token of the same value wins over them, as the rule documents.
+  `no-arbitrary-value`'s nearest-token message reads the same table and names these tokens too.
+- **`prefer-scale-token` no longer equates `em` with `rem` or `px` (#238).** `p-[1em]` was reported
+  as `p-4`, but an `em` follows the element's font size, so the two are equal only in 16px text. An
+  `em` value now only matches an `em` token.
+- **`no-arbitrary-value` names a negative utility for a negative value (#236).** `bottom-[-5px]`
+  said "Closest in your theme: bottom-1 (4px)", a class that moves the other way; it now says
+  `-bottom-1.5 (-6px) or -bottom-1 (-4px)`, and nothing for a prefix with no negative form.
+
+### Dependencies
+
+- Development only (#240): oxlint 1.89, oxfmt 0.74, vitest 5.0.5, pnpm 12.15.0; tsdown stays at
+  0.23.1 (rolldown/tsdown#1106). The runtime dependencies are unchanged.
 
 ## 1.16.0
 
