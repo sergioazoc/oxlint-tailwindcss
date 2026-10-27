@@ -35,6 +35,19 @@ variables, typography plugin) for exact, machine-independent results.
 //   (enforce-sort-order — identical output to oxfmt and prettier-plugin-tailwindcss)
 ```
 
+## Used by
+
+<p align="center">
+  <a href="https://expo.dev"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/expo-white.svg"><img src="packages/docs/public/users/expo.svg" alt="Expo" title="Expo" height="24"></picture></a>&nbsp;&nbsp;&nbsp;
+  <a href="https://mastra.ai"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/mastra-white.svg"><img src="packages/docs/public/users/mastra.svg" alt="Mastra" title="Mastra" height="24"></picture></a>&nbsp;&nbsp;&nbsp;
+  <a href="https://skyward.ai"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/skyward-white.svg"><img src="packages/docs/public/users/skyward.svg" alt="Skyward" title="Skyward" height="24"></picture></a>&nbsp;&nbsp;&nbsp;
+  <a href="https://univer.ai"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/univer-white.svg"><img src="packages/docs/public/users/univer.svg" alt="Univer" title="Univer" height="24"></picture></a>&nbsp;&nbsp;&nbsp;
+  <a href="https://www.thebluealliance.com"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/the-blue-alliance-white.svg"><img src="packages/docs/public/users/the-blue-alliance.svg" alt="The Blue Alliance" title="The Blue Alliance" height="24"></picture></a>&nbsp;&nbsp;&nbsp;
+  <a href="https://retroachievements.org"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/retroachievements-white.svg"><img src="packages/docs/public/users/retroachievements.svg" alt="RetroAchievements" title="RetroAchievements" height="24"></picture></a>&nbsp;&nbsp;&nbsp;
+  <a href="https://tamery.app"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/tamery-white.svg"><img src="packages/docs/public/users/tamery.svg" alt="Tamery" title="Tamery" height="24"></picture></a>&nbsp;&nbsp;&nbsp;
+  <a href="https://stll.app"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/stella-white.svg"><img src="packages/docs/public/users/stella.svg" alt="Stella" title="Stella" height="24"></picture></a>
+</p>
+
 ## Why
 
 - **Configure once, never fails** — declare your CSS entry point and every rule reads the same
