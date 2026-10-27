@@ -41,6 +41,10 @@ features:
       rules — and a misspelt setting is named, with the one you meant.
 ---
 
+<script setup>
+import UsedBy from './.vitepress/components/UsedBy.vue'
+</script>
+
 ## What is oxlint-tailwindcss?
 
 oxlint-tailwindcss is a plugin for [oxlint](https://oxc.rs/docs/guide/usage/linter), the linter of
@@ -48,6 +52,10 @@ the Oxc project, that lints Tailwind CSS v4 class names. It loads your project's
 the CSS entry point you configure — its `@theme` tokens, `@utility` and `@custom-variant`
 definitions and plugins — and checks every class string in JSX, TSX, JavaScript and TypeScript (and
 the `<script>` of Vue, Svelte and Astro files) against it, with 27 rules, most with an autofix.
+
+## Used by
+
+<UsedBy />
 
 ## What it catches
 

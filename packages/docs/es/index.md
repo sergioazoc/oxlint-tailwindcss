@@ -42,6 +42,10 @@ features:
       al que querías poner.
 ---
 
+<script setup>
+import UsedBy from '../.vitepress/components/UsedBy.vue'
+</script>
+
 ## ¿Qué es oxlint-tailwindcss?
 
 oxlint-tailwindcss es un plugin de [oxlint](https://oxc.rs/docs/guide/usage/linter), el linter del
@@ -50,6 +54,10 @@ proyecto desde el entry point CSS que configuras — sus tokens de `@theme`, sus
 `@utility` y `@custom-variant` y sus plugins — y revisa contra él cada string de clases en JSX, TSX,
 JavaScript y TypeScript (y el `<script>` de los archivos Vue, Svelte y Astro), con 27 reglas, la
 mayoría con autofix.
+
+## Usado por
+
+<UsedBy />
 
 ## Qué detecta
 
