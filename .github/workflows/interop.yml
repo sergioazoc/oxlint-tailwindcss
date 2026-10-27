@@ -48,6 +48,7 @@ jobs:
         run:
           npm install --no-save @shadcn/lint@latest eslint-plugin-better-tailwindcss@latest
           eslint-plugin-tailwindcss@latest vite-plus@latest
+          vite@npm:@voidzero-dev/vite-plus-core@latest
 
       - name: Check the pages against them
         working-directory: bench

@@ -16,13 +16,13 @@ below are the [benchmark](/benchmark)'s, generated from the same results file.
 
 <!-- generated:comparison-summary -->
 
-| Summary                                 | oxlint-tailwindcss 1.16.0 | @shadcn/lint 0.2.0 | eslint-plugin-better-tailwindcss 4.9.0 |
-| --------------------------------------- | ------------------------- | ------------------ | -------------------------------------- |
-| Seeded mistakes caught                  | 50/56                     | 34/56              | 20/56                                  |
-| False alarms on clean lines             | 0/6                       | 0/6                | 0/6                                    |
-| Warm run, all rules                     | 1.5 s                     | 1.0 s              | 26.8 s                                 |
-| Unknown-class reports Tailwind compiles | 0/77                      | 0/34               | 0/97                                   |
-| `--fix`: strings whose style changed    | 0/1,028                   | no autofix         | 1/2,865                                |
+| Summary                                 | oxlint-tailwindcss 1.16.0 | @shadcn/lint 0.2.3 | eslint-plugin-better-tailwindcss 4.10.0 |
+| --------------------------------------- | ------------------------- | ------------------ | --------------------------------------- |
+| Seeded mistakes caught                  | 50/56                     | 34/56              | 20/56                                   |
+| False alarms on clean lines             | 0/6                       | 0/6                | 0/6                                     |
+| Warm run, all rules                     | 1.4 s                     | 1.1 s              | 27.0 s                                  |
+| Unknown-class reports Tailwind compiles | 0/77                      | 0/34               | 0/97                                    |
+| `--fix`: strings whose style changed    | 0/1,028                   | no autofix         | 1/2,865                                 |
 
 <!-- /generated:comparison-summary -->
 

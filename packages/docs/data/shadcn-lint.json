@@ -1,6 +1,6 @@
 {
   "$comment": "Who reports what when oxlint-tailwindcss and @shadcn/lint run together. Generates the tables and the combined config on /shadcn (scripts/blocks.ts). Each example is checked: `ours` against this plugin by tests/docs/shadcn-interop.test.ts, `shadcn` against @shadcn/lint by bench/interop.mjs (weekly, with the latest release, in .github/workflows/interop.yml).",
-  "shadcnLint": "0.2.0",
+  "shadcnLint": "0.2.3",
   "concerns": [
     {
       "id": "restyle",
