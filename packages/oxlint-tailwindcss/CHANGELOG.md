@@ -8,6 +8,9 @@
   read the bare `--spacing` (`mt-1`) are no longer filed as named tokens either, so a project token
   of the same value wins over them, as the rule documents. `no-arbitrary-value`'s nearest-token
   message reads the same table and names these tokens too.
+- **`no-arbitrary-value` names a negative utility for a negative value.** `bottom-[-5px]` said
+  "Closest in your theme: bottom-1 (4px)", a class that moves the other way; it now says
+  `-bottom-1.5 (-6px) or -bottom-1 (-4px)`, and nothing for a prefix with no negative form.
 
 ## 1.16.0
 

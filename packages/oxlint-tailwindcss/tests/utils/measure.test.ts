@@ -25,6 +25,16 @@ describe('closestOnScale (default Tailwind theme: --spacing 0.25rem, steps of 0.
     expect(closest('p-[0.3rem]')).toBe('p-1 (0.25rem) or p-1.5 (0.375rem)')
   })
 
+  it('a negative value gets the negative utility, never the positive one', () => {
+    expect(closest('bottom-[-4px]')).toBe('-bottom-1 (-4px)')
+    expect(closest('bottom-[-5px]')).toBe('-bottom-1.5 (-6px) or -bottom-1 (-4px)')
+    expect(closest('ml-[-0.35rem]')).toBe('-ml-1.5 (-0.375rem) or -ml-1 (-0.25rem)')
+    // No negative zero: only the step beyond it.
+    expect(closest('ml-[-1px]')).toBe('-ml-0.5 (-2px)')
+    // A prefix with no negative form has nothing to offer.
+    expect(closestOnScale(cache, 'w-[-4px]', 16)).toEqual([])
+  })
+
   it('theme tokens compete with scale steps: the nearest below and above', () => {
     expect(closest('rounded-[5px]')).toBe('rounded-sm (4px) or rounded-md (6px)')
     expect(closest('max-w-[40rem]')).toBe('max-w-160 (40rem)')
