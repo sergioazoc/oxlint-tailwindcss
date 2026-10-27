@@ -25,6 +25,11 @@
   so it can't check these. It is what eslint-plugin-better-tailwindcss's `variable` selector with an
   `objectValues` match does. Empty by default, so nothing changes without it.
 
+  `cn("size-2", { ok: "bg-green-500", error: "bg-red-50O" }[status])` and
+  `className={{ … }[status]}` hid their classes from every rule; the object's values are read now,
+  never its keys, through `as const`, and so are an indexed array's elements. The left side of `??`
+  and `||` is read too (`{ … }[status] ?? "bg-gray-500"`); `&&` still reads only its right.
+
 ## 1.16.0
 
 `enforce-consistent-line-wrapping` can now wrap every class string the way

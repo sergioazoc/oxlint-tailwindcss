@@ -811,8 +811,27 @@ function extractFromExpression(node: ESTree.Node, out: ClassLocation[] = []): Cl
     return out
   }
 
+  // `cond && 'a'` is `'a'` or nothing, but `x || 'a'` and `x ?? 'a'` can be
+  // either side: `{ … }[status] ?? 'bg-gray-500'`.
   if (node.type === 'LogicalExpression') {
-    return extractFromExpression((node as ESTree.LogicalExpression).right, out)
+    const { operator, left, right } = node as ESTree.LogicalExpression
+    if (operator !== '&&') extractFromExpression(left, out)
+    return extractFromExpression(right, out)
+  }
+
+  // A literal indexed where it's used, `{ ok: 'bg-green-500' }[status]` or
+  // `['a', 'b'][i]`, evaluates to one of its values: the object's values are
+  // the classes, never its keys (#239).
+  if (node.type === 'MemberExpression' && (node as ESTree.MemberExpression).computed) {
+    const object = withoutTypeAssertion((node as ESTree.MemberExpression).object)
+    if (object.type === 'ObjectExpression') {
+      for (const prop of (object as ESTree.ObjectExpression).properties) {
+        if (prop.type === 'Property') extractFromExpression(prop.value, out)
+      }
+    } else if (object.type === 'ArrayExpression') {
+      extractFromExpression(object, out)
+    }
+    return out
   }
 
   if (node.type === 'BinaryExpression' && (node as ESTree.BinaryExpression).operator === '+') {
