@@ -10,9 +10,9 @@ Regla de oxlint que sugiere el paso de escala o token de Tailwind CSS igual a un
 
 ## De un vistazo
 
-| Autofix | Sugerencias en el editor | Design system              | Opciones                                  |
-| ------- | ------------------------ | -------------------------- | ----------------------------------------- |
-| No      | Sí                       | Obligatorio (`entryPoint`) | `entryPoint`, `step`, `allow`, `sameUnit` |
+| Autofix | Sugerencias en el editor | Design system              | Opciones                      |
+| ------- | ------------------------ | -------------------------- | ----------------------------- |
+| No      | Sí                       | Obligatorio (`entryPoint`) | `entryPoint`, `step`, `allow` |
 
 ## Qué hace esta regla
 

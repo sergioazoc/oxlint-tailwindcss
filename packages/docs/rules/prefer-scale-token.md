@@ -10,9 +10,9 @@ oxlint rule that suggests the Tailwind CSS scale step or theme token a hardcoded
 
 ## At a glance
 
-| Autofix | Editor suggestions | Design system           | Options                                   |
-| ------- | ------------------ | ----------------------- | ----------------------------------------- |
-| No      | Yes                | Required (`entryPoint`) | `entryPoint`, `step`, `allow`, `sameUnit` |
+| Autofix | Editor suggestions | Design system           | Options                       |
+| ------- | ------------------ | ----------------------- | ----------------------------- |
+| No      | Yes                | Required (`entryPoint`) | `entryPoint`, `step`, `allow` |
 
 ## What this rule does
 

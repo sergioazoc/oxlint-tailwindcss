@@ -238,6 +238,30 @@ describe('theme tokens whose name contains a dash', () => {
       ],
     })),
   })
+
+  // A design system's px tokens beside Tailwind's rem scale: with `sameUnit`,
+  // a px value finds the px token and a rem value the rem step, never across.
+  makeFixtureRunner(DASHED)('prefer-scale-token (dashed px tokens, sameUnit)', preferScaleToken, {
+    valid: [
+      { code: '<div className="p-[10px]" />', filename: 'test.tsx', options: [{ sameUnit: true }] },
+    ],
+    invalid: (
+      [
+        ['p-[16px]', 'p-brand-md'],
+        ['p-[1rem]', 'p-4'],
+      ] as const
+    ).map(([written, suggested]) => ({
+      code: `<div className="${written}" />`,
+      filename: 'test.tsx',
+      options: [{ sameUnit: true }],
+      errors: [
+        {
+          messageId: 'preferToken' as const,
+          data: { className: written, replacement: suggested },
+        },
+      ],
+    })),
+  })
 })
 
 describe('sameUnit', () => {
