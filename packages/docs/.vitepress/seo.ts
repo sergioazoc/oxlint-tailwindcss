@@ -17,6 +17,12 @@ export const SITE_URL = 'https://oxlint-tailwindcss.pages.dev'
 export const SITE_NAME = 'oxlint-tailwindcss'
 export const REPO_URL = 'https://github.com/sergioazoc/oxlint-tailwindcss'
 const OG_IMAGE = `${SITE_URL}/og.png`
+/**
+ * Search Console's ownership token for the URL-prefix property `SITE_URL/`
+ * (#212). Google re-checks it from time to time: removing the tag unverifies
+ * the property, so `check-dist` fails a home page without it.
+ */
+export const GOOGLE_SITE_VERIFICATION = 'dG1TW9g79qv52FU9Q0UqAA0rG2rJ7kQxqdo7tgxPM_g'
 
 export type Locale = 'en' | 'es'
 
@@ -62,6 +68,7 @@ export function siteHead(): HeadConfig[] {
     ['link', { rel: 'icon', type: 'image/png', sizes: '96x96', href: '/favicon-96.png' }],
     ['link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }],
     ['meta', { name: 'theme-color', content: '#0b1220' }],
+    ['meta', { name: 'google-site-verification', content: GOOGLE_SITE_VERIFICATION }],
     ['meta', { property: 'og:site_name', content: SITE_NAME }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:image', content: OG_IMAGE }],

@@ -11,7 +11,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SITE_URL } from '../.vitepress/seo.ts'
+import { GOOGLE_SITE_VERIFICATION, SITE_URL } from '../.vitepress/seo.ts'
 
 export type DistFiles = Map<string, string>
 
@@ -27,6 +27,7 @@ interface Page {
   og: Record<string, string>
   jsonLd: { '@type'?: string }[]
   robots: string | undefined
+  siteVerification: string | undefined
   markdownAlternate: string | undefined
 }
 
@@ -61,6 +62,10 @@ function parse(file: string, html: string): Page {
     og,
     jsonLd,
     robots: attr(metas.find((m) => attr(m, 'name') === 'robots') ?? '', 'content'),
+    siteVerification: attr(
+      metas.find((m) => attr(m, 'name') === 'google-site-verification') ?? '',
+      'content',
+    ),
     markdownAlternate: attr(
       links.find((l) => attr(l, 'rel') === 'alternate' && attr(l, 'type') === 'text/markdown') ??
         '',
@@ -193,6 +198,9 @@ export function checkDist(files: DistFiles): string[] {
       'index.html',
       `WebSite name "${website.name}" ≠ og:site_name "${home?.og['og:site_name']}"`,
     )
+  }
+  if (home && home.siteVerification !== GOOGLE_SITE_VERIFICATION) {
+    fail('index.html', 'no google-site-verification meta (Search Console would unverify the site)')
   }
   for (const p of pages) {
     if (p.file !== 'index.html' && p.jsonLd.some((d) => d['@type'] === 'WebSite')) {

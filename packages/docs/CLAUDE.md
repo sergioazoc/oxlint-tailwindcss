@@ -46,9 +46,10 @@ SVG's `<desc>`).
   the deploy) on: internal files published, a wrong `<html lang>`, a missing, overlong, duplicated
   or copied-from-English title/description, a wrong canonical, missing `og:*`, broken or one-sided
   hreflang, an unrendered custom container, a rule page without breadcrumbs, a page without its
-  markdown copy, a home page without the `WebSite` site name, an indexable 404, a sitemap that
-  doesn't match the canonicals, a robots.txt without the sitemap, or missing `llms*.txt`. One test
-  per failure class in `tests/check-dist.test.ts` — extend both together.
+  markdown copy, a home page without the `WebSite` site name or the Search Console token
+  (`GOOGLE_SITE_VERIFICATION`, #212: removing it unverifies the property), an indexable 404, a
+  sitemap that doesn't match the canonicals, a robots.txt without the sitemap, or missing
+  `llms*.txt`. One test per failure class in `tests/check-dist.test.ts` — extend both together.
 - `scripts/check-live.ts [base-url]` checks what Cloudflare Pages serves (our robots.txt, the
   `_redirects`/`_headers` rules, the site name, crawler access). `release.yml` runs it after the
   deploy (`verify-live`, informational). `npx wrangler pages dev .vitepress/dist` emulates Pages
