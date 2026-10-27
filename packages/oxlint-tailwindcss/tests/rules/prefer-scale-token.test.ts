@@ -106,6 +106,10 @@ describe('the boundary', () => {
       // meaning, not just the spelling.
       { code: '<div className="p-[10]" />', filename: 'test.tsx' },
       { code: '<div className="w-[140]" />', filename: 'test.tsx' },
+      // An `em` follows the element's font size: `1em` is `p-4` only in 16px
+      // text, and `rounded-[0.5em]` is `rounded-lg` only there too.
+      { code: '<div className="p-[1em]" />', filename: 'test.tsx' },
+      { code: '<div className="rounded-[0.5em]" />', filename: 'test.tsx' },
       // Not a length, or not on a prefix that reads the scale.
       { code: '<div className="w-[50%]" />', filename: 'test.tsx' },
       { code: '<div className="grid-cols-[18rem_1fr]" />', filename: 'test.tsx' },

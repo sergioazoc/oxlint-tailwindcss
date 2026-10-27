@@ -114,6 +114,9 @@ iguales con un root font size de 16px, y se separan cuando el usuario lo cambia,
 rem lo sigue. Con `sameUnit`, un valor en px solo coincide con tokens en px, y uno en rem con tokens
 en rem y con la escala `0.25rem` por defecto.
 
+Un valor en `em` solo coincide con un token en `em`, con o sin `sameUnit`: sigue el tamaño de fuente
+del elemento, así que `p-[1em]` es igual a `p-4` solo en texto de 16px.
+
 ```jsonc
 // w-[512px] ya no se reporta; w-[32rem] → w-lg sí
 { "tailwindcss/prefer-scale-token": ["warn", { "sameUnit": true }] }

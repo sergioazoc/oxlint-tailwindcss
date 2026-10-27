@@ -115,6 +115,9 @@ unit. By default `w-[512px]` is reported as `w-lg` (`--container-lg: 32rem`): th
 `sameUnit`, a px value only matches px tokens, and a rem value rem tokens and the default `0.25rem`
 scale.
 
+An `em` value only ever matches an `em` token, with or without `sameUnit`: it follows the element's
+font size, so `p-[1em]` equals `p-4` only in 16px text.
+
 ```jsonc
 // w-[512px] is no longer reported; w-[32rem] → w-lg still is
 { "tailwindcss/prefer-scale-token": ["warn", { "sameUnit": true }] }

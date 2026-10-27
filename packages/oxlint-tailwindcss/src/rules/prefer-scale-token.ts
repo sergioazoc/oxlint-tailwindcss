@@ -107,8 +107,13 @@ export const preferScaleToken = defineRule({
 
       // With `sameUnit`, `16px` only matches a token or scale written in px: a
       // rem one is the same length only at the root font size the rule assumes.
+      // An `em` only ever matches an `em`: it follows the element's font size,
+      // so `p-[1em]` is `p-4` only in 16px text.
       const writtenUnit = lengthUnit(value)
-      const unitAllowed = (literal: string) => !sameUnit || lengthUnit(literal) === writtenUnit
+      const unitAllowed = (literal: string) => {
+        const unit = lengthUnit(literal)
+        return sameUnit ? unit === writtenUnit : (unit === 'em') === (writtenUnit === 'em')
+      }
 
       for (const [literal, className] of cache.tokenValuesFor(prefix)) {
         const token = measure(literal, rootFontSize())
