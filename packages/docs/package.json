@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "oxlint-tailwindcss": "workspace:*",
-    "vitepress": "^2.0.0-alpha.20",
-    "vitest": "^5.0.3"
+    "vitepress": "^2.0.0-alpha.21",
+    "vitest": "^5.0.5"
   }
 }

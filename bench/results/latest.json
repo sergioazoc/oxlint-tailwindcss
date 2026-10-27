@@ -20,16 +20,16 @@
       },
       "shadcn": {
         "name": "@shadcn/lint",
-        "version": "0.2.0",
+        "version": "0.2.3",
         "config": "shadcn-all"
       },
       "better-tailwindcss": {
         "name": "eslint-plugin-better-tailwindcss",
-        "version": "4.9.0",
+        "version": "4.10.0",
         "config": "btw-all"
       }
     },
-    "oxlint": "1.87.0",
+    "oxlint": "1.89.0",
     "tailwindcss": "4.3.3"
   },
   "concerns": [
@@ -1570,8 +1570,8 @@
           "tailwindcss/no-borrowed-component-styles": 1,
           "tailwindcss/no-dark-without-light": 1
         },
-        "warmMs": 1460,
-        "coldMs": 9062
+        "warmMs": 1445,
+        "coldMs": 9169
       },
       "recommended": {
         "config": "otw-recommended",
@@ -1592,8 +1592,8 @@
           "tailwindcss/enforce-negative-arbitrary-values": 1,
           "tailwindcss/no-dark-without-light": 1
         },
-        "warmMs": 1148,
-        "coldMs": 9256
+        "warmMs": 1231,
+        "coldMs": 10427
       }
     },
     "shadcn": {
@@ -1601,16 +1601,16 @@
         "config": "shadcn-all",
         "files": 880,
         "threads": 12,
-        "diagnostics": 2578,
+        "diagnostics": 2573,
         "byRule": {
-          "shadcn/no-restyle": 1920,
+          "shadcn/no-restyle": 1915,
           "shadcn/no-arbitrary-values": 459,
           "shadcn/no-raw-colors": 129,
           "shadcn/no-unknown-classes": 34,
           "shadcn/no-inline-styles": 33,
           "shadcn/require-static-classes": 3
         },
-        "warmMs": 1042
+        "warmMs": 1057
       }
     },
     "better-tailwindcss": {
@@ -1630,7 +1630,7 @@
           "better-tailwindcss/enforce-consistent-variable-syntax": 4,
           "better-tailwindcss/no-concatenated-classes": 1
         },
-        "warmMs": 26827
+        "warmMs": 26953
       },
       "recommended": {
         "config": "btw-recommended",
@@ -1643,7 +1643,7 @@
           "better-tailwindcss/no-deprecated-classes": 11,
           "better-tailwindcss/no-concatenated-classes": 1
         },
-        "warmMs": 25765
+        "warmMs": 29472
       }
     }
   },
@@ -2440,13 +2440,13 @@
             {
               "file": "components/command-menu.tsx",
               "before": "rounded-xl border-none bg-clip-padding p-2 pb-11 shadow-2xl ring-4 ring-neutral-200/80 dark:bg-neutral-900 dark:ring-neutral-800",
-              "after": "rounded-xl border-none bg-clip-padding p-2 pb-11 shadow-2xl ring-4 ring-neutral-200/80 dark:bg-sidebar-primary dark:ring-neutral-800",
+              "after": "rounded-xl border-none bg-clip-padding p-2 pb-11 shadow-2xl ring-4 ring-border/80 dark:bg-neutral-900 dark:ring-neutral-800",
               "diff": {
                 "changed": [
                   {
-                    "key": "&.dark * | background-color",
-                    "before": "oklch(20.5% 0 none)",
-                    "after": "var(--sidebar-primary)"
+                    "key": "& | --tw-ring-color",
+                    "before": "color-mix(in oklab, oklch(92.2% 0 none) 80%, transparent)",
+                    "after": "color-mix(in oklab, var(--border) 80%, transparent)"
                   }
                 ],
                 "removedUnknown": [],
