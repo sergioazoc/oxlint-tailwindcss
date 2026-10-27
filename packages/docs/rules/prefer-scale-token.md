@@ -10,9 +10,9 @@ oxlint rule that suggests the Tailwind CSS scale step or theme token a hardcoded
 
 ## At a glance
 
-| Autofix | Editor suggestions | Design system           | Options                       |
-| ------- | ------------------ | ----------------------- | ----------------------------- |
-| No      | Yes                | Required (`entryPoint`) | `entryPoint`, `step`, `allow` |
+| Autofix | Editor suggestions | Design system           | Options                                   |
+| ------- | ------------------ | ----------------------- | ----------------------------------------- |
+| No      | Yes                | Required (`entryPoint`) | `entryPoint`, `step`, `allow`, `sameUnit` |
 
 ## What this rule does
 
@@ -117,6 +117,22 @@ utility — the same shape as `no-arbitrary-value`'s option.
 
 ```jsonc
 { "tailwindcss/prefer-scale-token": ["warn", { "allow": ["grid-cols-", "bg-[url("] }] }
+```
+
+### `sameUnit`
+
+`boolean`, default `false`. Only match a value against a token or scale step written in the same
+unit. By default `w-[512px]` is reported as `w-lg` (`--container-lg: 32rem`): the two are equal at a
+16px root font size, and differ once a user changes it, since only the rem one follows it. With
+`sameUnit`, a px value only matches px tokens, and a rem value rem tokens and the default `0.25rem`
+scale.
+
+An `em` value only ever matches an `em` token, with or without `sameUnit`: it follows the element's
+font size, so `p-[1em]` equals `p-4` only in 16px text.
+
+```jsonc
+// w-[512px] is no longer reported; w-[32rem] → w-lg still is
+{ "tailwindcss/prefer-scale-token": ["warn", { "sameUnit": true }] }
 ```
 
 ## Examples

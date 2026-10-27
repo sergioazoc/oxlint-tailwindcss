@@ -106,6 +106,10 @@ describe('the boundary', () => {
       // meaning, not just the spelling.
       { code: '<div className="p-[10]" />', filename: 'test.tsx' },
       { code: '<div className="w-[140]" />', filename: 'test.tsx' },
+      // An `em` follows the element's font size: `1em` is `p-4` only in 16px
+      // text, and `rounded-[0.5em]` is `rounded-lg` only there too.
+      { code: '<div className="p-[1em]" />', filename: 'test.tsx' },
+      { code: '<div className="rounded-[0.5em]" />', filename: 'test.tsx' },
       // Not a length, or not on a prefix that reads the scale.
       { code: '<div className="w-[50%]" />', filename: 'test.tsx' },
       { code: '<div className="grid-cols-[18rem_1fr]" />', filename: 'test.tsx' },
@@ -233,6 +237,82 @@ describe('theme tokens whose name contains a dash', () => {
         },
       ],
     })),
+  })
+
+  // A design system's px tokens beside Tailwind's rem scale: with `sameUnit`,
+  // a px value finds the px token and a rem value the rem step, never across.
+  makeFixtureRunner(DASHED)('prefer-scale-token (dashed px tokens, sameUnit)', preferScaleToken, {
+    valid: [
+      { code: '<div className="p-[10px]" />', filename: 'test.tsx', options: [{ sameUnit: true }] },
+    ],
+    invalid: (
+      [
+        ['p-[16px]', 'p-brand-md'],
+        ['p-[1rem]', 'p-4'],
+      ] as const
+    ).map(([written, suggested]) => ({
+      code: `<div className="${written}" />`,
+      filename: 'test.tsx',
+      options: [{ sameUnit: true }],
+      errors: [
+        {
+          messageId: 'preferToken' as const,
+          data: { className: written, replacement: suggested },
+        },
+      ],
+    })),
+  })
+})
+
+describe('sameUnit', () => {
+  // `w-lg` is `--container-lg: 32rem`, the spacing scale is `0.25rem`: equal to
+  // `512px` only while the root font size is 16px. With `sameUnit`, a value is
+  // only matched against a token or scale written in its own unit.
+  run('prefer-scale-token (sameUnit)', preferScaleToken, {
+    valid: [
+      {
+        code: '<div className="w-[512px]" />',
+        filename: 'test.tsx',
+        options: [{ sameUnit: true }],
+      },
+      { code: '<div className="p-[10px]" />', filename: 'test.tsx', options: [{ sameUnit: true }] },
+    ],
+    invalid: [
+      // Off by default: the same px value is reported against the rem token.
+      {
+        code: '<div className="w-[512px]" />',
+        filename: 'test.tsx',
+        errors: [
+          { messageId: 'preferToken', data: { className: 'w-[512px]', replacement: 'w-lg' } },
+        ],
+      },
+      // Same unit on both sides: still reported, token and scale alike.
+      {
+        code: '<div className="w-[32rem]" />',
+        filename: 'test.tsx',
+        options: [{ sameUnit: true }],
+        errors: [
+          { messageId: 'preferToken', data: { className: 'w-[32rem]', replacement: 'w-lg' } },
+        ],
+      },
+      {
+        code: '<div className="h-[2rem]" />',
+        filename: 'test.tsx',
+        options: [{ sameUnit: true }],
+        errors: [{ messageId: 'preferToken', data: { className: 'h-[2rem]', replacement: 'h-8' } }],
+      },
+      {
+        code: '<div className="perspective-[100px]" />',
+        filename: 'test.tsx',
+        options: [{ sameUnit: true }],
+        errors: [
+          {
+            messageId: 'preferToken',
+            data: { className: 'perspective-[100px]', replacement: 'perspective-dramatic' },
+          },
+        ],
+      },
+    ],
   })
 })
 

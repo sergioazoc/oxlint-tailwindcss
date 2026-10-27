@@ -44,6 +44,12 @@ export function measure(value: string, rootFontSize: number): Measure | null {
   }
 }
 
+/** The unit a length is written in (`'px'`, `'rem'`, `'em'`, `''` for none); null for anything else. */
+export function lengthUnit(value: string): string | null {
+  const match = LENGTH_RE.exec(value.trim())
+  return match ? (match[2] ?? '') : null
+}
+
 /**
  * Same value, allowing for float noise (`0.875rem` × 16 = 13.999999999999998).
  * A unitless number and a length are never the same value, whatever the digits.

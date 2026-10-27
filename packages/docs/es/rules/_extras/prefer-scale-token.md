@@ -106,6 +106,22 @@ utility bare — la misma forma que la opción de `no-arbitrary-value`.
 { "tailwindcss/prefer-scale-token": ["warn", { "allow": ["grid-cols-", "bg-[url("] }] }
 ```
 
+### `sameUnit`
+
+`boolean`, default `false`. Solo compara un valor con tokens o pasos de escala escritos en la misma
+unidad. Por defecto `w-[512px]` se reporta como `w-lg` (`--container-lg: 32rem`): los dos son
+iguales con un root font size de 16px, y se separan cuando el usuario lo cambia, porque solo el de
+rem lo sigue. Con `sameUnit`, un valor en px solo coincide con tokens en px, y uno en rem con tokens
+en rem y con la escala `0.25rem` por defecto.
+
+Un valor en `em` solo coincide con un token en `em`, con o sin `sameUnit`: sigue el tamaño de fuente
+del elemento, así que `p-[1em]` es igual a `p-4` solo en texto de 16px.
+
+```jsonc
+// w-[512px] ya no se reporta; w-[32rem] → w-lg sí
+{ "tailwindcss/prefer-scale-token": ["warn", { "sameUnit": true }] }
+```
+
 ## Ejemplos
 
 ### ✗ Incorrecto

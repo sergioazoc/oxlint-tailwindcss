@@ -14,13 +14,21 @@ import { createLazyLoader, rootFontSizeFromSettings } from '../design-system/loa
 import type { DesignSystemCache } from '../design-system/cache'
 import { createLazyOptions, createLazySettings } from '../utils/context'
 import { DS_UNAVAILABLE_MESSAGE, safeGetDS } from '../utils/fatal'
-import { arbitraryPrefix, formatStep, isOnStep, measure, sameMeasure } from '../utils/measure'
+import {
+  arbitraryPrefix,
+  formatStep,
+  isOnStep,
+  lengthUnit,
+  measure,
+  sameMeasure,
+} from '../utils/measure'
 import { SETTINGS_MESSAGE } from '../utils/settings-check'
 
 interface Options {
   entryPoint?: string
   step?: number
   allow?: string[]
+  sameUnit?: boolean
 }
 
 export const preferScaleToken = defineRule({
@@ -44,6 +52,7 @@ export const preferScaleToken = defineRule({
           entryPoint: { type: 'string' },
           step: { type: 'number' },
           allow: { type: 'array', items: { type: 'string' } },
+          sameUnit: { type: 'boolean' },
         },
         additionalProperties: false,
       },
@@ -59,10 +68,14 @@ export const preferScaleToken = defineRule({
   },
   createOnce(context) {
     const getDS = createLazyLoader(context)
-    const getOptions = createLazyOptions<Options, { step: number | null; allow: string[] }>(
-      context,
-      (o) => ({ step: typeof o?.step === 'number' ? o.step : null, allow: o?.allow ?? [] }),
-    )
+    const getOptions = createLazyOptions<
+      Options,
+      { step: number | null; allow: string[]; sameUnit: boolean }
+    >(context, (o) => ({
+      step: typeof o?.step === 'number' ? o.step : null,
+      allow: o?.allow ?? [],
+      sameUnit: o?.sameUnit === true,
+    }))
 
     // Per file: a nested .oxlintrc.json can set its own `rootFontSize`.
     const rootFontSize = createLazySettings(context, rootFontSizeFromSettings)
@@ -76,7 +89,7 @@ export const preferScaleToken = defineRule({
      * from the design system, so neither is a name table.
      */
     function equivalentOf(cache: DesignSystemCache, bare: string): string | null {
-      const { step: stepOverride, allow } = getOptions()
+      const { step: stepOverride, allow, sameUnit } = getOptions()
       if (allow.some((prefix) => bare.startsWith(prefix))) return null
 
       // A byte-identical named form is `no-unnecessary-arbitrary-value`'s
@@ -92,9 +105,19 @@ export const preferScaleToken = defineRule({
       const prefix = arbitraryPrefix(bare)
       if (!prefix) return null
 
+      // With `sameUnit`, `16px` only matches a token or scale written in px: a
+      // rem one is the same length only at the root font size the rule assumes.
+      // An `em` only ever matches an `em`: it follows the element's font size,
+      // so `p-[1em]` is `p-4` only in 16px text.
+      const writtenUnit = lengthUnit(value)
+      const unitAllowed = (literal: string) => {
+        const unit = lengthUnit(literal)
+        return sameUnit ? unit === writtenUnit : (unit === 'em') === (writtenUnit === 'em')
+      }
+
       for (const [literal, className] of cache.tokenValuesFor(prefix)) {
         const token = measure(literal, rootFontSize())
-        if (token !== null && sameMeasure(written, token)) return className
+        if (token !== null && sameMeasure(written, token) && unitAllowed(literal)) return className
       }
 
       if (!cache.readsScale(prefix)) return null
@@ -104,6 +127,7 @@ export const preferScaleToken = defineRule({
       // Same kind of quantity on both sides, or the division is meaningless:
       // `p-[10]` is `padding: 10`, which is not 2.5 × `0.25rem`.
       if (unit === null || unit.px <= 0 || unit.unitless !== written.unitless) return null
+      if (!unitAllowed(scale.unit)) return null
 
       const steps = written.px / unit.px
       if (steps < 0) return null

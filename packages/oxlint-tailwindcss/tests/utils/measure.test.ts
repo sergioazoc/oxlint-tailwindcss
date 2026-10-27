@@ -1,7 +1,7 @@
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { getLoadedDesignSystem } from '../../src/design-system/loader'
-import { closestOnScale, formatOptions, measure } from '../../src/utils/measure'
+import { closestOnScale, formatOptions, lengthUnit, measure } from '../../src/utils/measure'
 
 const { cache } = getLoadedDesignSystem(resolve(__dirname, '../fixtures/default.css'))
 const closest = (bare: string) => formatOptions(closestOnScale(cache, bare, 16))
@@ -12,6 +12,14 @@ describe('measure', () => {
     expect(measure('10px', 16)).toEqual({ px: 10, unitless: false })
     expect(measure('10', 16)).toEqual({ px: 10, unitless: true })
     expect(measure('calc(1px+2px)', 16)).toBeNull()
+  })
+
+  it('names the unit a length is written in', () => {
+    expect(lengthUnit('0.5rem')).toBe('rem')
+    expect(lengthUnit('10px')).toBe('px')
+    expect(lengthUnit('1.5em')).toBe('em')
+    expect(lengthUnit('10')).toBe('')
+    expect(lengthUnit('50%')).toBeNull()
   })
 })
 
