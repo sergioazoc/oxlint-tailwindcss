@@ -18,6 +18,12 @@
 - **`prefer-scale-token` no longer equates `em` with `rem` or `px`.** `p-[1em]` was reported as
   `p-4`, but an `em` follows the element's font size, so the two are equal only in 16px text. An
   `em` value now only matches an `em` token.
+- **`lookupTablePatterns` setting: the class values of a lookup table.** A variable whose name
+  matches one of its regexes and whose initializer is an object literal has its values read as
+  classes, nested tables included, through `as const` and `satisfies`:
+  `const TONE_CLASSES = { warning: "text-amber-700" }`. `variablePatterns` reads an object's keys,
+  so it can't check these. It is what eslint-plugin-better-tailwindcss's `variable` selector with an
+  `objectValues` match does. Empty by default, so nothing changes without it.
 
 ## 1.16.0
 

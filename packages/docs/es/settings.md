@@ -211,6 +211,37 @@ O quita de los defaults con `exclude`, que acepta `attributes`, `callees`, `tags
 
 Las exclusiones de `variablePatterns` coinciden con `RegExp.source` literal.
 
+### Tablas de lookup (`lookupTablePatterns`)
+
+Una tabla de lookup asocia un nombre a clases, y el componente elige una al renderizar:
+
+```tsx
+const TONE_CLASSES = {
+  neutral: "text-gray-700",
+  warning: "text-amber-700 bg-amber-50",
+} as const
+
+<span className={TONE_CLASSES[tone]} />
+```
+
+`variablePatterns` no puede leerla: en un objeto lee las claves como clases, y una clave con un
+valor string se salta como declaración de estilo. Lista los nombres de variable de la tabla en
+`lookupTablePatterns` (regex, que se compara con el nombre de la variable) y se leen sus valores,
+también los de tablas anidadas. `as const` y `satisfies` no estorban. Vacío por defecto.
+
+```jsonc
+{
+  "settings": {
+    "tailwindcss": {
+      "lookupTablePatterns": ["_CLASS(ES)?$"]
+    }
+  }
+}
+```
+
+Solo un inicializador de objeto se lee como tabla. Para revisar también `const ROW_CLASSES = "…"`,
+lista el mismo patrón en `variablePatterns`.
+
 ### Wrappers estructurados (`calleeExtractors`)
 
 `cva`, `tv` y `classed` se extraen con lógica dedicada que entiende la forma de config de cada
@@ -269,6 +300,7 @@ caché alimenta los autofixes.
       "calleeExtractors": {},              // opcional (nombre → tv|cva|classed|flat)
       "tags": [],                          // opcional
       "variablePatterns": [],              // opcional
+      "lookupTablePatterns": [],           // opcional
       "exclude": {                         // opcional
         "attributes": [],
         "callees": [],

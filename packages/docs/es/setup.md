@@ -233,7 +233,8 @@ y plugins como `@tailwindcss/typography`.
   `clsx`, `cva`, `twMerge`, …), templates con `tw`, y variables que coinciden con `/^classNames?$/`,
   `/^classes$/`, `/^styles?$/`. Agrega `attributes`, `attributePatterns` (regex para props tipo
   `*ClassName`), `callees`, `calleeExtractors` (enruta un wrapper propio por el extractor de
-  `tv`/`cva`/`classed`), `tags`, `variablePatterns`, o quita defaults vía `exclude`. Mira la
+  `tv`/`cva`/`classed`), `tags`, `variablePatterns`, `lookupTablePatterns` (variables cuyos valores
+  de objeto son clases), o quita defaults vía `exclude`. Mira la
   [referencia de settings](/es/settings).
 - **Ajustar timeouts**: `settings.tailwindcss.timeout` (ms, default 60000) limita cuánto espera el
   plugin al worker (hilo) que precomputa el design system. CI lento puede necesitar subirlo.

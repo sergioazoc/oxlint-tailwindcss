@@ -230,8 +230,8 @@ Read the full [interop guide](/interop) for who formats what, the `--fix` note, 
   `clsx`, `cva`, `twMerge`, …), `tw` tagged templates, and variables matching `/^classNames?$/`,
   `/^classes$/`, `/^styles?$/`. Add `attributes`, `attributePatterns` (regex for `*ClassName`-style
   props), `callees`, `calleeExtractors` (route a custom wrapper through the `tv`/`cva`/`classed`
-  extractor), `tags`, `variablePatterns`, or remove defaults via `exclude`. See
-  [settings reference](/settings).
+  extractor), `tags`, `variablePatterns`, `lookupTablePatterns` (variables whose object values are
+  classes), or remove defaults via `exclude`. See [settings reference](/settings).
 - **Tune timeouts**: `settings.tailwindcss.timeout` (ms, default 60000) bounds how long the plugin
   waits for the worker thread that precomputes the design system. Slow CI may need this raised.
 - **Debug logging**: `settings.tailwindcss.debug: true` (or `DEBUG=oxlint-tailwindcss`) logs which

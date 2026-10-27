@@ -24,6 +24,7 @@ describe('settingsProblems', () => {
         },
         tags: ['css'],
         variablePatterns: ['^tw[A-Z]'],
+        lookupTablePatterns: ['_CLASSES$'],
         exclude: {
           attributes: ['class'],
           callees: ['objstr'],
@@ -77,6 +78,9 @@ describe('settingsProblems', () => {
   it('names a pattern that is not a regular expression', () => {
     expect(settingsProblems({ variablePatterns: ['^ok$', '(unclosed'] })).toEqual([
       '"variablePatterns" has an invalid regular expression: "(unclosed"',
+    ])
+    expect(settingsProblems({ lookupTablePatterns: ['(unclosed'] })).toEqual([
+      '"lookupTablePatterns" has an invalid regular expression: "(unclosed"',
     ])
   })
 

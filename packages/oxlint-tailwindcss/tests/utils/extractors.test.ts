@@ -175,6 +175,71 @@ describe('attributePatterns — regex JSX attribute matching (#134)', () => {
   })
 })
 
+describe('lookupTablePatterns — object values of lookup-table variables', () => {
+  const withTables = (patterns: RegExp[]): ExtractorConfig => ({
+    ...DEFAULT_EXTRACTOR_CONFIG,
+    lookupTablePatterns: patterns,
+  })
+  const property = (key: string, value: ESTree.Node): ESTree.Node =>
+    ({
+      type: 'Property',
+      key: { type: 'Identifier', name: key },
+      value,
+    }) as unknown as ESTree.Node
+  const object = (...properties: ESTree.Node[]): ESTree.Node =>
+    ({ type: 'ObjectExpression', properties }) as unknown as ESTree.Node
+  const declarator = (name: string, init: ESTree.Node): ESTree.VariableDeclarator =>
+    ({
+      type: 'VariableDeclarator',
+      id: { type: 'Identifier', name },
+      init,
+    }) as unknown as ESTree.VariableDeclarator
+  const table = object(
+    property('ok', stringLiteral('text-green-700')),
+    property('warning', stringLiteral('text-amber-700')),
+  )
+
+  it('reads the values of a matched table, tagged as a variable', () => {
+    const locs = extractFromVariableDeclarator(
+      declarator('TONE_CLASSES', table),
+      withTables([/_CLASSES$/]),
+    )
+    expect(locs.map((l) => l.value)).toEqual(['text-green-700', 'text-amber-700'])
+    expect(locs.every((l) => l.origin === 'variable')).toBe(true)
+  })
+
+  it('reads nothing from a table with the default empty patterns', () => {
+    expect(extractFromVariableDeclarator(declarator('TONE_CLASSES', table))).toHaveLength(0)
+  })
+
+  it('looks through `as const` and `satisfies`, and into nested tables', () => {
+    const nested = object(property('sm', object(property('root', stringLiteral('p-2')))))
+    const asConst = { type: 'TSAsExpression', expression: nested } as unknown as ESTree.Node
+    const satisfied = {
+      type: 'TSSatisfiesExpression',
+      expression: asConst,
+    } as unknown as ESTree.Node
+    const locs = extractFromVariableDeclarator(
+      declarator('SIZE_CLASSES', satisfied),
+      withTables([/_CLASSES$/]),
+    )
+    expect(locs.map((l) => l.value)).toEqual(['p-2'])
+  })
+
+  it('leaves a matched name with a string initializer to variablePatterns', () => {
+    const config = withTables([/_CLASSES$/])
+    expect(
+      extractFromVariableDeclarator(declarator('ROW_CLASSES', stringLiteral('flex')), config),
+    ).toHaveLength(0)
+    expect(
+      extractFromVariableDeclarator(declarator('ROW_CLASSES', stringLiteral('flex')), {
+        ...config,
+        variablePatterns: [/_CLASSES$/],
+      }).map((l) => l.value),
+    ).toEqual(['flex'])
+  })
+})
+
 /**
  * Issue #155: `calleeExtractors` routes a custom callee (a wrapper re-exported
  * under another name) through a known structured extractor — `tv`/`cva`/

@@ -90,6 +90,8 @@ export interface ExtractorConfig {
   callees: string[]
   tags: string[]
   variablePatterns: RegExp[]
+  /** Variables whose object initializer is a lookup table: its values are read, not its keys. */
+  lookupTablePatterns: RegExp[]
   /**
    * Maps a custom callee name to the structured extractor it should be routed
    * through (#155). Built once in `getExtractorConfig` (validated, with the
@@ -133,6 +135,8 @@ export const DEFAULT_EXTRACTOR_CONFIG: ExtractorConfig = {
   ],
   tags: ['tw'],
   variablePatterns: DEFAULT_VARIABLE_PATTERNS,
+  // No defaults: a table's values are only classes by a project's convention.
+  lookupTablePatterns: [],
   calleeExtractors: new Map(),
 }
 
@@ -280,6 +284,7 @@ function compileExtractorConfig(tw: PluginSettings): ExtractorConfig {
       ...filteredPatterns,
       ...compileRegexList(tw.variablePatterns),
     ],
+    lookupTablePatterns: compileRegexList(tw.lookupTablePatterns),
     calleeExtractors,
   }
 }
@@ -724,19 +729,58 @@ function getPropertyName(key: ESTree.Node): string | undefined {
 /**
  * Extracts class locations from a VariableDeclarator whose name matches variablePatterns.
  * e.g. const className = "flex items-center"
+ *
+ * A name matching lookupTablePatterns whose initializer is an object literal is
+ * a lookup table instead: its values are read, not its keys.
+ * e.g. const TONE_CLASSES = { warning: "text-amber-700" }
  */
 export function extractFromVariableDeclarator(
   node: ESTree.VariableDeclarator,
   config: ExtractorConfig = DEFAULT_EXTRACTOR_CONFIG,
 ): ClassLocation[] {
   if (node.id.type !== 'Identifier') return []
-  if (!config.variablePatterns.some((p) => p.test((node.id as ESTree.BindingIdentifier).name)))
-    return []
+  const name = (node.id as ESTree.BindingIdentifier).name
+  if (node.init && config.lookupTablePatterns.some((p) => p.test(name))) {
+    const table = withoutTypeAssertion(node.init)
+    if (table.type === 'ObjectExpression') {
+      return withOrigin(extractLookupTable(table as ESTree.ObjectExpression), 'variable')
+    }
+  }
+  if (!config.variablePatterns.some((p) => p.test(name))) return []
   if (!node.init) return []
   // A `const className = "..."` can flow into a native attribute (final list) or
   // into a merge call (fragment) — we can't tell statically, so it is never
   // `jsx-native`.
   return withOrigin(extractFromExpression(node.init), 'variable')
+}
+
+/** `{…} as const` and `{…} satisfies T` are the same object literal. */
+function withoutTypeAssertion(node: ESTree.Node): ESTree.Node {
+  let inner = node
+  while (inner.type === 'TSAsExpression' || inner.type === 'TSSatisfiesExpression') {
+    inner = (inner as ESTree.TSAsExpression | ESTree.TSSatisfiesExpression).expression
+  }
+  return inner
+}
+
+/**
+ * A lookup table's values, recursing into nested tables
+ * (`{ sm: { root: "…", label: "…" } }`): there, too, the keys are names.
+ */
+function extractLookupTable(
+  node: ESTree.ObjectExpression,
+  out: ClassLocation[] = [],
+): ClassLocation[] {
+  for (const prop of node.properties) {
+    if (prop.type !== 'Property') continue
+    const value = withoutTypeAssertion(prop.value)
+    if (value.type === 'ObjectExpression') {
+      extractLookupTable(value as ESTree.ObjectExpression, out)
+    } else {
+      extractFromExpression(value, out)
+    }
+  }
+  return out
 }
 
 /**
