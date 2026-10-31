@@ -527,11 +527,15 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
   is kept exported ONLY for the unit tests that pin the `${scriptHash}:${version}` shape. The
   content hash folds in everything the design system is built from besides the engine
   (`hashableContent`): the entry CSS, its locally-`@import`ed files (recursive to a small depth),
-  local `@plugin`/`@config` files (resolved like Node, read as text — not what they `require`), and
-  the installed `name@version` of every package the CSS imports or loads as `@plugin` (walked up
-  through `node_modules`, read from `package.json`). The engine version says nothing about
-  `tw-animate-css` or `@tailwindcss/typography`; before this, upgrading one or editing a local
-  plugin kept serving the old class list, so removed classes stopped being reported (H19,
+  local `@plugin`/`@config` files (resolved like Node, read as text) and every local module they
+  import, recursively with no depth limit (`import`/`export … from`/`import()`/`require()`, resolved
+  by `resolveLocalModule` as `@tailwindcss/node`'s `getModuleDependencies` does — JS-first or
+  TS-first by the importer's extension, `index` files, plus `./x.js` → `x.ts`; #245: a plugin
+  re-exported from an `index` served a stale design system after its `impl` changed), and the
+  installed `name@version` of every package the CSS imports or loads as `@plugin`, or a local plugin
+  imports (walked up through `node_modules`, read from `package.json`). The engine version says
+  nothing about `tw-animate-css` or `@tailwindcss/typography`; before this, upgrading one or editing
+  a local plugin kept serving the old class list, so removed classes stopped being reported (H19,
   `tests/e2e/cache-dir.test.ts`). Every read is schema-validated (`isPrecomputedData`): a corrupt,
   truncated, or poisoned file (or a `{}` that would otherwise crash `fromPrecomputed`) reads as a
   miss, is deleted under the lock, and recomputed — never wedges the loader. Content-based caching

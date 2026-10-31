@@ -178,3 +178,107 @@ describe('E2E: editing a local @plugin invalidates the cached design system', ()
     ])
   }, 240_000)
 })
+
+// #245: the same, when the edit lands in a module the `@plugin` file imports.
+// The key followed the `@plugin` file only, so a plugin re-exported from an
+// `index` (or split across modules, or written in TypeScript) kept serving
+// the old design system — and `enforce-canonical` its old answers — for as
+// long as the cache entry was used.
+describe('E2E: editing a module a local @plugin imports invalidates the cached design system', () => {
+  const projects: string[] = []
+  const posix = (path: string) => resolve(ROOT, path).split('\\').join('/')
+  const run = (dir: string) => {
+    try {
+      return execFileSync(OXLINT, ['-f', 'json', 'src'], {
+        cwd: dir,
+        encoding: 'utf8',
+        timeout: 120_000,
+        shell: IS_WINDOWS,
+        env: { ...process.env, OXLINT_TAILWINDCSS_CACHE_DIR: join(dir, '.cache') },
+      })
+    } catch (error: unknown) {
+      const err = error as { status?: number; stdout?: string; stderr?: string }
+      if (err.status === 1 && typeof err.stdout === 'string') return err.stdout
+      throw new Error(`oxlint exited ${err.status}: ${err.stderr ?? ''}`)
+    }
+  }
+  const write = (dir: string, path: string, content: string) => {
+    mkdirSync(resolve(dir, path, '..'), { recursive: true })
+    writeFileSync(
+      resolve(dir, path),
+      content
+        .replaceAll('TAILWIND_CSS', posix('node_modules/tailwindcss/index.css'))
+        .replaceAll('TAILWIND_PLUGIN', posix('node_modules/tailwindcss/dist/plugin.mjs')),
+    )
+  }
+  const project = (name: string, files: Record<string, string>, rule: string) => {
+    const dir = mkdtempSync(resolve(tmpdir(), `oxtw-${name}-`))
+    projects.push(dir)
+    for (const [path, content] of Object.entries(files)) write(dir, path, content)
+    writeFileSync(
+      resolve(dir, '.oxlintrc.json'),
+      JSON.stringify({
+        categories: { correctness: 'off' },
+        jsPlugins: [DIST_CJS.split('\\').join('/')],
+        settings: { tailwindcss: { entryPoint: './src/styles.css' } },
+        rules: { [`tailwindcss/${rule}`]: 'error' },
+      }),
+    )
+    return dir
+  }
+
+  afterAll(() => {
+    for (const dir of projects) rmSync(dir, { recursive: true, force: true })
+  })
+
+  // The issue's reproduction: the plugin's `bg` adds `--scoped-bg`, so
+  // `bg-[length:400%]` is not `bg-size-[400%]` until `impl.js` stops adding it
+  // for lengths.
+  it('re-exported from an index: enforce-canonical follows the edit', () => {
+    const impl = (body: string) =>
+      `import plugin from 'TAILWIND_PLUGIN'\nexport default plugin(({ matchUtilities }) => {\n  matchUtilities({ bg: (value) => (${body}) })\n})\n`
+    const dir = project(
+      'plugin-reexport',
+      {
+        'package.json': '{ "type": "module" }\n',
+        'src/styles.css': "@import 'TAILWIND_CSS';\n@plugin './plugin/index.js';\n",
+        'src/plugin/index.js': "export { default } from './impl.js'\n",
+        'src/plugin/impl.js': impl("{ '--scoped-bg': value }"),
+        'src/App.tsx': 'export const El = () => <div className="bg-[length:400%]" />\n',
+      },
+      'enforce-canonical',
+    )
+    expect(diagnostics(run(dir))).toEqual([])
+    write(dir, 'src/plugin/impl.js', impl("/^\\d/.test(value) ? {} : { '--scoped-bg': value }"))
+    expect(diagnostics(run(dir))).toEqual([
+      'tailwindcss(enforce-canonical) "bg-[length:400%]" can be written as "bg-size-[400%]". Use the canonical form.',
+    ])
+  }, 240_000)
+
+  // A TypeScript plugin named without its extension, importing a module by
+  // its emitted `.js` name, and that module importing another: the edit lands
+  // two imports away from the `@plugin` file.
+  it('in TypeScript, two imports away: no-unknown-classes follows the edit', () => {
+    const tokens = (utility: string) =>
+      `export const utilities = { '.${utility}': { color: 'red' } }\n`
+    const dir = project(
+      'plugin-ts',
+      {
+        'src/styles.css': "@import 'TAILWIND_CSS';\n@plugin './plugin';\n",
+        'src/plugin.ts': "import { define } from './plugin/impl.js'\nexport default define\n",
+        'src/plugin/impl.ts':
+          "import { utilities } from './tokens'\n" +
+          'export const define = ({ addUtilities }: { addUtilities: (u: object) => void }) =>\n' +
+          '  addUtilities(utilities)\n',
+        'src/plugin/tokens.ts': tokens('foo-bar'),
+        'src/A.tsx': 'export const A = () => <div className="foo-bar" />\n',
+      },
+      'no-unknown-classes',
+    )
+    expect(diagnostics(run(dir))).toEqual([])
+    write(dir, 'src/plugin/tokens.ts', tokens('foo-baz'))
+    expect(diagnostics(run(dir))).toEqual([
+      'tailwindcss(no-unknown-classes) "foo-bar" is not a valid Tailwind class. Did you mean "foo-baz"?',
+    ])
+  }, 240_000)
+})

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Editing a module a local `@plugin` or `@config` imports invalidates the cached design system
+  (#245).** The cache key read the `@plugin` file itself, not what it imports, so a plugin
+  re-exported from an `index`, split across modules or written in TypeScript kept serving the old
+  design system after an edit, and `enforce-canonical` its old answers, for as long as the entry was
+  used. The key now follows its relative imports (`import`, `export … from`, `import()`,
+  `require()`) the way Tailwind's watch mode does, TypeScript extensions and `index` files included,
+  plus the version of every package it imports. A TypeScript plugin named without its extension
+  (`@plugin "./plugin"` → `plugin.ts`) is now part of the key too. A project whose local plugins
+  import something computes its design system once more after upgrading.
+
 ## 1.17.0
 
 Two opt-ins from a design system with its own px tokens: `prefer-scale-token`'s `sameUnit`, and the
