@@ -17,7 +17,7 @@
  * For arbitrary values (bg-[#123]) that aren't in the class list, we use heuristics.
  */
 
-import { createRequire } from 'node:module'
+import { createRequire, isBuiltin } from 'node:module'
 import { Worker, threadId } from 'node:worker_threads'
 import { createHash } from 'node:crypto'
 import {
@@ -31,7 +31,7 @@ import {
   unlinkSync,
   utimesSync,
 } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, extname, join, resolve } from 'node:path'
 import { tmpdir, userInfo } from 'node:os'
 import { DesignSystemLoadError } from '../utils/fatal'
 import { resolveTailwindNodeFor, type TailwindNodeResolution } from './tailwind-node'
@@ -1313,9 +1313,48 @@ const IMPORT_RE = /@import\s+(?:url\(\s*)?['"]([^'"]+)['"]/g
 // Captures the target of `@plugin "..."` and `@config "..."` — JS the design
 // system is built from.
 const PLUGIN_RE = /@(?:plugin|config)\s+['"]([^'"]+)['"]/g
+// Captures what a local plugin or config loads: `import … from "x"`,
+// `export … from "x"`, `import "x"`, `import("x")` and `require("x")`. A match
+// inside a comment or a string only adds a file to the key, never drops one.
+const JS_IMPORT_RE = /\b(?:from|import|require)\s*\(?\s*['"]([^'"\r\n]+)['"]/g
+
+// The extensions Tailwind tries for a plugin's relative import, in its order:
+// a JS importer prefers JS, any other prefers TS (`getModuleDependencies` in
+// @tailwindcss/node, the files its watch mode rebuilds on).
+const JS_FIRST = ['', '.js', '.cjs', '.mjs', '.ts', '.cts', '.mts', '.jsx', '.tsx']
+const TS_FIRST = ['', '.ts', '.cts', '.mts', '.tsx', '.js', '.cjs', '.mjs', '.jsx']
+// TypeScript's ESM convention names the emitted file: `./impl.js` is `impl.ts`.
+const TS_TWINS: Record<string, string[]> = {
+  '.js': ['.ts', '.tsx'],
+  '.jsx': ['.tsx'],
+  '.mjs': ['.mts'],
+  '.cjs': ['.cts'],
+}
 
 const isPathSpecifier = (spec: string): boolean =>
   spec.startsWith('.') || spec.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(spec)
+
+const isFile = (path: string): boolean => {
+  try {
+    return statSync(path).isFile()
+  } catch {
+    return false
+  }
+}
+
+/** The file a relative import from `importer` loads, found as Tailwind does, or `null`. */
+function resolveLocalModule(importer: string, spec: string): string | null {
+  const base = resolve(dirname(importer), spec)
+  const exts = ['.js', '.cjs', '.mjs'].includes(extname(importer)) ? JS_FIRST : TS_FIRST
+  for (const ext of exts) if (isFile(base + ext)) return base + ext
+  for (const ext of exts) if (isFile(join(base, `index${ext}`))) return join(base, `index${ext}`)
+  const ext = extname(base)
+  for (const twin of TS_TWINS[ext] ?? []) {
+    const path = base.slice(0, -ext.length) + twin
+    if (isFile(path)) return path
+  }
+  return null
+}
 
 /** The package a bare specifier names: `@scope/name/sub` → `@scope/name`, `name/sub` → `name`. */
 function packageNameOf(spec: string): string | null {
@@ -1353,11 +1392,13 @@ function packageVersionFrom(fromDir: string, name: string): string {
  *     depth (DS-A2: editing `@import "./theme.css"` served a stale design
  *     system until the entry was touched);
  *   - local `@plugin` / `@config` files (`@plugin "./my-plugin.js"`), read as
- *     text — the file itself, not what it `require`s;
+ *     text, and every local module they import, recursively — the files
+ *     Tailwind's own watch mode rebuilds on (#245: a plugin re-exported from
+ *     `./impl.js` kept serving the old design system after `impl.js` changed);
  *   - the installed version of every PACKAGE the CSS imports or loads as a
- *     plugin (`tw-animate-css`, `@tailwindcss/typography`): the engine version
- *     folded into the hash says nothing about them, so upgrading one used to
- *     keep serving the old class list (H19).
+ *     plugin (`tw-animate-css`, `@tailwindcss/typography`), or a local plugin
+ *     imports: the engine version folded into the hash says nothing about
+ *     them, so upgrading one used to keep serving the old class list (H19).
  *
  * Best-effort: an unreadable file contributes nothing and an unresolvable
  * package contributes `name@?` — neither can be what the build loads either.
@@ -1377,24 +1418,37 @@ function hashableContent(entryPath: string, entryContent: string): string {
     }
   }
 
+  const collect = (re: RegExp, content: string): string[] =>
+    Array.from(content.matchAll(re), (m) => m[1].split('?')[0])
+  const addPackage = (fromDir: string, spec: string) => {
+    const name = packageNameOf(spec)
+    if (name) packages.add(packageVersionFrom(fromDir, name))
+  }
+
+  // A local plugin or config and what it imports. No depth limit, like
+  // Tailwind's walk: `seen` ends cycles, and only local files are followed.
+  const visitJs = (path: string): void => {
+    const content = readOnce(path)
+    if (content === null) return
+    parts.push(`js:${content}`)
+    if (extname(path) === '.json') return
+    for (const spec of collect(JS_IMPORT_RE, content)) {
+      if (isPathSpecifier(spec)) {
+        const target = resolveLocalModule(path, spec)
+        if (target !== null) visitJs(target)
+      } else if (!spec.startsWith('#') && !isBuiltin(spec)) {
+        addPackage(dirname(path), spec)
+      }
+    }
+  }
+
   const visit = (cssPath: string, content: string, depth: number): void => {
     if (depth <= 0) return
     const baseDir = dirname(cssPath)
-    const collect = (re: RegExp): string[] => {
-      const out: string[] = []
-      re.lastIndex = 0
-      let m: RegExpExecArray | null
-      while ((m = re.exec(content)) !== null) out.push(m[1].split('?')[0])
-      return out
-    }
-    const addPackage = (spec: string) => {
-      const name = packageNameOf(spec)
-      if (name) packages.add(packageVersionFrom(baseDir, name))
-    }
 
-    for (const spec of collect(IMPORT_RE)) {
+    for (const spec of collect(IMPORT_RE, content)) {
       if (!isPathSpecifier(spec)) {
-        addPackage(spec)
+        addPackage(baseDir, spec)
         continue
       }
       const importPath = resolve(baseDir, spec)
@@ -1403,21 +1457,22 @@ function hashableContent(entryPath: string, entryContent: string): string {
       parts.push(importContent)
       visit(importPath, importContent, depth - 1)
     }
-    for (const spec of collect(PLUGIN_RE)) {
+    for (const spec of collect(PLUGIN_RE, content)) {
       if (!isPathSpecifier(spec)) {
-        addPackage(spec)
+        addPackage(baseDir, spec)
         continue
       }
       // `./plugin` may omit the extension or name a directory: resolve it the
-      // way Tailwind's loader (Node resolution) does.
-      let pluginPath: string
+      // way Tailwind's loader (Node resolution) does, and a TS plugin
+      // (`./plugin` → `plugin.ts`), which Node's resolution doesn't find, as
+      // Tailwind's own resolver does.
+      let pluginPath: string | null
       try {
         pluginPath = createRequire(join(baseDir, 'noop.js')).resolve(spec)
       } catch {
-        continue
+        pluginPath = resolveLocalModule(cssPath, spec)
       }
-      const pluginContent = readOnce(pluginPath)
-      if (pluginContent !== null) parts.push(`js:${pluginContent}`)
+      if (pluginPath !== null) visitJs(pluginPath)
     }
   }
 

@@ -253,6 +253,158 @@ describe('Content-based cache deduplication', () => {
       expect(new Set([a, b, c]).size).toBe(3)
     })
 
+    // #245: what a local plugin or config imports is part of it. Each case
+    // edits ONLY a module the `@plugin` / `@config` file reaches.
+    describe('the modules a local plugin or config imports (#245)', () => {
+      const write = (dir: string, files: Record<string, string>) => {
+        for (const [path, content] of Object.entries(files)) {
+          mkdirSync(dirname(join(dir, path)), { recursive: true })
+          writeFileSync(join(dir, path), content)
+        }
+      }
+      /** The key before and after `edit` rewrites one file. */
+      const keyChange = (
+        name: string,
+        css: string,
+        files: Record<string, string>,
+        edit: Record<string, string>,
+      ) => {
+        const dir = fresh(name)
+        const entry = join(dir, 'entry.css')
+        write(dir, { 'entry.css': `@import 'tailwindcss';\n${css}\n`, ...files })
+        const before = cacheArtifactPaths(entry).json
+        write(dir, edit)
+        return { before, after: cacheArtifactPaths(entry).json }
+      }
+
+      it.each([
+        ['export … from', "export { default } from './impl.js'\n"],
+        ['import … from', "import impl from './impl.js'\nexport default impl\n"],
+        ['a side-effect import', "import './impl.js'\nexport default () => {}\n"],
+        ['a dynamic import()', "export default () => import('./impl.js')\n"],
+        ['require()', "module.exports = require('./impl.js')\n"],
+        ['an import with no extension', "export { default } from './impl'\n"],
+      ])('%s', (_, index) => {
+        const { before, after } = keyChange(
+          'imports',
+          "@plugin './plugin/index.js';",
+          { 'plugin/index.js': index, 'plugin/impl.js': 'export default 1\n' },
+          { 'plugin/impl.js': 'export default 2\n' },
+        )
+        expect(after).not.toBe(before)
+      })
+
+      it('several imports deep', () => {
+        const { before, after } = keyChange(
+          'deep',
+          "@plugin './plugin.js';",
+          {
+            'plugin.js': "export * from './a.js'\n",
+            'a.js': "export * from './b.js'\n",
+            'b.js': "export * from './c.js'\n",
+            'c.js': "export * from './d.js'\n",
+            'd.js': "export * from './e.js'\n",
+            'e.js': 'export const x = 1\n',
+          },
+          { 'e.js': 'export const x = 2\n' },
+        )
+        expect(after).not.toBe(before)
+      })
+
+      it('a TypeScript plugin named without its extension', () => {
+        const { before, after } = keyChange(
+          'ts-entry',
+          "@plugin './plugin';",
+          { 'plugin.ts': 'export default (): number => 1\n' },
+          { 'plugin.ts': 'export default (): number => 2\n' },
+        )
+        expect(after).not.toBe(before)
+      })
+
+      it('TypeScript modules: by their emitted .js name, extensionless, and a directory index', () => {
+        const files = {
+          'plugin.ts':
+            "export * from './impl.js'\nexport * from './tokens'\nexport * from './utils'\n",
+          'impl.ts': 'export const impl = 1\n',
+          'tokens.mts': 'export const tokens = 1\n',
+          'utils/index.ts': 'export const utils = 1\n',
+        }
+        const css = "@plugin './plugin.ts';"
+        for (const [path, edit] of [
+          ['impl.ts', 'export const impl = 2\n'],
+          ['tokens.mts', 'export const tokens = 2\n'],
+          ['utils/index.ts', 'export const utils = 2\n'],
+        ]) {
+          const { before, after } = keyChange('ts-modules', css, files, { [path]: edit })
+          expect(after, path).not.toBe(before)
+        }
+      })
+
+      it('a JSON file a plugin imports', () => {
+        const { before, after } = keyChange(
+          'json',
+          "@plugin './plugin.js';",
+          {
+            'plugin.js':
+              "import tokens from './tokens.json' with { type: 'json' }\nexport default tokens\n",
+            'tokens.json': '{ "brand": "red" }\n',
+          },
+          { 'tokens.json': '{ "brand": "blue" }\n' },
+        )
+        expect(after).not.toBe(before)
+      })
+
+      it('a module a local @config imports (a preset)', () => {
+        const { before, after } = keyChange(
+          'config-preset',
+          "@config './tailwind.config.js';",
+          {
+            'tailwind.config.js': "module.exports = { presets: [require('./preset.js')] }\n",
+            'preset.js': 'module.exports = { theme: {} }\n',
+          },
+          { 'preset.js': 'module.exports = { theme: { x: 1 } }\n' },
+        )
+        expect(after).not.toBe(before)
+      })
+
+      it('the version of a package a local plugin imports', () => {
+        const dir = fresh('plugin-imports-package')
+        const entry = join(dir, 'entry.css')
+        fakePackage(dir, 'fake-tokens', '1.0.0')
+        write(dir, {
+          'entry.css': "@import 'tailwindcss';\n@plugin './plugin.js';\n",
+          'plugin.js':
+            "import tokens from 'fake-tokens/colors'\nimport { join } from 'node:path'\nimport fs from 'fs'\nexport default tokens\n",
+        })
+        const before = cacheArtifactPaths(entry).json
+        fakePackage(dir, 'fake-tokens', '1.1.0')
+        expect(cacheArtifactPaths(entry).json).not.toBe(before)
+      })
+
+      it('ends on an import cycle', () => {
+        const { before, after } = keyChange(
+          'cycle',
+          "@plugin './a.js';",
+          { 'a.js': "import './b.js'\nexport default 1\n", 'b.js': "import './a.js'\n// 1\n" },
+          { 'b.js': "import './a.js'\n// 2\n" },
+        )
+        expect(after).not.toBe(before)
+      })
+
+      it('ignores a file the plugin does not import, and an import that resolves nowhere', () => {
+        const { before, after } = keyChange(
+          'unrelated',
+          "@plugin './plugin.js';",
+          {
+            'plugin.js': "import './missing.js'\nexport default 1\n",
+            'unrelated.js': 'export default 1\n',
+          },
+          { 'unrelated.js': 'export default 2\n' },
+        )
+        expect(after).toBe(before)
+      })
+    })
+
     it('stays the same when nothing changed', () => {
       const dir = fresh('stable')
       const entry = join(dir, 'entry.css')
