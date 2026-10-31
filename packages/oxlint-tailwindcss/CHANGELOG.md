@@ -1,6 +1,19 @@
 # Changelog
 
-## Unreleased
+## 1.17.1
+
+The design-system cache now follows what a local Tailwind plugin imports. Editing a module that an
+`@plugin` or `@config` file imports, rather than that file itself, kept serving the old design
+system, and with it stale `no-unknown-classes` and `enforce-canonical` reports, until the cache was
+cleared.
+
+### Before you upgrade
+
+- **Nothing to change in your config.** A project whose local `@plugin` / `@config` files import
+  other modules or packages computes its design system once more on the first run after upgrading;
+  every other project keeps its cache.
+
+### Bug fixes
 
 - **Editing a module a local `@plugin` or `@config` imports invalidates the cached design system
   (#245).** The cache key read the `@plugin` file itself, not what it imports, so a plugin
@@ -9,8 +22,11 @@
   used. The key now follows its relative imports (`import`, `export … from`, `import()`,
   `require()`) the way Tailwind's watch mode does, TypeScript extensions and `index` files included,
   plus the version of every package it imports. A TypeScript plugin named without its extension
-  (`@plugin "./plugin"` → `plugin.ts`) is now part of the key too. A project whose local plugins
-  import something computes its design system once more after upgrading.
+  (`@plugin "./plugin"` → `plugin.ts`) is now part of the key too.
+
+### Dependencies
+
+- Tested against oxlint 1.90.0 (#246).
 
 ## 1.17.0
 
