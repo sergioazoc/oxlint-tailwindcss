@@ -153,7 +153,7 @@ export function resolveByGlobMapping(
 
 /**
  * oxlint discovers nested configuration by walking up from each linted file
- * looking for files with these names (oxlint 1.89: JSON, JSONC, and the JS
+ * looking for files with these names (oxlint 1.90: JSON, JSONC, and the JS
  * configs it loads through Node). We mirror that walk to find the config
  * directory a relative `entryPoint` should be anchored to — which is also
  * where an `oxlint.config.ts` passes it through `oxlint-tailwindcss/config`.

@@ -13,7 +13,7 @@
     "@tailwindcss/node": "4.3.3",
     "eslint-plugin-better-tailwindcss": "4.10.0",
     "eslint-plugin-tailwindcss": "4.4.0",
-    "oxlint": "1.89.0",
+    "oxlint": "1.90.0",
     "oxlint-tailwindcss": "1.17.0",
     "shadcn": "4.23.0",
     "tailwindcss": "4.3.3",

@@ -141,7 +141,7 @@ jobs:
             oxlint: '1.43.0'
           - name: Node 20.19.0 (engines floor)
             node: '20.19.0'
-            oxlint: '1.89.0'
+            oxlint: '1.90.0'
           # oxlint-tailwindcss/config in an oxlint.config.ts: the oxlint that
           # first takes config objects in `extends`, on the first Node that
           # strips types by itself (oxlint imports the config through it).

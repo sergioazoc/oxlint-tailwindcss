@@ -29,7 +29,7 @@
         "config": "btw-all"
       }
     },
-    "oxlint": "1.89.0",
+    "oxlint": "1.90.0",
     "tailwindcss": "4.3.3"
   },
   "concerns": [
@@ -1570,8 +1570,8 @@
           "tailwindcss/no-borrowed-component-styles": 1,
           "tailwindcss/no-dark-without-light": 1
         },
-        "warmMs": 1329,
-        "coldMs": 8534
+        "warmMs": 1305,
+        "coldMs": 11732
       },
       "recommended": {
         "config": "otw-recommended",
@@ -1592,8 +1592,8 @@
           "tailwindcss/enforce-negative-arbitrary-values": 1,
           "tailwindcss/no-dark-without-light": 1
         },
-        "warmMs": 1163,
-        "coldMs": 9477
+        "warmMs": 1665,
+        "coldMs": 11564
       }
     },
     "shadcn": {
@@ -1610,7 +1610,7 @@
           "shadcn/no-inline-styles": 33,
           "shadcn/require-static-classes": 3
         },
-        "warmMs": 1006
+        "warmMs": 1225
       }
     },
     "better-tailwindcss": {
@@ -1630,7 +1630,7 @@
           "better-tailwindcss/enforce-consistent-variable-syntax": 4,
           "better-tailwindcss/no-concatenated-classes": 1
         },
-        "warmMs": 29052
+        "warmMs": 41805
       },
       "recommended": {
         "config": "btw-recommended",
@@ -1643,7 +1643,7 @@
           "better-tailwindcss/no-deprecated-classes": 11,
           "better-tailwindcss/no-concatenated-classes": 1
         },
-        "warmMs": 25460
+        "warmMs": 25880
       }
     }
   },
