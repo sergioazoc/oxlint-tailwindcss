@@ -280,6 +280,11 @@ describe('canonicalize cache disk persistence', () => {
     it('skips the flush while another isolate holds a fresh lock', () => {
       rmSync(cachePath(), { force: true })
       writeFileSync(lockPath(), '') // fresh (non-stale) lock held by "someone else"
+      // Dated ahead, so it is still fresh at the flush however long the worker
+      // takes to start: on a slow runner (Windows CI, 10.3 s) a lock written
+      // just before the call aged past LOCK_STALE_MS and was rightly reclaimed.
+      const ahead = new Date(Date.now() + 10 * 60_000)
+      utimesSync(lockPath(), ahead, ahead)
       try {
         canonicalizeClassesSync(ENTRY_POINT, manyArbitrary())
         // Contended → we skip writing; no cache file is produced this run.
