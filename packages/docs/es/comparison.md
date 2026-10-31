@@ -21,7 +21,7 @@ resultados.
 | ---------------------------------------- | ------------------------- | ------------------ | --------------------------------------- |
 | Errores sembrados atrapados              | 50/56                     | 34/56              | 20/56                                   |
 | Falsas alarmas en líneas limpias         | 0/6                       | 0/6                | 0/6                                     |
-| En caliente, todas las reglas            | 1,3 s                     | 1,0 s              | 29,1 s                                  |
+| En caliente, todas las reglas            | 1,3 s                     | 1,2 s              | 41,8 s                                  |
 | Clases desconocidas que Tailwind compila | 0/77                      | 0/34               | 0/97                                    |
 | `--fix`: strings cuyo estilo cambió      | 0/1028                    | sin autofix        | 1/2865                                  |
 

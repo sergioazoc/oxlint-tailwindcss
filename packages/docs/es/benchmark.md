@@ -19,7 +19,7 @@ job semanal comprueba que una corrida nueva siga de acuerdo con él.
   [shadcn-ui/ui `apps/v4`](https://github.com/shadcn-ui/ui/tree/98a1fe67b439324ddc857f47fbdce056600a4329/apps/v4)
   @ `98a1fe67`, 880 archivos
 - **Versiones**: oxlint-tailwindcss 1.17.0, @shadcn/lint 0.2.3, eslint-plugin-better-tailwindcss
-  4.10.0; oxlint 1.89.0, tailwindcss 4.3.3
+  4.10.0; oxlint 1.90.0, tailwindcss 4.3.3
 - **Máquina**: Apple M4 Pro, 12 cores, darwin 25.5.0, Node 24.19.0; mediana de 5 corridas
 
 <!-- /generated:bench-setup -->
@@ -37,11 +37,11 @@ las otras dos.
 
 | Herramienta                      | Reglas       | En caliente | En frío | Diagnósticos |
 | -------------------------------- | ------------ | ----------- | ------- | ------------ |
-| oxlint-tailwindcss               | todas        | 1,3 s       | 8,5 s   | 3264         |
-| oxlint-tailwindcss               | recomendadas | 1,2 s       | 9,5 s   | 352          |
-| @shadcn/lint                     | todas        | 1,0 s       | —       | 2573         |
-| eslint-plugin-better-tailwindcss | todas        | 29,1 s      | —       | 6284         |
-| eslint-plugin-better-tailwindcss | recomendadas | 25,5 s      | —       | 705          |
+| oxlint-tailwindcss               | todas        | 1,3 s       | 11,7 s  | 3264         |
+| oxlint-tailwindcss               | recomendadas | 1,7 s       | 11,6 s  | 352          |
+| @shadcn/lint                     | todas        | 1,2 s       | —       | 2573         |
+| eslint-plugin-better-tailwindcss | todas        | 41,8 s      | —       | 6284         |
+| eslint-plugin-better-tailwindcss | recomendadas | 25,9 s      | —       | 705          |
 
 <!-- /generated:bench-speed -->
 
