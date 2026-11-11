@@ -161,7 +161,10 @@ async function main() {
   const handler = ${handlerExpr};
 
   while (true) {
-    Atomics.wait(control, 0, 0);
+    // Wait on the flag, not on the wake-up: the host's \`notify\` is a separate
+    // step from its \`store\`, so a late one can land on this wait after the
+    // request it announced was already served (#251).
+    while (Atomics.load(control, 0) === 0) Atomics.wait(control, 0, 0);
     const len = lengthView.getUint32(0);
     const requestStr = Buffer.from(dataArea.slice(0, len)).toString('utf-8');
     Atomics.store(control, 0, 0);
@@ -474,8 +477,21 @@ export class DesignSystemWorker<Req, Res> {
     Atomics.store(state.controlArray, 0, 1)
     Atomics.notify(state.controlArray, 0)
 
-    const result = Atomics.wait(state.controlArray, 1, 0, this.requestTimeoutMs)
-    if (result === 'timed-out') {
+    // Wait on the flag, not on the wake-up (#251). The worker's `store` and
+    // `notify` are separate steps: when it is descheduled between them, the
+    // `notify` for one response lands on the wait for the next, which would
+    // then read the buffer before the worker has answered — and find the
+    // request it just wrote there.
+    const deadline = Date.now() + this.requestTimeoutMs
+    let timedOut = false
+    while (Atomics.load(state.controlArray, 1) === 0) {
+      const left = deadline - Date.now()
+      if (left <= 0 || Atomics.wait(state.controlArray, 1, 0, left) === 'timed-out') {
+        timedOut = Atomics.load(state.controlArray, 1) === 0
+        break
+      }
+    }
+    if (timedOut) {
       // Per-request failure: bounded drop-and-retry (#145). A timeout is usually
       // a property of the MACHINE, not the input — a machine slow enough to time
       // out once times out again, and dropWorker resets the DS to cold, so an
