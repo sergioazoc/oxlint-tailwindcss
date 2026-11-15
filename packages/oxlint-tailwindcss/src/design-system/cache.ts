@@ -26,6 +26,14 @@ const DYNAMIC_NUMERIC_RE = /^(.+)-\d+\.?\d*$/
  */
 const DYNAMIC_PERCENT_RE = /^(.+)-\d+%$/
 
+/** `--color-red-500` (or `--tw-color-red-500` under `prefix(tw)`) → `red-500`. */
+function colorNameOf(varName: string, prefix: string): string | null {
+  if (varName.startsWith('--color-')) return varName.slice('--color-'.length)
+  if (prefix === '') return null
+  const namespace = `--${prefix}-color-`
+  return varName.startsWith(namespace) ? varName.slice(namespace.length) : null
+}
+
 export class DesignSystemCache {
   private canonicalMap = new Map<string, string>()
   private deprecatedMap = new Map<string, string>()
@@ -134,7 +142,7 @@ export class DesignSystemCache {
 
     for (const name of data.paletteVars ?? []) cache.paletteVarSet.add(name)
     cache.projectColorNames = (data.projectColorVars ?? [])
-      .map((name) => name.slice('--color-'.length))
+      .map((name) => colorNameOf(name, data.prefix ?? '') ?? name)
       .sort((a, b) => a.localeCompare(b))
 
     if (data.themeRefs) {
@@ -759,6 +767,15 @@ export class DesignSystemCache {
   /** Whether this is one of Tailwind's default palette colors (`--color-red-500`). */
   isPaletteVar(varName: string): boolean {
     return this.paletteVarSet.has(varName)
+  }
+
+  /**
+   * The color a theme color variable names (`--color-red-500` → `red-500`), or
+   * `null` for any other variable. Under a project prefix the theme's colors are
+   * `--tw-color-*` (#253), and both spellings are accepted.
+   */
+  themeColorName(varName: string): string | null {
+    return colorNameOf(varName, this._prefix)
   }
 
   /** The colors the project's theme declares, by name (`brand`, `primary`), sorted. */

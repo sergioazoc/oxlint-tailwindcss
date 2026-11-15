@@ -1,0 +1,17 @@
+@import 'tailwindcss' prefix(tw);
+
+/*
+ * Theme colors under a project prefix (#253). Tailwind names them
+ * `--tw-color-brand`, not `--color-brand`, and the CSS reads them that way.
+ * `surface` sets a colour only through such a read (`background` is not a
+ * `*-color` property), for no-dark-without-light. Tailwind doesn't rewrite a
+ * `var()` inside `@utility`, so a prefixed project spells it out.
+ */
+@theme {
+  --color-brand: #ff6600;
+  --color-brand-light: #ff9933;
+}
+
+@utility surface {
+  background: var(--tw-color-brand);
+}

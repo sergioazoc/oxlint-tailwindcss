@@ -52,6 +52,7 @@ const FIXTURES = [
   'custom-utility.css',
   'open-value-utility.css',
   'with-prefix-utility.css',
+  'with-prefix-theme.css',
   'with-imported-theme.css',
   'docs-examples.css',
   'dashed-tokens.css',

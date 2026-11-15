@@ -134,7 +134,9 @@ export interface PrecomputedData {
   /**
    * The theme's `--color-*` variables from Tailwind's default palette (`@theme
    * default`), and the ones the project declares (including a palette color it
-   * redefines). Read by no-default-palette.
+   * redefines). Read by no-default-palette. Named as the CSS reads them, so
+   * under a prefix they are `--tw-color-*` (#253); `cache.themeColorName`
+   * strips either namespace.
    */
   paletteVars: string[]
   projectColorVars: string[]
@@ -1031,13 +1033,15 @@ async function main() {
   // Tailwind's default palette (\`@theme default\`, theme option DEFAULT = 4)
   // apart from the colors the project declares, for no-default-palette. A
   // project that redefines a palette color owns it: its entry loses the flag.
+  // Under a prefix the theme names them \`--tw-color-*\`, as the CSS reads them (#253).
   const paletteVars = [];
   const projectColorVars = [];
+  const colorNamespace = prefix ? '--' + prefix + '-color-' : '--color-';
   if (ds.theme && typeof ds.theme.entries === 'function') {
     for (const [name, entry] of ds.theme.entries()) {
       const value = entry && typeof entry.value === 'string' ? entry.value : '';
       themeValues.set(name, value);
-      if (name.startsWith('--color-')) {
+      if (name.startsWith(colorNamespace)) {
         if (entry && (entry.options & 4)) paletteVars.push(name);
         else projectColorVars.push(name);
       }

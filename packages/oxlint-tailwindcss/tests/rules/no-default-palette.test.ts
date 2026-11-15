@@ -8,6 +8,7 @@ import { runWithFixture } from '../utils/with-fixture'
 const CUSTOM = resolve(__dirname, '../fixtures/custom-theme.css')
 const SHADCN = resolve(__dirname, '../fixtures/shadcn.css')
 const DEFAULT = resolve(__dirname, '../fixtures/default.css')
+const PREFIXED = resolve(__dirname, '../fixtures/with-prefix-theme.css')
 
 const palette = (className: string, color: string, colors = 'brand, brand-light') => ({
   messageId: 'defaultPalette',
@@ -78,6 +79,49 @@ describe('no-default-palette (a project with its own colors)', () => {
         code: 'cn("p-4 text-red-600")',
         filename: 'test.tsx',
         errors: [palette('text-red-600', 'red-600')],
+      },
+    ],
+  })
+})
+
+// Under `prefix(tw)` the theme's colors are `--tw-color-*` (#253): the rule
+// used to find no palette and no project colors, and reported nothing.
+describe('no-default-palette (a project prefix)', () => {
+  beforeAll(() => {
+    resetDesignSystem()
+    getLoadedDesignSystem(PREFIXED)
+  })
+  afterAll(() => {
+    resetDesignSystem()
+  })
+
+  runWithFixture(new RuleTester(), 'no-default-palette (prefix)', noDefaultPalette, PREFIXED, {
+    valid: [
+      { code: '<div className="tw:bg-brand tw:hover:text-brand-light" />', filename: 'test.tsx' },
+      {
+        code: '<div className="tw:bg-gray-100" />',
+        filename: 'test.tsx',
+        options: [{ allow: ['gray-*'] }],
+      },
+    ],
+    invalid: [
+      {
+        code: '<div className="tw:bg-gray-500 tw:text-brand" />',
+        filename: 'test.tsx',
+        errors: [palette('tw:bg-gray-500', 'gray-500')],
+      },
+      {
+        code: '<div className="tw:hover:text-blue-600 tw:bg-red-500/50" />',
+        filename: 'test.tsx',
+        errors: [
+          palette('tw:hover:text-blue-600', 'blue-600'),
+          palette('tw:bg-red-500/50', 'red-500'),
+        ],
+      },
+      {
+        code: '<div className="tw:bg-[var(--tw-color-red-500)]" />',
+        filename: 'test.tsx',
+        errors: [palette('tw:bg-[var(--tw-color-red-500)]', 'red-500')],
       },
     ],
   })

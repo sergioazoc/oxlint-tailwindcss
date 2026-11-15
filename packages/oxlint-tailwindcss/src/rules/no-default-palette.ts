@@ -16,7 +16,8 @@ interface Options {
   allow?: string[]
 }
 
-const COLOR_VAR = '--color-'
+/** An arbitrary value reading a theme color: `var(--color-…)`, or `var(--tw-color-…)` under a prefix. */
+const COLOR_VAR_READ = /var\(--(?:[a-z0-9]+-)?color-/
 
 /** `white`, `gray-*` → a test on palette color names. */
 function compileAllow(allow: string[]): (color: string) => boolean {
@@ -32,13 +33,13 @@ function paletteColorOf(cls: string, cache: DesignSystemCache, entryPoint: strin
   // reads what `bg-red-500` does, and only the latter is precomputed.
   const base = bare.replace(/\/[^/\]]+$/, '')
   let decls = cache.getCssDeclarations(base)
-  if (decls.length === 0 && base.includes(`var(${COLOR_VAR}`)) {
+  if (decls.length === 0 && COLOR_VAR_READ.test(base)) {
     resolveDeclarationsSync(entryPoint, cache, [base])
     decls = cache.getCssDeclarations(base)
   }
   for (const decl of decls) {
     for (const read of decl.readsVars) {
-      if (cache.isPaletteVar(read)) return read.slice(COLOR_VAR.length)
+      if (cache.isPaletteVar(read)) return cache.themeColorName(read)
     }
   }
   return null

@@ -209,6 +209,29 @@ describe('no-hardcoded-colors (the project has its own colors)', () => {
     ],
   })
 
+  // Under a prefix the theme names them `--tw-color-*`; the message names them all the same (#253).
+  runWithFixture(
+    new RuleTester(),
+    'no-hardcoded-colors (prefix)',
+    noHardcodedColors,
+    resolve(__dirname, '../fixtures/with-prefix-theme.css'),
+    {
+      valid: [],
+      invalid: [
+        {
+          code: '<div className="tw:bg-[#ff6600]" />',
+          filename: 'test.tsx',
+          errors: [
+            {
+              messageId: 'noHardcodedTokens',
+              data: { className: 'tw:bg-[#ff6600]', colors: 'brand, brand-light' },
+            },
+          ],
+        },
+      ],
+    },
+  )
+
   // Stock Tailwind has no colors of its own: the message stays as it was.
   runWithFixture(new RuleTester(), 'no-hardcoded-colors (stock)', noHardcodedColors, DEFAULT, {
     valid: [],

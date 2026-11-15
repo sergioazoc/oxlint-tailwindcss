@@ -322,3 +322,21 @@ ruleTester.run('no-dark-without-light (colour only, no design system)', noDarkWi
     },
   ],
 })
+
+// Under `prefix(tw)` a theme color is `--tw-color-*` (#253). `surface` sets
+// `background`, which no `*-color` pattern names, so the read is what says it
+// sets a colour.
+describe('no-dark-without-light (theme colors under a prefix)', () => {
+  const run = makeFixtureRunner(resolve(__dirname, '../fixtures/with-prefix-theme.css'))
+
+  run('no-dark-without-light (prefix)', noDarkWithoutLight, {
+    valid: [{ code: '<div className="tw:surface tw:dark:surface" />', filename: 'test.tsx' }],
+    invalid: [
+      {
+        code: '<div className="tw:flex tw:dark:surface" />',
+        filename: 'test.tsx',
+        errors: [{ messageId: 'missingBaseProperty' }],
+      },
+    ],
+  })
+})
