@@ -9,6 +9,7 @@ import {
   splitImportant,
 } from '../utils/class-parser'
 import { createLazyLoader } from '../design-system/loader'
+import type { DesignSystemCache } from '../design-system/cache'
 import { resolveDeclarationsSync } from '../design-system/declaration-service'
 import { isFatalError, softGetDS } from '../utils/fatal'
 import { debugLog } from '../design-system/debug'
@@ -127,16 +128,19 @@ function withoutVarGroups(value: string): string {
 
 /**
  * The colour property a class sets, read from the CSS it emits — a colour
- * property, a read of a `--color-*` theme variable, or a colour literal — or
- * null when it sets none. Descendant and pseudo-element declarations count
+ * property, a read of a `--color-*` theme variable (`--tw-color-*` under a
+ * prefix, #253), or a colour literal — or null when it sets none. Descendant and pseudo-element declarations count
  * (`divide-*`, `placeholder-*` colour other boxes); `@media`-conditional ones
  * don't.
  */
-function colorPropertyOf(decls: readonly CssDeclaration[]): string | null {
+function colorPropertyOf(
+  decls: readonly CssDeclaration[],
+  cache: DesignSystemCache,
+): string | null {
   const own = decls.filter((d) => !d.conditional)
   for (const d of own) if (COLOR_PROPERTY.test(d.prop)) return d.prop
   for (const d of own) {
-    if (d.readsVars.some((v) => v.startsWith('--color-'))) return d.prop
+    if (d.readsVars.some((v) => cache.themeColorName(v) !== null)) return d.prop
     if (COLOR_LITERAL.test(withoutVarGroups(d.value))) return d.prop
   }
   return null
@@ -306,8 +310,8 @@ export const noDarkWithoutLight = defineRule({
             // resolve), only the families that are never colour drop out.
             const decls = cache ? cache.getCssDeclarations(bare) : []
             let colorProperty: string | undefined
-            if (decls.length > 0) {
-              const found = colorPropertyOf(decls)
+            if (cache && decls.length > 0) {
+              const found = colorPropertyOf(decls, cache)
               if (found === null) continue
               colorProperty = found
             } else if (isNeverColorStatic(bare)) {

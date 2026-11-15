@@ -9,6 +9,12 @@
   worker had answered and found its own request there, and the two stayed one message out of step
   for the next few files. Both sides now wait on the flag itself and ignore a wake-up that arrives
   without it.
+- **`no-default-palette` reports under a project prefix (#253).** With
+  `@import "tailwindcss" prefix(tw)`, Tailwind names the theme's colors `--tw-color-*`, and the
+  precompute only looked for `--color-*`, so it found neither the palette nor the project's colors:
+  `tw:bg-gray-500` passed. It reads both spellings now. The same gap made `no-hardcoded-colors` use
+  the message that doesn't name your theme colors, and `no-dark-without-light` skip a class whose
+  only colour is such a read (an `@utility` with `background: var(--tw-color-brand)`).
 
 ## 1.17.1
 
