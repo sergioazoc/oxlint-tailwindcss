@@ -958,10 +958,11 @@ async function main() {
   //
   // Functional variants (\`group-*\`, \`peer-*\`, \`data-*\`, \`nth-*\`) are skipped:
   // probing them would need a value, and none of them retargets the selector.
-  // Measured in Tailwind 4.3.3: \`group-hover\`/\`peer-checked\` compile to
-  // \`&:is(:where(.group):hover *)\` — an \`:is()\` on the element itself — so two of
-  // them in either order produce equivalent selectors and neither is a
-  // reordering barrier.
+  // Measured in Tailwind 4.3.5: \`group-hover\`/\`peer-checked\` compile to
+  // \`:is(:where(.group):hover .x)\` (since tailwindlabs/tailwindcss#20513; 4.3.3
+  // printed \`&:is(:where(.group):hover *)\`) — either way a condition on the
+  // element itself — so two of them in either order produce equivalent selectors
+  // and neither is a reordering barrier.
   const variantFacts = {};
   const probeNames = [];
   for (let i = 0; i < variants.length; i++) {

@@ -45,8 +45,14 @@ jobs:
       - name: Use their latest releases
         if: matrix.versions == 'latest'
         working-directory: bench
+        # Every vite-plus release pins an exact oxlint/oxfmt, so its latest one
+        # is often a peer conflict with the bench's own oxlint (ERESOLVE, the
+        # failure of 2026-11-09). vite-plus nests its own copy either way, and
+        # the bench's oxlint stays at the top level. `--force`, not
+        # `--legacy-peer-deps`: that one drops every peer, `eslint` with them,
+        # and eslint-plugin-tailwindcss can't load without it.
         run:
-          npm install --no-save @shadcn/lint@latest eslint-plugin-better-tailwindcss@latest
+          npm install --no-save --force @shadcn/lint@latest eslint-plugin-better-tailwindcss@latest
           eslint-plugin-tailwindcss@latest vite-plus@latest
           vite@npm:@voidzero-dev/vite-plus-core@latest
 

@@ -18,8 +18,8 @@ job semanal comprueba que una corrida nueva siga de acuerdo con él.
 - **Corpus**:
   [shadcn-ui/ui `apps/v4`](https://github.com/shadcn-ui/ui/tree/98a1fe67b439324ddc857f47fbdce056600a4329/apps/v4)
   @ `98a1fe67`, 880 archivos
-- **Versiones**: oxlint-tailwindcss 1.17.1, @shadcn/lint 0.2.3, eslint-plugin-better-tailwindcss
-  4.10.0; oxlint 1.90.0, tailwindcss 4.3.3
+- **Versiones**: oxlint-tailwindcss 1.17.2, @shadcn/lint 0.2.5, eslint-plugin-better-tailwindcss
+  4.11.0; oxlint 1.93.0, tailwindcss 4.3.5
 - **Máquina**: Apple M4 Pro, 12 cores, darwin 25.5.0, Node 24.19.0; mediana de 5 corridas
 
 <!-- /generated:bench-setup -->
@@ -37,11 +37,11 @@ las otras dos.
 
 | Herramienta                      | Reglas       | En caliente | En frío | Diagnósticos |
 | -------------------------------- | ------------ | ----------- | ------- | ------------ |
-| oxlint-tailwindcss               | todas        | 9,9 s       | 10,0 s  | 3264         |
-| oxlint-tailwindcss               | recomendadas | 1,2 s       | 9,9 s   | 352          |
-| @shadcn/lint                     | todas        | 1,0 s       | —       | 2573         |
-| eslint-plugin-better-tailwindcss | todas        | 27,4 s      | —       | 6284         |
-| eslint-plugin-better-tailwindcss | recomendadas | 24,2 s      | —       | 705          |
+| oxlint-tailwindcss               | todas        | 1,0 s       | 4,4 s   | 3264         |
+| oxlint-tailwindcss               | recomendadas | 0,8 s       | 4,3 s   | 352          |
+| @shadcn/lint                     | todas        | 0,8 s       | —       | 2613         |
+| eslint-plugin-better-tailwindcss | todas        | 8,7 s       | —       | 6284         |
+| eslint-plugin-better-tailwindcss | recomendadas | 6,9 s       | —       | 705          |
 
 <!-- /generated:bench-speed -->
 
@@ -174,7 +174,7 @@ de variants no tiene conflicto que reportar.
 | Herramienta                      | Reportes de clase desconocida | …de clases que Tailwind compila | …de clases que define una hoja de estilos del proyecto | Reportes de conflicto | …de clases que no comparten ninguna propiedad |
 | -------------------------------- | ----------------------------- | ------------------------------- | ------------------------------------------------------ | --------------------- | --------------------------------------------- |
 | oxlint-tailwindcss               | 77                            | 0                               | 18                                                     | 20                    | 0                                             |
-| @shadcn/lint                     | 34                            | 0                               | 18                                                     | —                     | —                                             |
+| @shadcn/lint                     | 74                            | 0                               | 18                                                     | —                     | —                                             |
 | eslint-plugin-better-tailwindcss | 97                            | 0                               | 38                                                     | 0                     | 0                                             |
 
 <!-- /generated:bench-oracles -->

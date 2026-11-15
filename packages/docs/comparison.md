@@ -16,12 +16,12 @@ below are the [benchmark](/benchmark)'s, generated from the same results file.
 
 <!-- generated:comparison-summary -->
 
-| Summary                                 | oxlint-tailwindcss 1.17.1 | @shadcn/lint 0.2.3 | eslint-plugin-better-tailwindcss 4.10.0 |
+| Summary                                 | oxlint-tailwindcss 1.17.2 | @shadcn/lint 0.2.5 | eslint-plugin-better-tailwindcss 4.11.0 |
 | --------------------------------------- | ------------------------- | ------------------ | --------------------------------------- |
 | Seeded mistakes caught                  | 50/56                     | 34/56              | 20/56                                   |
 | False alarms on clean lines             | 0/6                       | 0/6                | 0/6                                     |
-| Warm run, all rules                     | 9.9 s                     | 1.0 s              | 27.4 s                                  |
-| Unknown-class reports Tailwind compiles | 0/77                      | 0/34               | 0/97                                    |
+| Warm run, all rules                     | 1.0 s                     | 0.8 s              | 8.7 s                                   |
+| Unknown-class reports Tailwind compiles | 0/77                      | 0/74               | 0/97                                    |
 | `--fix`: strings whose style changed    | 0/1,028                   | no autofix         | 1/2,865                                 |
 
 <!-- /generated:comparison-summary -->

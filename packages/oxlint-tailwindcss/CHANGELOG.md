@@ -1,6 +1,19 @@
 # Changelog
 
-## Unreleased
+## 1.17.2
+
+Two bug fixes: a design-system worker that could fall one message out of step under heavy CPU load,
+and `no-default-palette` reporting nothing in a project with a `prefix()`.
+
+### Before you upgrade
+
+- **Nothing to change in your config.** Every project computes its design system once more on the
+  first run after upgrading.
+- **Reports that can appear with the same config:** under `@import "tailwindcss" prefix(…)`,
+  `no-default-palette` on the default palette's colors, and `no-dark-without-light` on a variant
+  class whose only colour is a `var(--tw-color-*)` read.
+
+### Bug fixes
 
 - **A rare `TypeError: Cannot convert undefined or null to object` under heavy CPU load is gone
   (#251).** The host and the design-system worker each took "`Atomics.wait` returned" to mean "the
@@ -15,6 +28,11 @@
   `tw:bg-gray-500` passed. It reads both spellings now. The same gap made `no-hardcoded-colors` use
   the message that doesn't name your theme colors, and `no-dark-without-light` skip a class whose
   only colour is such a read (an `@utility` with `background: var(--tw-color-brand)`).
+
+### Dependencies
+
+- Tested against oxlint 1.93.0 and Tailwind CSS 4.3.5, which is the engine the plugin ships and the
+  newest one the engine check accepts without a warning.
 
 ## 1.17.1
 

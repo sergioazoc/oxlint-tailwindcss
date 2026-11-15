@@ -409,8 +409,8 @@ AST visitors: `JSXAttribute`, `CallExpression`, `TaggedTemplateExpression`, `Var
 - **Per-file options and settings.** `createOnce` runs once per worker and its context then serves
   every file that worker lints, but options and settings belong to each file: `overrides` and nested
   `.oxlintrc.json` change options, nested configs change settings (`overrides` reject `settings`).
-  Measured on oxlint 1.85, 1.87, 1.89 and 1.90: every file of one effective config gets the SAME
-  `context.options` array object; `context.settings` is a FRESH object per file. So
+  Measured on oxlint 1.85, 1.87, 1.89, 1.90 and 1.93: every file of one effective config gets the
+  SAME `context.options` array object; `context.settings` is a FRESH object per file. So
   `createLazyOptions` memoizes by options identity (a `WeakMap`, steady state = one `===`), and
   `createLazySettings` / `getExtractorConfig` take the settings object as a per-file fast path plus
   a bounded memo by JSON content. **Never read `safeOptions` / `safeSettings` / `context.options` /
