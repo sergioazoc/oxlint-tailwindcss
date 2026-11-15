@@ -114,7 +114,7 @@ Cuando está activo, el plugin registra en stderr:
   tardó cada paso: `Loaded design system from "…" — cache hit; hash 1 ms, read 16 ms, build 18 ms`,
   o para un precompute nuevo
   `precomputed in 3850 ms (load 20 ms, validate 402 ms, canonical 1416 ms, …)`.
-- El chequeo del motor de Tailwind de cada entry point (`engine E=4.3.3 B=4.3.3 → ok`).
+- El chequeo del motor de Tailwind de cada entry point (`engine E=4.3.5 B=4.3.5 → ok`).
 
 Útil cuando estás depurando qué CSS terminó cargando el plugin.
 
