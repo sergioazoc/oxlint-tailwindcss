@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **A rare `TypeError: Cannot convert undefined or null to object` under heavy CPU load is gone
+  (#251).** The host and the design-system worker each took "`Atomics.wait` returned" to mean "the
+  flag is set". `store` and `notify` are separate steps, so a thread descheduled between them
+  delivered its `notify` late, to the next wait; the host then read the shared buffer before the
+  worker had answered and found its own request there, and the two stayed one message out of step
+  for the next few files. Both sides now wait on the flag itself and ignore a wake-up that arrives
+  without it.
+
 ## 1.17.1
 
 The design-system cache now follows what a local Tailwind plugin imports. Editing a module that an
