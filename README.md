@@ -39,6 +39,7 @@ variables, typography plugin) for exact, machine-independent results.
 
 <p align="center">
   <a href="https://expo.dev"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/expo-white.svg"><img src="packages/docs/public/users/expo.svg" alt="Expo" title="Expo" height="24"></picture></a>&nbsp;&nbsp;&nbsp;
+  <a href="https://vercel.com"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/vercel-white.svg"><img src="packages/docs/public/users/vercel.svg" alt="Vercel" title="Vercel" height="24"></picture></a>&nbsp;&nbsp;&nbsp;
   <a href="https://mastra.ai"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/mastra-white.svg"><img src="packages/docs/public/users/mastra.svg" alt="Mastra" title="Mastra" height="24"></picture></a>&nbsp;&nbsp;&nbsp;
   <a href="https://skyward.ai"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/skyward-white.svg"><img src="packages/docs/public/users/skyward.svg" alt="Skyward" title="Skyward" height="24"></picture></a>&nbsp;&nbsp;&nbsp;
   <a href="https://univer.ai"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/docs/public/users/univer-white.svg"><img src="packages/docs/public/users/univer.svg" alt="Univer" title="Univer" height="24"></picture></a>&nbsp;&nbsp;&nbsp;

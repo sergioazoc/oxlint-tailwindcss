@@ -4,6 +4,7 @@
 // dark mode), so the root README reads the same files.
 const users = [
   { name: 'Expo', logo: 'expo', url: 'https://expo.dev' },
+  { name: 'Vercel', logo: 'vercel', url: 'https://vercel.com' },
   { name: 'Mastra', logo: 'mastra', url: 'https://mastra.ai' },
   { name: 'Skyward', logo: 'skyward', url: 'https://skyward.ai' },
   { name: 'Univer', logo: 'univer', url: 'https://univer.ai' },
